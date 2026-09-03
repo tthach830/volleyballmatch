@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Volleyball Match</title>
+  <meta name="description" content="Automated Beach Volleyball Matchmaking, Ladder & Community">
+  <meta name="theme-color" content="#008080">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="assets/slug.png">
+  <link rel="apple-touch-icon" href="assets/slug.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+  <div id="app-container">
+    <!-- iOS Deep Link Smart App Banner -->
+    <div id="ios-app-banner" style="display:none; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; padding: 10px 16px; font-size: 13px; font-weight: 600; align-items: center; justify-content: space-between; gap: 10px; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:18px;">📱</span>
+        <span>Open this match in the <strong>Volleyball Match</strong> iOS app!</span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <a id="ios-app-link" href="#" class="btn btn-sm" style="background:#fff; color:#0284c7; font-weight:700; text-decoration:none; padding:4px 10px; border-radius:6px; white-space:nowrap;">Open App</a>
+        <button type="button" onclick="document.getElementById('ios-app-banner').style.display='none'" style="background:transparent; border:none; color:#fff; font-size:16px; cursor:pointer; padding:0 4px;">✕</button>
+      </div>
+    </div>
+
+    <!-- Top App Bar -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">🏐</div>
+        <div class="brand-title">Volleyball Match</div>
+      </div>
+      <div id="user-chip-container">
+        <!-- Injected via JavaScript -->
+      </div>
+    </header>
+
+    <!-- TAB 1: SET GAMES (Matches iOS ConfirmedGamesView.swift) -->
+    <main id="tab-matches" class="tab-content active">
+      <div class="ios-view-header">
+        <div>
+          <h1 class="ios-large-title">Set Games</h1>
+          <div class="ios-subtitle">Santa Cruz beach courts • Main, Harbor & 4th St</div>
+        </div>
+        <div class="ios-toolbar-actions">
+          <button type="button" class="btn-ios-toolbar btn-ios-purple" onclick="window.openRandomTeamsModal()" title="Generate Random Round Robin Matches">🎲 Random</button>
+          <button type="button" class="btn-ios-toolbar btn-ios-orange" onclick="window.openCreateMatchModal()" title="Host a new match">+ New Match</button>
+        </div>
+      </div>
+
+      <!-- iOS Segmented Control: All Upcoming | My Games | Needs Players -->
+      <div class="ios-segmented-control" id="match-filter-segmented">
+        <button type="button" class="ios-segmented-item active match-filter-chip" data-filter="all" onclick="window.setMatchFilter('all')">All Upcoming</button>
+        <button type="button" class="ios-segmented-item match-filter-chip" data-filter="myGames" onclick="window.setMatchFilter('myGames')">My Games</button>
+        <button type="button" class="ios-segmented-item match-filter-chip" data-filter="openSpots" onclick="window.setMatchFilter('openSpots')">Needs Players</button>
+      </div>
+
+      <div id="matches-list">
+        <!-- Injected via JavaScript -->
+      </div>
+    </main>
+
+    <!-- TAB 2: AUTO-MATCHMAKER -->
+    <main id="tab-matchmaker" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Auto-Matchmaker</h1>
+          <div class="section-sub">Automated pairing based on time and skill tier</div>
+        </div>
+      </div>
+
+      <!-- Option 1: Fast Pickup Lobby -->
+      <div class="match-card" style="border-left: 4px solid var(--accent); margin-bottom: 20px;">
+        <div style="font-weight: 800; font-size: 15px; margin-bottom: 4px;">⚡️ Instant Pickup Lobby (2v2)</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Jump in the queue! Once 4 players join, an automatic match is locked on Court #1.
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="font-size: 14px; font-weight: 800; color: var(--accent);">Queue: <span id="pickup-count">0/4</span> Waiting</div>
+          <button class="btn btn-accent btn-sm" onclick="window.handleJoinPickup()">Join 2v2 Pickup</button>
+        </div>
+      </div>
+
+      <!-- Option 2: Availability Window -->
+      <div class="match-card">
+        <div style="font-weight: 800; font-size: 15px; margin-bottom: 4px;">🗓 Post Free Time Window</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Tell the algorithm when and where you want to play.
+        </div>
+
+        <form id="avail-form">
+          <div class="form-group">
+            <label class="form-label" for="avail-date">Date</label>
+            <input type="date" id="avail-date" class="form-input" required value="2026-09-05">
+          </div>
+
+          <div style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="avail-start">Start Time</label>
+              <input type="time" id="avail-start" class="form-input" required value="09:00">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="avail-end">End Time</label>
+              <input type="time" id="avail-end" class="form-input" required value="11:30">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="avail-beach">Preferred Beach</label>
+            <select id="avail-beach" class="form-select">
+              <option value="Main Beach">Main Beach</option>
+              <option value="Harbor Beach">Harbor Beach</option>
+              <option value="4th Street">4th Street</option>
+              <option value="Custom Court">Custom Court</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Accepted Tiers</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px;">
+              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="AA" checked> AA</label>
+              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="A" checked> A</label>
+              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="B"> B</label>
+              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="Intermediate"> Int</label>
+              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="Novice"> Novice</label>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Post Window & Find Matches</button>
+        </form>
+      </div>
+    </main>
+
+    <!-- TAB 3: LADDERS (Matches iOS LaddersView.swift) -->
+    <main id="tab-ladders" class="tab-content">
+      <div class="ios-view-header">
+        <div>
+          <h1 class="ios-large-title">Beach Ladders</h1>
+          <div class="ios-subtitle">Rankings and social catalysts on the sand</div>
+        </div>
+      </div>
+
+      <!-- iOS Segmented Control: Top Players vs Popular Kids -->
+      <div class="ios-segmented-control" id="ladder-type-segmented" style="margin-bottom: 16px;">
+        <button type="button" class="ios-segmented-item active" data-ladder-tab="topPlayers" onclick="window.switchLadderTab('topPlayers')">🏆 Top Players</button>
+        <button type="button" class="ios-segmented-item" data-ladder-tab="popularKids" onclick="window.switchLadderTab('popularKids')">👑 Popular Kids</button>
+      </div>
+
+      <!-- View 1: Top Players -->
+      <div id="ladder-top-players-view">
+        <div class="ladder-filter" style="margin-bottom: 12px;">
+          <button type="button" class="filter-chip active" data-tier="All">All Tiers</button>
+          <button type="button" class="filter-chip" data-tier="AA">AA Tier</button>
+          <button type="button" class="filter-chip" data-tier="A">A Tier</button>
+          <button type="button" class="filter-chip" data-tier="B">B Tier</button>
+          <button type="button" class="filter-chip" data-tier="Intermediate">Intermediate</button>
+          <button type="button" class="filter-chip" data-tier="Novice">Novice</button>
+        </div>
+        <div id="ladder-list">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- View 2: Popular Kids -->
+      <div id="ladder-popular-kids-view" style="display: none;">
+        <div id="popular-list">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+    </main>
+
+    <!-- TAB 5: PROFILE & SETTINGS -->
+    <main id="tab-profile" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Player Profile</h1>
+          <div class="section-sub">Customize your beach identity and avatar</div>
+        </div>
+      </div>
+
+      <!-- User Profile Header Card matching iOS ProfileView.swift -->
+      <div id="profile-card" class="match-card" style="text-align: center; padding: 24px 20px;">
+        <div id="profile-avatar-display" style="display: flex; justify-content: center; margin-bottom: 12px;">
+          <!-- Injected avatar -->
+        </div>
+
+        <div id="profile-name-display" style="font-size: 22px; font-weight: 800; color: var(--text);">Beach Player</div>
+        <div id="profile-nickname-display" style="font-size: 14px; font-weight: 600; color: var(--accent); margin-top: 2px;">@Player</div>
+        <div id="profile-phone-display" style="font-size: 13px; font-weight: 500; color: var(--text-muted); margin-top: 4px;">📱 831-555-0101</div>
+
+        <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px;">
+          <span id="profile-rating-badge" class="badge" style="background: var(--accent-light); color: var(--accent); font-weight: 800; font-size: 13px;">B TIER</span>
+          <span id="profile-stars" style="font-size: 13px; font-weight: 700; color: #b45309;">⭐ 5.0 (0 reviews)</span>
+        </div>
+
+        <div id="profile-flaker-badge" style="display: none; background: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 800; padding: 4px 12px; border-radius: 20px; margin: 10px auto 0; width: fit-content;">
+          ⚠️ Flaker: -1.0 Rating Penalty (Backed out 3x in a row)
+        </div>
+
+        <div id="profile-bio-display" style="font-size: 13px; color: var(--text-muted); font-style: italic; margin-top: 14px; padding: 0 10px;">
+          "Ready for some fun beach doubles on the sand!"
+        </div>
+
+        <div style="margin-top: 18px;">
+          <button type="button" class="btn btn-outline" style="border-radius: 20px; padding: 6px 18px; font-size: 13px; font-weight: 700; color: var(--accent); border-color: var(--accent);" onclick="window.openEditProfileModal()">
+            ✏️ Edit Profile
+          </button>
+        </div>
+      </div>
+
+      <!-- "The Popular Kids" Highlight Banner (matching iOS) -->
+      <div class="match-card" style="margin-top: 16px; background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(236,72,153,0.08)); border: 1px solid rgba(168,85,247,0.25); cursor: pointer;" onclick="window.switchTab('ladders'); window.switchLadderTab('popular');">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(168,85,247,0.18); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            👑
+          </div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div id="profile-popular-title" style="font-size: 14px; font-weight: 800; color: #9333ea;">🌟 Social Catalyst</div>
+              <div id="profile-popular-count" style="font-size: 12px; font-weight: 700; color: var(--text-muted);">0 Players</div>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Tap to view Community Popular Kids Ladder &raquo;</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Record & Performance Grid (matching iOS StatCards) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px;">
+        <div class="match-card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">SEASON RECORD</div>
+          <div id="profile-record-display" style="font-size: 18px; font-weight: 800; color: var(--text); margin-top: 4px;">0W - 0L</div>
+        </div>
+        <div class="match-card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">WIN RATE</div>
+          <div id="profile-winrate-display" style="font-size: 18px; font-weight: 800; color: var(--accent); margin-top: 4px;">0%</div>
+        </div>
+        <div class="match-card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">ELO RATING</div>
+          <div id="profile-elo-display" style="font-size: 18px; font-weight: 800; color: var(--text); margin-top: 4px;">1500</div>
+        </div>
+        <div class="match-card" style="text-align: center; padding: 14px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">HOME BEACH</div>
+          <div id="profile-beach-display" style="font-size: 14px; font-weight: 800; color: var(--text); margin-top: 4px;">Main Beach</div>
+        </div>
+      </div>
+
+      <!-- Notification Preferences Card -->
+      <div class="match-card" style="margin-top: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <div style="font-weight: 800; font-size: 15px;">🔔 Browser Push Notifications</div>
+          <span id="push-status-badge" class="badge" style="background:#e0f2fe; color:#0284c7;">Push: Inactive</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+          Receive real-time lock-screen banners and sound alerts when your games are locked or when pickup courts fill up.
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-enable-push" onclick="window.enablePushNotifications()">
+            Enable Push Notifications 🔔
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="window.sendTestNotification()">
+            Test Push Alert 🚀
+          </button>
+        </div>
+      </div>
+
+      <!-- Switch Active Profile Section for testing multiple accounts -->
+      <div class="match-card" style="margin-top: 20px;">
+        <div style="font-weight: 800; font-size: 14px; margin-bottom: 4px;">👥 Switch Active Player (Demo/Test Mode)</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+          Easily test the app from different players' perspectives:
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <select id="switch-user-select" class="form-select" style="flex: 1;"></select>
+          <button class="btn btn-outline btn-sm" onclick="window.handleSwitchUser()">Switch</button>
+        </div>
+      </div>
+
+      <!-- Log Out Button -->
+      <button type="button" class="btn btn-outline" style="width: 100%; margin-top: 18px; color: #ef4444; border-color: #ef4444; font-weight: 700;" onclick="window.handleLogout()">
+        Log Out / Sign In with Another Phone
+      </button>
+    </main>
+
+    <!-- Auth Modal (Phone Number Login & Sign Up - No Verification) -->
+    <div id="auth-modal" class="modal-backdrop">
+      <div class="modal-card" style="max-width: 420px;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 40px; margin-bottom: 6px;">🏐</div>
+          <h2 style="font-size: 22px; font-weight: 900; margin: 0;">Volleyball Match</h2>
+          <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Sign in with your phone number. No verification needed!</div>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div style="display: flex; background: var(--bg); padding: 4px; border-radius: 10px; margin-bottom: 16px;">
+          <button type="button" id="tab-btn-login" class="filter-chip active" style="flex: 1; text-align: center;" onclick="window.switchAuthMode('login')">Log In</button>
+          <button type="button" id="tab-btn-signup" class="filter-chip" style="flex: 1; text-align: center;" onclick="window.switchAuthMode('signup')">New Player</button>
+        </div>
+
+        <!-- LOG IN FORM -->
+        <form id="login-form" onsubmit="window.handlePhoneLogin(event)">
+          <div class="form-group">
+            <label class="form-label" for="login-phone">Mobile Phone Number</label>
+            <input type="tel" id="login-phone" class="form-input" placeholder="(831) 555-0142" required autofocus>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Password</label>
+            <input type="password" id="login-password" class="form-input" placeholder="Enter your password" required>
+          </div>
+          <div id="login-error" style="display: none; color: #ef4444; font-size: 12px; margin-bottom: 10px; font-weight: 600;"></div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 6px;">Log In</button>
+
+          <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">QUICK DEMO PLAYERS (PW: volleyball123):</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <button type="button" class="badge" style="cursor: pointer; background: #ffedd5; color: #c2410c; border: none; padding: 6px 10px;" onclick="window.fillDemoPhone('8315550102')">🍌 Taylor</button>
+              <button type="button" class="badge" style="cursor: pointer; background: #e0f2fe; color: #0369a1; border: none; padding: 6px 10px;" onclick="window.fillDemoPhone('8315550101')">🦈 Kai</button>
+              <button type="button" class="badge" style="cursor: pointer; background: #f3e8ff; color: #7e22ce; border: none; padding: 6px 10px;" onclick="window.fillDemoPhone('8315550103')">🐋 Maya</button>
+              <button type="button" class="badge" style="cursor: pointer; background: #dcfce7; color: #15803d; border: none; padding: 6px 10px;" onclick="window.fillDemoPhone('8315550105')">🍌 Chloe</button>
+            </div>
+          </div>
+        </form>
+
+        <!-- SIGN UP FORM -->
+        <form id="signup-form" style="display: none;" onsubmit="window.handlePhoneSignUp(event)">
+          <div class="form-group">
+            <label class="form-label" for="signup-phone">Mobile Phone (Required)</label>
+            <input type="tel" id="signup-phone" class="form-input" placeholder="(831) 555-0142" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup-password">Password (Required)</label>
+            <input type="password" id="signup-password" class="form-input" placeholder="Create a password" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup-name">Full Name</label>
+            <input type="text" id="signup-name" class="form-input" placeholder="Alex Morgan" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup-rating">Skill Level</label>
+            <select id="signup-rating" class="form-select">
+              <option value="AA">AA — Tournament Doubles (2100 ELO)</option>
+              <option value="A">A — Competitive Beach (1800 ELO)</option>
+              <option value="B">B — Solid Rallies & Passing (1550 ELO)</option>
+              <option value="Intermediate" selected>Intermediate — Fun Sets (1350 ELO)</option>
+              <option value="Novice">Novice — Learning (1100 ELO)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup-beach">Home Beach</label>
+            <select id="signup-beach" class="form-select">
+              <option value="Main Beach">Main Beach (Santa Cruz)</option>
+              <option value="Harbor Beach">Harbor Beach</option>
+              <option value="4th Street">4th Street Courts</option>
+              <option value="Seabright Beach">Seabright Beach</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Select Avatar</label>
+            <div class="avatar-selector">
+              <div class="avatar-btn selected" data-signup-avatar="slug" onclick="window.selectSignupAvatar(this, 'slug')">
+                <img src="assets/slug.png" alt="Banana Slug" style="width: 100%; height: 100%; border-radius: 50%;">
+              </div>
+              <div class="avatar-btn" data-signup-avatar="🦈" onclick="window.selectSignupAvatar(this, '🦈')">🦈</div>
+              <div class="avatar-btn" data-signup-avatar="🦦" onclick="window.selectSignupAvatar(this, '🦦')">🦦</div>
+              <div class="avatar-btn" data-signup-avatar="🐋" onclick="window.selectSignupAvatar(this, '🐋')">🐋</div>
+              <div class="avatar-btn" data-signup-avatar="🏐" onclick="window.selectSignupAvatar(this, '🏐')">🏐</div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Create Player & Play</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Score Logging Modal -->
+    <div id="score-modal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div style="font-weight: 800; font-size: 16px;">Log Set Game Score</div>
+          <button class="modal-close" onclick="window.closeScoreModal()">&times;</button>
+        </div>
+
+        <div id="score-game-title" style="font-size: 14px; color: var(--text-muted); margin-bottom: 14px;"></div>
+
+        <form id="score-form">
+          <input type="hidden" id="score-game-id">
+          
+          <div class="form-group">
+            <label class="form-label" for="winning-team-select">Match Winner</label>
+            <select id="winning-team-select" class="form-select">
+              <option value="1">Team 1 Won</option>
+              <option value="2">Team 2 Won</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Set Scores (Points)</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="score-set1" class="form-input" placeholder="Set 1 (e.g. 21-19)" required>
+              <input type="text" id="score-set2" class="form-input" placeholder="Set 2 (e.g. 21-18)" required>
+              <input type="text" id="score-set3" class="form-input" placeholder="Set 3 (optional)">
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 18px;">
+            <button type="button" class="btn btn-outline" style="flex: 1;" onclick="window.closeScoreModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Save & Update Ladder</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Create Match Modal -->
+    <div id="create-match-modal" class="modal-backdrop">
+      <div class="modal-card" style="max-width: 440px;">
+        <div class="modal-header">
+          <h2 class="modal-title">🏐 Host New Match</h2>
+          <button type="button" class="modal-close" onclick="window.closeCreateMatchModal()">&times;</button>
+        </div>
+        <form id="create-match-form" onsubmit="window.handleCreateMatch(event)">
+          <div class="form-group">
+            <label class="form-label" for="create-title">Match Title</label>
+            <input type="text" id="create-title" class="form-input" placeholder="e.g. Saturday Beach Doubles" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="create-tier">Skill Level Tier</label>
+            <select id="create-tier" class="form-select">
+              <option value="AA">AA — Advanced Tournament Player (2100 ELO)</option>
+              <option value="A">A — Competitive Beach (1800 ELO)</option>
+              <option value="B" selected>B — Solid Rallies & Passing (1550 ELO)</option>
+              <option value="Intermediate">Intermediate — Fun Sets (1350 ELO)</option>
+              <option value="Novice">Novice — Learning (1100 ELO)</option>
+            </select>
+          </div>
+          <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+            <input type="checkbox" id="create-level-locked" checked style="width: 18px; height: 18px;">
+            <label for="create-level-locked" style="font-size: 13px; font-weight: 700; cursor: pointer;">
+              🔒 Level Locked (Only matching tier players can join)
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="create-max-players">Max. Players</label>
+            <input type="number" id="create-max-players" class="form-input" min="2" max="16" step="1" value="4" placeholder="4">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="create-format">Format</label>
+            <select id="create-format" class="form-select">
+              <option value="Best of 3 Sets (21-21-15)">Best of 3 Sets (21-21-15)</option>
+              <option value="Single Set to 21">Single Set to 21</option>
+              <option value="King of Beach (Rotating 3 Sets)">King of Beach (Rotating 3 Sets)</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="create-beach">Beach Location</label>
+              <select id="create-beach" class="form-select">
+                <option value="Main Beach">Main Beach (Santa Cruz)</option>
+                <option value="Harbor Beach">Harbor Beach</option>
+                <option value="4th Street">4th Street Courts</option>
+                <option value="Seabright Beach">Seabright Beach</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="create-court">Court #</label>
+              <input type="text" id="create-court" class="form-input" placeholder="Court #1" value="Court #1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="create-date">Scheduled Time</label>
+            <input type="datetime-local" id="create-date" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="create-notes">Notes / Ball Details</label>
+            <input type="text" id="create-notes" class="form-input" placeholder="Bring Wilson or Molten beach ball!">
+          </div>
+          <div style="display: flex; gap: 10px; margin-top: 16px;">
+            <button type="button" class="btn btn-outline" style="flex: 1;" onclick="window.closeCreateMatchModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Host Match</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Match Modal (Host Only) -->
+    <div id="edit-match-modal" class="modal-backdrop">
+      <div class="modal-card" style="max-width: 440px;">
+        <div class="modal-header">
+          <h2 class="modal-title">⚙️ Edit Match Preferences</h2>
+          <button type="button" class="modal-close" onclick="window.closeEditMatchModal()">&times;</button>
+        </div>
+        <form id="edit-match-form" onsubmit="window.handleSaveMatchEdit(event)">
+          <input type="hidden" id="edit-game-id">
+          <div class="form-group">
+            <label class="form-label" for="edit-title">Match Title</label>
+            <input type="text" id="edit-title" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-tier">Skill Level Tier</label>
+            <select id="edit-tier" class="form-select">
+              <option value="AA">AA — Advanced Tournament Player (2100 ELO)</option>
+              <option value="A">A — Competitive Beach (1800 ELO)</option>
+              <option value="B">B — Solid Rallies & Passing (1550 ELO)</option>
+              <option value="Intermediate">Intermediate — Fun Sets (1350 ELO)</option>
+              <option value="Novice">Novice — Learning (1100 ELO)</option>
+            </select>
+          </div>
+          <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="edit-level-locked" style="width: 18px; height: 18px;">
+            <label for="edit-level-locked" style="font-size: 13px; font-weight: 700; cursor: pointer;">
+              🔒 Level Locked (Only matching tier players can join)
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-max-players">Max. Players</label>
+            <input type="number" id="edit-max-players" class="form-input" min="2" max="16" step="1" value="4" placeholder="4">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-format">Format</label>
+            <select id="edit-format" class="form-select">
+              <option value="Best of 3 Sets (21-21-15)">Best of 3 Sets (21-21-15)</option>
+              <option value="Single Set to 21">Single Set to 21</option>
+              <option value="King of Beach (Rotating 3 Sets)">King of Beach (Rotating 3 Sets)</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="edit-beach">Beach Location</label>
+              <select id="edit-beach" class="form-select">
+                <option value="Main Beach">Main Beach (Santa Cruz)</option>
+                <option value="Harbor Beach">Harbor Beach</option>
+                <option value="4th Street">4th Street Courts</option>
+                <option value="Seabright Beach">Seabright Beach</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="edit-court">Court #</label>
+              <input type="text" id="edit-court" class="form-input" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-date">Scheduled Time</label>
+            <input type="datetime-local" id="edit-date" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-notes">Notes / Instructions</label>
+            <input type="text" id="edit-notes" class="form-input">
+          </div>
+          <div style="display: flex; gap: 10px; margin-top: 16px;">
+            <button type="button" class="btn btn-outline" style="flex: 1;" onclick="window.closeEditMatchModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Rate Players Modal (Post-Match 1-5 Stars) -->
+    <div id="rate-match-modal" class="modal-backdrop">
+      <div class="modal-card" style="max-width: 440px;">
+        <div class="modal-header">
+          <h2 class="modal-title">⭐ Rate Match Players</h2>
+          <button type="button" class="modal-close" onclick="window.closeRateMatchModal()">&times;</button>
+        </div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Rate your partners and opponents on sportsmanship, reliability, and fun (1–5 Stars):
+        </div>
+        <div id="rate-players-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+          <!-- Injected via JavaScript -->
+        </div>
+        <button type="button" class="btn btn-primary" style="width: 100%;" onclick="window.closeRateMatchModal()">Done Rating</button>
+      </div>
+    </div>
+
+    <!-- Random Teams Generator Modal -->
+    <div id="random-teams-modal" class="modal-backdrop">
+      <div class="modal-card" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <h2 class="modal-title" id="rt-modal-title">👑 King of the Court & Team Generator</h2>
+          <button type="button" class="modal-close" onclick="window.closeRandomTeamsModal()">&times;</button>
+        </div>
+
+        <!-- Mode Selector -->
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <button type="button" class="btn btn-sm active" id="rt-mode-king" style="flex: 1; border-radius: 999px; font-weight: 700;" onclick="window.setRandomGeneratorMode('king')">👑 King of Court</button>
+          <button type="button" class="btn btn-outline btn-sm" id="rt-mode-mixer" style="flex: 1; border-radius: 999px; font-weight: 700;" onclick="window.setRandomGeneratorMode('mixer')">🎲 Continuous Mixer</button>
+        </div>
+
+        <p id="rt-mode-desc" style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          4 Players per court (e.g. 12 players = 3 courts). Players 1–4 on Court 1, 5–8 on Court 2, etc. Each court plays 3 rotating sets with live individual score tracking!
+        </p>
+
+        <div id="rt-court-summary-card" style="background: rgba(255, 106, 0, 0.08); border: 1px solid rgba(255, 106, 0, 0.2); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; font-size: 12px; color: var(--text-main);">
+          <!-- Dynamic court allocation summary injected by JS -->
+        </div>
+
+        <form id="random-teams-form" onsubmit="window.handleGenerateRandomTeams(event)">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 12px; font-weight: 800; color: var(--accent); text-transform: uppercase;">
+              Players Pool (<span id="rt-player-count">4</span> Players)
+            </div>
+            <span id="rt-validation-badge" style="font-size: 11px; font-weight: 700; color: #22c55e;">Ready ✓</span>
+          </div>
+          <div id="rt-players-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; margin-bottom: 10px; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card);">
+            <!-- Dynamic player rows with index, court tag, and delete button -->
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+            <input type="text" id="rt-add-player-input" class="form-input" placeholder="Add player name..." style="flex: 1;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="window.addPlayerToRandomPool()">+ Add Player</button>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
+            <div class="form-group" id="rt-num-games-group" style="display: none;">
+              <label class="form-label" for="rt-num-games">Number of Matches</label>
+              <input type="number" id="rt-num-games" class="form-input" min="1" max="30" value="4">
+            </div>
+            <div class="form-group" style="grid-column: span 2;" id="rt-court-group">
+              <label class="form-label" for="rt-court">Beach Location</label>
+              <select id="rt-court" class="form-select">
+                <option value="Main Beach">Main Beach</option>
+                <option value="Harbor Beach">Harbor Beach</option>
+                <option value="4th Street">4th Street Courts</option>
+                <option value="Seabright Beach">Seabright Beach</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" id="rt-generate-btn" class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, #ff6a00, #ff8c00); border: none; font-weight: 700;">
+            👑 Generate King of the Court Tournament
+          </button>
+        </form>
+
+        <div id="rt-results-container" style="display: none; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-main);" id="rt-results-title">COURT MATCHES & INDIVIDUAL STANDINGS</div>
+            <span style="font-size: 11px; background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 2px 8px; border-radius: 999px; font-weight: 600;">Live Scoring ✓</span>
+          </div>
+          <div id="rt-matches-list" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px;">
+            <!-- Injected via JavaScript with per-court individual leaderboards -->
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" id="rt-btn-add-match" class="btn btn-outline btn-sm" style="flex: 1; display: none;" onclick="window.addAnotherRandomMatch()">+ Add Another Match</button>
+            <button type="button" class="btn btn-primary btn-sm" style="flex: 2; background: #22c55e; border-color: #22c55e; font-weight: 700;" onclick="window.saveGeneratedMatchesToSchedule()">Save All Sets to Schedule</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Chat & ETA Status Modal -->
+    <div id="match-chat-modal" class="modal-backdrop">
+      <div class="modal-card" style="max-width: 460px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" style="display:flex; align-items:center; gap:6px;">💬 Match Chat & ETA</h2>
+            <div id="chat-match-title" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Beach Doubles</div>
+          </div>
+          <button type="button" class="modal-close" onclick="window.closeMatchChatModal()">&times;</button>
+        </div>
+        
+        <!-- Quick Status Chips -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+            Quick Response Chips
+          </div>
+          <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(249, 115, 22, 0.08); color: var(--accent-orange); border-color: rgba(249, 115, 22, 0.3);" onclick="window.sendQuickChatMessage('omw')">🏃‍♂️ omw</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(249, 115, 22, 0.08); color: var(--accent-orange); border-color: rgba(249, 115, 22, 0.3);" onclick="window.sendQuickChatMessage('5 min late')">⏳ 5 min late</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(249, 115, 22, 0.08); color: var(--accent-orange); border-color: rgba(249, 115, 22, 0.3);" onclick="window.sendQuickChatMessage('10 min late')">⏰ 10 min late</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(249, 115, 22, 0.08); color: var(--accent-orange); border-color: rgba(249, 115, 22, 0.3);" onclick="window.sendQuickChatMessage('Got a court')">🏐 Got a court</button>
+          </div>
+        </div>
+
+        <!-- Chat Feed -->
+        <div id="chat-messages-container" style="flex: 1; min-height: 200px; max-height: 320px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+          <!-- Injected via JavaScript -->
+        </div>
+
+        <!-- Message Input -->
+        <form id="match-chat-form" onsubmit="window.handleSendChatMessage(event)" style="display: flex; gap: 8px;">
+          <input type="text" id="chat-input" class="form-input" style="flex: 1;" placeholder="Type a message or ETA..." required>
+          <button type="submit" class="btn btn-primary" style="padding: 0 16px;">Send</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Profile Modal (matches iOS EditProfileSheet.swift) -->
+    <div id="edit-profile-modal" class="modal-backdrop">
+      <div class="modal-card" style="max-width: 460px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="font-size: 18px; font-weight: 800; margin: 0;">Edit Profile</h2>
+          <button class="btn btn-outline btn-sm" onclick="window.closeEditProfileModal()">✕</button>
+        </div>
+
+        <form id="edit-profile-form">
+          <div class="form-group">
+            <label class="form-label">Select Mascot Avatar</label>
+            <div class="avatar-selector" id="edit-profile-avatars" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px 0;">
+              <div class="avatar-btn" data-avatar="slug" title="Banana Slug">
+                <img src="assets/slug.png" alt="Banana Slug" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+              </div>
+              <div class="avatar-btn" data-avatar="🦈" title="Shark">🦈</div>
+              <div class="avatar-btn" data-avatar="🏐" title="Volleyball">🏐</div>
+              <div class="avatar-btn" data-avatar="⚡️" title="Lightning">⚡️</div>
+              <div class="avatar-btn" data-avatar="👑" title="Crown">👑</div>
+              <div class="avatar-btn" data-avatar="🌊" title="Wave">🌊</div>
+              <div class="avatar-btn" data-avatar="🐋" title="Orca">🐋</div>
+              <div class="avatar-btn" data-avatar="🔥" title="Fire">🔥</div>
+              <div class="avatar-btn" data-avatar="🦦" title="Otter">🦦</div>
+              <div class="avatar-btn" data-avatar="🦅" title="Eagle">🦅</div>
+              <div class="avatar-btn" data-avatar="🦁" title="Lion">🦁</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-name">Full Name</label>
+            <input type="text" id="edit-profile-name" class="form-input" placeholder="Kai Rodriguez" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-nickname">Court Nickname</label>
+            <input type="text" id="edit-profile-nickname" class="form-input" placeholder="The Jet">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-phone">Phone Number</label>
+            <input type="tel" id="edit-profile-phone" class="form-input" placeholder="831-555-0101">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-rating">Rating Tier</label>
+            <select id="edit-profile-rating" class="form-select">
+              <option value="AA">AA — Advanced Tournament</option>
+              <option value="A">A — Competitive Beach Doubles</option>
+              <option value="B">B — Solid Foundation</option>
+              <option value="Intermediate">Intermediate — Fun Rallies</option>
+              <option value="Novice">Novice — Beginner</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-beach">Home Beach</label>
+            <select id="edit-profile-beach" class="form-select">
+              <option value="Main Beach">Main Beach</option>
+              <option value="Harbor Beach">Harbor Beach</option>
+              <option value="4th Street">4th Street</option>
+              <option value="Seabright Beach">Seabright Beach</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-profile-bio">Bio & Play Style</label>
+            <textarea id="edit-profile-bio" class="form-input" rows="3" placeholder="Tell other players about your style (e.g. setter, blocker, cut-shots)..."></textarea>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 18px;">
+            <button type="button" class="btn btn-outline" style="flex: 1;" onclick="window.closeEditProfileModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="flex: 2;">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: GAME QR CODE -->
+    <div id="modal-game-qr" class="modal-overlay">
+      <div class="modal" style="max-width: 380px; text-align: center;">
+        <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
+          <h2 class="modal-title" id="qr-modal-title" style="margin: 0 auto; font-size: 18px;">Game QR Code</h2>
+          <button type="button" class="btn-close" onclick="window.closeGameQRCodeModal()">✕</button>
+        </div>
+
+        <div style="padding: 10px 16px;">
+          <div id="qr-modal-details" style="font-size: 13px; color: #64748b; margin-bottom: 14px; font-weight: 500;">
+            <!-- Injected via JS: court, date -->
+          </div>
+
+          <div style="background: #ffffff; padding: 16px; border-radius: 16px; display: inline-block; box-shadow: 0 4px 16px rgba(0,0,0,0.08); margin-bottom: 16px;">
+            <canvas id="qr-code-canvas" style="display: block; margin: 0 auto; width: 220px; height: 220px;"></canvas>
+            <img id="qr-code-fallback-img" style="display: none; margin: 0 auto; width: 220px; height: 220px; border-radius: 8px;" alt="Game QR Code">
+          </div>
+
+          <div style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
+            Point your camera to join
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-bottom: 16px; line-height: 1.4;">
+            iPhone users can open in the Volleyball Match app.<br>Non-iOS (Android/Web) users will be directed to the web link.
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button type="button" id="btn-copy-qr-link" class="btn btn-outline" style="width: 100%; font-size: 14px; font-weight: 600;" onclick="window.copyGameQRLink()">
+              📋 Copy Share Link
+            </button>
+            <button type="button" class="btn btn-primary" style="width: 100%; font-size: 14px; font-weight: 700;" onclick="window.closeGameQRCodeModal()">
+              Done
+            </button>
+          </div>
+
+          <div id="qr-modal-url" style="margin-top: 12px; font-size: 10px; color: #94a3b8; font-family: monospace; word-break: break-all;">
+            <!-- URL injected via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast">
+      <span>🔔</span>
+      <span id="toast-msg">Notification</span>
+    </div>
+
+    <!-- Bottom Navigation Bar (Matches iOS TabView: Set Games, Auto-Match, Ladders, Profile) -->
+    <nav id="bottom-nav">
+      <button type="button" class="nav-item active" id="nav-matches" data-tab="matches">
+        <span class="nav-icon">🏐</span>
+        <span class="nav-label">Set Games</span>
+      </button>
+      <button type="button" class="nav-item" id="nav-matchmaker" data-tab="matchmaker">
+        <span class="nav-icon">✨</span>
+        <span class="nav-label">Auto-Match</span>
+      </button>
+      <button type="button" class="nav-item" id="nav-ladders" data-tab="ladders">
+        <span class="nav-icon">🏆</span>
+        <span class="nav-label">Ladders</span>
+      </button>
+      <button type="button" class="nav-item" id="nav-profile" data-tab="profile">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Profile</span>
+      </button>
+    </nav>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

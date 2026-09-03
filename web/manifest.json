@@ -1,0 +1,18 @@
+{
+  "name": "Volleyball Match",
+  "short_name": "Volleyball Match",
+  "description": "Automated Beach Volleyball Matchmaking, Ladder & Community for Santa Cruz",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8FAFC",
+  "theme_color": "#008080",
+  "icons": [
+    {
+      "src": "assets/slug.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
