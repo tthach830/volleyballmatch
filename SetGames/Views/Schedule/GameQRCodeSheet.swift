@@ -9,7 +9,7 @@ public struct GameQRCodeSheet: View {
     @State private var copiedToClipboard: Bool = false
     
     private var shareURLString: String {
-        "https://volleyballmatch-13d66.web.app/?gameId=\(game.id.uuidString)"
+        "https://runwildlovestronglivefree.org/volleyballmatch/?gameId=\(game.id.uuidString)"
     }
     
     public init(game: SetGame) {
