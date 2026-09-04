@@ -790,24 +790,7 @@ function renderMatches() {
             ` : ''}
           </div>
 
-          ${spotsLeft === 0 && !isMember ? (
-            isWaitlisted ? `
-              <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 10px 14px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 12px; font-weight: 700; color: #7e22ce;">
-                  ⏳ You are #${waitlistPos} on the Waitlist
-                </div>
-                <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 3px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">
-                  Leave Waitlist
-                </button>
-              </div>
-            ` : `
-              <button type="button" class="btn btn-sm" style="background: #f3e8ff; color: #7e22ce; border: 1px dashed #c084fc; font-weight: 700; width: 100%; margin-top: 10px; padding: 9px 12px; border-radius: 8px; font-size: 12px;" onclick="window.joinWaitlist('${game.id}')">
-                ⏳ Pool Full • Join Waitlist (${waitlistIds.length} queued)
-              </button>
-            `
-          ) : ''}
-
-          ${waitlistIds.length > 0 ? `
+          ${(spotsLeft === 0 || waitlistIds.length > 0) ? `
             <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border, #e2e8f0);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 11px; font-weight: 800; color: #7e22ce; text-transform: uppercase;">
@@ -815,27 +798,51 @@ function renderMatches() {
                 </span>
                 <span style="font-size: 10px; color: var(--text-muted);">Auto-promotes when a spot opens</span>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                ${waitlistIds.map((pid, idx) => {
-                  const p = state.players.find(x => x.id === pid) || { id: pid, name: "Player", nickname: "", rating: "B" };
-                  const pName = p.nickname ? `${p.name} (${p.nickname})` : p.name;
-                  const isMe = currentUserId === pid;
-                  return `
-                    <div style="display: flex; align-items: center; justify-content: space-between; background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 6px 10px;">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 11px; font-weight: 800; background: #a855f7; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">#${idx + 1}</span>
-                        <div>
-                          <div style="font-size: 12px; font-weight: 700; color: var(--text-main);">${pName}</div>
-                          <div style="font-size: 10px; color: var(--text-muted);">${p.rating}</div>
-                        </div>
-                      </div>
-                      ${isMe ? `
-                        <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">Leave</button>
-                      ` : ''}
+
+              ${spotsLeft === 0 && !isMember ? (
+                isWaitlisted ? `
+                  <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 12px; font-weight: 700; color: #7e22ce;">
+                      ⏳ You are #${waitlistPos} on the Waitlist
                     </div>
-                  `;
-                }).join("")}
-              </div>
+                    <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 3px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">
+                      Leave Waitlist
+                    </button>
+                  </div>
+                ` : `
+                  <button type="button" class="btn btn-sm" style="background: #f3e8ff; color: #7e22ce; border: 1px dashed #c084fc; font-weight: 700; width: 100%; margin-bottom: 8px; padding: 9px 12px; border-radius: 8px; font-size: 12px;" onclick="window.joinWaitlist('${game.id}')">
+                    ⏳ Pool Full • Join Waitlist (${waitlistIds.length} queued)
+                  </button>
+                `
+              ) : ''}
+
+              ${waitlistIds.length === 0 ? `
+                <div style="padding: 10px 12px; background: #faf5ff; border: 1px dashed #d8b4fe; border-radius: 8px; font-size: 11px; color: #6b21a8;">
+                  No players currently on the waitlist. Next signups will queue here in order.
+                </div>
+              ` : `
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  ${waitlistIds.map((pid, idx) => {
+                    const p = state.players.find(x => x.id === pid) || { id: pid, name: "Player", nickname: "", rating: "B" };
+                    const pName = p.nickname ? `${p.name} (${p.nickname})` : p.name;
+                    const isMe = currentUserId === pid;
+                    return `
+                      <div style="display: flex; align-items: center; justify-content: space-between; background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 6px 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <span style="font-size: 11px; font-weight: 800; background: #a855f7; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">#${idx + 1}</span>
+                          <div>
+                            <div style="font-size: 12px; font-weight: 700; color: var(--text-main);">${pName}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">${p.rating}</div>
+                          </div>
+                        </div>
+                        ${isMe ? `
+                          <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">Leave</button>
+                        ` : ''}
+                      </div>
+                    `;
+                  }).join("")}
+                </div>
+              `}
             </div>
           ` : ''}
         </div>
@@ -962,7 +969,12 @@ function renderMatches() {
                       <span style="font-size: 16px;">🏐</span>
                       <span style="font-size: 10px; font-weight: 800; color: #166534; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Game</span>
                     </button>
-                  ` : ''
+                  ` : `
+                    <button type="button" class="footer-action-btn-stacked" style="background: #faf5ff; border-color: #d8b4fe; color: #7e22ce; min-height: 48px; padding: 6px 8px;" onclick="window.joinWaitlist('${game.id}')" title="Join Waitlist">
+                      <span style="font-size: 14px;">⏳</span>
+                      <span style="font-size: 9px; font-weight: 800; color: #7e22ce; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Waitlist</span>
+                    </button>
+                  `
                 )
               )}
             </div>

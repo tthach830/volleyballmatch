@@ -323,6 +323,25 @@ public struct ConfirmedGamesView: View {
                     } label: {
                         Label("Join Game", systemImage: "plus.circle")
                     }
+                } else if !isMyGame && game.spotsRemaining == 0 {
+                    let isWaitlisted = dataManager.currentUser != nil && game.waitlistPlayerIds.contains(dataManager.currentUser!.id)
+                    if isWaitlisted {
+                        Button(role: .destructive) {
+                            let res = dataManager.leaveWaitlist(gameId: game.id)
+                            alertMessage = res.message
+                            showAlert = true
+                        } label: {
+                            Label("Leave Waitlist", systemImage: "clock.badge.xmark")
+                        }
+                    } else {
+                        Button {
+                            let res = dataManager.joinWaitlist(gameId: game.id)
+                            alertMessage = res.message
+                            showAlert = true
+                        } label: {
+                            Label("Join Waitlist", systemImage: "clock.badge.plus")
+                        }
+                    }
                 }
                 
                 if isMyGame {
@@ -533,62 +552,13 @@ public struct ConfirmedGamesView: View {
                 }
             }
             
-            // Waitlist Banner / Button when pool is full
-            if game.spotsRemaining == 0 && !isMyGame {
-                if let uid = currentUserId, let index = game.waitlistPlayerIds.firstIndex(of: uid) {
-                    let pos = index + 1
+            // Waitlist Section (Visible whenever pool is full or waitlist has queued players)
+            if game.spotsRemaining == 0 || !game.waitlistPlayerIds.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("⏳ You are #\(pos) on the Waitlist")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(Color.purple)
-                        Spacer()
-                        Button {
-                            let res = dataManager.leaveWaitlist(gameId: game.id)
-                            alertMessage = res.message
-                            showAlert = true
-                        } label: {
-                            Text("Leave Waitlist")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.red.opacity(0.1))
-                                .clipShape(Capsule())
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                    .padding(10)
-                    .background(Color.purple.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                } else {
-                    Button {
-                        let res = dataManager.joinWaitlist(gameId: game.id)
-                        alertMessage = res.message
-                        showAlert = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("⏳")
-                            Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
-                                .font(.system(size: 12, weight: .bold))
-                        }
-                        .foregroundColor(Color.purple)
-                        .frame(maxWidth: .infinity, minHeight: 38)
-                        .background(Color.purple.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                                .foregroundColor(Color.purple.opacity(0.5))
-                        )
-                    }
-                    .buttonStyle(.borderless)
-                }
-            }
-            
-            // Queued waitlist breakdown
-            if !game.waitlistPlayerIds.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
+                        Image(systemName: "clock.badge.checkmark.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.purple)
                         Text("⏳ WAITLIST (\(game.waitlistPlayerIds.count) QUEUED)")
                             .font(.system(size: 10, weight: .heavy))
                             .foregroundColor(.purple)
@@ -598,43 +568,103 @@ public struct ConfirmedGamesView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.offset) { idx, wId in
-                        let wp = dataManager.player(for: wId)
-                        let wpName = wp.nickname.isEmpty ? wp.name : "\(wp.name) (\(wp.nickname))"
-                        HStack {
-                            Text("#\(idx + 1)")
-                                .font(.system(size: 10, weight: .black))
-                                .foregroundColor(.white)
-                                .frame(width: 20, height: 20)
-                                .background(Color.purple)
-                                .clipShape(Circle())
-                            
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(wpName)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(Color(.label))
-                                Text(wp.rating.rawValue)
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            if let uid = currentUserId, uid == wId {
+                    // Join / Leave Waitlist Controls for non-members
+                    if game.spotsRemaining == 0 && !isMyGame {
+                        if let uid = currentUserId, let index = game.waitlistPlayerIds.firstIndex(of: uid) {
+                            let pos = index + 1
+                            HStack {
+                                Text("⏳ You are #\(pos) on the Waitlist")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Color.purple)
+                                Spacer()
                                 Button {
                                     let res = dataManager.leaveWaitlist(gameId: game.id)
                                     alertMessage = res.message
                                     showAlert = true
                                 } label: {
-                                    Text("Leave")
-                                        .font(.system(size: 10, weight: .bold))
+                                    Text("Leave Waitlist")
+                                        .font(.system(size: 11, weight: .bold))
                                         .foregroundColor(.red)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.red.opacity(0.1))
+                                        .clipShape(Capsule())
                                 }
                                 .buttonStyle(.borderless)
                             }
+                            .padding(8)
+                            .background(Color.purple.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        } else {
+                            Button {
+                                let res = dataManager.joinWaitlist(gameId: game.id)
+                                alertMessage = res.message
+                                showAlert = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Text("⏳")
+                                    Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
+                                        .font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundColor(Color.purple)
+                                .frame(maxWidth: .infinity, minHeight: 36)
+                                .background(Color.purple.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                        .foregroundColor(Color.purple.opacity(0.5))
+                                )
+                            }
+                            .buttonStyle(.borderless)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color(.systemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    
+                    // Queued players list or informative placeholder
+                    if game.waitlistPlayerIds.isEmpty {
+                        Text("Pool is full. Next players to sign up will queue here in order.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 2)
+                    } else {
+                        ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.offset) { idx, wId in
+                            let wp = dataManager.player(for: wId)
+                            let wpName = wp.nickname.isEmpty ? wp.name : "\(wp.name) (\(wp.nickname))"
+                            HStack {
+                                Text("#\(idx + 1)")
+                                    .font(.system(size: 10, weight: .black))
+                                    .foregroundColor(.white)
+                                    .frame(width: 20, height: 20)
+                                    .background(Color.purple)
+                                    .clipShape(Circle())
+                                
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(wpName)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(Color(.label))
+                                    Text(wp.rating.rawValue)
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if let uid = currentUserId, uid == wId {
+                                    Button {
+                                        let res = dataManager.leaveWaitlist(gameId: game.id)
+                                        alertMessage = res.message
+                                        showAlert = true
+                                    } label: {
+                                        Text("Leave")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
                     }
                 }
                 .padding(.top, 4)
@@ -995,6 +1025,30 @@ public struct ConfirmedGamesView: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color(red: 0.62, green: 0.93, blue: 0.71), lineWidth: 0.8)
+                        )
+                    }
+                    .buttonStyle(.borderless)
+                } else if game.spotsRemaining == 0 && !isMyGame {
+                    Button {
+                        let res = dataManager.joinWaitlist(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: "clock.badge.plus")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("Join\nWaitlist")
+                                .font(.system(size: 9, weight: .black))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(-2)
+                        }
+                        .frame(width: 52, height: 46)
+                        .background(Color.purple.opacity(0.1))
+                        .foregroundColor(.purple)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.purple.opacity(0.3), lineWidth: 0.8)
                         )
                     }
                     .buttonStyle(.borderless)

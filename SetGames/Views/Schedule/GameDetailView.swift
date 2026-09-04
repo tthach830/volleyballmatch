@@ -262,10 +262,7 @@ public struct GameDetailView: View {
                             }
                             .padding(.horizontal)
                             
-                            // Waitlist Button if Pool Full
-                            waitlistControls(game: game)
-                            
-                            // Waitlist Players Section
+                            // Waitlist Section
                             waitlistSection(game: game)
                         }
                         
@@ -588,92 +585,104 @@ public struct GameDetailView: View {
     // MARK: - Subviews
     
     @ViewBuilder
-    private func waitlistControls(game: SetGame) -> some View {
-        if game.isFull && !isUserInMatch {
-            if let user = dataManager.currentUser, game.isPlayerWaitlisted(user.id) {
-                HStack {
-                    Image(systemName: "clock.fill")
-                        .foregroundColor(.purple)
-                    Text("You are #\(game.waitlistPosition(for: user.id) ?? 1) on the Waitlist")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.purple)
-                    Spacer()
-                    Button(role: .destructive) {
-                        let res = dataManager.leaveWaitlist(gameId: game.id)
-                        if !res.success {
-                            alertTitle = "Waitlist"
-                            alertMessage = res.message
-                            showAlert = true
-                        }
-                    } label: {
-                        Text("Leave Waitlist")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color.red.opacity(0.1))
-                            .clipShape(Capsule())
-                    }
-                }
-                .padding(12)
-                .background(Color.purple.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(Color.purple.opacity(0.3), lineWidth: 1)
-                )
-                .padding(.horizontal)
-            } else {
-                Button {
-                    let res = dataManager.joinWaitlist(gameId: game.id)
-                    if !res.success {
-                        alertTitle = "Cannot Join Waitlist"
-                        alertMessage = res.message
-                        showAlert = true
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "clock.badge.plus")
-                            .font(.system(size: 14, weight: .bold))
-                        Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
-                            .font(.system(size: 12, weight: .bold))
-                    }
-                    .foregroundColor(.purple)
-                    .frame(maxWidth: .infinity)
-                    .padding(12)
-                    .background(Color.purple.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
-                            .foregroundColor(.purple.opacity(0.5))
-                    )
-                }
-                .padding(.horizontal)
-            }
-        }
-    }
-    
-    @ViewBuilder
     private func waitlistSection(game: SetGame) -> some View {
-        if !game.waitlistPlayerIds.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+        if game.isFull || game.spotsRemaining == 0 || !game.waitlistPlayerIds.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Image(systemName: "clock.badge.checkmark.fill")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundColor(.purple)
                     Text("WAITLIST (\(game.waitlistPlayerIds.count) QUEUED)")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.purple)
                     Spacer()
-                    Text("Auto-promotes when a spot opens")
+                    Text("Auto-promotes when spot opens")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.secondary)
                 }
                 .padding(.top, 4)
                 
-                ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.offset) { index, pId in
-                    waitlistRow(index: index, playerId: pId, gameId: game.id)
+                // Join / Leave controls if viewer is not an active player in match
+                if !isUserInMatch {
+                    if let user = dataManager.currentUser, game.isPlayerWaitlisted(user.id) {
+                        HStack {
+                            Image(systemName: "clock.fill")
+                                .foregroundColor(.purple)
+                            Text("You are #\(game.waitlistPosition(for: user.id) ?? 1) on the Waitlist")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.purple)
+                            Spacer()
+                            Button(role: .destructive) {
+                                let res = dataManager.leaveWaitlist(gameId: game.id)
+                                if !res.success {
+                                    alertTitle = "Waitlist"
+                                    alertMessage = res.message
+                                    showAlert = true
+                                }
+                            } label: {
+                                Text("Leave Waitlist")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.red.opacity(0.1))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                        .padding(12)
+                        .background(Color.purple.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(Color.purple.opacity(0.3), lineWidth: 1)
+                        )
+                    } else if game.isFull || game.spotsRemaining == 0 {
+                        Button {
+                            let res = dataManager.joinWaitlist(gameId: game.id)
+                            if !res.success {
+                                alertTitle = "Cannot Join Waitlist"
+                                alertMessage = res.message
+                                showAlert = true
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "clock.badge.plus")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
+                                    .font(.system(size: 12, weight: .bold))
+                            }
+                            .foregroundColor(.purple)
+                            .frame(maxWidth: .infinity)
+                            .padding(12)
+                            .background(Color.purple.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                    .foregroundColor(.purple.opacity(0.5))
+                            )
+                        }
+                    }
+                }
+                
+                // Queued players list or informative placeholder
+                if game.waitlistPlayerIds.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "hourglass")
+                            .font(.system(size: 13))
+                            .foregroundColor(.purple)
+                        Text("No players currently on the waitlist. Next signups will appear here in queue order.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.purple.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                } else {
+                    ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.offset) { index, pId in
+                        waitlistRow(index: index, playerId: pId, gameId: game.id)
+                    }
                 }
             }
             .padding(.horizontal)
