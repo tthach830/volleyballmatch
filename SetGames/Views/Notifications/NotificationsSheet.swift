@@ -13,17 +13,17 @@ public struct NotificationsSheet: View {
             List {
                 Section {
                     Button(action: {
-                        NotificationService.shared.sendTestPushToSelf(delay: 3.0)
+                        NotificationService.shared.sendTestPushToSelf()
                     }) {
                         HStack(spacing: 12) {
                             Image(systemName: "bell.badge.fill")
                                 .foregroundColor(.orange)
                                 .font(.system(size: 20))
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Send Test Remote Push (3s)")
+                                Text("Send Test Remote Push")
                                     .font(.system(size: 14, weight: .bold))
                                     .foregroundColor(.primary)
-                                Text("Tap, then lock your phone or swipe home to see lock screen banner.")
+                                Text("Dispatches immediately to Apple. Lock screen or kill app to test.")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
                             }

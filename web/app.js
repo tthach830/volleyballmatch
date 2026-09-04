@@ -2222,6 +2222,36 @@ window.postChatMessage = (gameId, text) => {
   window.renderChatMessages();
   renderMatches();
   showToast(`Sent: "${text}"`);
+
+  // Dispatch APNs push to match participants ($0 Serverless / Local Relay)
+  try {
+    const peerIds = [
+      ...(game.team1PlayerIds || []),
+      ...(game.team2PlayerIds || []),
+      ...(game.waitlistPlayerIds || []),
+      ...(game.hostPlayerId ? [game.hostPlayerId] : [])
+    ].filter(id => id && id !== state.currentUser.id);
+
+    const uniquePeerIds = Array.from(new Set(peerIds));
+    const recipientTokens = uniquePeerIds
+      .map(id => state.getPlayer(id)?.deviceToken)
+      .filter(t => t && typeof t === "string" && t.trim().length > 0);
+
+    if (recipientTokens.length > 0) {
+      fetch("/api/send-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tokens: recipientTokens,
+          title: `💬 ${senderName} (${game.title || "Match"})`,
+          body: text,
+          gameId: gameId
+        })
+      }).catch(err => console.log("Push note:", err));
+    }
+  } catch (e) {
+    console.warn("APNs push trigger notice:", e);
+  }
 };
 
 // Rate Match Players (Post-Match 1-5 Stars)

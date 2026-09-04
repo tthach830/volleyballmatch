@@ -2,6 +2,7 @@
   "name": "setgames-root",
   "private": true,
   "scripts": {
+    "start": "node server.js",
     "login": "firebase login",
     "deploy:functions": "firebase deploy --only functions",
     "test:push": "node scripts/send_test_push.js"

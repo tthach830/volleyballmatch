@@ -168,8 +168,22 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
             
         guard !cleanToken.isEmpty else { return }
         
+        var bgTask: UIBackgroundTaskIdentifier = .invalid
+        bgTask = UIApplication.shared.beginBackgroundTask(withName: "APNsDirectDispatch") {
+            if bgTask != .invalid {
+                UIApplication.shared.endBackgroundTask(bgTask)
+                bgTask = .invalid
+            }
+        }
+        
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
+            guard let self = self else {
+                if bgTask != .invalid {
+                    UIApplication.shared.endBackgroundTask(bgTask)
+                    bgTask = .invalid
+                }
+                return
+            }
             do {
                 let jwt = try self.getValidJWT()
                 self.performAPNsRequest(
@@ -178,10 +192,15 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
                     body: body,
                     gameId: gameId,
                     jwt: jwt,
-                    useSandbox: true
+                    useSandbox: true,
+                    bgTaskId: bgTask
                 )
             } catch {
                 print("⚠️ [APNs] Failed to sign JWT: \(error.localizedDescription)")
+                if bgTask != .invalid {
+                    UIApplication.shared.endBackgroundTask(bgTask)
+                    bgTask = .invalid
+                }
             }
         }
     }
@@ -192,10 +211,16 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         body: String,
         gameId: UUID?,
         jwt: String,
-        useSandbox: Bool
+        useSandbox: Bool,
+        bgTaskId: UIBackgroundTaskIdentifier = .invalid
     ) {
         let host = useSandbox ? "api.sandbox.push.apple.com" : "api.push.apple.com"
-        guard let url = URL(string: "https://\(host)/3/device/\(deviceToken)") else { return }
+        guard let url = URL(string: "https://\(host)/3/device/\(deviceToken)") else {
+            if bgTaskId != .invalid {
+                UIApplication.shared.endBackgroundTask(bgTaskId)
+            }
+            return
+        }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -223,10 +248,18 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
             request.httpBody = try JSONSerialization.data(withJSONObject: rootPayload)
         } catch {
             print("⚠️ [APNs] JSON serialization error: \(error.localizedDescription)")
+            if bgTaskId != .invalid {
+                UIApplication.shared.endBackgroundTask(bgTaskId)
+            }
             return
         }
         
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            defer {
+                if bgTaskId != .invalid {
+                    UIApplication.shared.endBackgroundTask(bgTaskId)
+                }
+            }
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 200 {
                     print("✅ [APNs] Remote push successfully sent to (\(deviceToken.prefix(8))...) via \(host)!")
@@ -239,7 +272,8 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
                         body: body,
                         gameId: gameId,
                         jwt: jwt,
-                        useSandbox: false
+                        useSandbox: false,
+                        bgTaskId: bgTaskId
                     )
                 } else {
                     var errorDetails = ""
@@ -255,18 +289,17 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         task.resume()
     }
     
-    /// Schedules a test push to the local device after delay to verify lock screen delivery
-    public func sendTestPushToSelf(delay: TimeInterval = 3.0) {
+    /// Dispatches an immediate test push to the local device and keeps the task alive even if app is closed/killed
+    public func sendTestPushToSelf() {
         guard let token = apnsDeviceToken, !token.isEmpty else {
             print("⚠️ [APNs] Cannot send test push: no device token registered yet.")
             return
         }
-        DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.sendDirectRemotePush(
-                to: token,
-                title: "🏐 SetGames Test Push",
-                body: "Background push working! Delivered via Apple APNs at $0 cost."
-            )
-        }
+        print("📲 Dispatching test remote push to Apple APNs for \(token.prefix(8))...")
+        sendDirectRemotePush(
+            to: token,
+            title: "🏐 SetGames Alert",
+            body: "Lock screen push working! Delivered via Apple APNs even if app is killed."
+        )
     }
 }
