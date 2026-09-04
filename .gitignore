@@ -34,3 +34,4 @@ node_modules/
 *.p8
 keys/
 functions/node_modules/
+*.log

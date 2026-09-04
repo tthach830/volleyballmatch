@@ -213,7 +213,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Static File Serving
-  let relativePath = pathname;
+  let relativePath = pathname.replace(/^\/volleyballmatch/, "");
   if (relativePath === "/" || relativePath === "") {
     relativePath = "/index.html";
   }

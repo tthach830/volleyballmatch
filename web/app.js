@@ -219,9 +219,10 @@ const initialCommunityGames = [
 
 // App State
 export function isUpcomingGame(game) {
-  if (!game || !game.status) return true;
+  if (!game) return false;
+  if (!game.status) return true;
   const s = String(game.status).trim().toLowerCase();
-  return s === "scheduled" || s === "in progress" || s === "inprogress";
+  return s === "scheduled" || s === "in progress" || s === "inprogress" || s === "open" || s === "upcoming";
 }
 
 export function parseGameDate(rawDate) {
@@ -272,28 +273,47 @@ export function getPopularKidsTitle(connections) {
 // App State
 class AppState {
   constructor() {
-    this.players = JSON.parse(localStorage.getItem("setgames_players")) || initialCommunityPlayers;
-    const rawGames = JSON.parse(localStorage.getItem("setgames_games")) || initialCommunityGames;
+    let savedPlayers = null;
+    let savedGames = null;
+    let savedSlots = null;
+    let savedUserId = null;
+    try {
+      savedPlayers = JSON.parse(localStorage.getItem("setgames_players"));
+      savedGames = JSON.parse(localStorage.getItem("setgames_games"));
+      savedSlots = JSON.parse(localStorage.getItem("setgames_slots"));
+      savedUserId = localStorage.getItem("setgames_current_user_id");
+    } catch (e) {
+      console.warn("Storage read warning:", e);
+    }
+
+    this.players = (savedPlayers && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
+    const rawGames = (savedGames && savedGames.length > 0) ? savedGames : initialCommunityGames;
     this.games = rawGames.filter(isUpcomingGame);
-    this.availabilitySlots = JSON.parse(localStorage.getItem("setgames_slots")) || [];
+    if (this.games.length === 0 && initialCommunityGames.length > 0) {
+      this.games = initialCommunityGames.filter(isUpcomingGame);
+    }
+    this.availabilitySlots = savedSlots || [];
     this.pickupQueue = [];
     this.selectedLadderTier = "All";
     this.collapsedMatches = {};
     this.collapsedPools = {};
     
     // Active user session
-    const savedUserId = localStorage.getItem("setgames_current_user_id");
     this.currentUser = this.players.find(p => p.id === savedUserId) || null;
   }
 
   saveLocal() {
-    localStorage.setItem("setgames_players", JSON.stringify(this.players));
-    localStorage.setItem("setgames_games", JSON.stringify(this.games));
-    localStorage.setItem("setgames_slots", JSON.stringify(this.availabilitySlots));
-    if (this.currentUser) {
-      localStorage.setItem("setgames_current_user_id", this.currentUser.id);
-    } else {
-      localStorage.removeItem("setgames_current_user_id");
+    try {
+      localStorage.setItem("setgames_players", JSON.stringify(this.players));
+      localStorage.setItem("setgames_games", JSON.stringify(this.games));
+      localStorage.setItem("setgames_slots", JSON.stringify(this.availabilitySlots));
+      if (this.currentUser) {
+        localStorage.setItem("setgames_current_user_id", this.currentUser.id);
+      } else {
+        localStorage.removeItem("setgames_current_user_id");
+      }
+    } catch (e) {
+      console.warn("Storage save warning:", e);
     }
   }
 
@@ -310,6 +330,7 @@ class AppState {
 }
 
 const state = new AppState();
+window.state = state;
 
 // Toast helper
 export function showToast(message) {
@@ -767,12 +788,18 @@ function renderMatches() {
 
   const currentUserId = state.currentUser?.id;
 
+  if ((!state.games || state.games.length === 0) && initialCommunityGames.length > 0) {
+    state.games = initialCommunityGames.filter(isUpcomingGame);
+  }
+
   // 1. Determine games for current view filter
   const isCompletedFilter = currentMatchFilter === "completed";
   let targetGames;
   if (isCompletedFilter) {
-    targetGames = state.games.filter(g => g.status === "completed")
-      .sort((a, b) => parseGameDate(b.scheduledDate).getTime() - parseGameDate(a.scheduledDate).getTime());
+    targetGames = state.games.filter(g => {
+      const s = String(g.status || "").trim().toLowerCase();
+      return s === "completed";
+    }).sort((a, b) => parseGameDate(b.scheduledDate).getTime() - parseGameDate(a.scheduledDate).getTime());
   } else {
     targetGames = state.games.filter(isUpcomingGame)
       .sort((a, b) => parseGameDate(a.scheduledDate).getTime() - parseGameDate(b.scheduledDate).getTime());
@@ -814,13 +841,14 @@ function renderMatches() {
     const emptyMsg = isCompletedFilter ?
       "No past completed games found." :
       (currentMatchFilter === "myGames" || currentMatchFilter === "myMatches") ?
-      "You are not registered in any upcoming games.<br>Tap 'All Upcoming' to join or '+ New Game' to host!" :
-      "No upcoming games available.<br>Tap '+ New Game' above to host a game!";
-    container.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);">${emptyMsg}</div>`;
+      `You are not registered in any upcoming games.<br><button type="button" class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="window.setMatchFilter('all')">📅 View All Upcoming Games (${targetGames.length})</button>` :
+      `No upcoming games available.<br><button type="button" class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="window.openCreateMatchModal()">+ Host a Game</button>`;
+    container.innerHTML = `<div style="text-align:center; padding: 40px 16px; color: var(--text-muted);">${emptyMsg}</div>`;
     return;
   }
 
-  container.innerHTML = displayGames.map(game => {
+  const cardsHtml = displayGames.map(game => {
+    try {
     const allPlayerIds = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
     const maxPlayers = game.maxPlayers || 4;
     const spotsLeft = Math.max(0, maxPlayers - allPlayerIds.length);
@@ -1176,13 +1204,21 @@ function renderMatches() {
                   <span style="font-size: 9px; font-weight: 800; color: #991b1b; line-height: 1.1; margin-top: 2px; text-align: center;">Cancel<br>Game</span>
                 </button>
               ` : ''}
-            </div>
+              </div>
           </div>
         </div>
       </div>
     `;
+    } catch (cardErr) {
+      console.error("Error rendering game card:", game?.id, cardErr);
+      return "";
+    }
   }).join("");
+
+  container.innerHTML = cardsHtml;
 }
+
+window.renderMatches = renderMatches;
 
 function renderLadder() {
   const container = document.getElementById("ladder-list");
@@ -3490,10 +3526,6 @@ function initApp() {
   renderPopularKids();
   renderProfile();
 
-  if (!state.currentUser) {
-    window.showAuthModal();
-  }
-
   // Backdrop click to close auth modal for guest browsing
   document.getElementById("auth-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "auth-modal") {
@@ -3588,7 +3620,11 @@ function initApp() {
         });
       }
       hasCompletedInitialGamesSyncWeb = true;
-      state.games = remoteGames.filter(g => g.status !== "canceled");
+      const validGames = remoteGames.filter(g => {
+        const s = String(g.status || "").trim().toLowerCase();
+        return s !== "canceled";
+      });
+      state.games = validGames.length > 0 ? validGames : initialCommunityGames;
       state.saveLocal();
       renderMatches();
       if (window.activeChatGameId) {
