@@ -14,7 +14,7 @@ public struct ConfirmedGamesView: View {
     @State private var alertMessage: String = ""
     @State private var showDeleteAlert: Bool = false
     @State private var gameToDelete: SetGame? = nil
-    @State private var collapsedMatches: Set<UUID> = []
+    @State private var expandedMatches: Set<UUID> = []
     
     public enum GameFilter: String, CaseIterable {
         case all = "📅 All Upcoming"
@@ -646,13 +646,14 @@ public struct ConfirmedGamesView: View {
     }
 
     private func matchesSection(game: SetGame) -> some View {
-        let isCollapsed = collapsedMatches.contains(game.id)
+        let isExpanded = expandedMatches.contains(game.id)
+        let isCollapsed = !isExpanded
         return VStack(spacing: 6) {
             Button {
-                if isCollapsed {
-                    collapsedMatches.remove(game.id)
+                if isExpanded {
+                    expandedMatches.remove(game.id)
                 } else {
-                    collapsedMatches.insert(game.id)
+                    expandedMatches.insert(game.id)
                 }
             } label: {
                 HStack {
@@ -669,10 +670,10 @@ public struct ConfirmedGamesView: View {
             
             // Summary Row
             Button {
-                if isCollapsed {
-                    collapsedMatches.remove(game.id)
+                if isExpanded {
+                    expandedMatches.remove(game.id)
                 } else {
-                    collapsedMatches.insert(game.id)
+                    expandedMatches.insert(game.id)
                 }
             } label: {
                 HStack {

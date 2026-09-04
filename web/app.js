@@ -450,8 +450,8 @@ window.leaveWaitlist = (gameId) => {
 };
 
 window.toggleMatchesCollapse = (gameId) => {
-  state.collapsedMatches = state.collapsedMatches || {};
-  state.collapsedMatches[gameId] = !state.collapsedMatches[gameId];
+  state.expandedMatches = state.expandedMatches || {};
+  state.expandedMatches[gameId] = !state.expandedMatches[gameId];
   renderMatches();
 };
 
@@ -734,7 +734,7 @@ function renderMatches() {
     const isWaitlisted = currentUserId && waitlistIds.includes(currentUserId);
     const waitlistPos = isWaitlisted ? (waitlistIds.indexOf(currentUserId) + 1) : null;
 
-    const isMatchesCollapsed = !!(state.collapsedMatches && state.collapsedMatches[game.id]);
+    const isMatchesCollapsed = !(state.expandedMatches && state.expandedMatches[game.id]);
     const msgCount = game.messages ? game.messages.length : 0;
 
     return `

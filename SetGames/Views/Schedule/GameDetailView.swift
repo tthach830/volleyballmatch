@@ -15,7 +15,7 @@ public struct GameDetailView: View {
     @State private var showAlert: Bool = false
     @State private var selectedSubMatchForScore: SubMatch? = nil
     @State private var showQRCodeSheet: Bool = false
-    @State private var isMatchesCollapsed: Bool = false
+    @State private var isMatchesCollapsed: Bool = true
     @State private var isChatCollapsed: Bool = false
     
     public init(dataManager: DataManager, gameId: UUID) {
