@@ -643,6 +643,28 @@ public struct ConfirmedGamesView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 Spacer()
+                                
+                                let isHost = game.hostPlayerId == currentUserId || dataManager.currentUser?.isRoot == true
+                                if isHost {
+                                    Button {
+                                        let res = dataManager.promoteWaitlistPlayer(gameId: game.id, playerId: wId)
+                                        alertMessage = res.message
+                                        showAlert = true
+                                    } label: {
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "arrow.up.circle.fill")
+                                            Text("Promote")
+                                        }
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.green)
+                                        .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+                                
                                 if let uid = currentUserId, uid == wId {
                                     Button {
                                         let res = dataManager.leaveWaitlist(gameId: game.id)

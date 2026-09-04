@@ -449,6 +449,64 @@ window.leaveWaitlist = (gameId) => {
   showToast(`Removed from waitlist for ${game.title}.`);
 };
 
+window.promoteWaitlistPlayer = (gameId, playerId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game || !state.currentUser) return;
+
+  const currentUserId = state.currentUser.id;
+  const isHost = game.hostPlayerId === currentUserId || (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId) || state.currentUser.isRoot;
+  if (!isHost) {
+    showToast("Only the match host can promote players from the waitlist.");
+    return;
+  }
+
+  if (!game.waitlistPlayerIds || !game.waitlistPlayerIds.includes(playerId)) {
+    showToast("Player is no longer on the waitlist.");
+    return;
+  }
+
+  // Remove from waitlist
+  game.waitlistPlayerIds = game.waitlistPlayerIds.filter(id => id !== playerId);
+
+  if (!game.team1PlayerIds) game.team1PlayerIds = [];
+  if (!game.team2PlayerIds) game.team2PlayerIds = [];
+
+  const allPlayers = [...game.team1PlayerIds, ...game.team2PlayerIds];
+  const maxP = game.maxPlayers || 4;
+  if (allPlayers.length >= maxP) {
+    game.maxPlayers = allPlayers.length + 1;
+  }
+
+  if (game.team1PlayerIds.length <= game.team2PlayerIds.length) {
+    game.team1PlayerIds.push(playerId);
+  } else {
+    game.team2PlayerIds.push(playerId);
+  }
+
+  state.saveLocal();
+  saveGameToFirestore(game);
+  renderMatches();
+
+  const promoted = state.getPlayer(playerId);
+  const pName = promoted.nickname ? `${promoted.name} (${promoted.nickname})` : promoted.name;
+  showToast(`Promoted ${pName} into the match!`);
+
+  // Dispatch APNs push
+  const token = promoted.deviceToken;
+  if (token) {
+    fetch("/api/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tokens: [token],
+        title: "🏐 Volleyball Match Alert",
+        body: `🎉 The host promoted you from the waitlist into '${game.title || "Match"}'!`,
+        gameId: game.id
+      })
+    }).catch(err => console.log("Push note:", err));
+  }
+};
+
 window.toggleMatchesCollapse = (gameId) => {
   state.expandedMatches = state.expandedMatches || {};
   state.expandedMatches[gameId] = !state.expandedMatches[gameId];
@@ -665,7 +723,8 @@ function renderMatches() {
     );
     const isHost = currentUserId && (
       (game.hostPlayerId && game.hostPlayerId === currentUserId) ||
-      (game.team1PlayerIds?.[0] === currentUserId)
+      (game.team1PlayerIds?.[0] === currentUserId) ||
+      (state.currentUser && state.currentUser.isRoot)
     );
     const hostPlayer = game.hostPlayerId ? state.getPlayer(game.hostPlayerId) : (game.team1PlayerIds?.[0] ? state.getPlayer(game.team1PlayerIds[0]) : null);
 
@@ -833,9 +892,14 @@ function renderMatches() {
                             <div style="font-size: 10px; color: var(--text-muted);">${p.rating}</div>
                           </div>
                         </div>
-                        ${isMe ? `
-                          <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">Leave</button>
-                        ` : ''}
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                          ${isHost ? `
+                            <button type="button" class="btn btn-sm" style="background: #10b981; color: white; border: none; font-weight: 700; padding: 3px 8px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="window.promoteWaitlistPlayer('${game.id}', '${pid}')">⬆️ Promote</button>
+                          ` : ''}
+                          ${isMe ? `
+                            <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">Leave</button>
+                          ` : ''}
+                        </div>
                       </div>
                     `;
                   }).join("")}

@@ -383,6 +383,76 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    public func promoteWaitlistPlayer(gameId: UUID, playerId: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let index = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Match not found.")
+        }
+        
+        var game = games[index]
+        let isHost = (game.hostPlayerId == user.id) || user.isRoot
+        guard isHost else {
+            return (false, "Only the match host can promote players from the waitlist.")
+        }
+        
+        guard game.waitlistPlayerIds.contains(playerId) else {
+            return (false, "Player is no longer on the waitlist.")
+        }
+        
+        // Remove from waitlist
+        game.waitlistPlayerIds.removeAll(where: { $0 == playerId })
+        
+        // Expand capacity if pool was at max
+        if game.allPlayerIds.count >= game.maxPlayers {
+            game.maxPlayers = game.allPlayerIds.count + 1
+        }
+        
+        // Add to team with fewer players
+        if game.team1PlayerIds.count <= game.team2PlayerIds.count {
+            game.team1PlayerIds.append(playerId)
+        } else {
+            game.team2PlayerIds.append(playerId)
+        }
+        
+        games[index] = game
+        saveToDisk()
+        FirestoreService.shared.saveGame(game)
+        
+        let promoted = player(for: playerId)
+        let promotedName = promoted.nickname.isEmpty ? promoted.name : promoted.nickname
+        
+        postNotification(
+            title: "🎉 Waitlist Promotion",
+            message: "\(promotedName) was promoted into \(game.title) by the host!",
+            type: .matchInvite,
+            relatedGameId: game.id
+        )
+        
+        // Dispatch Apple APNs remote push notification
+        if let token = promoted.deviceToken, !token.isEmpty {
+            NotificationService.shared.sendDirectRemotePush(
+                to: token,
+                title: "🏐 Volleyball Match Alert",
+                body: "🎉 The host promoted you from the waitlist into '\(game.title)'!",
+                gameId: game.id
+            )
+        } else {
+            FirestoreService.shared.fetchDeviceToken(for: playerId) { token in
+                if let token = token, !token.isEmpty {
+                    NotificationService.shared.sendDirectRemotePush(
+                        to: token,
+                        title: "🏐 Volleyball Match Alert",
+                        body: "🎉 The host promoted you from the waitlist into '\(game.title)'!",
+                        gameId: game.id
+                    )
+                }
+            }
+        }
+        
+        return (true, "Successfully promoted \(promotedName) into the match!")
+    }
+    
+    @discardableResult
     public func saveSubMatches(gameId: UUID, matches: [SubMatch]) -> Bool {
         guard let index = games.firstIndex(where: { $0.id == gameId }) else { return false }
         games[index].subMatches = matches

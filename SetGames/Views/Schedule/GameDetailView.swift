@@ -713,6 +713,27 @@ public struct GameDetailView: View {
             
             Spacer()
             
+            let isHost = (game?.hostPlayerId == dataManager.currentUser?.id) || (dataManager.currentUser?.isRoot == true)
+            if isHost {
+                Button {
+                    let res = dataManager.promoteWaitlistPlayer(gameId: gameId, playerId: playerId)
+                    alertTitle = "Waitlist Promotion"
+                    alertMessage = res.message
+                    showAlert = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.circle.fill")
+                        Text("Promote")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.green)
+                    .clipShape(Capsule())
+                }
+            }
+            
             if isMe {
                 Button(role: .destructive) {
                     dataManager.leaveWaitlist(gameId: gameId)
