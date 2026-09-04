@@ -2225,15 +2225,15 @@ window.postChatMessage = (gameId, text) => {
 
   // Dispatch APNs push to match participants ($0 Serverless / Local Relay)
   try {
-    const peerIds = [
+    const participantIds = [
       ...(game.team1PlayerIds || []),
       ...(game.team2PlayerIds || []),
       ...(game.waitlistPlayerIds || []),
       ...(game.hostPlayerId ? [game.hostPlayerId] : [])
-    ].filter(id => id && id !== state.currentUser.id);
+    ].filter(Boolean);
 
-    const uniquePeerIds = Array.from(new Set(peerIds));
-    const recipientTokens = uniquePeerIds
+    const uniqueIds = Array.from(new Set(participantIds));
+    const recipientTokens = uniqueIds
       .map(id => state.getPlayer(id)?.deviceToken)
       .filter(t => t && typeof t === "string" && t.trim().length > 0);
 
@@ -2243,8 +2243,8 @@ window.postChatMessage = (gameId, text) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tokens: recipientTokens,
-          title: `💬 ${senderName} (${game.title || "Match"})`,
-          body: text,
+          title: "🏐 Volleyball Match Alert",
+          body: `${senderName} (${game.title || "Match"}): "${text}"`,
           gameId: gameId
         })
       }).catch(err => console.log("Push note:", err));

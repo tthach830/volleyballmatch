@@ -1,5 +1,6 @@
 const http = require("http");
 const http2 = require("http2");
+const https = require("https");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
@@ -52,6 +53,8 @@ function getJwt() {
   cachedJwtTime = now;
   return cachedJwt;
 }
+
+const pushedTokensRecently = new Map(); // Deduplication cache
 
 function sendApnsPush(deviceToken, title, body, gameId = null, useSandbox = true) {
   return new Promise((resolve) => {
@@ -164,7 +167,10 @@ const server = http.createServer((req, res) => {
           return res.end(JSON.stringify({ error: "No tokens provided" }));
         }
 
-        console.log(`\n📲 Sending push to ${tokens.length} device(s): "${title}" - "${msg}"`);
+        console.log(`\n📲 [API] Sending push to ${tokens.length} device(s): "${title}" - "${msg}"`);
+        for (const t of tokens) {
+          pushedTokensRecently.set(t, Date.now());
+        }
         const results = await Promise.all(tokens.map(t => sendApnsPush(t, title, msg, gameId)));
 
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -212,11 +218,104 @@ const server = http.createServer((req, res) => {
         res.writeHead(500);
         return res.end("Server Error");
       }
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       res.writeHead(200, { "Content-Type": contentType });
       res.end(content);
     });
   });
 });
+
+// =======================================================
+// Automatic Firestore Real-Time Watcher ($0 Serverless Push)
+// Ensures any message added to Firestore sends an APNs push
+// =======================================================
+const FIRESTORE_API_KEY = "AIzaSyDZZo-WxBBrfU-ctKyWDM0MP-ErTDt1QBg";
+const FIRESTORE_PROJECT = "volleyballmatch-13d66";
+const seenMsgIds = new Set();
+let isInitialWatcherRun = true;
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { rejectUnauthorized: false }, res => {
+      let d = "";
+      res.on("data", c => d += c);
+      res.on("end", () => {
+        try { resolve(JSON.parse(d)); } catch (e) { reject(e); }
+      });
+    }).on("error", reject);
+  });
+}
+
+async function getPlayerTokens() {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT}/databases/(default)/documents/players?key=${FIRESTORE_API_KEY}`;
+    const data = await fetchJson(url);
+    const tokenMap = {};
+    (data.documents || []).forEach(doc => {
+      const pid = doc.name.split("/").pop();
+      const token = doc.fields?.deviceToken?.stringValue;
+      if (token && token.trim()) {
+        tokenMap[pid] = token.trim();
+      }
+    });
+    return tokenMap;
+  } catch (err) {
+    return {};
+  }
+}
+
+async function checkFirestoreNewMessages() {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT}/databases/(default)/documents/games?key=${FIRESTORE_API_KEY}`;
+    const data = await fetchJson(url);
+    const games = data.documents || [];
+
+    for (const doc of games) {
+      const gameId = doc.name.split("/").pop();
+      const title = doc.fields?.title?.stringValue || "Match";
+      const msgs = doc.fields?.messages?.arrayValue?.values || [];
+      const team1 = (doc.fields?.team1PlayerIds?.arrayValue?.values || []).map(v => v.stringValue);
+      const team2 = (doc.fields?.team2PlayerIds?.arrayValue?.values || []).map(v => v.stringValue);
+      const waitlist = (doc.fields?.waitlistPlayerIds?.arrayValue?.values || []).map(v => v.stringValue);
+      const host = doc.fields?.hostPlayerId?.stringValue;
+      const allParticipants = Array.from(new Set([...team1, ...team2, ...waitlist, ...(host ? [host] : [])]));
+
+      for (const m of msgs) {
+        const fields = m.mapValue?.fields || {};
+        const msgId = fields.id?.stringValue;
+        const senderName = fields.senderName?.stringValue || "Player";
+        const text = fields.text?.stringValue || "";
+        if (!msgId) continue;
+
+        if (isInitialWatcherRun) {
+          seenMsgIds.add(msgId);
+          continue;
+        }
+
+        if (!seenMsgIds.has(msgId)) {
+          seenMsgIds.add(msgId);
+          console.log(`\n🔔 [Watcher] New match message: "${text}" by ${senderName} in "${title}"`);
+          
+          const tokenMap = await getPlayerTokens();
+          const targetTokens = allParticipants.map(pid => tokenMap[pid]).filter(Boolean);
+
+          for (const token of targetTokens) {
+            const now = Date.now();
+            const lastPushed = pushedTokensRecently.get(token) || 0;
+            if (now - lastPushed > 3000) {
+              pushedTokensRecently.set(token, now);
+              console.log(`📲 [Watcher] Dispatching APNs push to token (${token.slice(0, 8)}...)`);
+              sendApnsPush(token, "🏐 Volleyball Match Alert", `${senderName} (${title}): "${text}"`, gameId);
+            }
+          }
+        }
+      }
+    }
+    isInitialWatcherRun = false;
+  } catch (err) {
+    // Ignore polling blips
+  }
+}
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
@@ -237,5 +336,10 @@ server.listen(PORT, () => {
   console.log(`🚀 SetGames Web & APNs Push Server running on:`);
   console.log(`   👉 http://localhost:${PORT}`);
   console.log(`   👉 APNs Push Endpoint: http://localhost:${PORT}/api/send-push`);
+  console.log(`   👉 Active Firestore Message Watcher: ENABLED`);
   console.log(`======================================================\n`);
+  
+  // Start Firestore watcher polling every 1.5s
+  setInterval(checkFirestoreNewMessages, 1500);
+  setTimeout(checkFirestoreNewMessages, 500);
 });
