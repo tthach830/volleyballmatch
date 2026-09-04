@@ -30,6 +30,16 @@ export async function savePlayerToFirestore(player) {
   }
 }
 
+// Delete player from Firestore
+export async function deletePlayerFromFirestore(playerId) {
+  try {
+    const playerRef = doc(db, "players", playerId);
+    await deleteDoc(playerRef);
+  } catch (error) {
+    console.error("Error deleting player from Firestore:", error);
+  }
+}
+
 // Save or update game in Firestore
 export async function saveGameToFirestore(game) {
   try {

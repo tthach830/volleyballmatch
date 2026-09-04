@@ -17,6 +17,8 @@ public struct GameDetailView: View {
     @State private var showQRCodeSheet: Bool = false
     @State private var isMatchesCollapsed: Bool = true
     @State private var isChatCollapsed: Bool = false
+    @State private var playerToRemove: Player? = nil
+    @State private var showRemovePlayerConfirmation: Bool = false
     
     public init(dataManager: DataManager, gameId: UUID) {
         self.dataManager = dataManager
@@ -227,7 +229,7 @@ public struct GameDetailView: View {
                             
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                                 ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
-                                    playerCard(dataManager.player(for: pid))
+                                    playerCard(dataManager.player(for: pid), game: game)
                                 }
                                 
                                 if game.spotsRemaining > 0 && !isUserInMatch {
@@ -580,6 +582,22 @@ public struct GameDetailView: View {
         } message: {
             Text(alertMessage)
         }
+        .alert("Remove Player from Match?", isPresented: $showRemovePlayerConfirmation) {
+            Button("Cancel", role: .cancel) { playerToRemove = nil }
+            Button("Remove", role: .destructive) {
+                if let target = playerToRemove, let g = game {
+                    let res = dataManager.removePlayerFromPool(gameId: g.id, playerId: target.id)
+                    alertTitle = res.success ? "Player Removed" : "Error"
+                    alertMessage = res.message
+                    showAlert = true
+                    playerToRemove = nil
+                }
+            }
+        } message: {
+            if let target = playerToRemove {
+                Text("Are you sure you want to remove \(target.nickname.isEmpty ? target.name : target.nickname) from the player pool? If players are on the waitlist, the next player will be auto-promoted.")
+            }
+        }
     }
     
     // MARK: - Subviews
@@ -763,8 +781,9 @@ public struct GameDetailView: View {
         return otherPlayers.isEmpty
     }
     
-    private func playerCard(_ p: Player) -> some View {
-        HStack(spacing: 8) {
+    private func playerCard(_ p: Player, game: SetGame) -> some View {
+        let isMatchHost = (game.hostPlayerId == dataManager.currentUser?.id) || (dataManager.currentUser?.isRoot == true)
+        return HStack(spacing: 8) {
             PlayerAvatarView(player: p, dimension: 36, showBadge: false)
             VStack(alignment: .leading, spacing: 2) {
                 Text(p.nickname.isEmpty ? p.name : p.nickname)
@@ -782,6 +801,20 @@ public struct GameDetailView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+            }
+            Spacer(minLength: 0)
+            
+            if isMatchHost && p.id != game.hostPlayerId {
+                Button {
+                    playerToRemove = p
+                    showRemovePlayerConfirmation = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.red.opacity(0.85))
+                }
+                .buttonStyle(.borderless)
+                .padding(.leading, 2)
             }
         }
         .padding(10)

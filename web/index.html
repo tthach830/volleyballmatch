@@ -280,8 +280,13 @@
       </div>
 
       <!-- Log Out Button -->
-      <button type="button" class="btn btn-outline" style="width: 100%; margin-top: 18px; color: #ef4444; border-color: #ef4444; font-weight: 700;" onclick="window.handleLogout()">
+      <button type="button" class="btn btn-outline" style="width: 100%; margin-top: 18px; color: var(--text-muted); border-color: var(--border); font-weight: 700;" onclick="window.handleLogout()">
         Log Out / Sign In with Another Phone
+      </button>
+
+      <!-- Delete Profile Button -->
+      <button type="button" class="btn" style="width: 100%; margin-top: 10px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-weight: 700; padding: 10px;" onclick="window.handleDeleteProfile()">
+        🗑️ Delete Profile
       </button>
     </main>
 
@@ -941,6 +946,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=4.0"></script>
+  <script type="module" src="app.js?v=4.1"></script>
 </body>
 </html>

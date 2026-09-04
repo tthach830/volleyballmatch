@@ -15,6 +15,8 @@ public struct ConfirmedGamesView: View {
     @State private var showDeleteAlert: Bool = false
     @State private var gameToDelete: SetGame? = nil
     @State private var expandedMatches: Set<UUID> = []
+    @State private var playerToRemove: (gameId: UUID, player: Player)? = nil
+    @State private var showRemovePlayerAlert: Bool = false
     
     public enum GameFilter: String, CaseIterable {
         case all = "📅 All Upcoming"
@@ -173,6 +175,21 @@ public struct ConfirmedGamesView: View {
             } message: {
                 Text("Are you sure you want to permanently delete this game?")
             }
+            .alert("Remove Player from Match?", isPresented: $showRemovePlayerAlert) {
+                Button("Cancel", role: .cancel) { playerToRemove = nil }
+                Button("Remove", role: .destructive) {
+                    if let target = playerToRemove {
+                        let res = dataManager.removePlayerFromPool(gameId: target.gameId, playerId: target.player.id)
+                        alertMessage = res.message
+                        showAlert = true
+                        playerToRemove = nil
+                    }
+                }
+            } message: {
+                if let target = playerToRemove {
+                    Text("Are you sure you want to remove \(target.player.nickname.isEmpty ? target.player.name : target.player.nickname) from the player pool? If players are on the waitlist, the next player will be auto-promoted.")
+                }
+            }
         }
     }
     
@@ -233,7 +250,7 @@ public struct ConfirmedGamesView: View {
         }.joined(separator: " & ")
     }
 
-    private func playerPoolTile(pid: UUID) -> some View {
+    private func playerPoolTile(pid: UUID, game: SetGame, isHost: Bool) -> some View {
         let p = dataManager.player(for: pid)
         let displayName = p.nickname.isEmpty ? p.name : p.nickname
         let ratingTier = p.rating
@@ -267,6 +284,19 @@ public struct ConfirmedGamesView: View {
                 }
             }
             Spacer(minLength: 0)
+            
+            if isHost && pid != game.hostPlayerId {
+                Button {
+                    playerToRemove = (game.id, p)
+                    showRemovePlayerAlert = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.red.opacity(0.85))
+                }
+                .buttonStyle(.borderless)
+                .padding(.leading, 2)
+            }
         }
         .padding(8)
         .background(Color(.systemBackground))
@@ -499,7 +529,8 @@ public struct ConfirmedGamesView: View {
     }
 
     private func playersPoolBox(game: SetGame, isMyGame: Bool, currentUserId: UUID?) -> some View {
-        VStack(spacing: 8) {
+        let isHost = (game.hostPlayerId == currentUserId) || (dataManager.currentUser?.isRoot == true)
+        return VStack(spacing: 8) {
             HStack {
                 Text("👥 PLAYERS POOL (\(game.allPlayerIds.count)/\(game.maxPlayers) PLAYERS)")
                     .font(.system(size: 11, weight: .black))
@@ -519,7 +550,7 @@ public struct ConfirmedGamesView: View {
             // 2-Column Grid
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                 ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
-                    playerPoolTile(pid: pid)
+                    playerPoolTile(pid: pid, game: game, isHost: isHost)
                 }
                 
                 if game.spotsRemaining > 0 && !isMyGame {

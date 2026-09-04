@@ -178,6 +178,77 @@ public class DataManager: ObservableObject {
         saveToDisk()
     }
     
+    @discardableResult
+    public func deleteCurrentUser() -> Bool {
+        guard let user = currentUser else { return false }
+        let userId = user.id
+        
+        // 1. Remove player from all games and waitlists, auto-promoting waitlisted players if space opens
+        for i in 0..<games.count {
+            var g = games[i]
+            var changed = false
+            
+            if g.waitlistPlayerIds.contains(userId) {
+                g.waitlistPlayerIds.removeAll(where: { $0 == userId })
+                changed = true
+            }
+            
+            let wasInTeam1 = g.team1PlayerIds.contains(userId)
+            let wasInTeam2 = g.team2PlayerIds.contains(userId)
+            if wasInTeam1 || wasInTeam2 {
+                g.team1PlayerIds.removeAll(where: { $0 == userId })
+                g.team2PlayerIds.removeAll(where: { $0 == userId })
+                changed = true
+                
+                // Auto-promote first waitlisted player if available
+                if !g.waitlistPlayerIds.isEmpty && g.allPlayerIds.count < g.maxPlayers {
+                    let promotedId = g.waitlistPlayerIds.removeFirst()
+                    if g.team1PlayerIds.count <= g.team2PlayerIds.count {
+                        g.team1PlayerIds.append(promotedId)
+                    } else {
+                        g.team2PlayerIds.append(promotedId)
+                    }
+                    if let p = players.first(where: { $0.id == promotedId }), let token = p.deviceToken, !token.isEmpty {
+                        NotificationService.shared.sendDirectRemotePush(
+                            to: token,
+                            title: "🎉 You're in!",
+                            body: "A spot opened up in '\(g.title)' and you were promoted from the waitlist!",
+                            gameId: g.id
+                        )
+                    }
+                }
+            }
+            
+            if g.hostPlayerId == userId {
+                g.hostPlayerId = g.allPlayerIds.first
+                changed = true
+            }
+            
+            if changed {
+                games[i] = g
+                FirestoreService.shared.saveGame(g)
+            }
+        }
+        
+        // 2. Remove availability slots
+        availabilitySlots.removeAll(where: { $0.playerId == userId })
+        
+        // 3. Remove from pickup queue if present
+        pickupQueue.removeAll(where: { $0.id == userId })
+        
+        // 4. Remove player from players list
+        players.removeAll(where: { $0.id == userId })
+        
+        // 5. Delete player from Firestore
+        FirestoreService.shared.deletePlayer(id: userId)
+        
+        // 6. Clear session and save disk
+        currentUser = nil
+        saveToDisk()
+        
+        return true
+    }
+    
     // MARK: - Matchmaking & Game Operations
     
     public func runAutoMatchmaking() -> Int {
@@ -480,6 +551,110 @@ public class DataManager: ObservableObject {
         }
         
         return (true, "Successfully promoted \(promotedName) into the match!")
+    }
+    
+    @discardableResult
+    public func removePlayerFromPool(gameId: UUID, playerId: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let index = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Match not found.")
+        }
+        
+        var game = games[index]
+        let isHost = (game.hostPlayerId == user.id) || user.isRoot
+        guard isHost else {
+            return (false, "Only the match host can remove players from the pool.")
+        }
+        
+        guard playerId != game.hostPlayerId else {
+            return (false, "Hosts cannot remove themselves from the pool.")
+        }
+        
+        guard game.allPlayerIds.contains(playerId) else {
+            return (false, "Player is not in this match.")
+        }
+        
+        game.team1PlayerIds.removeAll(where: { $0 == playerId })
+        game.team2PlayerIds.removeAll(where: { $0 == playerId })
+        
+        // Auto-promote first waitlisted player into the open spot
+        var promotedName: String? = nil
+        if !game.waitlistPlayerIds.isEmpty && game.allPlayerIds.count < game.maxPlayers {
+            let promotedId = game.waitlistPlayerIds.removeFirst()
+            if game.team1PlayerIds.count <= game.team2PlayerIds.count {
+                game.team1PlayerIds.append(promotedId)
+            } else {
+                game.team2PlayerIds.append(promotedId)
+            }
+            if let p = players.first(where: { $0.id == promotedId }) {
+                promotedName = p.nickname.isEmpty ? p.name : p.nickname
+                if let token = p.deviceToken, !token.isEmpty {
+                    NotificationService.shared.sendDirectRemotePush(
+                        to: token,
+                        title: "🎉 You're in!",
+                        body: "A spot opened up in '\(game.title)' and you were promoted from the waitlist!",
+                        gameId: game.id
+                    )
+                } else {
+                    FirestoreService.shared.fetchDeviceToken(for: promotedId) { token in
+                        if let token = token, !token.isEmpty {
+                            NotificationService.shared.sendDirectRemotePush(
+                                to: token,
+                                title: "🎉 You're in!",
+                                body: "A spot opened up in '\(game.title)' and you were promoted from the waitlist!",
+                                gameId: game.id
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        games[index] = game
+        saveToDisk()
+        FirestoreService.shared.saveGame(game)
+        
+        let removed = player(for: playerId)
+        let removedName = removed.nickname.isEmpty ? removed.name : removed.nickname
+        
+        postNotification(
+            title: "Match Update",
+            message: "\(removedName) was removed from \(game.title) by the host.",
+            type: .matchInvite,
+            relatedGameId: game.id
+        )
+        
+        if let token = removed.deviceToken, !token.isEmpty {
+            NotificationService.shared.sendDirectRemotePush(
+                to: token,
+                title: "Volleyball Match Alert",
+                body: "You were removed from '\(game.title)' by the host.",
+                gameId: game.id
+            )
+        } else {
+            FirestoreService.shared.fetchDeviceToken(for: playerId) { token in
+                if let token = token, !token.isEmpty {
+                    NotificationService.shared.sendDirectRemotePush(
+                        to: token,
+                        title: "Volleyball Match Alert",
+                        body: "You were removed from '\(game.title)' by the host.",
+                        gameId: game.id
+                    )
+                }
+            }
+        }
+        
+        if let promoted = promotedName {
+            postNotification(
+                title: "🎉 Waitlist Promotion",
+                message: "\(promoted) was auto-promoted from the waitlist into \(game.title)!",
+                type: .matchInvite,
+                relatedGameId: game.id
+            )
+            return (true, "Removed \(removedName). \(promoted) was auto-promoted from the waitlist!")
+        }
+        
+        return (true, "Removed \(removedName) from the match.")
     }
     
     @discardableResult

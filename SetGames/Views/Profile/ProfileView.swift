@@ -5,6 +5,7 @@ public struct ProfileView: View {
     @State private var showUserSwitcher: Bool = false
     @State private var showRatingGuide: Bool = false
     @State private var showEditProfileSheet: Bool = false
+    @State private var showDeleteAccountAlert: Bool = false
     
     public init(dataManager: DataManager) {
         self.dataManager = dataManager
@@ -227,7 +228,19 @@ public struct ProfileView: View {
                             } label: {
                                 Text("Log Out / Sign Up New Player")
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Button(role: .destructive) {
+                                showDeleteAccountAlert = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "trash")
+                                    Text("Delete Profile")
+                                }
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.red)
+                                .padding(.top, 4)
                             }
                         }
                         .padding(.horizontal)
@@ -264,6 +277,14 @@ public struct ProfileView: View {
             }
             .sheet(isPresented: $showUserSwitcher) {
                 UserSwitcherView(dataManager: dataManager)
+            }
+            .alert("Delete Profile?", isPresented: $showDeleteAccountAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete Profile", role: .destructive) {
+                    dataManager.deleteCurrentUser()
+                }
+            } message: {
+                Text("Are you sure you want to permanently delete your profile? This will remove your player record, ratings, and stats from the game. This action cannot be undone.")
             }
         }
     }

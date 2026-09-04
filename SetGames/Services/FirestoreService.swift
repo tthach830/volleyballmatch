@@ -155,6 +155,14 @@ public class FirestoreService: ObservableObject {
         }
     }
     
+    public func deletePlayer(id: UUID) {
+        db.collection("players").document(id.uuidString).delete { error in
+            if let error = error {
+                print("Error deleting player from Firestore: \(error.localizedDescription)")
+            }
+        }
+    }
+    
     public func saveAvailabilitySlot(_ slot: AvailabilitySlot) {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

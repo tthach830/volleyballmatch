@@ -1,5 +1,6 @@
 import { 
   savePlayerToFirestore, 
+  deletePlayerFromFirestore,
   saveGameToFirestore, 
   deleteGameFromFirestore,
   saveSlotToFirestore, 
@@ -525,6 +526,89 @@ window.promoteWaitlistPlayer = (gameId, playerId) => {
   }
 };
 
+window.removePlayerFromPool = (gameId, playerId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game || !state.currentUser) return;
+
+  const currentUserId = state.currentUser.id;
+  const isHost = game.hostPlayerId === currentUserId || (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId) || state.currentUser.isRoot;
+  if (!isHost) {
+    showToast("Only the match host can remove players from the pool.");
+    return;
+  }
+
+  if (playerId === game.hostPlayerId) {
+    showToast("Hosts cannot remove themselves from the pool.");
+    return;
+  }
+
+  const p = state.getPlayer(playerId);
+  const pName = p ? (p.nickname ? `${p.name} (${p.nickname})` : p.name) : "this player";
+
+  if (!confirm(`Are you sure you want to remove ${pName} from this match?\n\nIf players are on the waitlist, the next player will be auto-promoted.`)) {
+    return;
+  }
+
+  const wasInTeam1 = game.team1PlayerIds && game.team1PlayerIds.includes(playerId);
+  const wasInTeam2 = game.team2PlayerIds && game.team2PlayerIds.includes(playerId);
+  if (!wasInTeam1 && !wasInTeam2) return;
+
+  game.team1PlayerIds = (game.team1PlayerIds || []).filter(id => id !== playerId);
+  game.team2PlayerIds = (game.team2PlayerIds || []).filter(id => id !== playerId);
+
+  // Auto-promote first waitlisted player into the open spot
+  let promotedPlayerName = null;
+  let promotedPlayer = null;
+  if (!game.waitlistPlayerIds) game.waitlistPlayerIds = [];
+  const currentTotal = (game.team1PlayerIds?.length || 0) + (game.team2PlayerIds?.length || 0);
+  const maxP = game.maxPlayers || 4;
+  if (game.waitlistPlayerIds.length > 0 && currentTotal < maxP) {
+    const promotedId = game.waitlistPlayerIds.shift();
+    if ((game.team1PlayerIds?.length || 0) <= (game.team2PlayerIds?.length || 0)) {
+      if (!game.team1PlayerIds) game.team1PlayerIds = [];
+      game.team1PlayerIds.push(promotedId);
+    } else {
+      if (!game.team2PlayerIds) game.team2PlayerIds = [];
+      game.team2PlayerIds.push(promotedId);
+    }
+    promotedPlayer = state.players.find(pl => pl.id === promotedId);
+    promotedPlayerName = promotedPlayer ? (promotedPlayer.nickname || promotedPlayer.name) : "A waitlisted player";
+  }
+
+  state.saveLocal();
+  saveGameToFirestore(game);
+  renderMatches();
+
+  showToast(`Removed ${pName} from the match.` + (promotedPlayerName ? ` ${promotedPlayerName} was auto-promoted!` : ""));
+
+  // Dispatch APNs push alerts
+  if (p && p.deviceToken) {
+    fetch("/api/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tokens: [p.deviceToken],
+        title: "Volleyball Match Alert",
+        body: `You were removed from '${game.title || "Match"}' by the host.`,
+        gameId: game.id
+      })
+    }).catch(err => console.log("Push note:", err));
+  }
+
+  if (promotedPlayer && promotedPlayer.deviceToken) {
+    fetch("/api/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tokens: [promotedPlayer.deviceToken],
+        title: "🎉 You're in!",
+        body: `A spot opened up in '${game.title || "Match"}' and you were promoted from the waitlist!`,
+        gameId: game.id
+      })
+    }).catch(err => console.log("Push note:", err));
+  }
+};
+
 window.toggleMatchesCollapse = (gameId) => {
   state.expandedMatches = state.expandedMatches || {};
   state.expandedMatches[gameId] = !state.expandedMatches[gameId];
@@ -775,6 +859,11 @@ function renderMatches() {
 
     const renderPoolPlayer = (pid) => {
       const p = state.getPlayer(pid);
+      const canRemove = isHost && pid !== game.hostPlayerId;
+      const removeBtnHtml = canRemove ? `
+        <button type="button" style="background:none; border:none; color:#ef4444; font-size:16px; font-weight:bold; cursor:pointer; padding:2px 6px; margin-left:auto; line-height:1;" title="Remove player from match" onclick="window.removePlayerFromPool('${game.id}', '${pid}')">✕</button>
+      ` : '';
+
       if (!p) {
         const name = pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player";
         return `<div class="player-tile-mock">
@@ -786,6 +875,7 @@ function renderMatches() {
               <span style="font-size:11px; font-weight:700; color:#b45309;">⭐ 5.0</span>
             </div>
           </div>
+          ${removeBtnHtml}
         </div>`;
       }
       const tierLower = (p.rating || 'b').toLowerCase();
@@ -799,6 +889,7 @@ function renderMatches() {
             <span style="font-size:11px; font-weight:700; color:#b45309;">⭐ ${ratingVal}</span>
           </div>
         </div>
+        ${removeBtnHtml}
       </div>`;
     };
 
@@ -1597,6 +1688,72 @@ window.handleLogout = () => {
   renderHeader();
   window.showAuthModal();
   showToast("Logged out successfully.");
+};
+
+window.handleDeleteProfile = () => {
+  if (!state.currentUser) return;
+  const user = state.currentUser;
+  const userName = user.nickname ? `${user.name} (${user.nickname})` : user.name;
+  
+  if (!confirm(`Are you sure you want to permanently delete your profile (${userName})?\n\nThis will remove your player record, ratings, and stats from the game. This action cannot be undone.`)) {
+    return;
+  }
+
+  const userId = user.id;
+
+  // 1. Remove user from all games and waitlists, auto-promoting waitlisted players
+  state.games.forEach(game => {
+    let changed = false;
+    if (game.waitlistPlayerIds && game.waitlistPlayerIds.includes(userId)) {
+      game.waitlistPlayerIds = game.waitlistPlayerIds.filter(id => id !== userId);
+      changed = true;
+    }
+    const wasInTeam1 = game.team1PlayerIds && game.team1PlayerIds.includes(userId);
+    const wasInTeam2 = game.team2PlayerIds && game.team2PlayerIds.includes(userId);
+    if (wasInTeam1 || wasInTeam2) {
+      game.team1PlayerIds = (game.team1PlayerIds || []).filter(id => id !== userId);
+      game.team2PlayerIds = (game.team2PlayerIds || []).filter(id => id !== userId);
+      changed = true;
+
+      // Auto-promote waitlist
+      const currentTotal = (game.team1PlayerIds?.length || 0) + (game.team2PlayerIds?.length || 0);
+      const maxP = game.maxPlayers || 4;
+      if (game.waitlistPlayerIds && game.waitlistPlayerIds.length > 0 && currentTotal < maxP) {
+        const promotedId = game.waitlistPlayerIds.shift();
+        if ((game.team1PlayerIds?.length || 0) <= (game.team2PlayerIds?.length || 0)) {
+          game.team1PlayerIds.push(promotedId);
+        } else {
+          game.team2PlayerIds.push(promotedId);
+        }
+      }
+    }
+    if (game.hostPlayerId === userId) {
+      game.hostPlayerId = (game.team1PlayerIds?.[0] || game.team2PlayerIds?.[0] || null);
+      changed = true;
+    }
+    if (changed) {
+      saveGameToFirestore(game);
+    }
+  });
+
+  // 2. Remove user from state.players
+  state.players = state.players.filter(p => p.id !== userId);
+
+  // 3. Delete player from Firestore
+  deletePlayerFromFirestore(userId);
+
+  // 4. Clear current user & storage
+  state.currentUser = null;
+  localStorage.removeItem("setgames_current_user_id");
+  state.saveLocal();
+
+  // 5. Update UI & show login
+  renderHeader();
+  renderLadder();
+  renderMatches();
+  renderPopularKids();
+  window.showAuthModal();
+  showToast("Your profile has been permanently deleted.");
 };
 
 // GLOBAL ACTION HANDLERS (available on window)
