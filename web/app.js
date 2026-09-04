@@ -855,58 +855,67 @@ function renderMatches() {
           <div onclick="window.toggleMatchesCollapse('${game.id}')" class="matches-summary-row">
             <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #0f172a;">
               <span>🏐</span>
-              <span>Match Schedule (${(game.subMatches || []).length > 0 ? game.subMatches.length : 3})</span>
+              <span>Match Schedule (${(game.subMatches || []).length})</span>
             </div>
             <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 13px;">
-              <span>🏐</span>
-              <span>🏐</span>
-              <span style="font-size: 12px; margin-left: 2px;">⌄</span>
+              ${(game.subMatches || []).length > 0 ? `<span>🏐</span><span>🏐</span>` : ''}
+              <span style="font-size: 12px; margin-left: 2px;">${isMatchesCollapsed ? '⌄' : '⌃'}</span>
             </div>
           </div>
 
-          ${!isMatchesCollapsed && game.subMatches && game.subMatches.length > 0 ? `
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-              ${game.subMatches.map((m, mIdx) => {
-                const s1Val = (m.team1Score !== undefined && m.team1Score !== null) ? m.team1Score : "";
-                const s2Val = (m.team2Score !== undefined && m.team2Score !== null) ? m.team2Score : "";
-                const mKey = m.id || mIdx;
-                return `
-                  <div style="background: var(--bg-card, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 10px 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                      <span style="font-size: 11px; font-weight: 800; color: var(--accent);">MATCH ${m.matchNumber || mIdx + 1} • ${m.courtNumber || "Court #1"}</span>
-                      ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: var(--text-muted);">Scheduled</span>'}
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px;">
-                      <div style="flex: 1; text-align: left;">${resolvePlayerNames(m.team1PlayerIds)}</div>
-                      <span style="color: var(--text-muted); font-size: 11px; font-weight: 900; padding: 0 8px;">VS</span>
-                      <div style="flex: 1; text-align: right;">${resolvePlayerNames(m.team2PlayerIds)}</div>
-                    </div>
-                    ${m.restingPlayerIds && m.restingPlayerIds.length > 0 ? `
-                      <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">
-                        ⏸ Resting: ${resolvePlayerNames(m.restingPlayerIds)}
-                      </div>
-                    ` : ''}
-                    <div style="display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid var(--border, #f1f5f9);">
-                      <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Score:</span>
-                      <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center;" placeholder="T1" value="${s1Val}">
-                      <span>–</span>
-                      <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center;" placeholder="T2" value="${s2Val}">
-                      <button type="button" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 2px 8px; margin-left: 6px;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
-                        Save
-                      </button>
-                      <span style="font-size: 11px; color: #22c55e; font-weight: 700; margin-left: auto;">
-                        ${m.isCompleted && m.winningTeam ? '(Team ' + m.winningTeam + ' Won)' : ''}
-                      </span>
-                    </div>
-                  </div>
-                `;
-              }).join("")}
-              <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
-                <button type="button" class="btn btn-outline btn-sm" style="font-size: 11px; color: #a855f7; border-color: #d8b4fe;" onclick="window.openRandomTeamsModalForGame('${game.id}')">
-                  🎲 Regenerate Matches
+          ${!isMatchesCollapsed ? `
+            ${(!game.subMatches || game.subMatches.length === 0) ? `
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 10px; margin-top: 8px; text-align: center;">
+                <div style="font-size: 12px; font-weight: 800; color: #9a3412; margin-bottom: 2px;">No matches generated yet</div>
+                <div style="font-size: 11px; color: #c2410c; margin-bottom: 10px;">Generate fair team rotations and schedules automatically for players in this game.</div>
+                <button type="button" class="btn btn-primary btn-sm" style="background: #ea580c; border-color: #ea580c; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 8px;" onclick="window.openRandomTeamsModalForGame('${game.id}')">
+                  🎲 Generate Matches (${allPlayerIds.length} Players)
                 </button>
               </div>
-            </div>
+            ` : `
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                ${game.subMatches.map((m, mIdx) => {
+                  const s1Val = (m.team1Score !== undefined && m.team1Score !== null) ? m.team1Score : "";
+                  const s2Val = (m.team2Score !== undefined && m.team2Score !== null) ? m.team2Score : "";
+                  const mKey = m.id || mIdx;
+                  return `
+                    <div style="background: var(--bg-card, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 10px 12px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 11px; font-weight: 800; color: var(--accent);">MATCH ${m.matchNumber || mIdx + 1} • ${m.courtNumber || "Court #1"}</span>
+                        ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: var(--text-muted);">Scheduled</span>'}
+                      </div>
+                      <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px;">
+                        <div style="flex: 1; text-align: left;">${resolvePlayerNames(m.team1PlayerIds)}</div>
+                        <span style="color: var(--text-muted); font-size: 11px; font-weight: 900; padding: 0 8px;">VS</span>
+                        <div style="flex: 1; text-align: right;">${resolvePlayerNames(m.team2PlayerIds)}</div>
+                      </div>
+                      ${m.restingPlayerIds && m.restingPlayerIds.length > 0 ? `
+                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">
+                          ⏸ Resting: ${resolvePlayerNames(m.restingPlayerIds)}
+                        </div>
+                      ` : ''}
+                      <div style="display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid var(--border, #f1f5f9);">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Score:</span>
+                        <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center;" placeholder="T1" value="${s1Val}">
+                        <span>–</span>
+                        <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center;" placeholder="T2" value="${s2Val}">
+                        <button type="button" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 2px 8px; margin-left: 6px;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
+                          Save
+                        </button>
+                        <span style="font-size: 11px; color: #22c55e; font-weight: 700; margin-left: auto;">
+                          ${m.isCompleted && m.winningTeam ? '(Team ' + m.winningTeam + ' Won)' : ''}
+                        </span>
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+                <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                  <button type="button" class="btn btn-outline btn-sm" style="font-size: 11px; color: #ea580c; border-color: #fdba74;" onclick="window.openRandomTeamsModalForGame('${game.id}')">
+                    🎲 Regenerate / Adjust Matches
+                  </button>
+                </div>
+              </div>
+            `}
           ` : ''}
         </div>
 
@@ -1758,8 +1767,56 @@ window.handleCreateMatch = (e) => {
   showToast(`Game hosted: ${newGame.title}!`);
 };
 
+window.closeAdminActionsModal = () => {
+  const m = document.getElementById("admin-actions-modal");
+  if (m) m.classList.remove("active");
+};
+
 window.toggleCardAdminMenu = (gameId) => {
-  window.openEditMatchModal(gameId);
+  const game = state.games.find(g => g.id === gameId);
+  if (!game) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isHost = currentUserId && (
+    game.hostPlayerId === currentUserId ||
+    (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId)
+  );
+  const isRoot = state.currentUser && state.currentUser.isRoot;
+
+  const container = document.getElementById("admin-actions-body");
+  if (!container) return;
+
+  container.innerHTML = `
+    <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #ea580c; border-color: #fdba74; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.openRandomTeamsModalForGame('${game.id}')">
+      <span style="font-size: 16px;">🎲</span>
+      <span>Generate / Rotate Matches</span>
+    </button>
+    
+    <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.openGameQRCodeModal('${game.id}')">
+      <span style="font-size: 16px;">📱</span>
+      <span>QR Code & Share Link</span>
+    </button>
+
+    <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #0284c7; border-color: #bae6fd; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.openMatchChatModal('${game.id}')">
+      <span style="font-size: 16px;">💬</span>
+      <span>Match Chat (${(game.messages || []).length})</span>
+    </button>
+
+    <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.openEditMatchModal('${game.id}')">
+      <span style="font-size: 16px;">✏️</span>
+      <span>Edit Game Preferences</span>
+    </button>
+
+    ${(isHost || isRoot) ? `
+      <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #dc2626; border-color: #fca5a5; margin-top: 6px; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); if(confirm('Are you sure you want to permanently delete this game?')) { window.deleteGame('${game.id}'); }">
+        <span style="font-size: 16px;">🗑️</span>
+        <span>Delete Game</span>
+      </button>
+    ` : ''}
+  `;
+
+  const m = document.getElementById("admin-actions-modal");
+  if (m) m.classList.add("active");
 };
 
 // Edit Match (Participants)

@@ -8,7 +8,8 @@ public struct ConfirmedGamesView: View {
     @State private var showRandomTeamsSheet: Bool = false
     @State private var qrGameForSheet: SetGame? = nil
     @State private var editGameForSheet: SetGame? = nil
-    @State private var navigateToGameId: UUID? = nil
+    @State private var gameForRandomTeams: SetGame? = nil
+    @State private var navigationPath = NavigationPath()
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     @State private var showDeleteAlert: Bool = false
@@ -27,7 +28,7 @@ public struct ConfirmedGamesView: View {
     }
     
     public var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(spacing: 16) {
                     // Filter picker: All Upcoming, My Games, Needs Players
@@ -58,12 +59,7 @@ public struct ConfirmedGamesView: View {
                     } else {
                         LazyVStack(spacing: 12) {
                             ForEach(displayGames) { game in
-                                NavigationLink {
-                                    GameDetailView(dataManager: dataManager, gameId: game.id)
-                                } label: {
-                                    gameRow(game)
-                                }
-                                .buttonStyle(.plain)
+                                gameRow(game)
                             }
                         }
                         .padding(.horizontal)
@@ -73,6 +69,9 @@ public struct ConfirmedGamesView: View {
             }
             .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("Set Games")
+            .navigationDestination(for: UUID.self) { gameId in
+                GameDetailView(dataManager: dataManager, gameId: gameId)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     HStack(spacing: 8) {
@@ -146,13 +145,15 @@ public struct ConfirmedGamesView: View {
             .sheet(item: $editGameForSheet) { game in
                 EditMatchSheet(dataManager: dataManager, game: game)
             }
-            .navigationDestination(isPresented: Binding(
-                get: { navigateToGameId != nil },
-                set: { if !$0 { navigateToGameId = nil } }
-            )) {
-                if let gid = navigateToGameId {
-                    GameDetailView(dataManager: dataManager, gameId: gid)
-                }
+            .sheet(item: $gameForRandomTeams) { game in
+                let matchPlayers = game.allPlayerIds.map { dataManager.player(for: $0) }
+                RandomTeamGeneratorSheet(
+                    dataManager: dataManager,
+                    initialGameId: game.id,
+                    initialPlayers: matchPlayers,
+                    initialBeach: game.courtLocation,
+                    initialFormat: game.format
+                )
             }
             .alert("Notice", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
@@ -283,14 +284,25 @@ public struct ConfirmedGamesView: View {
     private func cardHeader(game: SetGame, isMyGame: Bool, isHost: Bool) -> some View {
         HStack(alignment: .center) {
             Spacer()
-            Text("GAME DETAILS")
-                .font(.system(size: 13, weight: .black))
-                .foregroundColor(Color(.label))
-                .tracking(0.5)
+            Button {
+                navigationPath.append(game.id)
+            } label: {
+                Text("GAME DETAILS")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundColor(Color(.label))
+                    .tracking(0.5)
+            }
+            .buttonStyle(.plain)
             Spacer()
         }
         .overlay(alignment: .trailing) {
             Menu {
+                Button {
+                    gameForRandomTeams = game
+                } label: {
+                    Label("Generate Matches", systemImage: "dice")
+                }
+
                 Button {
                     qrGameForSheet = game
                 } label: {
@@ -298,7 +310,7 @@ public struct ConfirmedGamesView: View {
                 }
                 
                 Button {
-                    navigateToGameId = game.id
+                    navigationPath.append(game.id)
                 } label: {
                     Label("Match Chat (\(game.messages.count))", systemImage: "message")
                 }
@@ -361,8 +373,15 @@ public struct ConfirmedGamesView: View {
         let statusText = game.status == .completed ? "Completed" : (game.status == .inProgress ? "Live" : "Open")
         
         let host = hostPlayer(for: game)
-        let hostName = host != nil ? (host!.nickname.isEmpty ? host!.name : host!.nickname) : "Host"
-        let hostRating = host != nil ? String(format: "%.1f", host!.averageStarRating) : "5.0"
+        let hostName: String
+        let hostRating: String
+        if let host = host {
+            hostName = host.nickname.isEmpty ? host.name : host.nickname
+            hostRating = String(format: "%.1f", host.averageStarRating)
+        } else {
+            hostName = "Host"
+            hostRating = "5.0"
+        }
         
         return VStack(alignment: .leading, spacing: 4) {
             // Line 1: SCHEDULE & COURT
@@ -458,6 +477,10 @@ public struct ConfirmedGamesView: View {
             .lineLimit(1)
             .minimumScaleFactor(0.8)
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            navigationPath.append(game.id)
+        }
     }
 
     private func playersPoolBox(game: SetGame, isMyGame: Bool, currentUserId: UUID?) -> some View {
@@ -512,9 +535,8 @@ public struct ConfirmedGamesView: View {
             
             // Waitlist Banner / Button when pool is full
             if game.spotsRemaining == 0 && !isMyGame {
-                let isWaitlisted = currentUserId != nil && game.waitlistPlayerIds.contains(currentUserId!)
-                if isWaitlisted {
-                    let pos = (game.waitlistPlayerIds.firstIndex(of: currentUserId!) ?? 0) + 1
+                if let uid = currentUserId, let index = game.waitlistPlayerIds.firstIndex(of: uid) {
+                    let pos = index + 1
                     HStack {
                         Text("⏳ You are #\(pos) on the Waitlist")
                             .font(.system(size: 12, weight: .bold))
@@ -596,7 +618,7 @@ public struct ConfirmedGamesView: View {
                                     .foregroundColor(.secondary)
                             }
                             Spacer()
-                            if currentUserId == wId {
+                            if let uid = currentUserId, uid == wId {
                                 Button {
                                     let res = dataManager.leaveWaitlist(gameId: game.id)
                                     alertMessage = res.message
@@ -656,14 +678,16 @@ public struct ConfirmedGamesView: View {
                 HStack {
                     HStack(spacing: 6) {
                         Text("🏐")
-                        Text("Match Schedule (\(game.subMatches.isEmpty ? 3 : game.subMatches.count))")
+                        Text("Match Schedule (\(game.subMatches.count))")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(Color(.label))
                     }
                     Spacer()
                     HStack(spacing: 4) {
-                        Text("🏐")
-                        Text("🏐")
+                        if !game.subMatches.isEmpty {
+                            Text("🏐")
+                            Text("🏐")
+                        }
                         Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
                             .font(.system(size: 10, weight: .semibold))
                     }
@@ -676,71 +700,113 @@ public struct ConfirmedGamesView: View {
             }
             .buttonStyle(.borderless)
             
-            // Expanded sub-matches
-            if !isCollapsed && !game.subMatches.isEmpty {
-                VStack(spacing: 6) {
-                    ForEach(Array(game.subMatches.enumerated()), id: \.element.id) { mIdx, sm in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("MATCH \(sm.matchNumber) • \(sm.courtNumber)")
-                                    .font(.system(size: 10, weight: .black))
-                                    .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
-                                Spacer()
-                                if sm.isCompleted {
-                                    Text("SCORED ✓")
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundColor(.green)
-                                } else {
-                                    Text("Scheduled")
-                                        .font(.system(size: 9, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            
-                            HStack {
-                                Text(resolveNames(sm.team1PlayerIds))
+            // Expanded sub-matches or Generate matches CTA
+            if !isCollapsed {
+                if game.subMatches.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("No match rotations generated yet.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        
+                        Button {
+                            gameForRandomTeams = game
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "dice.fill")
                                     .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(Color(.label))
-                                    .lineLimit(1)
-                              Spacer()
-                                Text("VS")
-                                    .font(.system(size: 10, weight: .black))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 6)
-                                Spacer()
-                                Text(resolveNames(sm.team2PlayerIds))
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(Color(.label))
-                                    .lineLimit(1)
+                                Text("🎲 Generate Matches (\(game.allPlayerIds.count) Players)")
+                                    .font(.system(size: 12, weight: .black))
                             }
-                            
-                            if !sm.restingPlayerIds.isEmpty {
-                                Text("⏸ Resting: \(resolveNames(sm.restingPlayerIds))")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            if let s1 = sm.team1Score, let s2 = sm.team2Score {
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, minHeight: 38)
+                            .background(Color(red: 0.92, green: 0.35, blue: 0.05))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .padding(.vertical, 6)
+                } else {
+                    VStack(spacing: 6) {
+                        ForEach(Array(game.subMatches.enumerated()), id: \.element.id) { mIdx, sm in
+                            VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("Score: \(s1) – \(s2)")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundColor(Color(.label))
-                                    if sm.isCompleted, let win = sm.winningTeam {
-                                        Text("(Team \(win) Won)")
-                                            .font(.system(size: 10, weight: .bold))
+                                    Text("MATCH \(sm.matchNumber) • \(sm.courtNumber)")
+                                        .font(.system(size: 10, weight: .black))
+                                        .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
+                                    Spacer()
+                                    if sm.isCompleted {
+                                        Text("SCORED ✓")
+                                            .font(.system(size: 9, weight: .black))
                                             .foregroundColor(.green)
+                                    } else {
+                                        Text("Scheduled")
+                                            .font(.system(size: 9, weight: .medium))
+                                            .foregroundColor(.secondary)
                                     }
                                 }
-                                .padding(.top, 2)
+                                
+                                HStack {
+                                    Text(resolveNames(sm.team1PlayerIds))
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(Color(.label))
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Text("VS")
+                                        .font(.system(size: 10, weight: .black))
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 6)
+                                    Spacer()
+                                    Text(resolveNames(sm.team2PlayerIds))
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(Color(.label))
+                                        .lineLimit(1)
+                                }
+                                
+                                if !sm.restingPlayerIds.isEmpty {
+                                    Text("⏸ Resting: \(resolveNames(sm.restingPlayerIds))")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                if let s1 = sm.team1Score, let s2 = sm.team2Score {
+                                    HStack {
+                                        Text("Score: \(s1) – \(s2)")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(Color(.label))
+                                        if sm.isCompleted, let win = sm.winningTeam {
+                                            Text("(Team \(win) Won)")
+                                                .font(.system(size: 10, weight: .bold))
+                                                .foregroundColor(.green)
+                                        }
+                                    }
+                                    .padding(.top, 2)
+                                }
                             }
+                            .padding(8)
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color(.separator).opacity(0.4), lineWidth: 0.8)
+                            )
                         }
-                        .padding(8)
-                        .background(Color(.systemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color(.separator).opacity(0.4), lineWidth: 0.8)
-                        )
+                        
+                        Button {
+                            gameForRandomTeams = game
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text("🎲 Regenerate / Adjust Matches")
+                                    .font(.system(size: 11, weight: .bold))
+                            }
+                            .foregroundColor(Color(red: 0.92, green: 0.35, blue: 0.05))
+                            .frame(maxWidth: .infinity, minHeight: 32)
+                            .background(Color.orange.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.borderless)
+                        .padding(.top, 2)
                     }
                 }
             }
@@ -764,12 +830,17 @@ public struct ConfirmedGamesView: View {
                 
                 Menu {
                     Button {
+                        gameForRandomTeams = game
+                    } label: {
+                        Label("Generate Matches", systemImage: "dice")
+                    }
+                    Button {
                         qrGameForSheet = game
                     } label: {
                         Label("QR Code / Share", systemImage: "qrcode")
                     }
                     Button {
-                        navigateToGameId = game.id
+                        navigationPath.append(game.id)
                     } label: {
                         Label("Match Chat (\(game.messages.count))", systemImage: "message")
                     }
@@ -824,7 +895,7 @@ public struct ConfirmedGamesView: View {
                 .buttonStyle(.borderless)
                 
                 Button {
-                    navigateToGameId = game.id
+                    navigationPath.append(game.id)
                 } label: {
                     ZStack(alignment: .topTrailing) {
                         VStack(spacing: 2) {
@@ -877,6 +948,28 @@ public struct ConfirmedGamesView: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color(red: 0.99, green: 0.78, blue: 0.78), lineWidth: 0.8)
+                        )
+                    }
+                    .buttonStyle(.borderless)
+                } else if let uid = dataManager.currentUser?.id, game.waitlistPlayerIds.contains(uid) {
+                    Button {
+                        let res = dataManager.leaveWaitlist(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        VStack(spacing: 2) {
+                            Text("Leave\nWaitlist")
+                                .font(.system(size: 9, weight: .black))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(-2)
+                        }
+                        .frame(width: 52, height: 46)
+                        .background(Color.purple.opacity(0.1))
+                        .foregroundColor(.purple)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.purple.opacity(0.3), lineWidth: 0.8)
                         )
                     }
                     .buttonStyle(.borderless)
@@ -959,14 +1052,15 @@ public struct ConfirmedGamesView: View {
 
     private func gameRow(_ game: SetGame) -> some View {
         let currentUserId = dataManager.currentUser?.id
-        let isMyGame = currentUserId != nil && (
-            game.allPlayerIds.contains(currentUserId!) ||
-            game.hostPlayerId == currentUserId!
-        )
-        let isHost = currentUserId != nil && (
-            (game.hostPlayerId != nil && game.hostPlayerId == currentUserId!) ||
-            (game.team1PlayerIds.first == currentUserId!)
-        )
+        let isMyGame: Bool
+        let isHost: Bool
+        if let uid = currentUserId {
+            isMyGame = game.allPlayerIds.contains(uid) || game.hostPlayerId == uid
+            isHost = (game.hostPlayerId != nil && game.hostPlayerId == uid) || (game.team1PlayerIds.first == uid)
+        } else {
+            isMyGame = false
+            isHost = false
+        }
         
         return VStack(alignment: .leading, spacing: 10) {
             cardHeader(game: game, isMyGame: isMyGame, isHost: isHost)
