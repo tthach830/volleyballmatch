@@ -60,7 +60,7 @@ struct SetGamesApp: App {
         WindowGroup {
             RootView()
         }
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
                 NotificationService.shared.beginBackgroundKeepAlive()
             } else if newPhase == .active {
