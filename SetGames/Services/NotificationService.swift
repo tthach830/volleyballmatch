@@ -99,13 +99,20 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         }
     }
     
-    // Display banner even when app is in foreground
+    // MARK: - Push Deduplication Cache
+    private static var recentPushes = [String: Date]()
+    private static let pushLock = NSLock()
+    
+    // When the app is actively in the foreground, suppress system drop-down banners (.banner, .list)
+    // because the app displays its own clean in-app toast view (NotificationToastView).
+    // System banners, sound, and list display are handled automatically by iOS when the app
+    // is in the background, locked, or killed.
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([.banner, .sound, .badge, .list])
+        completionHandler([.badge])
     }
     
     // MARK: - Direct APNs Push Implementation ($0 Cost, Zero Backend)
@@ -167,6 +174,20 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
             .trimmingCharacters(in: .whitespacesAndNewlines)
             
         guard !cleanToken.isEmpty else { return }
+        
+        let dedupKey = "\(cleanToken):::\(title):::\(body)"
+        Self.pushLock.lock()
+        if let lastSent = Self.recentPushes[dedupKey], Date().timeIntervalSince(lastSent) < 15.0 {
+            Self.pushLock.unlock()
+            print("ℹ️ [APNs] Debounced duplicate push to \(cleanToken.prefix(8))... within 15s")
+            return
+        }
+        Self.recentPushes[dedupKey] = Date()
+        if Self.recentPushes.count > 100 {
+            let now = Date()
+            Self.recentPushes = Self.recentPushes.filter { now.timeIntervalSince($0.value) < 60 }
+        }
+        Self.pushLock.unlock()
         
         var bgTask: UIBackgroundTaskIdentifier = .invalid
         bgTask = UIApplication.shared.beginBackgroundTask(withName: "APNsDirectDispatch") {

@@ -157,24 +157,46 @@ const server = http.createServer((req, res) => {
     req.on("end", async () => {
       try {
         const body = JSON.parse(bodyData || "{}");
-        const tokens = Array.isArray(body.tokens) ? body.tokens : (body.token ? [body.token] : []);
+        const rawTokens = Array.isArray(body.tokens) ? body.tokens : (body.token ? [body.token] : []);
+        // Strictly deduplicate device tokens
+        const tokens = Array.from(new Set(rawTokens.map(t => typeof t === "string" ? t.trim() : "").filter(Boolean)));
         const title = body.title || "🏐 Volleyball Match Alert";
         const msg = body.body || "New match message received";
         const gameId = body.gameId || null;
+        const messageId = body.messageId || null;
+
+        if (messageId) {
+          seenMsgIds.add(messageId);
+        }
 
         if (tokens.length === 0) {
           res.writeHead(400, { "Content-Type": "application/json" });
           return res.end(JSON.stringify({ error: "No tokens provided" }));
         }
 
-        console.log(`\n📲 [API] Sending push to ${tokens.length} device(s): "${title}" - "${msg}"`);
+        const now = Date.now();
+        const tokensToSend = [];
         for (const t of tokens) {
-          pushedTokensRecently.set(t, Date.now());
+          const pushKey = `${t}:::${title}:::${msg}`;
+          const lastPushed = pushedTokensRecently.get(pushKey) || 0;
+          if (now - lastPushed > 15000) {
+            pushedTokensRecently.set(pushKey, now);
+            tokensToSend.push(t);
+          } else {
+            console.log(`ℹ️ [API] Debouncing duplicate push for token ${t.slice(0, 8)}...`);
+          }
         }
-        const results = await Promise.all(tokens.map(t => sendApnsPush(t, title, msg, gameId)));
+
+        if (tokensToSend.length === 0) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ success: true, count: 0, debounced: true }));
+        }
+
+        console.log(`\n📲 [API] Sending push to ${tokensToSend.length} device(s): "${title}" - "${msg}"`);
+        const results = await Promise.all(tokensToSend.map(t => sendApnsPush(t, title, msg, gameId)));
 
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, count: tokens.length, results }));
+        res.end(JSON.stringify({ success: true, count: tokensToSend.length, results }));
       } catch (err) {
         console.error("API error:", err);
         res.writeHead(500, { "Content-Type": "application/json" });
@@ -283,6 +305,8 @@ async function checkFirestoreNewMessages() {
       for (const m of msgs) {
         const fields = m.mapValue?.fields || {};
         const msgId = fields.id?.stringValue;
+        const origin = fields.origin?.stringValue;
+        const senderId = fields.senderId?.stringValue;
         const senderName = fields.senderName?.stringValue || "Player";
         const text = fields.text?.stringValue || "";
         if (!msgId) continue;
@@ -292,26 +316,47 @@ async function checkFirestoreNewMessages() {
           continue;
         }
 
+        // Messages created on iOS already had direct APNs pushes dispatched by the iOS client.
+        if (origin === "ios") {
+          seenMsgIds.add(msgId);
+          continue;
+        }
+
         if (!seenMsgIds.has(msgId)) {
           seenMsgIds.add(msgId);
           console.log(`\n🔔 [Watcher] New match message: "${text}" by ${senderName} in "${title}"`);
           
           const tokenMap = await getPlayerTokens();
-          const targetTokens = allParticipants.map(pid => tokenMap[pid]).filter(Boolean);
+          // Exclude the sender from receiving a remote push for their own message
+          const targetParticipantIds = allParticipants.filter(pid => pid !== senderId);
+          const targetTokens = Array.from(new Set(targetParticipantIds.map(pid => tokenMap[pid]).filter(t => t && typeof t === "string" && t.trim().length > 0)));
 
           for (const token of targetTokens) {
+            const pushKey = `${token}:::🏐 Volleyball Match Alert:::${senderName} (${title}): "${text}"`;
             const now = Date.now();
-            const lastPushed = pushedTokensRecently.get(token) || 0;
-            if (now - lastPushed > 3000) {
-              pushedTokensRecently.set(token, now);
+            const lastPushed = pushedTokensRecently.get(pushKey) || 0;
+            if (now - lastPushed > 15000) {
+              pushedTokensRecently.set(pushKey, now);
               console.log(`📲 [Watcher] Dispatching APNs push to token (${token.slice(0, 8)}...)`);
               sendApnsPush(token, "🏐 Volleyball Match Alert", `${senderName} (${title}): "${text}"`, gameId);
+            } else {
+              console.log(`ℹ️ [Watcher] Skipping duplicate push for (${token.slice(0, 8)}...) within 15s`);
             }
           }
         }
       }
     }
     isInitialWatcherRun = false;
+    
+    // Prune stale cache entries
+    if (pushedTokensRecently.size > 200) {
+      const now = Date.now();
+      for (const [k, timestamp] of pushedTokensRecently.entries()) {
+        if (now - timestamp > 60000) {
+          pushedTokensRecently.delete(k);
+        }
+      }
+    }
   } catch (err) {
     // Ignore polling blips
   }

@@ -157,17 +157,19 @@ public struct GameChatMessage: Identifiable, Codable, Hashable {
     public var senderName: String
     public var text: String
     public var date: Date
+    public var origin: String?
     
-    public init(id: UUID = UUID(), senderId: UUID, senderName: String, text: String, date: Date = Date()) {
+    public init(id: UUID = UUID(), senderId: UUID, senderName: String, text: String, date: Date = Date(), origin: String? = "ios") {
         self.id = id
         self.senderId = senderId
         self.senderName = senderName
         self.text = text
         self.date = date
+        self.origin = origin
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, senderId, senderName, text, date
+        case id, senderId, senderName, text, date, origin
     }
     
     public init(from decoder: Decoder) throws {
@@ -190,6 +192,7 @@ public struct GameChatMessage: Identifiable, Codable, Hashable {
         
         senderName = (try? c.decode(String.self, forKey: .senderName)) ?? "Player"
         text = (try? c.decode(String.self, forKey: .text)) ?? ""
+        origin = try? c.decodeIfPresent(String.self, forKey: .origin)
         
         if let d = try? c.decode(Date.self, forKey: .date) {
             date = d
@@ -220,6 +223,7 @@ public struct GameChatMessage: Identifiable, Codable, Hashable {
         try c.encode(senderName, forKey: .senderName)
         try c.encode(text, forKey: .text)
         try c.encode(date, forKey: .date)
+        try c.encodeIfPresent(origin, forKey: .origin)
     }
     
     public var formattedTime: String {

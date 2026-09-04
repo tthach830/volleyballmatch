@@ -49,7 +49,8 @@ public class DataManager: ObservableObject {
             relatedGameId: relatedGameId
         )
         notifications.insert(notif, at: 0)
-        NotificationService.shared.sendSystemNotification(title: title, body: message)
+        // Foreground in-app notification: trigger custom SwiftUI toast.
+        // Local system banner is omitted here to prevent duplicate banner overlays while in app.
         NotificationService.shared.triggerInAppToast(notif)
     }
     
@@ -850,27 +851,37 @@ public class DataManager: ObservableObject {
             }
         }
         
-        // Notify other players that the match was cancelled
+        // Notify other players that the match was cancelled (deduplicated by physical device token)
         let otherPlayerIds = Set(game.allPlayerIds + game.waitlistPlayerIds).subtracting([user.id])
+        var cancelTokens = Set<String>()
+        var missingCancelTokenPids = [UUID]()
         for pid in otherPlayerIds {
             let p = player(for: pid)
             if let token = p.deviceToken, !token.isEmpty {
-                NotificationService.shared.sendDirectRemotePush(
-                    to: token,
-                    title: "Volleyball Match Alert",
-                    body: "The host cancelled '\(game.title)'.",
-                    gameId: game.id
-                )
+                if token != user.deviceToken {
+                    cancelTokens.insert(token)
+                }
             } else {
-                FirestoreService.shared.fetchDeviceToken(for: pid) { token in
-                    if let token = token, !token.isEmpty {
-                        NotificationService.shared.sendDirectRemotePush(
-                            to: token,
-                            title: "Volleyball Match Alert",
-                            body: "The host cancelled '\(game.title)'.",
-                            gameId: game.id
-                        )
-                    }
+                missingCancelTokenPids.append(pid)
+            }
+        }
+        for token in cancelTokens {
+            NotificationService.shared.sendDirectRemotePush(
+                to: token,
+                title: "Volleyball Match Alert",
+                body: "The host cancelled '\(game.title)'.",
+                gameId: game.id
+            )
+        }
+        for pid in missingCancelTokenPids {
+            FirestoreService.shared.fetchDeviceToken(for: pid) { token in
+                if let token = token, !token.isEmpty, token != user.deviceToken {
+                    NotificationService.shared.sendDirectRemotePush(
+                        to: token,
+                        title: "Volleyball Match Alert",
+                        body: "The host cancelled '\(game.title)'.",
+                        gameId: game.id
+                    )
                 }
             }
         }
@@ -955,7 +966,8 @@ public class DataManager: ObservableObject {
             senderId: user.id,
             senderName: senderName,
             text: trimmed,
-            date: Date()
+            date: Date(),
+            origin: "ios"
         )
         
         games[index].messages.append(newMsg)
@@ -971,26 +983,39 @@ public class DataManager: ObservableObject {
         recipientIds.remove(user.id)
         
         let gameTitle = game.title
+        var tokensToSend = Set<String>()
+        var missingTokenRecipientIds = [UUID]()
+        
         for recipientId in recipientIds {
             if let recipient = players.first(where: { $0.id == recipientId }),
                let token = recipient.deviceToken,
                !token.isEmpty {
-                NotificationService.shared.sendDirectRemotePush(
-                    to: token,
-                    title: "💬 \(senderName) (\(gameTitle))",
-                    body: trimmed,
-                    gameId: gameId
-                )
+                if token != user.deviceToken {
+                    tokensToSend.insert(token)
+                }
             } else {
-                FirestoreService.shared.fetchDeviceToken(for: recipientId) { token in
-                    if let token = token, !token.isEmpty {
-                        NotificationService.shared.sendDirectRemotePush(
-                            to: token,
-                            title: "💬 \(senderName) (\(gameTitle))",
-                            body: trimmed,
-                            gameId: gameId
-                        )
-                    }
+                missingTokenRecipientIds.append(recipientId)
+            }
+        }
+        
+        for token in tokensToSend {
+            NotificationService.shared.sendDirectRemotePush(
+                to: token,
+                title: "💬 \(senderName) (\(gameTitle))",
+                body: trimmed,
+                gameId: gameId
+            )
+        }
+        
+        for recipientId in missingTokenRecipientIds {
+            FirestoreService.shared.fetchDeviceToken(for: recipientId) { token in
+                if let token = token, !token.isEmpty, token != user.deviceToken {
+                    NotificationService.shared.sendDirectRemotePush(
+                        to: token,
+                        title: "💬 \(senderName) (\(gameTitle))",
+                        body: trimmed,
+                        gameId: gameId
+                    )
                 }
             }
         }

@@ -512,7 +512,7 @@ window.promoteWaitlistPlayer = (gameId, playerId) => {
 
   // Dispatch APNs push
   const token = promoted.deviceToken;
-  if (token) {
+  if (token && token !== state.currentUser?.deviceToken) {
     fetch("/api/send-push", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -582,7 +582,7 @@ window.removePlayerFromPool = (gameId, playerId) => {
   showToast(`Removed ${pName} from the match.` + (promotedPlayerName ? ` ${promotedPlayerName} was auto-promoted!` : ""));
 
   // Dispatch APNs push alerts
-  if (p && p.deviceToken) {
+  if (p && p.deviceToken && p.deviceToken !== state.currentUser?.deviceToken) {
     fetch("/api/send-push", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -595,7 +595,7 @@ window.removePlayerFromPool = (gameId, playerId) => {
     }).catch(err => console.log("Push note:", err));
   }
 
-  if (promotedPlayer && promotedPlayer.deviceToken) {
+  if (promotedPlayer && promotedPlayer.deviceToken && promotedPlayer.deviceToken !== state.currentUser?.deviceToken) {
     fetch("/api/send-push", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2127,8 +2127,9 @@ window.deleteGame = (gameId) => {
 
   // Notify other players via APNs push
   const currentUid = state.currentUser?.id;
+  const currentToken = state.currentUser?.deviceToken;
   const otherIds = [...new Set([...(game.team1PlayerIds || []), ...(game.team2PlayerIds || []), ...(game.waitlistPlayerIds || [])])].filter(id => id !== currentUid);
-  const tokens = otherIds.map(id => state.getPlayer(id)?.deviceToken).filter(Boolean);
+  const tokens = Array.from(new Set(otherIds.map(id => state.getPlayer(id)?.deviceToken).filter(t => t && typeof t === "string" && t.trim().length > 0 && t !== currentToken)));
   if (tokens.length > 0) {
     fetch("/api/send-push", {
       method: "POST",
@@ -2421,7 +2422,8 @@ window.postChatMessage = (gameId, text) => {
     senderId: state.currentUser.id,
     senderName: senderName,
     text: text,
-    date: new Date().toISOString()
+    date: new Date().toISOString(),
+    origin: "web"
   };
 
   game.messages.push(newMsg);
@@ -2433,17 +2435,20 @@ window.postChatMessage = (gameId, text) => {
 
   // Dispatch APNs push to match participants ($0 Serverless / Local Relay)
   try {
+    const currentUid = state.currentUser.id;
+    const currentToken = state.currentUser.deviceToken;
     const participantIds = [
       ...(game.team1PlayerIds || []),
       ...(game.team2PlayerIds || []),
       ...(game.waitlistPlayerIds || []),
       ...(game.hostPlayerId ? [game.hostPlayerId] : [])
-    ].filter(Boolean);
+    ].filter(id => id && id !== currentUid);
 
     const uniqueIds = Array.from(new Set(participantIds));
-    const recipientTokens = uniqueIds
+    const rawTokens = uniqueIds
       .map(id => state.getPlayer(id)?.deviceToken)
-      .filter(t => t && typeof t === "string" && t.trim().length > 0);
+      .filter(t => t && typeof t === "string" && t.trim().length > 0 && t !== currentToken);
+    const recipientTokens = Array.from(new Set(rawTokens));
 
     if (recipientTokens.length > 0) {
       fetch("/api/send-push", {
@@ -2453,7 +2458,8 @@ window.postChatMessage = (gameId, text) => {
           tokens: recipientTokens,
           title: "🏐 Volleyball Match Alert",
           body: `${senderName} (${game.title || "Match"}): "${text}"`,
-          gameId: gameId
+          gameId: gameId,
+          messageId: newMsg.id
         })
       }).catch(err => console.log("Push note:", err));
     }
