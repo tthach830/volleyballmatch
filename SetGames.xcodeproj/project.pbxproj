@@ -439,6 +439,8 @@
 				DEVELOPMENT_TEAM = Z4WJ2G9N79;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SetGames/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Volleyball Match";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -469,6 +471,8 @@
 				DEVELOPMENT_TEAM = Z4WJ2G9N79;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SetGames/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Volleyball Match";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
