@@ -31,3 +31,6 @@ Package.resolved
 node_modules/
 .env.local
 .env.*.local
+*.p8
+keys/
+functions/node_modules/
