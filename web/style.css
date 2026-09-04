@@ -3,9 +3,12 @@
   --primary-dark: #ea580c;
   --primary-light: #fff7ed;
   --accent: #ff6a00;
+  --accent-orange: #ff6a00;
   --accent-light: #fff3e6;
   --bg: #f2f2f7;
+  --bg-main: #f2f2f7;
   --card-bg: #ffffff;
+  --bg-card: #ffffff;
   --text-main: #000000;
   --text-muted: #8e8e93;
   --border: rgba(60, 60, 67, 0.12);

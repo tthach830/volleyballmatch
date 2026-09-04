@@ -1997,12 +1997,12 @@ window.renderChatMessages = () => {
     const isMe = state.currentUser && m.senderId === state.currentUser.id;
     const timeStr = new Date(m.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     return `
-      <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; margin-bottom:4px;">
-        ${!isMe ? `<span style="font-size:10px; font-weight:700; color:var(--text-muted); margin-bottom:2px;">${m.senderName}</span>` : ''}
-        <div style="max-width:80%; padding:8px 12px; border-radius:14px; font-size:13px; ${isMe ? 'background:var(--accent-orange); color:#fff;' : 'background:var(--bg-main); color:var(--text-main); border:1px solid var(--border);'}">
+      <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; margin-bottom:6px;">
+        ${!isMe ? `<span style="font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:2px; margin-left:4px;">${m.senderName}</span>` : ''}
+        <div style="max-width:80%; padding:9px 13px; border-radius:14px; font-size:13.5px; font-weight:500; word-break:break-word; line-height:1.4; ${isMe ? 'background:#ff6a00; color:#ffffff; box-shadow:0 1px 4px rgba(255,106,0,0.3);' : 'background:#ffffff; color:#0f172a; border:1px solid rgba(0,0,0,0.12); box-shadow:0 1px 3px rgba(0,0,0,0.05);'}">
           ${m.text}
         </div>
-        <span style="font-size:9px; color:var(--text-muted); margin-top:2px;">${timeStr}</span>
+        <span style="font-size:10px; color:var(--text-muted); margin-top:2px; margin-right:${isMe ? '4px' : '0'}; margin-left:${!isMe ? '4px' : '0'};">${timeStr}</span>
       </div>
     `;
   }).join("");

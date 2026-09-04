@@ -729,13 +729,13 @@
         </div>
 
         <!-- Chat Feed -->
-        <div id="chat-messages-container" style="flex: 1; min-height: 200px; max-height: 320px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+        <div id="chat-messages-container" style="flex: 1; min-height: 200px; max-height: 320px; overflow-y: auto; background: #f8fafc; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
           <!-- Injected via JavaScript -->
         </div>
 
         <!-- Message Input -->
         <form id="match-chat-form" onsubmit="window.handleSendChatMessage(event)" style="display: flex; gap: 8px;">
-          <input type="text" id="chat-input" class="form-input" style="flex: 1;" placeholder="Type a message or ETA..." required>
+          <input type="text" id="chat-input" class="form-input" style="flex: 1; color: #0f172a; background: #ffffff;" placeholder="Type a message or ETA..." required>
           <button type="submit" class="btn btn-primary" style="padding: 0 16px;">Send</button>
         </form>
       </div>
@@ -887,6 +887,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=2.6"></script>
+  <script type="module" src="app.js?v=2.7"></script>
 </body>
 </html>
