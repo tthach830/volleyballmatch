@@ -16,6 +16,7 @@ public struct GameDetailView: View {
     @State private var selectedSubMatchForScore: SubMatch? = nil
     @State private var showQRCodeSheet: Bool = false
     @State private var isMatchesCollapsed: Bool = false
+    @State private var isChatCollapsed: Bool = false
     
     public init(dataManager: DataManager, gameId: UUID) {
         self.dataManager = dataManager
@@ -843,87 +844,140 @@ public struct GameDetailView: View {
     
     private func matchChatSection(game: SetGame) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isChatCollapsed.toggle()
+                }
+            } label: {
+                HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .foregroundColor(.orange)
+                        Text("CHAT")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.secondary)
+                        
+                        if !game.messages.isEmpty {
+                            Text("(\(game.messages.count))")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Prominent, interactive Collapse/Expand capsule button
+                    HStack(spacing: 4) {
+                        Text(isChatCollapsed ? "Expand" : "Collapse")
+                            .font(.system(size: 11, weight: .bold))
+                        Image(systemName: isChatCollapsed ? "chevron.down" : "chevron.up")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.orange.opacity(0.12))
                     .foregroundColor(.orange)
-                Text("MATCH CHAT & ETA")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-                
-                if !game.messages.isEmpty {
-                    Text("\(game.messages.count) messages")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.secondary)
+                    .clipShape(Capsule())
                 }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             
-            // Quick Pre-text Chips
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    quickChip(title: "🏃‍♂️ omw", text: "omw", gameId: game.id)
-                    quickChip(title: "⏳ 5 min late", text: "5 min late", gameId: game.id)
-                    quickChip(title: "⏰ 10 min late", text: "10 min late", gameId: game.id)
-                    quickChip(title: "🏐 Got a court", text: "Got a court", gameId: game.id)
+            if isChatCollapsed {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        isChatCollapsed = false
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.system(size: 13))
+                            .foregroundColor(.orange)
+                        Text(game.messages.isEmpty ? "Chat collapsed" : "\(game.messages.count) message\(game.messages.count > 1 ? "s" : "") hidden")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Text("Tap to Expand")
+                                .font(.system(size: 11, weight: .bold))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundColor(.orange)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(UIColor.tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.vertical, 2)
-            }
-            
-            // Messages Feed
-            VStack(spacing: 8) {
-                if game.messages.isEmpty {
-                    Text("No messages yet. Tap a quick status above or type a message below.")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 12)
-                } else {
-                    ForEach(game.messages) { msg in
-                        let isMe = msg.senderId == dataManager.currentUser?.id
-                        HStack {
-                            if isMe { Spacer(minLength: 40) }
-                            VStack(alignment: isMe ? .trailing : .leading, spacing: 2) {
-                                if !isMe {
-                                    Text(msg.senderName)
-                                        .font(.system(size: 10, weight: .bold))
+                .buttonStyle(.plain)
+            } else {
+                // Quick Pre-text Chips
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        quickChip(title: "🏃‍♂️ omw", text: "omw", gameId: game.id)
+                        quickChip(title: "⏳ 5 min late", text: "5 min late", gameId: game.id)
+                        quickChip(title: "⏰ 10 min late", text: "10 min late", gameId: game.id)
+                        quickChip(title: "🏐 Got a court", text: "Got a court", gameId: game.id)
+                    }
+                    .padding(.vertical, 2)
+                }
+                
+                // Messages Feed
+                VStack(spacing: 8) {
+                    if game.messages.isEmpty {
+                        Text("No messages yet. Tap a quick status above or type a message below.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 12)
+                    } else {
+                        ForEach(game.messages) { msg in
+                            let isMe = msg.senderId == dataManager.currentUser?.id
+                            HStack {
+                                if isMe { Spacer(minLength: 40) }
+                                VStack(alignment: isMe ? .trailing : .leading, spacing: 2) {
+                                    if !isMe {
+                                        Text(msg.senderName)
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Text(msg.text)
+                                        .font(.system(size: 13))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(isMe ? Color.orange : Color(UIColor.secondarySystemGroupedBackground))
+                                        .foregroundColor(isMe ? .white : .primary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    Text(msg.formattedTime)
+                                        .font(.system(size: 9))
                                         .foregroundColor(.secondary)
                                 }
-                                Text(msg.text)
-                                    .font(.system(size: 13))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(isMe ? Color.orange : Color(UIColor.secondarySystemGroupedBackground))
-                                    .foregroundColor(isMe ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                                Text(msg.formattedTime)
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.secondary)
+                                if !isMe { Spacer(minLength: 40) }
                             }
-                            if !isMe { Spacer(minLength: 40) }
                         }
                     }
                 }
-            }
-            .padding(10)
-            .background(Color(UIColor.tertiarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            
-            // Message Input
-            HStack(spacing: 8) {
-                TextField("Message match players...", text: $chatInputText)
-                    .textFieldStyle(.roundedBorder)
+                .padding(10)
+                .background(Color(UIColor.tertiarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
                 
-                Button {
-                    let text = chatInputText
-                    chatInputText = ""
-                    dataManager.sendMatchMessage(gameId: game.id, text: text)
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundColor(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .orange)
+                // Message Input
+                HStack(spacing: 8) {
+                    TextField("Message match players...", text: $chatInputText)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    Button {
+                        let text = chatInputText
+                        chatInputText = ""
+                        dataManager.sendMatchMessage(gameId: game.id, text: text)
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 26))
+                            .foregroundColor(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .orange)
+                    }
+                    .disabled(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .disabled(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding()
