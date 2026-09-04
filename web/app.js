@@ -277,6 +277,7 @@ class AppState {
     this.availabilitySlots = JSON.parse(localStorage.getItem("setgames_slots")) || [];
     this.pickupQueue = [];
     this.selectedLadderTier = "All";
+    this.collapsedMatches = {};
     
     // Active user session
     const savedUserId = localStorage.getItem("setgames_current_user_id");
@@ -446,6 +447,12 @@ window.leaveWaitlist = (gameId) => {
   state.saveLocal();
   renderMatches();
   showToast(`Removed from waitlist for ${game.title}.`);
+};
+
+window.toggleMatchesCollapse = (gameId) => {
+  state.collapsedMatches = state.collapsedMatches || {};
+  state.collapsedMatches[gameId] = !state.collapsedMatches[gameId];
+  renderMatches();
 };
 
 window.updateSubMatchScoreWeb = (gameId, matchId) => {
@@ -624,6 +631,8 @@ function renderMatches() {
     const subMatchesBadge = (game.subMatches && game.subMatches.length > 0) ? 
       `<span class="badge" style="background:rgba(168, 85, 247, 0.15); color:#a855f7; font-weight:800; font-size:10px; margin-right:4px;">🎾 ${game.subMatches.length} Matches</span>` : '';
 
+    const isMatchesCollapsed = !!(state.collapsedMatches && state.collapsedMatches[game.id]);
+
     const pCount = game.maxPlayers || 4;
     const formatLabel = pCount === 2 ? "1v1 Singles" : pCount === 6 ? "3v3 Triples" : "2v2 Doubles";
     const playersBadge = `<span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; font-size:10px; margin-right:4px;">👥 ${formatLabel}</span>`;
@@ -728,11 +737,19 @@ function renderMatches() {
 
         <!-- Matches in this Game Section -->
         <div style="margin: 14px 0;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">
+          <div 
+            onclick="window.toggleMatchesCollapse('${game.id}')"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0);"
+            title="Click to ${isMatchesCollapsed ? 'expand' : 'collapse'} matches"
+          >
+            <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
               🎾 Matches in This Game (${(game.subMatches || []).length})
             </span>
+            <span style="font-size: 11px; font-weight: 700; color: var(--accent, #6366f1); display: flex; align-items: center; gap: 4px;">
+              ${isMatchesCollapsed ? 'Show ▼' : 'Hide ▲'}
+            </span>
           </div>
+          ${isMatchesCollapsed ? '' : `
           ${(!game.subMatches || game.subMatches.length === 0) ? `
             <div style="background: rgba(168, 85, 247, 0.05); border: 1px dashed rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
               <div style="font-size: 26px; margin-bottom: 4px;">🎲</div>
@@ -787,6 +804,7 @@ function renderMatches() {
                 </button>
               </div>
             </div>
+          `}
           `}
         </div>
 

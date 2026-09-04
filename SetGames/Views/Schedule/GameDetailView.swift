@@ -15,6 +15,7 @@ public struct GameDetailView: View {
     @State private var showAlert: Bool = false
     @State private var selectedSubMatchForScore: SubMatch? = nil
     @State private var showQRCodeSheet: Bool = false
+    @State private var isMatchesCollapsed: Bool = false
     
     public init(dataManager: DataManager, gameId: UUID) {
         self.dataManager = dataManager
@@ -251,81 +252,94 @@ public struct GameDetailView: View {
                         
                         // Matches in this Game
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "circle.grid.2x2.fill")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.orange)
-                                    Text("MATCHES IN THIS GAME")
-                                        .font(.system(size: 11, weight: .bold))
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isMatchesCollapsed.toggle()
+                                }
+                            } label: {
+                                HStack {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "circle.grid.2x2.fill")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.orange)
+                                        Text("MATCHES IN THIS GAME")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    if !game.subMatches.isEmpty {
+                                        Text("\(game.subMatches.count) Match\(game.subMatches.count > 1 ? "es" : "")")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(.purple)
+                                    }
+                                    Image(systemName: isMatchesCollapsed ? "chevron.down" : "chevron.up")
+                                        .font(.system(size: 12, weight: .bold))
                                         .foregroundColor(.secondary)
                                 }
-                                Spacer()
-                                if !game.subMatches.isEmpty {
-                                    Text("\(game.subMatches.count) Match\(game.subMatches.count > 1 ? "es" : "")")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundColor(.purple)
-                                }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                             .padding(.horizontal)
                             
-                            if game.subMatches.isEmpty {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "dice.fill")
-                                        .font(.system(size: 34))
-                                        .foregroundColor(.purple)
-                                    Text("No Matches Generated Yet")
-                                        .font(.system(size: 15, weight: .bold))
-                                    Text("Generate fair 2v2 doubles or King of the Court tournament matches for the \(game.allPlayerIds.count) players in this game's pool.")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal)
-                                    
-                                    Button {
-                                        showRandomTeamsSheet = true
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: "dice.fill")
-                                            Text("🎲 Random Generate Matches")
-                                                .fontWeight(.bold)
-                                        }
-                                        .padding(.horizontal, 18)
-                                        .padding(.vertical, 10)
-                                        .background(Color.purple)
-                                        .foregroundColor(.white)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(20)
-                                .background(Color(UIColor.secondarySystemGroupedBackground))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
-                                .padding(.horizontal)
-                            } else {
-                                VStack(spacing: 10) {
-                                    ForEach(game.subMatches) { subM in
-                                        subMatchCard(subM, game: game)
-                                    }
-                                    
-                                    if isUserInMatch && game.status != .completed {
+                            if !isMatchesCollapsed {
+                                if game.subMatches.isEmpty {
+                                    VStack(spacing: 12) {
+                                        Image(systemName: "dice.fill")
+                                            .font(.system(size: 34))
+                                            .foregroundColor(.purple)
+                                        Text("No Matches Generated Yet")
+                                            .font(.system(size: 15, weight: .bold))
+                                        Text("Generate fair 2v2 doubles or King of the Court tournament matches for the \(game.allPlayerIds.count) players in this game's pool.")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal)
+                                        
                                         Button {
                                             showRandomTeamsSheet = true
                                         } label: {
                                             HStack {
-                                                Image(systemName: "arrow.clockwise")
-                                                Text("Regenerate Matches")
+                                                Image(systemName: "dice.fill")
+                                                Text("🎲 Random Generate Matches")
+                                                    .fontWeight(.bold)
                                             }
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundColor(.purple)
-                                            .frame(maxWidth: .infinity)
+                                            .padding(.horizontal, 18)
                                             .padding(.vertical, 10)
-                                            .background(Color.purple.opacity(0.1))
+                                            .background(Color.purple)
+                                            .foregroundColor(.white)
                                             .clipShape(RoundedRectangle(cornerRadius: 10))
                                         }
                                     }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(20)
+                                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .padding(.horizontal)
+                                } else {
+                                    VStack(spacing: 10) {
+                                        ForEach(game.subMatches) { subM in
+                                            subMatchCard(subM, game: game)
+                                        }
+                                        
+                                        if isUserInMatch && game.status != .completed {
+                                            Button {
+                                                showRandomTeamsSheet = true
+                                            } label: {
+                                                HStack {
+                                                    Image(systemName: "arrow.clockwise")
+                                                    Text("Regenerate Matches")
+                                                }
+                                                .font(.system(size: 13, weight: .semibold))
+                                                .foregroundColor(.purple)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 10)
+                                                .background(Color.purple.opacity(0.1))
+                                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal)
                                 }
-                                .padding(.horizontal)
                             }
                         }
                         
