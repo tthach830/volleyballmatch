@@ -17,6 +17,13 @@ public class DataManager: ObservableObject {
             loadMockCommunityData()
         }
         setupFirestoreSync()
+        
+        if currentUser != nil {
+            NotificationService.shared.requestPermission()
+            if let token = NotificationService.shared.apnsDeviceToken {
+                updateDeviceToken(token)
+            }
+        }
     }
     
     public var unreadNotificationsCount: Int {
@@ -48,6 +55,18 @@ public class DataManager: ObservableObject {
     
     // MARK: - User Session & Sign Up / Login
     
+    public func updateDeviceToken(_ token: String) {
+        guard let current = currentUser else { return }
+        if current.deviceToken != token {
+            if let idx = players.firstIndex(where: { $0.id == current.id }) {
+                players[idx].deviceToken = token
+                currentUser = players[idx]
+            }
+            saveToDisk()
+            FirestoreService.shared.saveDeviceToken(playerId: current.id, token: token)
+        }
+    }
+    
     public static func normalizePhoneNumber(_ phone: String) -> String {
         phone.filter { $0.isNumber }
     }
@@ -71,6 +90,9 @@ public class DataManager: ObservableObject {
             currentUser = player
             saveToDisk()
             NotificationService.shared.requestPermission()
+            if let token = NotificationService.shared.apnsDeviceToken {
+                updateDeviceToken(token)
+            }
             return (true, "Welcome back, \(player.nickname.isEmpty ? player.name : player.nickname)!")
         } else {
             return (false, "No player found with this phone number. Please tap 'New Player' below to register!")
@@ -113,12 +135,18 @@ public class DataManager: ObservableObject {
             uniquePartnerIds: [],
             uniqueOpponentIds: [],
             recentForm: [],
-            bio: "Ready to bump, set, and spike on the sand!"
+            bio: "Ready to bump, set, and spike on the sand!",
+            deviceToken: NotificationService.shared.apnsDeviceToken
         )
         
         players.append(newPlayer)
         currentUser = newPlayer
+        saveToDisk()
+        FirestoreService.shared.savePlayer(newPlayer)
         NotificationService.shared.requestPermission()
+        if let token = NotificationService.shared.apnsDeviceToken {
+            updateDeviceToken(token)
+        }
         
         // Auto-create initial availability slot for this new user for this weekend
         let cal = Calendar.current
@@ -630,18 +658,6 @@ public class DataManager: ObservableObject {
         games[index].messages.append(newMsg)
         saveToDisk()
         FirestoreService.shared.saveGame(games[index])
-        
-        // Notify other players in this match
-        let game = games[index]
-        let otherPlayerIds = (game.allPlayerIds + game.waitlistPlayerIds).filter { $0 != user.id }
-        if !otherPlayerIds.isEmpty || (game.hostPlayerId != user.id) {
-            postNotification(
-                title: "💬 \(senderName) (\(game.title))",
-                message: "\"\(trimmed)\"",
-                type: .matchChat,
-                relatedGameId: game.id
-            )
-        }
         
         return (true, "Message sent!")
     }

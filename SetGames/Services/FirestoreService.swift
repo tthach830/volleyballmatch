@@ -125,6 +125,10 @@ public class FirestoreService: ObservableObject {
         db.collection("players").document(player.id.uuidString).setData(dict, merge: true)
     }
     
+    public func saveDeviceToken(playerId: UUID, token: String) {
+        db.collection("players").document(playerId.uuidString).setData(["deviceToken": token], merge: true)
+    }
+    
     public func saveGame(_ game: SetGame) {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

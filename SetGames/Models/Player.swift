@@ -22,6 +22,7 @@ public struct Player: Identifiable, Codable, Hashable {
     public var starRatingSum: Int
     public var starRatingCount: Int
     public var consecutiveBackouts: Int
+    public var deviceToken: String?
     
     public var isFlaker: Bool {
         consecutiveBackouts >= 3
@@ -53,7 +54,8 @@ public struct Player: Identifiable, Codable, Hashable {
         uniquePartnerIds: [UUID] = [],
         uniqueOpponentIds: [UUID] = [],
         recentForm: [Bool] = [],
-        bio: String = "Beach volleyball enthusiast!"
+        bio: String = "Beach volleyball enthusiast!",
+        deviceToken: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -76,6 +78,7 @@ public struct Player: Identifiable, Codable, Hashable {
         self.uniqueOpponentIds = uniqueOpponentIds
         self.recentForm = recentForm
         self.bio = bio
+        self.deviceToken = deviceToken
     }
     
     public var totalMatches: Int {
@@ -140,7 +143,7 @@ public struct Player: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, name, nickname, avatarEmoji, rating, eloRating, homeBeach, phoneNumber, password
         case wins, losses, streak, pointsScored, pointsAllowed, uniquePartnerIds, uniqueOpponentIds, recentForm, bio
-        case starRatingSum, starRatingCount, consecutiveBackouts
+        case starRatingSum, starRatingCount, consecutiveBackouts, deviceToken
     }
 
     public init(from decoder: Decoder) throws {
@@ -204,5 +207,6 @@ public struct Player: Identifiable, Codable, Hashable {
         
         recentForm = (try? c.decode([Bool].self, forKey: .recentForm)) ?? []
         bio = (try? c.decode(String.self, forKey: .bio)) ?? "Beach volleyball enthusiast!"
+        deviceToken = try? c.decode(String.self, forKey: .deviceToken)
     }
 }
