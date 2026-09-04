@@ -669,7 +669,7 @@ public class DataManager: ObservableObject {
         FirestoreService.shared.saveGame(newGame)
         
         postNotification(
-            title: "🏐 New Match Scheduled",
+            title: "🏐 New Game Scheduled",
             message: "\(newGame.title) was scheduled at \(newGame.courtLocation). Join now!",
             type: .matchConfirmed,
             relatedGameId: newGame.id

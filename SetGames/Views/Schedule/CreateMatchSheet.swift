@@ -5,6 +5,7 @@ public struct CreateMatchSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var title: String = ""
+    @State private var userEditedTitle: Bool = false
     @State private var selectedRatings: Set<RatingTier> = [.b]
     @State private var format: GameFormat = .bestOfThree
     @State private var maxPlayers: Int = 4
@@ -15,8 +16,40 @@ public struct CreateMatchSheet: View {
     @State private var isLevelLocked: Bool = true
     @State private var notes: String = "Bring an official Wilson or Molten beach volleyball!"
     
+    public static func defaultScheduledDate() -> Date {
+        let cal = Calendar.current
+        let tomorrow = Date().addingTimeInterval(3600 * 24)
+        var comps = cal.dateComponents([.year, .month, .day, .hour], from: tomorrow)
+        comps.minute = 0
+        comps.second = 0
+        return cal.date(from: comps) ?? tomorrow
+    }
+    
+    public static func defaultGameTitle(for date: Date) -> String {
+        let dayOfWeekFormatter = DateFormatter()
+        dayOfWeekFormatter.dateFormat = "EEEE"
+        dayOfWeekFormatter.locale = Locale(identifier: "en_US")
+        let dayOfWeek = dayOfWeekFormatter.string(from: date)
+        
+        let cal = Calendar.current
+        let month = cal.component(.month, from: date)
+        let day = cal.component(.day, from: date)
+        let year = cal.component(.year, from: date) % 100
+        let hour24 = cal.component(.hour, from: date)
+        let minute = cal.component(.minute, from: date)
+        
+        let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
+        let ampm = hour24 < 12 ? "AM" : "PM"
+        let timeStr = minute == 0 ? "\(hour12)\(ampm)" : String(format: "%d:%02d%@", hour12, minute, ampm)
+        
+        return "\(dayOfWeek) \(month)/\(day)/\(year) \(timeStr)"
+    }
+    
     public init(dataManager: DataManager) {
         self.dataManager = dataManager
+        let initialDate = Self.defaultScheduledDate()
+        _scheduledDate = State(initialValue: initialDate)
+        _title = State(initialValue: Self.defaultGameTitle(for: initialDate))
         if let user = dataManager.currentUser {
             _selectedRatings = State(initialValue: [user.rating])
             _courtLocation = State(initialValue: user.homeBeach.isEmpty ? "Main Beach" : user.homeBeach)
@@ -34,8 +67,11 @@ public struct CreateMatchSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("MATCH INFORMATION") {
-                    TextField("e.g. Sunset Doubles Clash", text: $title)
+                Section("GAME INFORMATION") {
+                    TextField("Game Title", text: $title)
+                        .onChange(of: title) {
+                            userEditedTitle = true
+                        }
                     
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .center) {
@@ -135,6 +171,11 @@ public struct CreateMatchSheet: View {
                 
                 Section("SCHEDULED DATE & TIME") {
                     DatePicker("Game Time", selection: $scheduledDate, displayedComponents: [.date, .hourAndMinute])
+                        .onChange(of: scheduledDate) {
+                            if !userEditedTitle {
+                                title = Self.defaultGameTitle(for: scheduledDate)
+                            }
+                        }
                 }
                 
                 Section("NOTES FOR PLAYERS") {
@@ -142,7 +183,7 @@ public struct CreateMatchSheet: View {
                         .lineLimit(2...4)
                 }
             }
-            .navigationTitle("Host New Match")
+            .navigationTitle("Host New Game")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -151,10 +192,10 @@ public struct CreateMatchSheet: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Host Match") {
+                    Button("Host Game") {
                         let chosenRatings = RatingTier.allCases.filter { selectedRatings.contains($0) }
                         let primaryRating = chosenRatings.first ?? .b
-                        let defaultTitle = chosenRatings.count > 1 ? "\(chosenRatings.map { $0.rawValue }.joined(separator: "/")) Match" : "\(primaryRating.rawValue) Match"
+                        let defaultTitle = Self.defaultGameTitle(for: scheduledDate)
                         let finalTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? defaultTitle : title.trimmingCharacters(in: .whitespacesAndNewlines)
                         
                         dataManager.createMatch(

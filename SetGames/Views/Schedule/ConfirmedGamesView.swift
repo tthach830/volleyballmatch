@@ -42,7 +42,7 @@ public struct ConfirmedGamesView: View {
                                 .foregroundColor(.secondary)
                             Text("No games in this view")
                                 .font(.system(size: 16, weight: .bold))
-                            Text("Tap '+ New Match' to host a set game!")
+                            Text("Tap '+ New Game' to host a set game!")
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
                         }

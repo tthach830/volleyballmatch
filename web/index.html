@@ -48,7 +48,7 @@
         </div>
         <div class="ios-toolbar-actions">
           <button type="button" class="btn-ios-toolbar btn-ios-purple" onclick="window.openRandomTeamsModal()" title="Generate Random Round Robin Matches">🎲 Random</button>
-          <button type="button" class="btn-ios-toolbar btn-ios-orange" onclick="window.openCreateMatchModal()" title="Host a new match">+ New Match</button>
+          <button type="button" class="btn-ios-toolbar btn-ios-orange" onclick="window.openCreateMatchModal()" title="Host a new game">+ New Game</button>
         </div>
       </div>
 
@@ -416,13 +416,13 @@
     <div id="create-match-modal" class="modal-backdrop modal-fullscreen">
       <div class="modal-card modal-card-fullscreen">
         <div class="modal-header">
-          <h2 class="modal-title">🏐 Host New Match</h2>
+          <h2 class="modal-title">🏐 Host New Game</h2>
           <button type="button" class="modal-close" onclick="window.closeCreateMatchModal()">&times;</button>
         </div>
         <form id="create-match-form" onsubmit="window.handleCreateMatch(event)">
           <div class="form-group">
-            <label class="form-label" for="create-title">Match Title</label>
-            <input type="text" id="create-title" class="form-input" placeholder="e.g. Saturday Beach Doubles" required>
+            <label class="form-label" for="create-title">Game Title</label>
+            <input type="text" id="create-title" class="form-input" placeholder="e.g. Saturday 9/5/26 5PM" required>
           </div>
           <div class="form-group" style="margin-bottom: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -507,7 +507,7 @@
           </div>
           <div style="display: flex; gap: 10px; margin-top: 16px;">
             <button type="button" class="btn btn-outline" style="flex: 1;" onclick="window.closeCreateMatchModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary" style="flex: 1;">Host Match</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Host Game</button>
           </div>
         </form>
       </div>
@@ -887,6 +887,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=2.2"></script>
+  <script type="module" src="app.js?v=2.3"></script>
 </body>
 </html>
