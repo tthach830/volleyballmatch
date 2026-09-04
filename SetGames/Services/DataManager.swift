@@ -846,19 +846,39 @@ public class DataManager: ObservableObject {
         if !user.isRoot {
             let isHost = (game.hostPlayerId == user.id) || (game.team1PlayerIds.first == user.id)
             guard isHost else {
-                return (false, "Only the game host or Root user can delete this game.")
+                return (false, "Only the game host or Root user can cancel and delete this game.")
             }
-            
-            let otherPlayers = game.allPlayerIds.filter { $0 != user.id }
-            guard otherPlayers.isEmpty else {
-                return (false, "Cannot delete game while other players are joined. Players must back out first.")
+        }
+        
+        // Notify other players that the match was cancelled
+        let otherPlayerIds = Set(game.allPlayerIds + game.waitlistPlayerIds).subtracting([user.id])
+        for pid in otherPlayerIds {
+            let p = player(for: pid)
+            if let token = p.deviceToken, !token.isEmpty {
+                NotificationService.shared.sendDirectRemotePush(
+                    to: token,
+                    title: "Volleyball Match Alert",
+                    body: "The host cancelled '\(game.title)'.",
+                    gameId: game.id
+                )
+            } else {
+                FirestoreService.shared.fetchDeviceToken(for: pid) { token in
+                    if let token = token, !token.isEmpty {
+                        NotificationService.shared.sendDirectRemotePush(
+                            to: token,
+                            title: "Volleyball Match Alert",
+                            body: "The host cancelled '\(game.title)'.",
+                            gameId: game.id
+                        )
+                    }
+                }
             }
         }
         
         games.remove(at: index)
         saveToDisk()
         FirestoreService.shared.deleteGame(id: gameId, rawId: game.rawId)
-        return (true, "Game deleted.")
+        return (true, "Match cancelled and deleted.")
     }
     
     @discardableResult

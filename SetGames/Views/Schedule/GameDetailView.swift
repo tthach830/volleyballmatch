@@ -502,8 +502,8 @@ public struct GameDetailView: View {
                                         showDeleteConfirmAlert = true
                                     } label: {
                                         HStack {
-                                            Image(systemName: "trash.fill")
-                                            Text(dataManager.currentUser?.isRoot == true ? "🗑️ Delete Game (Root)" : "Cancel & Delete Game")
+                                            Image(systemName: "xmark.circle.fill")
+                                            Text(dataManager.currentUser?.isRoot == true ? "🗑️ Delete Game (Root)" : "Cancel Game (Delete)")
                                         }
                                         .font(.system(size: 15, weight: .bold))
                                         .frame(maxWidth: .infinity)
@@ -514,7 +514,7 @@ public struct GameDetailView: View {
                                     }
                                     .alert(dataManager.currentUser?.isRoot == true ? "Delete Game (Root)?" : "Cancel & Delete Game?", isPresented: $showDeleteConfirmAlert) {
                                         Button("Keep Game", role: .cancel) {}
-                                        Button("Delete Game", role: .destructive) {
+                                        Button("Cancel Game", role: .destructive) {
                                             let res = dataManager.deleteGame(gameId: game.id)
                                             if res.success {
                                                 dismiss()
@@ -525,7 +525,7 @@ public struct GameDetailView: View {
                                             }
                                         }
                                     } message: {
-                                        Text(dataManager.currentUser?.isRoot == true ? "As Root Admin, deleting this game will remove it permanently from the schedule and database." : "Since no one else is in this game, you can cancel and delete it. This will remove it from the schedule.")
+                                        Text(dataManager.currentUser?.isRoot == true ? "As Root Admin, deleting this game will remove it permanently from the schedule and database." : "As the match host, cancelling this game will delete it from the schedule and notify all participants.")
                                     }
                                 }
                             } else if !isUserInMatch && game.status != .completed {
@@ -776,9 +776,7 @@ public struct GameDetailView: View {
         if user.isRoot { return true }
         let userId = user.id
         let isHost = (game.hostPlayerId == userId) || (game.team1PlayerIds.first == userId)
-        guard isHost else { return false }
-        let otherPlayers = game.allPlayerIds.filter { $0 != userId }
-        return otherPlayers.isEmpty
+        return isHost
     }
     
     private func playerCard(_ p: Player, game: SetGame) -> some View {

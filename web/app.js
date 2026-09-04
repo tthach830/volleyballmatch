@@ -1156,10 +1156,10 @@ function renderMatches() {
                 <span style="font-size: 10px; font-weight: 700; color: #0f172a; margin-top: 2px;">Edit</span>
               </button>
 
-              ${((isHost && allPlayerIds.length <= 1) || isRootUser(state.currentUser)) ? `
-                <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.deleteGame('${game.id}')" title="Delete Game" style="min-height: 48px;">
-                  <span style="font-size: 14px;">🗑️</span>
-                  <span style="font-size: 9px; font-weight: 800; color: #991b1b; line-height: 1.1; margin-top: 2px; text-align: center;">Delete<br>Game<br>(Root)</span>
+              ${(isHost || isRootUser(state.currentUser)) ? `
+                <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.deleteGame('${game.id}')" title="Cancel Game" style="min-height: 48px;">
+                  <span style="font-size: 14px;">❌</span>
+                  <span style="font-size: 9px; font-weight: 800; color: #991b1b; line-height: 1.1; margin-top: 2px; text-align: center;">Cancel<br>Game</span>
                 </button>
               ` : ''}
             </div>
@@ -2017,9 +2017,9 @@ window.toggleCardAdminMenu = (gameId) => {
     </button>
 
     ${(isHost || isRoot) ? `
-      <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #dc2626; border-color: #fca5a5; margin-top: 6px; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); if(confirm('Are you sure you want to permanently delete this game?')) { window.deleteGame('${game.id}'); }">
-        <span style="font-size: 16px;">🗑️</span>
-        <span>Delete Game</span>
+      <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #dc2626; border-color: #fca5a5; margin-top: 6px; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.deleteGame('${game.id}');">
+        <span style="font-size: 16px;">❌</span>
+        <span>Cancel Game (Delete)</span>
       </button>
     ` : ''}
   `;
@@ -2102,42 +2102,51 @@ window.handleSaveMatchEdit = (e) => {
   showToast("Match preferences updated!");
 };
 
-// Cancel & Delete Game (Host only when empty, or Root user anytime)
+// Cancel & Delete Game (Host or Root user)
 window.deleteGame = (gameId) => {
   const game = state.games.find(g => g.id === gameId);
   if (!game) return;
 
   const isRoot = isRootUser(state.currentUser);
-  if (!isRoot) {
-    const isHost = state.currentUser && (
-      (game.hostPlayerId && game.hostPlayerId === state.currentUser.id) ||
-      (game.team1PlayerIds?.[0] === state.currentUser.id)
-    );
-    if (!isHost) {
-      showToast("Only the game host or Root user can delete this game.");
-      return;
-    }
-
-    const otherPlayers = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])].filter(id => id !== state.currentUser?.id);
-    if (otherPlayers.length > 0) {
-      showToast("Cannot delete game while other players are joined.");
-      return;
-    }
+  const isHost = state.currentUser && (
+    (game.hostPlayerId && game.hostPlayerId === state.currentUser.id) ||
+    (game.team1PlayerIds?.[0] === state.currentUser.id)
+  );
+  if (!isRoot && !isHost) {
+    showToast("Only the game host or Root user can cancel and delete this game.");
+    return;
   }
 
   const promptMsg = isRoot 
     ? `As Root Admin, permanently delete "${game.title}" from the database?`
-    : `Are you sure you want to cancel and delete "${game.title}"?`;
+    : `Are you sure you want to cancel and delete "${game.title}" from the schedule?`;
 
   if (!confirm(promptMsg)) {
     return;
+  }
+
+  // Notify other players via APNs push
+  const currentUid = state.currentUser?.id;
+  const otherIds = [...new Set([...(game.team1PlayerIds || []), ...(game.team2PlayerIds || []), ...(game.waitlistPlayerIds || [])])].filter(id => id !== currentUid);
+  const tokens = otherIds.map(id => state.getPlayer(id)?.deviceToken).filter(Boolean);
+  if (tokens.length > 0) {
+    fetch("/api/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tokens: tokens,
+        title: "Volleyball Match Alert",
+        body: `The host cancelled '${game.title || "Match"}'.`,
+        gameId: game.id
+      })
+    }).catch(err => console.log("Push note:", err));
   }
 
   state.games = state.games.filter(g => g.id !== gameId);
   state.saveLocal();
   deleteGameFromFirestore(gameId);
   renderMatches();
-  showToast("Game deleted.");
+  showToast("Match cancelled and deleted.");
 };
 
 window.deleteAllGames = async () => {

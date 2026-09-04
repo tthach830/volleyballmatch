@@ -69,7 +69,8 @@ public struct ConfirmedGamesView: View {
                 .padding(.bottom, 30)
             }
             .background(Color(UIColor.systemGroupedBackground))
-            .navigationTitle("Set Games")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: UUID.self) { gameId in
                 GameDetailView(dataManager: dataManager, gameId: gameId)
             }
@@ -162,9 +163,9 @@ public struct ConfirmedGamesView: View {
             } message: {
                 Text(alertMessage)
             }
-            .alert("Delete Game", isPresented: $showDeleteAlert) {
-                Button("Cancel", role: .cancel) { gameToDelete = nil }
-                Button("Delete", role: .destructive) {
+            .alert("Cancel & Delete Game", isPresented: $showDeleteAlert) {
+                Button("Keep Game", role: .cancel) { gameToDelete = nil }
+                Button("Cancel Game", role: .destructive) {
                     if let g = gameToDelete {
                         let res = dataManager.deleteGame(gameId: g.id)
                         alertMessage = res.message
@@ -173,7 +174,7 @@ public struct ConfirmedGamesView: View {
                     }
                 }
             } message: {
-                Text("Are you sure you want to permanently delete this game?")
+                Text("Are you sure you want to cancel this game and delete it from the schedule?")
             }
             .alert("Remove Player from Match?", isPresented: $showRemovePlayerAlert) {
                 Button("Cancel", role: .cancel) { playerToRemove = nil }
@@ -391,7 +392,7 @@ public struct ConfirmedGamesView: View {
                         gameToDelete = game
                         showDeleteAlert = true
                     } label: {
-                        Label("Delete Game", systemImage: "trash")
+                        Label("Cancel Game (Delete)", systemImage: "xmark.circle")
                     }
                 }
             } label: {
@@ -934,7 +935,7 @@ public struct ConfirmedGamesView: View {
                             gameToDelete = game
                             showDeleteAlert = true
                         } label: {
-                            Label("Delete Game", systemImage: "trash")
+                            Label("Cancel Game (Delete)", systemImage: "xmark.circle")
                         }
                     }
                 } label: {

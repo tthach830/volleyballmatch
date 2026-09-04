@@ -41,12 +41,8 @@
 
     <!-- TAB 1: SET GAMES (Matches iOS ConfirmedGamesView.swift) -->
     <main id="tab-matches" class="tab-content active">
-      <div class="ios-view-header">
-        <div>
-          <h1 class="ios-large-title">Set Games</h1>
-          <div class="ios-subtitle">Santa Cruz beach courts • Main, Harbor & 4th St</div>
-        </div>
-        <div class="ios-toolbar-actions">
+      <div class="ios-view-header" style="justify-content: flex-end; margin-bottom: 8px;">
+        <div class="ios-toolbar-actions" style="margin-left: auto;">
           <button type="button" class="btn-ios-toolbar btn-ios-purple" onclick="window.openCreateMatchModal()" title="Host a new game"><span style="font-size:16px; font-weight:900; line-height:1;">+</span> New Game</button>
           <button type="button" class="btn-ios-toolbar btn-ios-orange" onclick="window.openRandomTeamsModal()" title="Quick Play / Random Round Robin">🎲 Quick Play</button>
         </div>
@@ -946,6 +942,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=4.1"></script>
+  <script type="module" src="app.js?v=4.2"></script>
 </body>
 </html>
