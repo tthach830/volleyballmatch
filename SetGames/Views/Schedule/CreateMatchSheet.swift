@@ -4,8 +4,6 @@ public struct CreateMatchSheet: View {
     @ObservedObject var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
     
-    @State private var title: String = ""
-    @State private var userEditedTitle: Bool = false
     @State private var selectedRatings: Set<RatingTier> = [.b]
     @State private var isTierDropdownOpen: Bool = false
     @State private var format: GameFormat = .bestOfThree
@@ -50,7 +48,6 @@ public struct CreateMatchSheet: View {
         self.dataManager = dataManager
         let initialDate = Self.defaultScheduledDate()
         _scheduledDate = State(initialValue: initialDate)
-        _title = State(initialValue: Self.defaultGameTitle(for: initialDate))
         if let user = dataManager.currentUser {
             _selectedRatings = State(initialValue: [user.rating])
             _courtLocation = State(initialValue: user.homeBeach.isEmpty ? "Main Beach" : user.homeBeach)
@@ -69,11 +66,6 @@ public struct CreateMatchSheet: View {
         NavigationStack {
             Form {
                 Section("GAME INFORMATION") {
-                    TextField("Game Title", text: $title)
-                        .onChange(of: title) {
-                            userEditedTitle = true
-                        }
-                    
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .center) {
                             VStack(alignment: .leading, spacing: 3) {
@@ -224,11 +216,6 @@ public struct CreateMatchSheet: View {
                 
                 Section("SCHEDULED DATE & TIME") {
                     DatePicker("Game Time", selection: $scheduledDate, displayedComponents: [.date, .hourAndMinute])
-                        .onChange(of: scheduledDate) {
-                            if !userEditedTitle {
-                                title = Self.defaultGameTitle(for: scheduledDate)
-                            }
-                        }
                 }
                 
                 Section("NOTES FOR PLAYERS") {
@@ -248,8 +235,7 @@ public struct CreateMatchSheet: View {
                     Button("Host Game") {
                         let chosenRatings = RatingTier.allCases.filter { selectedRatings.contains($0) }
                         let primaryRating = chosenRatings.first ?? .b
-                        let defaultTitle = Self.defaultGameTitle(for: scheduledDate)
-                        let finalTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? defaultTitle : title.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let finalTitle = Self.defaultGameTitle(for: scheduledDate)
                         
                         dataManager.createMatch(
                             title: finalTitle,
