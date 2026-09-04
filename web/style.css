@@ -212,13 +212,19 @@ header {
 }
 
 .btn-ios-orange {
-  background: rgba(255, 106, 0, 0.12);
-  color: #ff6a00;
+  background: #ea580c;
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 5px rgba(234, 88, 12, 0.25);
 }
 
 .btn-ios-purple {
-  background: rgba(175, 82, 222, 0.12);
-  color: #af52de;
+  background: #7c3aed;
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 7px 14px;
+  box-shadow: 0 2px 5px rgba(124, 58, 237, 0.25);
 }
 
 /* iOS Segmented Controls (Exact iOS 17/18 Styling) */
@@ -306,6 +312,218 @@ header {
 
 .match-card:active {
   transform: scale(0.985);
+}
+
+/* Redesigned Set Game Detail Card (Matching Mockup) */
+.game-details-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 0 16px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+.card-top-admin-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.card-center-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  color: #0f172a;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.card-metadata-line {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge-open-status {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.badge-level-lock {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pool-box-container {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.pool-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.pool-box-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+}
+
+.pool-box-status-full {
+  font-size: 11px;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.pool-box-status-open {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.pool-grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.player-tile-mock {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.player-tile-avatar {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.player-tile-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.player-tile-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-tile-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.matches-summary-row {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.footer-action-btn-stacked {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 6px 12px;
+  min-width: 58px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.footer-action-btn-stacked:active {
+  transform: scale(0.95);
+}
+
+.footer-action-btn-chat {
+  background: #f0f9ff;
+  border-color: #38bdf8;
+}
+
+.footer-action-btn-danger {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.footer-unread-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
 }
 
 .match-header {

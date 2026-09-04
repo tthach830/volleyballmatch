@@ -7,12 +7,19 @@ public struct ConfirmedGamesView: View {
     @State private var showCreateMatchSheet: Bool = false
     @State private var showRandomTeamsSheet: Bool = false
     @State private var qrGameForSheet: SetGame? = nil
+    @State private var editGameForSheet: SetGame? = nil
+    @State private var navigateToGameId: UUID? = nil
+    @State private var showAlert: Bool = false
+    @State private var alertMessage: String = ""
+    @State private var showDeleteAlert: Bool = false
+    @State private var gameToDelete: SetGame? = nil
+    @State private var collapsedMatches: Set<UUID> = []
     
     public enum GameFilter: String, CaseIterable {
-        case all = "Upcoming"
-        case myGames = "My Games"
-        case openSpots = "Needs Players"
-        case completed = "Past Games"
+        case all = "📅 All Upcoming"
+        case myGames = "🎮 My Games"
+        case openSpots = "👥 Needs Players"
+        case completed = "🕒 Past Games"
     }
     
     public init(dataManager: DataManager) {
@@ -68,27 +75,37 @@ public struct ConfirmedGamesView: View {
             .navigationTitle("Set Games")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         Button {
                             showCreateMatchSheet = true
                         } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "plus.circle.fill")
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 11, weight: .bold))
                                 Text("New Game")
+                                    .font(.system(size: 12, weight: .bold))
                             }
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.orange)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color(red: 0.49, green: 0.23, blue: 0.93)) // #7c3aed
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
                         }
                         
                         Button {
                             showRandomTeamsSheet = true
                         } label: {
-                            HStack(spacing: 3) {
+                            HStack(spacing: 4) {
                                 Image(systemName: "dice.fill")
-                                Text("Random")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text("Quick Play")
+                                    .font(.system(size: 12, weight: .bold))
                             }
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.purple)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color(red: 0.92, green: 0.35, blue: 0.05)) // #ea580c
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
                         }
                     }
                 }
@@ -125,6 +142,35 @@ public struct ConfirmedGamesView: View {
             }
             .sheet(item: $qrGameForSheet) { game in
                 GameQRCodeSheet(game: game)
+            }
+            .sheet(item: $editGameForSheet) { game in
+                EditMatchSheet(dataManager: dataManager, game: game)
+            }
+            .navigationDestination(isPresented: Binding(
+                get: { navigateToGameId != nil },
+                set: { if !$0 { navigateToGameId = nil } }
+            )) {
+                if let gid = navigateToGameId {
+                    GameDetailView(dataManager: dataManager, gameId: gid)
+                }
+            }
+            .alert("Notice", isPresented: $showAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(alertMessage)
+            }
+            .alert("Delete Game", isPresented: $showDeleteAlert) {
+                Button("Cancel", role: .cancel) { gameToDelete = nil }
+                Button("Delete", role: .destructive) {
+                    if let g = gameToDelete {
+                        let res = dataManager.deleteGame(gameId: g.id)
+                        alertMessage = res.message
+                        showAlert = true
+                        gameToDelete = nil
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to permanently delete this game?")
             }
         }
     }
@@ -164,205 +210,774 @@ public struct ConfirmedGamesView: View {
         }
     }
     
-    private func gameRow(_ game: SetGame) -> some View {
-        let isMyGame = dataManager.currentUser != nil && (game.allPlayerIds.contains(dataManager.currentUser!.id) || game.hostPlayerId == dataManager.currentUser!.id)
+    private func hostPlayer(for g: SetGame) -> Player? {
+        if let hid = g.hostPlayerId {
+            return dataManager.player(for: hid)
+        }
+        if let firstId = g.team1PlayerIds.first {
+            return dataManager.player(for: firstId)
+        }
+        return nil
+    }
+    
+    private func formatCourt(_ c: String) -> String {
+        let trimmed = c.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return "#1" }
+        if trimmed.hasPrefix("#") { return trimmed }
+        let numbers = trimmed.filter { $0.isNumber }
+        return numbers.isEmpty ? trimmed : "#\(numbers)"
+    }
+    
+    private func resolveNames(_ pids: [UUID]) -> String {
+        if pids.isEmpty { return "TBD" }
+        return pids.map { pid in
+            let p = dataManager.player(for: pid)
+            return p.nickname.isEmpty ? p.name : p.nickname
+        }.joined(separator: " & ")
+    }
+
+    private func playerPoolTile(pid: UUID) -> some View {
+        let p = dataManager.player(for: pid)
+        let displayName = p.nickname.isEmpty ? p.name : p.nickname
+        let ratingTier = p.rating
+        let starStr = String(format: "%.1f", p.averageStarRating)
         
-        return VStack(alignment: .leading, spacing: 10) {
-            // Row 1: Tiers on left, QR code & Status on right
-            HStack(alignment: .center) {
-                if game.allowedRatings.count >= RatingTier.allCases.count {
-                    HStack(spacing: 4) {
-                        Image(systemName: "globe")
+        return HStack(spacing: 8) {
+            PlayerAvatarView(player: p, dimension: 32, showBadge: false)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(displayName)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(Color(.label))
+                    .lineLimit(1)
+                
+                HStack(spacing: 4) {
+                    Text(ratingTier.rawValue)
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(ratingTier.badgeColor)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1.5)
+                        .background(ratingTier.badgeColor.opacity(0.18))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    
+                    HStack(spacing: 1) {
+                        Text("⭐")
+                            .font(.system(size: 8))
+                        Text(starStr)
                             .font(.system(size: 10, weight: .bold))
-                        Text("All Levels")
-                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color(red: 0.7, green: 0.35, blue: 0.05))
                     }
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(Color.blue.opacity(0.12))
-                    .foregroundColor(.blue)
-                    .clipShape(Capsule())
-                } else if game.allowedRatings.count > 1 {
-                    HStack(spacing: 3) {
-                        ForEach(game.allowedRatings, id: \.self) { r in
-                            Text(r.rawValue)
-                                .font(.system(size: 10, weight: .bold))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2.5)
-                                .background(r.badgeColor.opacity(0.18))
-                                .foregroundColor(r.badgeColor)
-                                .clipShape(Capsule())
-                        }
-                    }
-                } else {
-                    RatingBadge(rating: game.targetRating, size: .small)
                 }
-                
-                Spacer()
-                
-                // QR Button with borderless style to prevent gesture conflict
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(8)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(.separator).opacity(0.4), lineWidth: 0.8)
+        )
+    }
+
+    private func cardHeader(game: SetGame, isMyGame: Bool, isHost: Bool) -> some View {
+        HStack(alignment: .center) {
+            Spacer()
+            Text("GAME DETAILS")
+                .font(.system(size: 13, weight: .black))
+                .foregroundColor(Color(.label))
+                .tracking(0.5)
+            Spacer()
+        }
+        .overlay(alignment: .trailing) {
+            Menu {
                 Button {
                     qrGameForSheet = game
                 } label: {
-                    Image(systemName: "qrcode")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.blue)
-                        .padding(5)
-                        .background(Color.blue.opacity(0.12))
-                        .clipShape(Circle())
+                    Label("QR Code / Share", systemImage: "qrcode")
+                }
+                
+                Button {
+                    navigateToGameId = game.id
+                } label: {
+                    Label("Match Chat (\(game.messages.count))", systemImage: "message")
+                }
+                
+                if canUserJoin(game) {
+                    Button {
+                        let res = dataManager.joinGamePool(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        Label("Join Game", systemImage: "plus.circle")
+                    }
+                }
+                
+                if isMyGame {
+                    Button(role: .destructive) {
+                        let res = dataManager.leaveGame(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        Label("Leave Game", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                }
+                
+                Button {
+                    editGameForSheet = game
+                } label: {
+                    Label("Edit Game", systemImage: "pencil")
+                }
+                
+                if isHost || dataManager.currentUser?.isRoot == true {
+                    Button(role: .destructive) {
+                        gameToDelete = game
+                        showDeleteAlert = true
+                    } label: {
+                        Label("Delete Game", systemImage: "trash")
+                    }
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Text("⚙️ ADMIN ACTIONS")
+                        .font(.system(size: 10, weight: .bold))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(.systemGray6))
+                .foregroundColor(Color(.secondaryLabel))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.top, 2)
+    }
+
+    private func cardMetadataLines(game: SetGame) -> some View {
+        let formatLabel = game.maxPlayers == 2 ? "1v1 Singles" : game.maxPlayers == 6 ? "3v3 Triples" : "2v2 Doubles"
+        let skillStr = (game.allowedRatings.count >= RatingTier.allCases.count || game.allowedRatings.isEmpty) ? "All Levels" : game.allowedRatings.map(\.rawValue).joined(separator: " / ")
+        let statusText = game.status == .completed ? "Completed" : (game.status == .inProgress ? "Live" : "Open")
+        
+        let host = hostPlayer(for: game)
+        let hostName = host != nil ? (host!.nickname.isEmpty ? host!.name : host!.nickname) : "Host"
+        let hostRating = host != nil ? String(format: "%.1f", host!.averageStarRating) : "5.0"
+        
+        return VStack(alignment: .leading, spacing: 4) {
+            // Line 1: SCHEDULE & COURT
+            HStack(spacing: 5) {
+                Text("📅")
+                    .font(.system(size: 12))
+                Text("SCHEDULE:")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundColor(Color(.label))
+                Text(game.formattedDate)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabel))
+                Text("•")
+                    .foregroundColor(Color(.tertiaryLabel))
+                Text("📍 \(game.courtLocation) \(formatCourt(game.courtNumber))")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabel))
+                Spacer(minLength: 0)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            
+            // Line 2: FORMAT, STATUS & SKILL
+            HStack(spacing: 5) {
+                Text("🏐")
+                    .font(.system(size: 12))
+                Text("FORMAT:")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundColor(Color(.label))
+                Text(formatLabel)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabel))
+                Text("•")
+                    .foregroundColor(Color(.tertiaryLabel))
+                
+                Text(statusText)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(Color(red: 0.08, green: 0.55, blue: 0.28))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.green.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                
+                Text("•")
+                    .foregroundColor(Color(.tertiaryLabel))
+                Text("🏅")
+                    .font(.system(size: 12))
+                Text("SKILL:")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundColor(Color(.label))
+                Text(skillStr)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabel))
+                Spacer(minLength: 0)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            
+            // Line 3: HOST, RATING & LEVEL LOCKED
+            HStack(spacing: 5) {
+                Text("👑")
+                    .font(.system(size: 12))
+                Text("HOST:")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundColor(Color(.label))
+                Text(hostName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabel))
+                Text("•")
+                    .foregroundColor(Color(.tertiaryLabel))
+                HStack(spacing: 2) {
+                    Text("⭐")
+                        .font(.system(size: 11))
+                    Text(hostRating)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color(red: 0.7, green: 0.35, blue: 0.05))
+                }
+                if game.isLevelLocked {
+                    HStack(spacing: 3) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 9))
+                        Text("Level Locked")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.orange.opacity(0.15))
+                    .foregroundColor(.orange)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                Spacer(minLength: 0)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+        }
+    }
+
+    private func playersPoolBox(game: SetGame, isMyGame: Bool, currentUserId: UUID?) -> some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("👥 PLAYERS POOL (\(game.allPlayerIds.count)/\(game.maxPlayers) PLAYERS)")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundColor(Color(.label))
+                Spacer()
+                if game.spotsRemaining == 0 {
+                    Text("Pool Full ✓")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.green)
+                } else {
+                    Text("\(game.spotsRemaining) Open Spot\(game.spotsRemaining > 1 ? "s" : "")")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.orange)
+                }
+            }
+            
+            // 2-Column Grid
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                ForEach(game.allPlayerIds, id: \.self) { pid in
+                    playerPoolTile(pid: pid)
+                }
+                
+                if game.spotsRemaining > 0 && !isMyGame {
+                    Button {
+                        let res = dataManager.joinGamePool(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("Join Player Pool")
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
+                        .frame(maxWidth: .infinity, minHeight: 46)
+                        .background(Color(.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93).opacity(0.6))
+                        )
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            
+            // Waitlist Banner / Button when pool is full
+            if game.spotsRemaining == 0 && !isMyGame {
+                let isWaitlisted = currentUserId != nil && game.waitlistPlayerIds.contains(currentUserId!)
+                if isWaitlisted {
+                    let pos = (game.waitlistPlayerIds.firstIndex(of: currentUserId!) ?? 0) + 1
+                    HStack {
+                        Text("⏳ You are #\(pos) on the Waitlist")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color.purple)
+                        Spacer()
+                        Button {
+                            let res = dataManager.leaveWaitlist(gameId: game.id)
+                            alertMessage = res.message
+                            showAlert = true
+                        } label: {
+                            Text("Leave Waitlist")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.red.opacity(0.1))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .padding(10)
+                    .background(Color.purple.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    Button {
+                        let res = dataManager.joinWaitlist(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("⏳")
+                            Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundColor(Color.purple)
+                        .frame(maxWidth: .infinity, minHeight: 38)
+                        .background(Color.purple.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                .foregroundColor(Color.purple.opacity(0.5))
+                        )
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            
+            // Queued waitlist breakdown
+            if !game.waitlistPlayerIds.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("⏳ WAITLIST (\(game.waitlistPlayerIds.count) QUEUED)")
+                            .font(.system(size: 10, weight: .heavy))
+                            .foregroundColor(.purple)
+                        Spacer()
+                        Text("Auto-promotes when spot opens")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.element) { idx, wId in
+                        let wp = dataManager.player(for: wId)
+                        let wpName = wp.nickname.isEmpty ? wp.name : "\(wp.name) (\(wp.nickname))"
+                        HStack {
+                            Text("#\(idx + 1)")
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundColor(.white)
+                                .frame(width: 20, height: 20)
+                                .background(Color.purple)
+                                .clipShape(Circle())
+                            
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(wpName)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(Color(.label))
+                                Text(wp.rating.rawValue)
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if currentUserId == wId {
+                                Button {
+                                    let res = dataManager.leaveWaitlist(gameId: game.id)
+                                    alertMessage = res.message
+                                    showAlert = true
+                                } label: {
+                                    Text("Leave")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.red)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(10)
+        .background(Color(.systemGray6).opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func matchesSection(game: SetGame) -> some View {
+        let isCollapsed = collapsedMatches.contains(game.id)
+        return VStack(spacing: 6) {
+            Button {
+                if isCollapsed {
+                    collapsedMatches.remove(game.id)
+                } else {
+                    collapsedMatches.insert(game.id)
+                }
+            } label: {
+                HStack {
+                    Text("🥎 MATCHES IN THIS GAME (\(game.subMatches.count))")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(Color(.label))
+                    Spacer()
+                    Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color(.label))
+                }
+            }
+            .buttonStyle(.borderless)
+            
+            // Summary Row
+            Button {
+                if isCollapsed {
+                    collapsedMatches.remove(game.id)
+                } else {
+                    collapsedMatches.insert(game.id)
+                }
+            } label: {
+                HStack {
+                    HStack(spacing: 6) {
+                        Text("🏐")
+                        Text("Match Schedule (\(game.subMatches.isEmpty ? 3 : game.subMatches.count))")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color(.label))
+                    }
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Text("🏐")
+                        Text("🏐")
+                        Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color(.systemGray6).opacity(0.5))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.borderless)
+            
+            // Expanded sub-matches
+            if !isCollapsed && !game.subMatches.isEmpty {
+                VStack(spacing: 6) {
+                    ForEach(Array(game.subMatches.enumerated()), id: \.element.id) { mIdx, sm in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("MATCH \(sm.matchNumber) • \(sm.courtNumber)")
+                                    .font(.system(size: 10, weight: .black))
+                                    .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
+                                Spacer()
+                                if sm.isCompleted {
+                                    Text("SCORED ✓")
+                                        .font(.system(size: 9, weight: .black))
+                                        .foregroundColor(.green)
+                                } else {
+                                    Text("Scheduled")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            HStack {
+                                Text(resolveNames(sm.team1PlayerIds))
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Color(.label))
+                                    .lineLimit(1)
+                              Spacer()
+                                Text("VS")
+                                    .font(.system(size: 10, weight: .black))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 6)
+                                Spacer()
+                                Text(resolveNames(sm.team2PlayerIds))
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Color(.label))
+                                    .lineLimit(1)
+                            }
+                            
+                            if !sm.restingPlayerIds.isEmpty {
+                                Text("⏸ Resting: \(resolveNames(sm.restingPlayerIds))")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            if let s1 = sm.team1Score, let s2 = sm.team2Score {
+                                HStack {
+                                    Text("Score: \(s1) – \(s2)")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(Color(.label))
+                                    if sm.isCompleted, let win = sm.winningTeam {
+                                        Text("(Team \(win) Won)")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                                .padding(.top, 2)
+                            }
+                        }
+                        .padding(8)
+                        .background(Color(.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color(.separator).opacity(0.4), lineWidth: 0.8)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func cardFooter(game: SetGame, isMyGame: Bool, isHost: Bool) -> some View {
+        VStack(spacing: 8) {
+            Divider()
+            
+            // Top Row of Footer: Time on left, ADMIN ACTIONS • SETTINGS ▾ on right
+            HStack {
+                HStack(spacing: 4) {
+                    Text("🕒")
+                        .font(.system(size: 11))
+                    Text(game.formattedDate)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                
+                Menu {
+                    Button {
+                        qrGameForSheet = game
+                    } label: {
+                        Label("QR Code / Share", systemImage: "qrcode")
+                    }
+                    Button {
+                        navigateToGameId = game.id
+                    } label: {
+                        Label("Match Chat (\(game.messages.count))", systemImage: "message")
+                    }
+                    Button {
+                        editGameForSheet = game
+                    } label: {
+                        Label("Edit Game", systemImage: "pencil")
+                    }
+                    if isHost || dataManager.currentUser?.isRoot == true {
+                        Button(role: .destructive) {
+                            gameToDelete = game
+                            showDeleteAlert = true
+                        } label: {
+                            Label("Delete Game", systemImage: "trash")
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 2) {
+                        Text("ADMIN ACTIONS • SETTINGS")
+                            .font(.system(size: 10, weight: .black))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                    }
+                    .foregroundColor(Color(.secondaryLabel))
+                }
+                .buttonStyle(.borderless)
+            }
+            
+            // Bottom Row: Action Buttons
+            HStack(spacing: 8) {
+                // Left cluster: QR Code, Chat, Leave/Join Game
+                Button {
+                    qrGameForSheet = game
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: "qrcode")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("QR\nCode")
+                            .font(.system(size: 9, weight: .bold))
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(-2)
+                    }
+                    .frame(width: 48, height: 46)
+                    .background(Color(.systemBackground))
+                    .foregroundColor(Color(.label))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(.separator), lineWidth: 0.8)
+                    )
                 }
                 .buttonStyle(.borderless)
                 
-                // Status Pill
-                Text(game.status.rawValue)
-                    .font(.system(size: 11, weight: .bold))
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(game.status == .completed ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                    .foregroundColor(game.status == .completed ? .green : .orange)
-                    .clipShape(Capsule())
-            }
-            
-            // Row 2: Secondary Badges (My Game, Level Locked, Matches, Waitlist)
-            let hasMetadataBadges = isMyGame || game.isLevelLocked || !game.subMatches.isEmpty || !game.waitlistPlayerIds.isEmpty
-            if hasMetadataBadges {
-                HStack(spacing: 6) {
-                    if isMyGame {
-                        HStack(spacing: 3) {
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 8))
-                            Text("My Game")
+                Button {
+                    navigateToGameId = game.id
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "message.fill")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Chat\n(\(game.messages.count))")
+                                .font(.system(size: 9, weight: .bold))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(-2)
                         }
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.15))
-                        .foregroundColor(.blue)
-                        .clipShape(Capsule())
-                    }
-                    
-                    if game.isLevelLocked {
-                        HStack(spacing: 3) {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 8))
-                            Text("Locked")
-                        }
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.15))
-                        .foregroundColor(.orange)
-                        .clipShape(Capsule())
-                    }
-                    
-                    if !game.subMatches.isEmpty {
-                        HStack(spacing: 3) {
-                            Image(systemName: "circle.grid.2x2.fill")
-                                .font(.system(size: 8))
-                            Text("\(game.subMatches.count) Matches")
-                        }
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.purple.opacity(0.15))
-                        .foregroundColor(.purple)
-                        .clipShape(Capsule())
-                    }
-                    
-                    if !game.waitlistPlayerIds.isEmpty {
-                        HStack(spacing: 3) {
-                            Image(systemName: "clock.fill")
-                                .font(.system(size: 8))
-                            Text("\(game.waitlistPlayerIds.count) Waitlist")
-                        }
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.purple.opacity(0.15))
-                        .foregroundColor(.purple)
-                        .clipShape(Capsule())
-                    }
-                    
-                    if let uid = dataManager.currentUser?.id, let pos = game.waitlistPosition(for: uid) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "clock.badge.checkmark.fill")
-                                .font(.system(size: 8))
-                            Text("Waitlisted #\(pos)")
-                        }
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.purple.opacity(0.25))
-                        .foregroundColor(.purple)
-                        .clipShape(Capsule())
-                    }
-                }
-            }
-            
-            Text(game.title)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.primary)
-            
-            HStack(spacing: 12) {
-                Label(game.formattedDate, systemImage: "clock")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-                
-                Label("\(game.courtLocation)", systemImage: "mappin")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
-            
-            // Player Lineup Icons & View Match link
-            HStack {
-                HStack(spacing: -6) {
-                    ForEach(game.allPlayerIds.prefix(5), id: \.self) { pid in
-                        let p = dataManager.player(for: pid)
-                        PlayerAvatarView(player: p, dimension: 28, showBadge: false)
-                    }
-                    if game.allPlayerIds.count > 5 {
-                        ZStack {
-                            Circle()
-                                .fill(Color.orange.opacity(0.2))
-                                .frame(width: 26, height: 26)
-                            Text("+\(game.allPlayerIds.count - 5)")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.orange)
+                        .frame(width: 48, height: 46)
+                        .background(Color(red: 0.94, green: 0.97, blue: 1.0))
+                        .foregroundColor(Color(red: 0.01, green: 0.41, blue: 0.63))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color(red: 0.73, green: 0.87, blue: 0.98), lineWidth: 0.8)
+                        )
+                        
+                        if game.messages.count > 0 {
+                            Text("\(game.messages.count)")
+                                .font(.system(size: 8, weight: .black))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.red)
+                                .clipShape(Capsule())
+                                .offset(x: 4, y: -4)
                         }
                     }
                 }
+                .buttonStyle(.borderless)
                 
-                if game.spotsRemaining > 0 {
-                    Text("\(game.spotsRemaining) spot(s) open")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.orange)
-                        .padding(.leading, 8)
-                } else {
-                    Text("Game Full ✓")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.green)
-                        .padding(.leading, 8)
+                if isMyGame {
+                    Button {
+                        let res = dataManager.leaveGame(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        VStack(spacing: 2) {
+                            Text("Leave\nGame")
+                                .font(.system(size: 10, weight: .black))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(-2)
+                        }
+                        .frame(width: 52, height: 46)
+                        .background(Color(red: 0.99, green: 0.95, blue: 0.95))
+                        .foregroundColor(Color(red: 0.73, green: 0.11, blue: 0.11))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color(red: 0.99, green: 0.78, blue: 0.78), lineWidth: 0.8)
+                        )
+                    }
+                    .buttonStyle(.borderless)
+                } else if canUserJoin(game) {
+                    Button {
+                        let res = dataManager.joinGamePool(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: "figure.volleyball")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("Join\nGame")
+                                .font(.system(size: 9, weight: .black))
+                            multilineTextAlignment(.center)
+                            .lineSpacing(-2)
+                        }
+                        .frame(width: 50, height: 46)
+                        .background(Color(red: 0.94, green: 0.99, blue: 0.95))
+                        .foregroundColor(Color(red: 0.09, green: 0.4, blue: 0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color(red: 0.62, green: 0.93, blue: 0.71), lineWidth: 0.8)
+                        )
+                    }
+                    .buttonStyle(.borderless)
                 }
                 
                 Spacer()
                 
-                HStack(spacing: 4) {
-                    Text("View Match")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.orange)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.orange)
+                // Right cluster: Edit, Delete Game (Root)
+                Button {
+                    editGameForSheet = game
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("Edit")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .frame(width: 46, height: 46)
+                    .background(Color(.systemBackground))
+                    .foregroundColor(Color(.label))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(.separator), lineWidth: 0.8)
+                    )
+                }
+                .buttonStyle(.borderless)
+                
+                if (isHost && game.allPlayerIds.count <= 1) || dataManager.currentUser?.isRoot == true {
+                    Button {
+                        gameToDelete = game
+                        showDeleteAlert = true
+                    } label: {
+                        VStack(spacing: 1) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 12, weight: .bold))
+                            Text("Delete\nGame\n(Root)")
+                                .font(.system(size: 8, weight: .black))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(-3)
+                        }
+                        .frame(width: 52, height: 46)
+                        .background(Color(red: 0.99, green: 0.95, blue: 0.95))
+                        .foregroundColor(Color(red: 0.73, green: 0.11, blue: 0.11))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color(red: 0.99, green: 0.78, blue: 0.78), lineWidth: 0.8)
+                        )
+                    }
+                    .buttonStyle(.borderless)
                 }
             }
-            .padding(.top, 2)
+        }
+    }
+
+    private func gameRow(_ game: SetGame) -> some View {
+        let currentUserId = dataManager.currentUser?.id
+        let isMyGame = currentUserId != nil && (
+            game.allPlayerIds.contains(currentUserId!) ||
+            game.hostPlayerId == currentUserId!
+        )
+        let isHost = currentUserId != nil && (
+            (game.hostPlayerId != nil && game.hostPlayerId == currentUserId!) ||
+            (game.team1PlayerIds.first == currentUserId!)
+        )
+        
+        return VStack(alignment: .leading, spacing: 10) {
+            cardHeader(game: game, isMyGame: isMyGame, isHost: isHost)
+            cardMetadataLines(game: game)
+            playersPoolBox(game: game, isMyGame: isMyGame, currentUserId: currentUserId)
+            matchesSection(game: game)
+            cardFooter(game: game, isMyGame: isMyGame, isHost: isHost)
         }
         .padding(14)
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(color: Color.black.opacity(0.03), radius: 4, y: 2)
+        .shadow(color: Color.black.opacity(0.04), radius: 6, y: 2)
     }
 }

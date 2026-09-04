@@ -671,31 +671,58 @@ function renderMatches() {
     );
     const hostPlayer = game.hostPlayerId ? state.getPlayer(game.hostPlayerId) : (game.team1PlayerIds?.[0] ? state.getPlayer(game.team1PlayerIds[0]) : null);
 
-    const dateStr = parseGameDate(game.scheduledDate).toLocaleDateString("en-US", {
+    const d = parseGameDate(game.scheduledDate);
+    const scheduleFormatted = d.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
-      day: "numeric",
+      day: "numeric"
+    }) + ", " + d.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit"
     });
+    const dateStr = d.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    }) + " at " + d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit"
+    });
+    const courtClean = game.courtNumber ? (game.courtNumber.includes("#") ? game.courtNumber : "#" + (game.courtNumber.replace(/[^0-9]/g, '') || '1')) : "#1";
+
+    const pCount = game.maxPlayers || 4;
+    const formatLabel = pCount === 2 ? "1v1 Singles" : pCount === 6 ? "3v3 Triples" : "2v2 Doubles";
+
+    const allowedList = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
+    const skillStr = allowedList.length >= 6 ? "All Levels" : allowedList.join(" / ");
+
+    const hostDisplayName = hostPlayer ? (hostPlayer.nickname || hostPlayer.name) : "Host";
+    const hostStarVal = hostPlayer ? formatStarRating(hostPlayer) : "5.0";
 
     const renderPoolPlayer = (pid) => {
       const p = state.getPlayer(pid);
       if (!p) {
         const name = pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player";
-        return `<div class="player-item" style="display:flex; align-items:center; gap:6px; padding: 6px 10px; background: rgba(0,0,0,0.03); border-radius: 8px;">
-          ${renderAvatar("🏐", "", false)}
-          <span style="font-weight:600; font-size:13px;">${name}</span>
+        return `<div class="player-tile-mock">
+          <div class="player-tile-avatar">🏐</div>
+          <div class="player-tile-info">
+            <span class="player-tile-name">${name}</span>
+            <div class="player-tile-sub">
+              <span class="badge badge-tier-b" style="font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px;">B</span>
+              <span style="font-size:11px; font-weight:700; color:#b45309;">⭐ 5.0</span>
+            </div>
+          </div>
         </div>`;
       }
-      const isFlaker = (p.consecutiveBackouts || 0) >= 3;
-      return `<div class="player-item" style="display:flex; align-items:center; gap:6px; padding: 6px 10px; background: rgba(0,0,0,0.03); border-radius: 8px;">
-        ${renderAvatar(p.avatarEmoji, "", isFlaker)}
-        <div style="display:flex; flex-direction:column; min-width:0;">
-          <span style="font-weight:700; font-size:13px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${p.nickname || p.name}</span>
-          <div style="display:flex; align-items:center; gap:4px; font-size:10px;">
-            <span class="badge badge-tier-${(p.rating || 'b').toLowerCase()}" style="font-size:9px; padding:1px 4px;">${p.rating || 'B'}</span>
-            <span style="color:#b45309; font-weight:700;">⭐${formatStarRating(p)}</span>
+      const tierLower = (p.rating || 'b').toLowerCase();
+      const ratingVal = formatStarRating(p);
+      return `<div class="player-tile-mock">
+        <div class="player-tile-avatar">${p.avatarEmoji || '🏐'}</div>
+        <div class="player-tile-info">
+          <span class="player-tile-name">${p.nickname || p.name}</span>
+          <div class="player-tile-sub">
+            <span class="badge badge-tier-${tierLower}" style="font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px;">${p.rating || 'B'}</span>
+            <span style="font-size:11px; font-weight:700; color:#b45309;">⭐ ${ratingVal}</span>
           </div>
         </div>
       </div>`;
@@ -707,96 +734,58 @@ function renderMatches() {
     const isWaitlisted = currentUserId && waitlistIds.includes(currentUserId);
     const waitlistPos = isWaitlisted ? (waitlistIds.indexOf(currentUserId) + 1) : null;
 
-    let footerButtons = "";
-    if (isMember) {
-      const msgCount = game.messages ? game.messages.length : 0;
-      footerButtons += `<button class="btn btn-outline btn-sm" style="color:#0284c7; border-color:#bae6fd; margin-right:6px;" onclick="window.openGameQRCodeModal('${game.id}')">📱 QR Code</button> `;
-      footerButtons += `<button class="btn btn-outline btn-sm" style="color:#0284c7; border-color:#bae6fd; margin-right:6px;" onclick="window.openMatchChatModal('${game.id}')">💬 Chat${msgCount > 0 ? ' (' + msgCount + ')' : ''}</button> `;
-      footerButtons += `<button class="btn btn-outline btn-sm" style="color:#ef4444; border-color:#fca5a5; margin-right:6px;" onclick="window.leaveGame('${game.id}')">Leave Game</button> `;
-      footerButtons += `<button class="btn btn-outline btn-sm" style="color:#a855f7; border-color:#d8b4fe; margin-right:6px;" onclick="window.openRandomTeamsModalForGame('${game.id}')">🎲 Random</button> `;
-      footerButtons += `<button class="btn btn-outline btn-sm" style="margin-right:6px;" onclick="window.openEditMatchModal('${game.id}')">⚙️ Edit</button> `;
-
-      const otherPlayers = allPlayerIds.filter(id => id !== currentUserId);
-      if ((isHost && otherPlayers.length === 0) || isRootUser(state.currentUser)) {
-        footerButtons += `<button class="btn btn-outline btn-sm" style="color:#ef4444; border-color:#ef4444; margin-left:6px;" onclick="window.deleteGame('${game.id}')">🗑️ Delete Game ${isRootUser(state.currentUser) ? '(Root)' : ''}</button>`;
-      }
-    } else {
-      footerButtons += `<button class="btn btn-outline btn-sm" style="color:#0284c7; border-color:#bae6fd; margin-right:6px;" onclick="window.openGameQRCodeModal('${game.id}')">📱 QR Code</button> `;
-      if (isWaitlisted) {
-        footerButtons += `<button class="btn btn-outline btn-sm" style="color:#ef4444; border-color:#fca5a5; margin-right:6px;" onclick="window.leaveWaitlist('${game.id}')">Leave Waitlist (#${waitlistPos})</button> `;
-      }
-      if (isRootUser(state.currentUser)) {
-        footerButtons += `<button class="btn btn-outline btn-sm" style="color:#ef4444; border-color:#ef4444; margin-left:6px;" onclick="window.deleteGame('${game.id}')">🗑️ Delete Game (Root)</button>`;
-      }
-    }
-
-    const myMatchBadge = isMember ? 
-      `<span class="badge" style="background:#dbeafe; color:#1d4ed8; font-weight:800; font-size:10px; margin-right:4px;">🏐 My Game</span>` : '';
-
-    const myWaitlistBadge = isWaitlisted ?
-      `<span class="badge" style="background:#f3e8ff; color:#7e22ce; font-weight:800; font-size:10px; margin-right:4px;">⏳ Waitlisted #${waitlistPos}</span>` : '';
-
-    const waitlistCountBadge = (!isWaitlisted && waitlistIds.length > 0) ?
-      `<span class="badge" style="background:#f3e8ff; color:#7e22ce; font-weight:800; font-size:10px; margin-right:4px;">⏳ ${waitlistIds.length} Waitlist</span>` : '';
-
-    const subMatchesBadge = (game.subMatches && game.subMatches.length > 0) ? 
-      `<span class="badge" style="background:rgba(168, 85, 247, 0.15); color:#a855f7; font-weight:800; font-size:10px; margin-right:4px;">🎾 ${game.subMatches.length} Matches</span>` : '';
-
     const isMatchesCollapsed = !!(state.collapsedMatches && state.collapsedMatches[game.id]);
-
-    const pCount = game.maxPlayers || 4;
-    const formatLabel = pCount === 2 ? "1v1 Singles" : pCount === 6 ? "3v3 Triples" : "2v2 Doubles";
-    const playersBadge = `<span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; font-size:10px; margin-right:4px;">👥 ${formatLabel}</span>`;
-
-    const lockedBadge = game.isLevelLocked ? 
-      `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:800; font-size:10px; margin-right:4px;">🔒 Level Locked</span>` : '';
-
-    const hostSubtitle = hostPlayer ? 
-      `<div style="font-size:12px; color:var(--text-muted); margin-top:2px;">👑 Host: <strong>${hostPlayer.nickname || hostPlayer.name}</strong> (⭐ ${formatStarRating(hostPlayer)})</div>` : '';
-
-    const notesDisplay = game.notes ? `<div style="font-size:11px; color:var(--text-muted); margin-top:4px; font-style:italic;">"${game.notes}"</div>` : '';
+    const msgCount = game.messages ? game.messages.length : 0;
 
     return `
-      <div class="match-card" id="match-card-${game.id}">
-        <div class="match-header">
-          <div>
-            <div style="font-weight: 800; font-size: 16px;">${game.title}</div>
-            <div class="match-court">📍 ${game.courtLocation} • ${game.courtNumber || "Court #1"}</div>
-            ${hostSubtitle}
-            ${notesDisplay}
-          </div>
-          <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
-            <button type="button" class="btn btn-outline btn-sm" style="padding: 2px 7px; font-size: 11px; border-radius: 6px; border-color: #cbd5e1; color: #0284c7; background: #f0f9ff; font-weight:700;" onclick="window.openGameQRCodeModal('${game.id}')" title="Scan QR Code to Join">📱 QR</button>
-            ${myMatchBadge}
-            ${myWaitlistBadge}
-            ${waitlistCountBadge}
-            ${subMatchesBadge}
-            ${playersBadge}
-            ${(() => {
-              const allowedList = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
-              if (allowedList.length >= 6) {
-                return `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:10px;">🌐 All Levels</span>`;
-              }
-              return allowedList.map(t => `<span class="badge badge-tier-${t.toLowerCase()}">${t}</span>`).join(" ");
-            })()}
-          </div>
+      <div class="game-details-card" id="match-card-${game.id}">
+        <!-- Top Right Admin Actions Pill -->
+        <button type="button" class="card-top-admin-btn" onclick="window.toggleCardAdminMenu('${game.id}')" title="Admin Actions">
+          ⚙️ ADMIN ACTIONS ▾
+        </button>
+
+        <!-- Centered GAME DETAILS header -->
+        <div class="card-center-title">GAME DETAILS</div>
+
+        <!-- Metadata Line 1: SCHEDULE & COURT -->
+        <div class="card-metadata-line">
+          <span>📅 <strong>SCHEDULE:</strong> ${scheduleFormatted}</span>
+          <span>•</span>
+          <span>📍 ${game.courtLocation} ${courtClean}</span>
         </div>
 
-        <!-- Players Pool Card -->
-        <div style="background: var(--bg-card, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 12px; margin: 12px 0;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-            <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">
-              👥 Players Pool (${allPlayerIds.length}/${maxPlayers} Players)
+        <!-- Metadata Line 2: FORMAT, STATUS & SKILL -->
+        <div class="card-metadata-line">
+          <span>🏐 <strong>FORMAT:</strong> ${formatLabel}</span>
+          <span>•</span>
+          <span class="badge-open-status">${game.status === 'completed' ? 'Completed' : (game.status === 'in_progress' ? 'Live' : 'Open')}</span>
+          <span>•</span>
+          <span>🏅 <strong>SKILL:</strong> ${skillStr}</span>
+        </div>
+
+        <!-- Metadata Line 3: HOST, RATING & LEVEL LOCKED -->
+        <div class="card-metadata-line" style="margin-bottom: 12px;">
+          <span>👑 <strong>HOST:</strong> ${hostDisplayName}</span>
+          <span>•</span>
+          <span>⭐ ${hostStarVal}</span>
+          ${game.isLevelLocked ? `<span class="badge-level-lock">🔒 Level Locked</span>` : ''}
+        </div>
+
+        <!-- Players Pool Box -->
+        <div class="pool-box-container">
+          <div class="pool-box-header">
+            <span class="pool-box-title">
+              👥 PLAYERS POOL (${allPlayerIds.length}/${maxPlayers} PLAYERS)
             </span>
-            <span style="font-size: 11px; font-weight: 700; color: ${spotsLeft === 0 ? '#22c55e' : 'var(--accent)'};">
+            <span class="${spotsLeft === 0 ? 'pool-box-status-full' : 'pool-box-status-open'}">
               ${spotsLeft === 0 ? 'Pool Full ✓' : spotsLeft + ' Open Spot' + (spotsLeft > 1 ? 's' : '')}
             </span>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div class="pool-grid-2x2">
             ${poolPlayersHtml}
             ${needsPlayers && !isMember ? `
-              <button type="button" class="btn btn-outline btn-sm" style="color:var(--accent); border-color:var(--accent); border-style:dashed; min-height: 40px; font-weight:700;" onclick="window.joinGamePool('${game.id}')">
-                + Join Player Pool
+              <button type="button" class="btn btn-outline btn-sm" style="color:var(--accent); border-color:var(--accent); border-style:dashed; min-height: 48px; border-radius:10px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff;" onclick="window.joinGamePool('${game.id}')">
+                <span style="font-size:16px;">+</span> Join Player Pool
               </button>
             ` : ''}
           </div>
@@ -852,38 +841,31 @@ function renderMatches() {
         </div>
 
         <!-- Matches in this Game Section -->
-        <div style="margin: 14px 0;">
+        <div style="margin-bottom: 14px;">
           <div 
             onclick="window.toggleMatchesCollapse('${game.id}')"
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; user-select: none; padding: 4px 0;"
-            title="Click to ${isMatchesCollapsed ? 'expand' : 'collapse'} matches"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; user-select: none;"
           >
-            <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
-              🎾 Matches in This Game (${(game.subMatches || []).length})
+            <span style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
+              🥎 MATCHES IN THIS GAME (${(game.subMatches || []).length})
             </span>
-            <button type="button" class="btn btn-sm" style="background: rgba(168, 85, 247, 0.12); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-              ${isMatchesCollapsed ? 'Expand ▼' : 'Collapse ▲'}
-            </button>
+            <span style="font-size: 14px; font-weight: 800; color: #0f172a;">${isMatchesCollapsed ? '⌄' : '⌃'}</span>
           </div>
-          ${isMatchesCollapsed ? `
-            <div onclick="window.toggleMatchesCollapse('${game.id}')" style="cursor: pointer; background: var(--bg-card, #fff); border: 1px dashed rgba(168, 85, 247, 0.4); border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 12px; font-weight: 600;">
-              <span>🎾 ${(game.subMatches || []).length > 0 ? (game.subMatches.length + ' matches hidden') : 'Matches section collapsed'}</span>
-              <span style="color: #a855f7; font-weight: 800;">Tap to Expand ▼</span>
+
+          <div onclick="window.toggleMatchesCollapse('${game.id}')" class="matches-summary-row">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #0f172a;">
+              <span>🏐</span>
+              <span>Match Schedule (${(game.subMatches || []).length > 0 ? game.subMatches.length : 3})</span>
             </div>
-          ` : `
-          ${(!game.subMatches || game.subMatches.length === 0) ? `
-            <div style="background: rgba(168, 85, 247, 0.05); border: 1px dashed rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
-              <div style="font-size: 26px; margin-bottom: 4px;">🎲</div>
-              <div style="font-size: 14px; font-weight: 800; margin-bottom: 4px;">No Matches Generated Yet</div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; max-width: 400px; margin-left:auto; margin-right:auto;">
-                Randomly generate round-robin or King of the Court tournament sets for the ${allPlayerIds.length} players in this pool.
-              </div>
-              <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #a855f7, #ec4899); border: none; color: white; font-weight: 800; padding: 8px 16px; border-radius: 8px;" onclick="window.openRandomTeamsModalForGame('${game.id}')">
-                🎲 Random Generate Matches
-              </button>
+            <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 13px;">
+              <span>🏐</span>
+              <span>🏐</span>
+              <span style="font-size: 12px; margin-left: 2px;">⌄</span>
             </div>
-          ` : `
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+          </div>
+
+          ${!isMatchesCollapsed && game.subMatches && game.subMatches.length > 0 ? `
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
               ${game.subMatches.map((m, mIdx) => {
                 const s1Val = (m.team1Score !== undefined && m.team1Score !== null) ? m.team1Score : "";
                 const s2Val = (m.team2Score !== undefined && m.team2Score !== null) ? m.team2Score : "";
@@ -925,16 +907,74 @@ function renderMatches() {
                 </button>
               </div>
             </div>
-          `}
-          `}
+          ` : ''}
         </div>
 
-        <div class="match-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div style="font-size: 12px; color: var(--text-muted);">
-            🕒 ${dateStr}
+        <!-- Card Footer -->
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 12px; margin-top: 6px;">
+          <!-- Top Row of Footer: Time & Admin Actions Dropdown Trigger -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 12px; color: #64748b; font-weight: 600;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>🕒</span>
+              <span>${dateStr}</span>
+            </div>
+            <div onclick="window.toggleCardAdminMenu('${game.id}')" style="font-size: 11px; font-weight: 800; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 2px;">
+              ADMIN ACTIONS • SETTINGS ▾
+            </div>
           </div>
-          <div style="display:flex; align-items:center;">${footerButtons}</div>
+
+          <!-- Bottom Row of Footer: Action Buttons -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <!-- Left Button Cluster -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="footer-action-btn-stacked" onclick="window.openGameQRCodeModal('${game.id}')" title="Scan QR Code">
+                <span style="font-size: 16px;">📱</span>
+                <span style="font-size: 10px; font-weight: 700; color: #0f172a; margin-top: 2px; line-height: 1.1; text-align: center;">QR<br>Code</span>
+              </button>
+
+              <button type="button" class="footer-action-btn-stacked footer-action-btn-chat" onclick="window.openMatchChatModal('${game.id}')" title="Match Chat">
+                <span style="font-size: 16px;">💬</span>
+                <span style="font-size: 10px; font-weight: 700; color: #0369a1; margin-top: 2px; line-height: 1.1; text-align: center;">Chat<br>(${msgCount})</span>
+                ${msgCount > 0 ? `<span class="footer-unread-badge">${msgCount}</span>` : ''}
+              </button>
+
+              ${isMember ? `
+                <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.leaveGame('${game.id}')" title="Leave Match" style="min-height: 48px; padding: 6px 12px;">
+                  <span style="font-size: 11px; font-weight: 800; color: #991b1b; line-height: 1.1; text-align: center;">Leave<br>Game</span>
+                </button>
+              ` : (
+                isWaitlisted ? `
+                  <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.leaveWaitlist('${game.id}')" title="Leave Waitlist" style="min-height: 48px; padding: 6px 8px;">
+                    <span style="font-size: 10px; font-weight: 800; color: #991b1b; line-height: 1.1; text-align: center;">Leave<br>Waitlist<br>(#${waitlistPos})</span>
+                  </button>
+                ` : (
+                  needsPlayers ? `
+                    <button type="button" class="footer-action-btn-stacked" style="background: #f0fdf4; border-color: #86efac; color: #166534; min-height: 48px; padding: 6px 10px;" onclick="window.joinGamePool('${game.id}')" title="Join Match">
+                      <span style="font-size: 16px;">🏐</span>
+                      <span style="font-size: 10px; font-weight: 800; color: #166534; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Game</span>
+                    </button>
+                  ` : ''
+                )
+              )}
+            </div>
+
+            <!-- Right Button Cluster -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="footer-action-btn-stacked" onclick="window.openEditMatchModal('${game.id}')" title="Edit Game">
+                <span style="font-size: 16px;">✏️</span>
+                <span style="font-size: 10px; font-weight: 700; color: #0f172a; margin-top: 2px;">Edit</span>
+              </button>
+
+              ${((isHost && allPlayerIds.length <= 1) || isRootUser(state.currentUser)) ? `
+                <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.deleteGame('${game.id}')" title="Delete Game" style="min-height: 48px;">
+                  <span style="font-size: 14px;">🗑️</span>
+                  <span style="font-size: 9px; font-weight: 800; color: #991b1b; line-height: 1.1; margin-top: 2px; text-align: center;">Delete<br>Game<br>(Root)</span>
+                </button>
+              ` : ''}
+            </div>
+          </div>
         </div>
+      </div>
     `;
   }).join("");
 }
@@ -1716,6 +1756,10 @@ window.handleCreateMatch = (e) => {
   window.closeCreateMatchModal();
   renderMatches();
   showToast(`Game hosted: ${newGame.title}!`);
+};
+
+window.toggleCardAdminMenu = (gameId) => {
+  window.openEditMatchModal(gameId);
 };
 
 // Edit Match (Participants)
