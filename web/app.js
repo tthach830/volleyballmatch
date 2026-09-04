@@ -2519,15 +2519,14 @@ window.setRandomGeneratorMode = (m) => {
 
   const descEl = document.getElementById("rt-mode-desc");
   if (descEl) {
+    const startCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
     descEl.textContent = isKing
-      ? "4 Players per court (e.g. 12 players = 3 courts). Players 1–4 on Court 1, 5–8 on Court 2, etc. Each court plays 3 rotating sets with live individual score tracking!"
+      ? `4 Players per court (e.g. 8 players = 2 courts). Players 1–4 on Court #${startCourt}, 5–8 on Court #${startCourt + 1}, etc. Each court plays 3 rotating sets with live individual score tracking!`
       : "Continuous social rotations across all players with an equitable resting queue.";
   }
 
   const numGroup = document.getElementById("rt-num-games-group");
-  const courtGroup = document.getElementById("rt-court-group");
   if (numGroup) numGroup.style.display = isKing ? "none" : "block";
-  if (courtGroup) courtGroup.style.gridColumn = isKing ? "span 2" : "span 1";
 
   const btnGen = document.getElementById("rt-generate-btn");
   if (btnGen) {
@@ -2553,6 +2552,8 @@ window.renderRandomPoolPlayers = () => {
   const total = window.currentRandomPoolPlayers.length;
   if (countEl) countEl.textContent = total;
 
+  const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
+
   // Validation badge
   const badgeEl = document.getElementById("rt-validation-badge");
   if (badgeEl) {
@@ -2577,11 +2578,11 @@ window.renderRandomPoolPlayers = () => {
         let lines = `<strong>🏟️ ${courts} Court${courts > 1 ? 's' : ''} Needed (${courts * 4} Players)</strong>`;
         for (let c = 0; c < courts; c++) {
           const cPlayers = window.currentRandomPoolPlayers.slice(c * 4, (c + 1) * 4);
-          lines += `<div style="margin-top: 2px; color: var(--text-muted);">• Court ${c + 1}: ${cPlayers.join(", ")}</div>`;
+          lines += `<div style="margin-top: 2px; color: var(--text-muted);">• Court #${startingCourt + c}: ${cPlayers.join(", ")}</div>`;
         }
         if (total % 4 !== 0) {
           const rest = window.currentRandomPoolPlayers.slice(courts * 4);
-          lines += `<div style="margin-top: 4px; color: #ef4444; font-weight: 600;">⚠️ ${total % 4} Alternate/Bye: ${rest.join(", ")} (Add ${4 - (total % 4)} more for Court ${courts + 1})</div>`;
+          lines += `<div style="margin-top: 4px; color: #ef4444; font-weight: 600;">⚠️ ${total % 4} Alternate/Bye: ${rest.join(", ")} (Add ${4 - (total % 4)} more for Court #${startingCourt + courts})</div>`;
         }
         summaryCard.innerHTML = lines;
         summaryCard.style.display = "block";
@@ -2597,13 +2598,13 @@ window.renderRandomPoolPlayers = () => {
   if (!container) return;
 
   container.innerHTML = window.currentRandomPoolPlayers.map((pName, idx) => {
-    const courtNum = Math.floor(idx / 4) + 1;
+    const courtNum = startingCourt + Math.floor(idx / 4);
     return `
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 10px; font-weight: 800;">${idx + 1}</span>
         <input type="text" class="form-input" style="padding: 4px 8px; font-size: 13px; flex: 1;" value="${pName}" onchange="window.currentRandomPoolPlayers[${idx}] = this.value.trim()">
         ${window.randomGeneratorMode === 'king' ? `
-          <span style="font-size: 10px; font-weight: 700; background: rgba(255, 106, 0, 0.12); color: var(--accent); padding: 2px 6px; border-radius: 999px;">Court ${courtNum}</span>
+          <span style="font-size: 10px; font-weight: 700; background: rgba(255, 106, 0, 0.12); color: var(--accent); padding: 2px 6px; border-radius: 999px;">Court #${courtNum}</span>
         ` : ''}
         ${window.currentRandomPoolPlayers.length > 4 ? `
           <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 2px 8px; font-size: 11px;" onclick="window.removePlayerFromRandomPool(${idx})">✕</button>
@@ -2633,7 +2634,7 @@ window.removePlayerFromRandomPool = (idx) => {
   window.renderRandomPoolPlayers();
 };
 
-window.openRandomTeamsModal = (initialPlayers, initialCourt, initialFormat) => {
+window.openRandomTeamsModal = (initialPlayers, initialCourt, initialFormat, initialCourtNumber) => {
   window.currentEditingGameId = null;
   if (initialPlayers && initialPlayers.length >= 4) {
     window.currentRandomPoolPlayers = [...initialPlayers];
@@ -2643,6 +2644,11 @@ window.openRandomTeamsModal = (initialPlayers, initialCourt, initialFormat) => {
   if (initialCourt) {
     const courtSelect = document.getElementById("rt-court");
     if (courtSelect) courtSelect.value = initialCourt;
+  }
+  if (initialCourtNumber) {
+    const num = parseInt(String(initialCourtNumber).replace(/\D/g, '')) || 1;
+    const courtNumSelect = document.getElementById("rt-court-number");
+    if (courtNumSelect) courtNumSelect.value = String(Math.min(18, Math.max(1, num)));
   }
   const isKing = initialFormat && (initialFormat.toLowerCase().includes("king"));
   window.setRandomGeneratorMode(isKing ? 'king' : 'king');
@@ -2666,7 +2672,7 @@ window.openRandomTeamsModalForGame = (gameId) => {
   while (names.length < 4) {
     names.push(`Player ${names.length + 1}`);
   }
-  window.openRandomTeamsModal(names, game.courtLocation, game.format);
+  window.openRandomTeamsModal(names, game.courtLocation, game.format, game.courtNumber);
   window.currentEditingGameId = gameId;
 };
 
@@ -2721,13 +2727,14 @@ function renderGeneratedMatches() {
   if (!list) return;
 
   if (window.randomGeneratorMode === 'king') {
-    // Group by courtGroup
     const courtCount = Math.floor(window.currentRandomPoolPlayers.length / 4);
+    const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
     let html = "";
 
-    for (let c = 1; c <= courtCount; c++) {
-      const courtPlayers = window.currentRandomPoolPlayers.slice((c - 1) * 4, c * 4);
-      const courtMatches = window.currentGeneratedMatches.filter(m => m.courtGroup === c);
+    for (let c = 0; c < courtCount; c++) {
+      const assignedCourtNum = startingCourt + c;
+      const courtPlayers = window.currentRandomPoolPlayers.slice(c * 4, (c + 1) * 4);
+      const courtMatches = window.currentGeneratedMatches.filter(m => m.courtNumber === `Court #${assignedCourtNum}`);
       const standings = calculateKingStandings(courtPlayers, courtMatches);
 
       html += `
@@ -2735,7 +2742,7 @@ function renderGeneratedMatches() {
           <!-- Court Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-size: 13px; font-weight: 800; color: var(--accent);">
-              👑 COURT #${c} (PLAYERS ${(c - 1) * 4 + 1}–${c * 4})
+              👑 COURT #${assignedCourtNum} (PLAYERS ${c * 4 + 1}–${(c + 1) * 4})
             </div>
             ${standings[0] && standings[0].wins > 0 ? `
               <span style="font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(255, 106, 0, 0.12); padding: 2px 8px; border-radius: 999px;">
@@ -2860,51 +2867,44 @@ window.handleGenerateRandomTeams = (e) => {
 
   if (window.randomGeneratorMode === 'king') {
     const courtCount = Math.floor(players.length / 4);
+    const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
     const matches = [];
     let globalIdx = 1;
 
-    for (let c = 0; c < courtCount; c++) {
-      const courtPlayers = players.slice(c * 4, (c + 1) * 4);
-      const cNum = c + 1;
+    // 3 rounds interleaved across courts: all courts play Set 1 simultaneously, then Set 2, then Set 3
+    for (let round = 1; round <= 3; round++) {
+      for (let c = 0; c < courtCount; c++) {
+        const courtPlayers = players.slice(c * 4, (c + 1) * 4);
+        const assignedCourtNum = startingCourt + c;
+        const courtName = `Court #${assignedCourtNum}`;
 
-      // Set 1: P0 & P1 vs P2 & P3
-      matches.push({
-        matchNumber: globalIdx++,
-        courtGroup: cNum,
-        courtNumber: `Court #${cNum}`,
-        setNumber: 1,
-        team1: [courtPlayers[0], courtPlayers[1]],
-        team2: [courtPlayers[2], courtPlayers[3]],
-        s1: "",
-        s2: "",
-        isCompleted: false
-      });
+        let team1, team2;
+        if (round === 1) {
+          // Set 1: P0 & P1 vs P2 & P3
+          team1 = [courtPlayers[0], courtPlayers[1]];
+          team2 = [courtPlayers[2], courtPlayers[3]];
+        } else if (round === 2) {
+          // Set 2: P0 & P2 vs P1 & P3
+          team1 = [courtPlayers[0], courtPlayers[2]];
+          team2 = [courtPlayers[1], courtPlayers[3]];
+        } else {
+          // Set 3: P0 & P3 vs P1 & P2
+          team1 = [courtPlayers[0], courtPlayers[3]];
+          team2 = [courtPlayers[1], courtPlayers[2]];
+        }
 
-      // Set 2: P0 & P2 vs P1 & P3
-      matches.push({
-        matchNumber: globalIdx++,
-        courtGroup: cNum,
-        courtNumber: `Court #${cNum}`,
-        setNumber: 2,
-        team1: [courtPlayers[0], courtPlayers[2]],
-        team2: [courtPlayers[1], courtPlayers[3]],
-        s1: "",
-        s2: "",
-        isCompleted: false
-      });
-
-      // Set 3: P0 & P3 vs P1 & P2
-      matches.push({
-        matchNumber: globalIdx++,
-        courtGroup: cNum,
-        courtNumber: `Court #${cNum}`,
-        setNumber: 3,
-        team1: [courtPlayers[0], courtPlayers[3]],
-        team2: [courtPlayers[1], courtPlayers[2]],
-        s1: "",
-        s2: "",
-        isCompleted: false
-      });
+        matches.push({
+          matchNumber: globalIdx++,
+          courtGroup: assignedCourtNum,
+          courtNumber: courtName,
+          setNumber: round,
+          team1: team1,
+          team2: team2,
+          s1: "",
+          s2: "",
+          isCompleted: false
+        });
+      }
     }
 
     window.currentGeneratedMatches = matches;
@@ -2963,9 +2963,10 @@ window.handleGenerateRandomTeams = (e) => {
       partnerHistory[t2[0]]?.add(t2[1]);
       partnerHistory[t2[1]]?.add(t2[0]);
 
+      const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
       matches.push({
         matchNumber: i + 1,
-        courtNumber: "Court #1",
+        courtNumber: `Court #${startingCourt}`,
         team1: t1,
         team2: t2,
         resting: byes,
@@ -3004,9 +3005,10 @@ window.addAnotherRandomMatch = () => {
   const picked = sorted.slice(0, 4);
   const byes = sorted.slice(4);
 
+  const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
   window.currentGeneratedMatches.push({
     matchNumber: window.currentGeneratedMatches.length + 1,
-    courtNumber: "Court #1",
+    courtNumber: `Court #${startingCourt}`,
     team1: [picked[0], picked[1]],
     team2: [picked[2], picked[3]],
     resting: byes,

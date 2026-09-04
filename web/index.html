@@ -688,17 +688,40 @@
             <button type="button" class="btn btn-outline btn-sm" onclick="window.addPlayerToRandomPool()">+ Add Player</button>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
-            <div class="form-group" id="rt-num-games-group" style="display: none;">
+            <div class="form-group" id="rt-num-games-group" style="display: none; grid-column: span 2;">
               <label class="form-label" for="rt-num-games">Number of Matches</label>
               <input type="number" id="rt-num-games" class="form-input" min="1" max="30" value="4">
             </div>
-            <div class="form-group" style="grid-column: span 2;" id="rt-court-group">
-              <label class="form-label" for="rt-court">Beach Location</label>
+            <div class="form-group" id="rt-court-group">
+              <label class="form-label" for="rt-court">Select Beach Location</label>
               <select id="rt-court" class="form-select">
                 <option value="Main Beach">Main Beach</option>
                 <option value="Harbor Beach">Harbor Beach</option>
                 <option value="4th Street">4th Street Courts</option>
                 <option value="Seabright Beach">Seabright Beach</option>
+              </select>
+            </div>
+            <div class="form-group" id="rt-court-num-group">
+              <label class="form-label" for="rt-court-number">Select Court # (1–18)</label>
+              <select id="rt-court-number" class="form-select" onchange="window.renderRandomPoolPlayers()">
+                <option value="1">Court #1</option>
+                <option value="2">Court #2</option>
+                <option value="3">Court #3</option>
+                <option value="4">Court #4</option>
+                <option value="5">Court #5</option>
+                <option value="6">Court #6</option>
+                <option value="7">Court #7</option>
+                <option value="8">Court #8</option>
+                <option value="9">Court #9</option>
+                <option value="10">Court #10</option>
+                <option value="11">Court #11</option>
+                <option value="12">Court #12</option>
+                <option value="13">Court #13</option>
+                <option value="14">Court #14</option>
+                <option value="15">Court #15</option>
+                <option value="16">Court #16</option>
+                <option value="17">Court #17</option>
+                <option value="18">Court #18</option>
               </select>
             </div>
           </div>
@@ -919,6 +942,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=3.6"></script>
+  <script type="module" src="app.js?v=3.8"></script>
 </body>
 </html>

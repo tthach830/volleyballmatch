@@ -152,6 +152,7 @@ public struct ConfirmedGamesView: View {
                     initialGameId: game.id,
                     initialPlayers: matchPlayers,
                     initialBeach: game.courtLocation,
+                    initialCourtNumber: game.courtNumber,
                     initialFormat: game.format
                 )
             }

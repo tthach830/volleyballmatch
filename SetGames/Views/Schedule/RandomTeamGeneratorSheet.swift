@@ -21,6 +21,7 @@ public struct GeneratedMatch: Identifiable, Hashable {
     public let id: UUID = UUID()
     public var matchNumber: Int
     public var courtNumber: String = "Court #1"
+    public var setNumber: Int = 1
     public var team1Player1: PoolPlayer
     public var team1Player2: PoolPlayer
     public var team2Player1: PoolPlayer
@@ -55,7 +56,7 @@ public struct GeneratedMatchRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 HStack(spacing: 6) {
-                    Text("SET \(match.matchNumber)")
+                    Text("SET \(match.setNumber)")
                         .font(.system(size: 11, weight: .black))
                         .foregroundColor(.orange)
                     Text("•")
@@ -169,14 +170,30 @@ public struct RandomTeamGeneratorSheet: View {
     @State private var newPlayerName: String = ""
     @State private var numberOfGames: Int = 4
     @State private var courtLocation: String = "Main Beach"
-    @State private var courtNumber: String = "Court #1"
+    @State private var startingCourtNumber: Int = 1
     @State private var generatedMatches: [GeneratedMatch] = []
     @State private var alertMessage: String? = nil
     @State private var showAlert: Bool = false
     
     private let initialGameId: UUID?
     
-    public init(dataManager: DataManager, initialGameId: UUID? = nil, initialPlayers: [Player]? = nil, initialBeach: String? = nil, initialFormat: GameFormat? = nil) {
+    private static func parseCourtNumber(_ text: String?) -> Int {
+        guard let text = text else { return 1 }
+        let digits = text.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+        if let val = Int(digits), (1...18).contains(val) {
+            return val
+        }
+        return 1
+    }
+    
+    public init(
+        dataManager: DataManager,
+        initialGameId: UUID? = nil,
+        initialPlayers: [Player]? = nil,
+        initialBeach: String? = nil,
+        initialCourtNumber: String? = nil,
+        initialFormat: GameFormat? = nil
+    ) {
         self.dataManager = dataManager
         self.initialGameId = initialGameId
         if let fmt = initialFormat, fmt == .kingOfTheBeach {
@@ -208,6 +225,9 @@ public struct RandomTeamGeneratorSheet: View {
         if let beach = initialBeach {
             _courtLocation = State(initialValue: beach)
         }
+        if let courtStr = initialCourtNumber {
+            _startingCourtNumber = State(initialValue: Self.parseCourtNumber(courtStr))
+        }
     }
     
     public var body: some View {
@@ -234,7 +254,7 @@ public struct RandomTeamGeneratorSheet: View {
                                 Text("\(courtCount) Court\(courtCount > 1 ? "s" : "") Needed for \(courtCount * 4) players.")
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.orange)
-                                Text("Player 1–4 on Court 1, Player 5–8 on Court 2, etc. Individual points and records are tracked per player.")
+                                Text("Player 1–4 on Court #\(startingCourtNumber), Player 5–8 on Court #\(startingCourtNumber + 1), etc. Individual points and records are tracked per player.")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             }
@@ -271,8 +291,8 @@ public struct RandomTeamGeneratorSheet: View {
                             
                             // Court assignment badge preview
                             if let idx = playersList.firstIndex(where: { $0.id == player.id }) {
-                                let cNum = (idx / 4) + 1
-                                Text("Court \(cNum)")
+                                let cNum = startingCourtNumber + (idx / 4)
+                                Text("Court #\(cNum)")
                                     .font(.system(size: 10, weight: .bold))
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
@@ -333,11 +353,18 @@ public struct RandomTeamGeneratorSheet: View {
                         Stepper("Number of Matches: \(numberOfGames)", value: $numberOfGames, in: 1...30)
                     }
                     
-                    Picker("Beach Location", selection: $courtLocation) {
+                    Picker("Select Beach Location", selection: $courtLocation) {
                         ForEach(CourtLocations.allOptions, id: \.self) { loc in
                             Text(loc).tag(loc)
                         }
                     }
+                    
+                    Picker("Select Court # (1–18)", selection: $startingCourtNumber) {
+                        ForEach(1...18, id: \.self) { num in
+                            Text("Court #\(num)").tag(num)
+                        }
+                    }
+                    .pickerStyle(.menu)
                     
                     Button {
                         if mode == .kingOfTheCourt {
@@ -413,12 +440,14 @@ public struct RandomTeamGeneratorSheet: View {
     
     private var kingOfTheCourtResultsSection: some View {
         let courtCount = playersList.count / 4
-        return ForEach(1...courtCount, id: \.self) { courtNum in
+        return ForEach(0..<courtCount, id: \.self) { c in
+            let assignedCourtNum = startingCourtNumber + c
+            let courtString = "Court #\(assignedCourtNum)"
             let courtMatchesIndices = generatedMatches.indices.filter {
-                generatedMatches[$0].courtNumber == "Court #\(courtNum)"
+                generatedMatches[$0].courtNumber == courtString
             }
             let courtMatches = courtMatchesIndices.map { generatedMatches[$0] }
-            let courtPlayers = Array(playersList[((courtNum - 1) * 4) ..< min(courtNum * 4, playersList.count)])
+            let courtPlayers = Array(playersList[(c * 4) ..< min((c + 1) * 4, playersList.count)])
             let standings = calculateStandings(for: courtPlayers, matches: courtMatches)
             
             Section {
@@ -427,7 +456,7 @@ public struct RandomTeamGeneratorSheet: View {
                     HStack {
                         HStack(spacing: 4) {
                             Image(systemName: "crown.fill").foregroundColor(.orange)
-                            Text("COURT #\(courtNum) INDIVIDUAL STANDINGS")
+                            Text("COURT #\(assignedCourtNum) INDIVIDUAL STANDINGS")
                                 .font(.system(size: 11, weight: .black))
                                 .foregroundColor(.orange)
                         }
@@ -515,7 +544,7 @@ public struct RandomTeamGeneratorSheet: View {
                     GeneratedMatchRow(match: $generatedMatches[idx])
                 }
             } header: {
-                Text("COURT #\(courtNum) (PLAYERS \( (courtNum - 1) * 4 + 1 )–\( min(courtNum * 4, playersList.count) ))")
+                Text("COURT #\(assignedCourtNum) (PLAYERS \( c * 4 + 1 )–\( min((c + 1) * 4, playersList.count) ))")
             }
         }
     }
@@ -570,44 +599,41 @@ public struct RandomTeamGeneratorSheet: View {
         var allMatches: [GeneratedMatch] = []
         var globalMatchIdx = 1
         
-        for c in 0..<courtCount {
-            let courtPlayers = Array(cleanPlayers[c*4 ..< (c+1)*4])
-            let cNum = c + 1
-            
-            // Set 1: P1 & P2 vs P3 & P4
-            let s1 = GeneratedMatch(
-                matchNumber: globalMatchIdx,
-                courtNumber: "Court #\(cNum)",
-                team1Player1: courtPlayers[0],
-                team1Player2: courtPlayers[1],
-                team2Player1: courtPlayers[2],
-                team2Player2: courtPlayers[3]
-            )
-            globalMatchIdx += 1
-            
-            // Set 2: P1 & P3 vs P2 & P4
-            let s2 = GeneratedMatch(
-                matchNumber: globalMatchIdx,
-                courtNumber: "Court #\(cNum)",
-                team1Player1: courtPlayers[0],
-                team1Player2: courtPlayers[2],
-                team2Player1: courtPlayers[1],
-                team2Player2: courtPlayers[3]
-            )
-            globalMatchIdx += 1
-            
-            // Set 3: P1 & P4 vs P2 & P3
-            let s3 = GeneratedMatch(
-                matchNumber: globalMatchIdx,
-                courtNumber: "Court #\(cNum)",
-                team1Player1: courtPlayers[0],
-                team1Player2: courtPlayers[3],
-                team2Player1: courtPlayers[1],
-                team2Player2: courtPlayers[2]
-            )
-            globalMatchIdx += 1
-            
-            allMatches.append(contentsOf: [s1, s2, s3])
+        // 3 rotating sets per court, interleaved across courts so all courts play Round 1 simultaneously, then Round 2, then Round 3
+        for round in 1...3 {
+            for c in 0..<courtCount {
+                let courtPlayers = Array(cleanPlayers[c*4 ..< (c+1)*4])
+                let assignedCourt = "Court #\(startingCourtNumber + c)"
+                
+                let t1: (PoolPlayer, PoolPlayer)
+                let t2: (PoolPlayer, PoolPlayer)
+                
+                if round == 1 {
+                    // Set 1: P1 & P2 vs P3 & P4
+                    t1 = (courtPlayers[0], courtPlayers[1])
+                    t2 = (courtPlayers[2], courtPlayers[3])
+                } else if round == 2 {
+                    // Set 2: P1 & P3 vs P2 & P4
+                    t1 = (courtPlayers[0], courtPlayers[2])
+                    t2 = (courtPlayers[1], courtPlayers[3])
+                } else {
+                    // Set 3: P1 & P4 vs P2 & P3
+                    t1 = (courtPlayers[0], courtPlayers[3])
+                    t2 = (courtPlayers[1], courtPlayers[2])
+                }
+                
+                let match = GeneratedMatch(
+                    matchNumber: globalMatchIdx,
+                    courtNumber: assignedCourt,
+                    setNumber: round,
+                    team1Player1: t1.0,
+                    team1Player2: t1.1,
+                    team2Player1: t2.0,
+                    team2Player2: t2.1
+                )
+                allMatches.append(match)
+                globalMatchIdx += 1
+            }
         }
         
         self.generatedMatches = allMatches
@@ -701,7 +727,7 @@ public struct RandomTeamGeneratorSheet: View {
             
             matches.append(GeneratedMatch(
                 matchNumber: i + 1,
-                courtNumber: "Court #1",
+                courtNumber: "Court #\(startingCourtNumber)",
                 team1Player1: t1.0,
                 team1Player2: t1.1,
                 team2Player1: t2.0,
@@ -734,7 +760,7 @@ public struct RandomTeamGeneratorSheet: View {
         
         let newMatch = GeneratedMatch(
             matchNumber: generatedMatches.count + 1,
-            courtNumber: "Court #1",
+            courtNumber: "Court #\(startingCourtNumber)",
             team1Player1: picked[0],
             team1Player2: picked[1],
             team2Player1: picked[2],
@@ -754,7 +780,7 @@ public struct RandomTeamGeneratorSheet: View {
                 return SubMatch(
                     matchNumber: m.matchNumber,
                     courtNumber: m.courtNumber,
-                    setNumber: m.matchNumber,
+                    setNumber: m.setNumber,
                     team1PlayerIds: [m.team1Player1.id, m.team1Player2.id],
                     team2PlayerIds: [m.team2Player1.id, m.team2Player2.id],
                     restingPlayerIds: m.restingPlayers.map { $0.id },
@@ -790,7 +816,7 @@ public struct RandomTeamGeneratorSheet: View {
             }
             
             let gameDate = cal.date(byAdding: .minute, value: idx * 30, to: today) ?? today
-            let titlePrefix = mode == .kingOfTheCourt ? "King of Court (\(m.courtNumber)) - Set \(m.matchNumber)" : "Round Robin Match #\(m.matchNumber)"
+            let titlePrefix = mode == .kingOfTheCourt ? "King of Court (\(m.courtNumber)) - Set \(m.setNumber)" : "Round Robin Match #\(m.matchNumber)"
             
             let newGame = SetGame(
                 title: titlePrefix,

@@ -550,7 +550,7 @@ public struct GameDetailView: View {
                     let matchPlayers = game.allPlayerIds.map { pid in
                         dataManager.player(for: pid)
                     }
-                    RandomTeamGeneratorSheet(dataManager: dataManager, initialGameId: game.id, initialPlayers: matchPlayers, initialBeach: game.courtLocation, initialFormat: game.format)
+                    RandomTeamGeneratorSheet(dataManager: dataManager, initialGameId: game.id, initialPlayers: matchPlayers, initialBeach: game.courtLocation, initialCourtNumber: game.courtNumber, initialFormat: game.format)
                 }
                 .sheet(item: $selectedSubMatchForScore) { subM in
                     RecordSubMatchScoreSheet(dataManager: dataManager, gameId: game.id, subMatch: subM)
