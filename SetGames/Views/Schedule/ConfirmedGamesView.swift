@@ -9,9 +9,10 @@ public struct ConfirmedGamesView: View {
     @State private var qrGameForSheet: SetGame? = nil
     
     public enum GameFilter: String, CaseIterable {
-        case all = "All Upcoming"
+        case all = "Upcoming"
         case myGames = "My Games"
         case openSpots = "Needs Players"
+        case completed = "Past Games"
     }
     
     public init(dataManager: DataManager) {
@@ -143,6 +144,7 @@ public struct ConfirmedGamesView: View {
         
         // Only include upcoming matches (scheduled or in-progress)
         let upcoming = dataManager.games.filter { $0.status == .scheduled || $0.status == .inProgress }
+        let completed = dataManager.games.filter { $0.status == .completed }
         
         // Filter by user selection and sort by date and time
         switch selectedFilter {
@@ -150,13 +152,15 @@ public struct ConfirmedGamesView: View {
             return upcoming.sorted { $0.scheduledDate < $1.scheduledDate }
         case .myGames:
             guard let currentUserId = currentUserId else { return [] }
-            return upcoming
-                .filter { $0.allPlayerIds.contains(currentUserId) || $0.hostPlayerId == currentUserId }
+            return dataManager.games
+                .filter { $0.status != .canceled && ($0.allPlayerIds.contains(currentUserId) || $0.hostPlayerId == currentUserId) }
                 .sorted { $0.scheduledDate < $1.scheduledDate }
         case .openSpots:
             return upcoming
                 .filter { canUserJoin($0) }
                 .sorted { $0.scheduledDate < $1.scheduledDate }
+        case .completed:
+            return completed.sorted { $0.scheduledDate > $1.scheduledDate }
         }
     }
     
@@ -164,89 +168,39 @@ public struct ConfirmedGamesView: View {
         let isMyGame = dataManager.currentUser != nil && (game.allPlayerIds.contains(dataManager.currentUser!.id) || game.hostPlayerId == dataManager.currentUser!.id)
         
         return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                if game.allowedRatings.count > 1 {
+            // Row 1: Tiers on left, QR code & Status on right
+            HStack(alignment: .center) {
+                if game.allowedRatings.count >= RatingTier.allCases.count {
+                    HStack(spacing: 4) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("All Levels")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Color.blue.opacity(0.12))
+                    .foregroundColor(.blue)
+                    .clipShape(Capsule())
+                } else if game.allowedRatings.count > 1 {
                     HStack(spacing: 3) {
                         ForEach(game.allowedRatings, id: \.self) { r in
-                            RatingBadge(rating: r, size: .small)
+                            Text(r.rawValue)
+                                .font(.system(size: 10, weight: .bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2.5)
+                                .background(r.badgeColor.opacity(0.18))
+                                .foregroundColor(r.badgeColor)
+                                .clipShape(Capsule())
                         }
                     }
                 } else {
                     RatingBadge(rating: game.targetRating, size: .small)
                 }
                 
-                if isMyGame {
-                    HStack(spacing: 3) {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 8))
-                        Text("My Game")
-                    }
-                    .font(.system(size: 10, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.blue.opacity(0.15))
-                    .foregroundColor(.blue)
-                    .clipShape(Capsule())
-                }
-                
-                if !game.subMatches.isEmpty {
-                    HStack(spacing: 3) {
-                        Image(systemName: "circle.grid.2x2.fill")
-                            .font(.system(size: 8))
-                        Text("\(game.subMatches.count) Matches")
-                    }
-                    .font(.system(size: 10, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.purple.opacity(0.15))
-                    .foregroundColor(.purple)
-                    .clipShape(Capsule())
-                }
-                
-                if game.isLevelLocked {
-                    HStack(spacing: 3) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 8))
-                        Text("Locked")
-                    }
-                    .font(.system(size: 10, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.orange.opacity(0.15))
-                    .foregroundColor(.orange)
-                    .clipShape(Capsule())
-                }
-                
-                if !game.waitlistPlayerIds.isEmpty {
-                    HStack(spacing: 3) {
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 8))
-                        Text("\(game.waitlistPlayerIds.count) Waitlist")
-                    }
-                    .font(.system(size: 10, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.purple.opacity(0.15))
-                    .foregroundColor(.purple)
-                    .clipShape(Capsule())
-                }
-                
-                if let uid = dataManager.currentUser?.id, let pos = game.waitlistPosition(for: uid) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "clock.badge.checkmark.fill")
-                            .font(.system(size: 8))
-                        Text("Waitlisted #\(pos)")
-                    }
-                    .font(.system(size: 10, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.purple.opacity(0.25))
-                    .foregroundColor(.purple)
-                    .clipShape(Capsule())
-                }
-                
                 Spacer()
                 
+                // QR Button with borderless style to prevent gesture conflict
                 Button {
                     qrGameForSheet = game
                 } label: {
@@ -257,11 +211,92 @@ public struct ConfirmedGamesView: View {
                         .background(Color.blue.opacity(0.12))
                         .clipShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
                 
+                // Status Pill
                 Text(game.status.rawValue)
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.orange)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(game.status == .completed ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                    .foregroundColor(game.status == .completed ? .green : .orange)
+                    .clipShape(Capsule())
+            }
+            
+            // Row 2: Secondary Badges (My Game, Level Locked, Matches, Waitlist)
+            let hasMetadataBadges = isMyGame || game.isLevelLocked || !game.subMatches.isEmpty || !game.waitlistPlayerIds.isEmpty
+            if hasMetadataBadges {
+                HStack(spacing: 6) {
+                    if isMyGame {
+                        HStack(spacing: 3) {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 8))
+                            Text("My Game")
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.15))
+                        .foregroundColor(.blue)
+                        .clipShape(Capsule())
+                    }
+                    
+                    if game.isLevelLocked {
+                        HStack(spacing: 3) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 8))
+                            Text("Locked")
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.15))
+                        .foregroundColor(.orange)
+                        .clipShape(Capsule())
+                    }
+                    
+                    if !game.subMatches.isEmpty {
+                        HStack(spacing: 3) {
+                            Image(systemName: "circle.grid.2x2.fill")
+                                .font(.system(size: 8))
+                            Text("\(game.subMatches.count) Matches")
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.purple.opacity(0.15))
+                        .foregroundColor(.purple)
+                        .clipShape(Capsule())
+                    }
+                    
+                    if !game.waitlistPlayerIds.isEmpty {
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 8))
+                            Text("\(game.waitlistPlayerIds.count) Waitlist")
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.purple.opacity(0.15))
+                        .foregroundColor(.purple)
+                        .clipShape(Capsule())
+                    }
+                    
+                    if let uid = dataManager.currentUser?.id, let pos = game.waitlistPosition(for: uid) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock.badge.checkmark.fill")
+                                .font(.system(size: 8))
+                            Text("Waitlisted #\(pos)")
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.purple.opacity(0.25))
+                        .foregroundColor(.purple)
+                        .clipShape(Capsule())
+                    }
+                }
             }
             
             Text(game.title)
@@ -304,6 +339,11 @@ public struct ConfirmedGamesView: View {
                     Text("\(game.spotsRemaining) spot(s) open")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.orange)
+                        .padding(.leading, 8)
+                } else {
+                    Text("Game Full ✓")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.green)
                         .padding(.leading, 8)
                 }
                 

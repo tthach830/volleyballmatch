@@ -56,29 +56,33 @@ public struct GameDetailView: View {
                     VStack(spacing: 18) {
                         // Header Card
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                if game.allowedRatings.count > 1 {
+                            HStack(alignment: .center) {
+                                if game.allowedRatings.count >= RatingTier.allCases.count {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "globe")
+                                            .font(.system(size: 11, weight: .bold))
+                                        Text("All Levels")
+                                            .font(.system(size: 12, weight: .bold))
+                                    }
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.12))
+                                    .foregroundColor(.blue)
+                                    .clipShape(Capsule())
+                                } else if game.allowedRatings.count > 1 {
                                     HStack(spacing: 4) {
                                         ForEach(game.allowedRatings, id: \.self) { r in
-                                            RatingBadge(rating: r, size: .small)
+                                            Text(r.rawValue)
+                                                .font(.system(size: 11, weight: .bold))
+                                                .padding(.horizontal, 7)
+                                                .padding(.vertical, 3)
+                                                .background(r.badgeColor.opacity(0.18))
+                                                .foregroundColor(r.badgeColor)
+                                                .clipShape(Capsule())
                                         }
                                     }
                                 } else {
                                     RatingBadge(rating: game.targetRating, size: .regular)
-                                }
-                                
-                                if game.isLevelLocked {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "lock.fill")
-                                            .font(.system(size: 9))
-                                        Text("Level Locked")
-                                            .font(.system(size: 10, weight: .bold))
-                                    }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.orange.opacity(0.15))
-                                    .foregroundColor(.orange)
-                                    .clipShape(Capsule())
                                 }
                                 
                                 Spacer()
@@ -90,6 +94,20 @@ public struct GameDetailView: View {
                                     .background(game.status == .completed ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
                                     .foregroundColor(game.status == .completed ? .green : .orange)
                                     .clipShape(Capsule())
+                            }
+                            
+                            if game.isLevelLocked {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 9))
+                                    Text("Level Locked • \(game.allowedRatingsDescription) only")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.15))
+                                .foregroundColor(.orange)
+                                .clipShape(Capsule())
                             }
                             
                             Text(game.title)

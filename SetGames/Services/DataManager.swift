@@ -810,7 +810,7 @@ public class DataManager: ObservableObject {
                 }
                 
                 self.hasCompletedInitialGamesSync = true
-                self.games = remoteGames.filter { $0.status != .completed }
+                self.games = remoteGames.filter { $0.status != .canceled }
                 self.saveToDisk()
             },
             onSlotsUpdate: { [weak self] remoteSlots in
@@ -1159,7 +1159,7 @@ public class DataManager: ObservableObject {
         
         if let gData = try? Data(contentsOf: gamesFileURL),
            let loadedGames = try? decoder.decode([SetGame].self, from: gData) {
-            self.games = loadedGames.filter { $0.status != .completed }
+            self.games = loadedGames.filter { $0.status != .canceled }
         }
         
         if let sData = try? Data(contentsOf: slotsFileURL),

@@ -600,8 +600,16 @@ function renderMatches() {
 
   const currentUserId = state.currentUser?.id;
 
-  // 1. Only include upcoming matches (scheduled or in progress)
-  const upcomingGames = state.games.filter(isUpcomingGame);
+  // 1. Determine games for current view filter
+  const isCompletedFilter = currentMatchFilter === "completed";
+  let targetGames;
+  if (isCompletedFilter) {
+    targetGames = state.games.filter(g => g.status === "completed")
+      .sort((a, b) => parseGameDate(b.scheduledDate).getTime() - parseGameDate(a.scheduledDate).getTime());
+  } else {
+    targetGames = state.games.filter(isUpcomingGame)
+      .sort((a, b) => parseGameDate(a.scheduledDate).getTime() - parseGameDate(b.scheduledDate).getTime());
+  }
 
   const canJoin = (game) => {
     const maxPerTeam = Math.max(1, Math.floor((game.maxPlayers || 4) / 2));
@@ -620,11 +628,9 @@ function renderMatches() {
     return true;
   };
 
-  // 2. Sort all upcoming games by date and time (ascending, earliest first)
-  upcomingGames.sort((a, b) => parseGameDate(a.scheduledDate).getTime() - parseGameDate(b.scheduledDate).getTime());
-
-  // 3. Apply selected view filter ('all', 'myMatches', 'openSpots') matching iOS
-  const displayGames = upcomingGames.filter(game => {
+  // 2. Apply selected view filter ('all', 'myGames', 'openSpots', 'completed')
+  const displayGames = targetGames.filter(game => {
+    if (isCompletedFilter) return true;
     const isMember = currentUserId && (
       game.team1PlayerIds?.includes(currentUserId) ||
       game.team2PlayerIds?.includes(currentUserId) ||
@@ -639,7 +645,9 @@ function renderMatches() {
   });
 
   if (displayGames.length === 0) {
-    const emptyMsg = (currentMatchFilter === "myGames" || currentMatchFilter === "myMatches") ?
+    const emptyMsg = isCompletedFilter ?
+      "No past completed games found." :
+      (currentMatchFilter === "myGames" || currentMatchFilter === "myMatches") ?
       "You are not registered in any upcoming games.<br>Tap 'Needs Players' to join or '+ New Game' to host!" :
       currentMatchFilter === "openSpots" ?
       "No open games needing players for your rating tier.<br>Tap '+ New Game' above to host a game!" :
@@ -764,8 +772,13 @@ function renderMatches() {
             ${waitlistCountBadge}
             ${subMatchesBadge}
             ${playersBadge}
-            ${lockedBadge}
-            ${((game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"]).map(t => `<span class="badge badge-tier-${t.toLowerCase()}">${t}</span>`).join(" ")}
+            ${(() => {
+              const allowedList = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
+              if (allowedList.length >= 6) {
+                return `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:10px;">🌐 All Levels</span>`;
+              }
+              return allowedList.map(t => `<span class="badge badge-tier-${t.toLowerCase()}">${t}</span>`).join(" ");
+            })()}
           </div>
         </div>
 
@@ -3103,7 +3116,7 @@ window.addEventListener("DOMContentLoaded", () => {
         });
       }
       hasCompletedInitialGamesSyncWeb = true;
-      state.games = remoteGames.filter(isUpcomingGame);
+      state.games = remoteGames.filter(g => g.status !== "canceled");
       state.saveLocal();
       renderMatches();
       if (window.activeChatGameId) {

@@ -83,6 +83,72 @@ public struct SubMatch: Identifiable, Codable, Hashable {
         self.winningTeam = winningTeam
         self.appliedStatsWinner = appliedStatsWinner
     }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, matchNumber, courtNumber, setNumber
+        case team1PlayerIds, team2PlayerIds, restingPlayerIds
+        case team1Score, team2Score, isCompleted, winningTeam, appliedStatsWinner
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let uuid = try? c.decode(UUID.self, forKey: .id) {
+            id = uuid
+        } else if let raw = try? c.decode(String.self, forKey: .id) {
+            id = UUID(uuidString: raw) ?? SetGame.parseUUID(from: raw) ?? UUID()
+        } else {
+            id = UUID()
+        }
+        matchNumber = (try? c.decode(Int.self, forKey: .matchNumber)) ?? 1
+        courtNumber = (try? c.decode(String.self, forKey: .courtNumber)) ?? "Court #1"
+        setNumber = (try? c.decode(Int.self, forKey: .setNumber)) ?? 1
+        
+        if let t1 = try? c.decode([UUID].self, forKey: .team1PlayerIds) {
+            team1PlayerIds = t1
+        } else if let t1Str = try? c.decode([String].self, forKey: .team1PlayerIds) {
+            team1PlayerIds = t1Str.compactMap { SetGame.parseUUID(from: $0) }
+        } else {
+            team1PlayerIds = []
+        }
+        
+        if let t2 = try? c.decode([UUID].self, forKey: .team2PlayerIds) {
+            team2PlayerIds = t2
+        } else if let t2Str = try? c.decode([String].self, forKey: .team2PlayerIds) {
+            team2PlayerIds = t2Str.compactMap { SetGame.parseUUID(from: $0) }
+        } else {
+            team2PlayerIds = []
+        }
+        
+        if let r = try? c.decode([UUID].self, forKey: .restingPlayerIds) {
+            restingPlayerIds = r
+        } else if let rStr = try? c.decode([String].self, forKey: .restingPlayerIds) {
+            restingPlayerIds = rStr.compactMap { SetGame.parseUUID(from: $0) }
+        } else {
+            restingPlayerIds = []
+        }
+        
+        team1Score = try? c.decode(Int.self, forKey: .team1Score)
+        team2Score = try? c.decode(Int.self, forKey: .team2Score)
+        isCompleted = (try? c.decode(Bool.self, forKey: .isCompleted)) ?? false
+        winningTeam = try? c.decode(Int.self, forKey: .winningTeam)
+        appliedStatsWinner = try? c.decode(Int.self, forKey: .appliedStatsWinner)
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id.uuidString, forKey: .id)
+        try c.encode(matchNumber, forKey: .matchNumber)
+        try c.encode(courtNumber, forKey: .courtNumber)
+        try c.encode(setNumber, forKey: .setNumber)
+        try c.encode(team1PlayerIds.map { $0.uuidString }, forKey: .team1PlayerIds)
+        try c.encode(team2PlayerIds.map { $0.uuidString }, forKey: .team2PlayerIds)
+        try c.encode(restingPlayerIds.map { $0.uuidString }, forKey: .restingPlayerIds)
+        try c.encodeIfPresent(team1Score, forKey: .team1Score)
+        try c.encodeIfPresent(team2Score, forKey: .team2Score)
+        try c.encode(isCompleted, forKey: .isCompleted)
+        try c.encodeIfPresent(winningTeam, forKey: .winningTeam)
+        try c.encodeIfPresent(appliedStatsWinner, forKey: .appliedStatsWinner)
+    }
 }
 
 public struct GameChatMessage: Identifiable, Codable, Hashable {
@@ -98,6 +164,62 @@ public struct GameChatMessage: Identifiable, Codable, Hashable {
         self.senderName = senderName
         self.text = text
         self.date = date
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, senderId, senderName, text, date
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let uuid = try? c.decode(UUID.self, forKey: .id) {
+            id = uuid
+        } else if let raw = try? c.decode(String.self, forKey: .id) {
+            id = UUID(uuidString: raw) ?? SetGame.parseUUID(from: raw) ?? UUID()
+        } else {
+            id = UUID()
+        }
+        
+        if let sUUID = try? c.decode(UUID.self, forKey: .senderId) {
+            senderId = sUUID
+        } else if let sRaw = try? c.decode(String.self, forKey: .senderId) {
+            senderId = UUID(uuidString: sRaw) ?? SetGame.parseUUID(from: sRaw) ?? UUID()
+        } else {
+            senderId = UUID()
+        }
+        
+        senderName = (try? c.decode(String.self, forKey: .senderName)) ?? "Player"
+        text = (try? c.decode(String.self, forKey: .text)) ?? ""
+        
+        if let d = try? c.decode(Date.self, forKey: .date) {
+            date = d
+        } else if let dStr = try? c.decode(String.self, forKey: .date) {
+            let iso = ISO8601DateFormatter()
+            iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let parsed = iso.date(from: dStr) {
+                date = parsed
+            } else {
+                iso.formatOptions = [.withInternetDateTime]
+                date = iso.date(from: dStr) ?? Date()
+            }
+        } else if let ts = try? c.decode(Double.self, forKey: .date) {
+            if ts > 10_000_000_000 {
+                date = Date(timeIntervalSince1970: ts / 1000)
+            } else {
+                date = Date(timeIntervalSince1970: ts)
+            }
+        } else {
+            date = Date()
+        }
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id.uuidString, forKey: .id)
+        try c.encode(senderId.uuidString, forKey: .senderId)
+        try c.encode(senderName, forKey: .senderName)
+        try c.encode(text, forKey: .text)
+        try c.encode(date, forKey: .date)
     }
     
     public var formattedTime: String {
