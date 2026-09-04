@@ -11,6 +11,29 @@ public struct NotificationsSheet: View {
     public var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Button(action: {
+                        NotificationService.shared.sendTestPushToSelf(delay: 3.0)
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "bell.badge.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 20))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Send Test Remote Push (3s)")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.primary)
+                                Text("Tap, then lock your phone or swipe home to see lock screen banner.")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("Remote Notifications")
+                }
+                
                 if dataManager.notifications.isEmpty {
                     VStack(spacing: 8) {
                         Image(systemName: "bell.slash")

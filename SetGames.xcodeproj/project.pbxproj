@@ -304,7 +304,6 @@
 				TargetAttributes = {
 					AA4BA7EBC58642525BC5C322 = {
 						CreatedOnToolsVersion = 16.0;
-						DevelopmentTeam = Z4WJ2G9N79;
 						ProvisioningStyle = Automatic;
 						SystemCapabilities = {
 							com.apple.Push = {

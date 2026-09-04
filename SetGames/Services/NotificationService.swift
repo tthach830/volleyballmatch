@@ -1,6 +1,7 @@
 import Foundation
 import UserNotifications
 import SwiftUI
+import CryptoKit
 
 public class NotificationService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     public static let shared = NotificationService()
@@ -10,6 +11,23 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
     @Published public var apnsDeviceToken: String?
     
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    
+    // MARK: - APNs Direct Push Configuration ($0 Serverless Architecture)
+    private let apnsKeyId = "C84ZV9L33Y"
+    private let apnsTeamId = "Z4WJ2G9N79"
+    private let apnsBundleId = "com.peterthach.SetGames"
+    private let apnsPrivateKeyPEM = """
+    -----BEGIN PRIVATE KEY-----
+    MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgwdeID2PhucMZu9fs
+    QeuicScCZCnQVTqPAEsTumHjnR2gCgYIKoZIzj0DAQehRANCAASQZItT7b6CwNDA
+    jalMiCEWBEHDilj/g0xnhBe+BUPHN6ZnYq3EKYX7nVPBOfzz70ZzAPmTv2QXxkjA
+    Iz4gxJw9
+    -----END PRIVATE KEY-----
+    """
+    
+    private var cachedJWT: String?
+    private var cachedJWTDate: Date?
+    private let jwtLock = NSLock()
     
     private override init() {
         super.init()
@@ -88,5 +106,167 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound, .badge, .list])
+    }
+    
+    // MARK: - Direct APNs Push Implementation ($0 Cost, Zero Backend)
+    
+    private func base64Url(_ data: Data) -> String {
+        return data.base64EncodedString()
+            .replacingOccurrences(of: "=", with: "")
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+    }
+    
+    private func getValidJWT() throws -> String {
+        jwtLock.lock()
+        defer { jwtLock.unlock() }
+        
+        if let jwt = cachedJWT, let date = cachedJWTDate, Date().timeIntervalSince(date) < 3000 {
+            return jwt
+        }
+        
+        let headerObj = ["alg": "ES256", "kid": apnsKeyId]
+        let headerData = try JSONSerialization.data(withJSONObject: headerObj)
+        let headerB64 = base64Url(headerData)
+        
+        let payloadObj: [String: Any] = [
+            "iss": apnsTeamId,
+            "iat": Int(Date().timeIntervalSince1970)
+        ]
+        let payloadData = try JSONSerialization.data(withJSONObject: payloadObj)
+        let payloadB64 = base64Url(payloadData)
+        
+        let message = "\(headerB64).\(payloadB64)"
+        guard let messageData = message.data(using: .utf8) else {
+            throw NSError(domain: "APNs", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode JWT message"])
+        }
+        
+        let privateKey = try P256.Signing.PrivateKey(pemRepresentation: apnsPrivateKeyPEM)
+        let signature = try privateKey.signature(for: messageData)
+        let signatureB64 = base64Url(signature.rawRepresentation)
+        
+        let newJWT = "\(message).\(signatureB64)"
+        cachedJWT = newJWT
+        cachedJWTDate = Date()
+        return newJWT
+    }
+    
+    /// Dispatches a push notification directly to Apple's APNs servers.
+    /// Wakes the recipient's phone with sound and banner even when the app is terminated or screen is locked.
+    /// Runs at $0 cost with zero external server dependencies.
+    public func sendDirectRemotePush(
+        to rawDeviceToken: String,
+        title: String,
+        body: String,
+        gameId: UUID? = nil
+    ) {
+        let cleanToken = rawDeviceToken
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "<", with: "")
+            .replacingOccurrences(of: ">", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            
+        guard !cleanToken.isEmpty else { return }
+        
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            do {
+                let jwt = try self.getValidJWT()
+                self.performAPNsRequest(
+                    deviceToken: cleanToken,
+                    title: title,
+                    body: body,
+                    gameId: gameId,
+                    jwt: jwt,
+                    useSandbox: true
+                )
+            } catch {
+                print("⚠️ [APNs] Failed to sign JWT: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func performAPNsRequest(
+        deviceToken: String,
+        title: String,
+        body: String,
+        gameId: UUID?,
+        jwt: String,
+        useSandbox: Bool
+    ) {
+        let host = useSandbox ? "api.sandbox.push.apple.com" : "api.push.apple.com"
+        guard let url = URL(string: "https://\(host)/3/device/\(deviceToken)") else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("bearer \(jwt)", forHTTPHeaderField: "authorization")
+        request.setValue(apnsBundleId, forHTTPHeaderField: "apns-topic")
+        request.setValue("alert", forHTTPHeaderField: "apns-push-type")
+        request.setValue("10", forHTTPHeaderField: "apns-priority")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        var aps: [String: Any] = [
+            "alert": [
+                "title": title,
+                "body": body
+            ],
+            "sound": "default",
+            "badge": 1
+        ]
+        
+        var rootPayload: [String: Any] = ["aps": aps]
+        if let gameId = gameId {
+            rootPayload["gameId"] = gameId.uuidString
+        }
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: rootPayload)
+        } catch {
+            print("⚠️ [APNs] JSON serialization error: \(error.localizedDescription)")
+            return
+        }
+        
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 200 {
+                    print("✅ [APNs] Remote push successfully sent to (\(deviceToken.prefix(8))...) via \(host)!")
+                } else if httpResponse.statusCode == 400 && useSandbox {
+                    // In TestFlight or App Store builds, retry with production gateway
+                    print("ℹ️ [APNs] Sandbox returned 400 BadDeviceToken. Retrying production gateway...")
+                    self?.performAPNsRequest(
+                        deviceToken: deviceToken,
+                        title: title,
+                        body: body,
+                        gameId: gameId,
+                        jwt: jwt,
+                        useSandbox: false
+                    )
+                } else {
+                    var errorDetails = ""
+                    if let data = data, let str = String(data: data, encoding: .utf8) {
+                        errorDetails = str
+                    }
+                    print("⚠️ [APNs] Response \(httpResponse.statusCode) from \(host): \(errorDetails)")
+                }
+            } else if let error = error {
+                print("⚠️ [APNs] Connection error: \(error.localizedDescription)")
+            }
+        }
+        task.resume()
+    }
+    
+    /// Schedules a test push to the local device after delay to verify lock screen delivery
+    public func sendTestPushToSelf(delay: TimeInterval = 3.0) {
+        guard let token = apnsDeviceToken, !token.isEmpty else {
+            print("⚠️ [APNs] Cannot send test push: no device token registered yet.")
+            return
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.sendDirectRemotePush(
+                to: token,
+                title: "🏐 SetGames Test Push",
+                body: "Background push working! Delivered via Apple APNs at $0 cost."
+            )
+        }
     }
 }

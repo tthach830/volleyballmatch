@@ -129,6 +129,13 @@ public class FirestoreService: ObservableObject {
         db.collection("players").document(playerId.uuidString).setData(["deviceToken": token], merge: true)
     }
     
+    public func fetchDeviceToken(for playerId: UUID, completion: @escaping (String?) -> Void) {
+        db.collection("players").document(playerId.uuidString).getDocument { snapshot, _ in
+            let token = snapshot?.data()?["deviceToken"] as? String
+            completion(token)
+        }
+    }
+    
     public func saveGame(_ game: SetGame) {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

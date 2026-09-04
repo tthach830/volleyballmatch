@@ -458,6 +458,14 @@ public class DataManager: ObservableObject {
             }
             if let p = players.first(where: { $0.id == promotedId }) {
                 promotedName = p.nickname.isEmpty ? p.name : p.nickname
+                if let token = p.deviceToken, !token.isEmpty {
+                    NotificationService.shared.sendDirectRemotePush(
+                        to: token,
+                        title: "🎉 You're in!",
+                        body: "A spot opened up in '\(game.title)' and you were promoted from the waitlist!",
+                        gameId: game.id
+                    )
+                }
             }
         }
         
@@ -658,6 +666,39 @@ public class DataManager: ObservableObject {
         games[index].messages.append(newMsg)
         saveToDisk()
         FirestoreService.shared.saveGame(games[index])
+        
+        // Dispatch direct APNs remote push notifications to all match participants ($0 Serverless)
+        let game = games[index]
+        var recipientIds = Set(game.allPlayerIds + game.waitlistPlayerIds)
+        if let host = game.hostPlayerId {
+            recipientIds.insert(host)
+        }
+        recipientIds.remove(user.id)
+        
+        let gameTitle = game.title
+        for recipientId in recipientIds {
+            if let recipient = players.first(where: { $0.id == recipientId }),
+               let token = recipient.deviceToken,
+               !token.isEmpty {
+                NotificationService.shared.sendDirectRemotePush(
+                    to: token,
+                    title: "💬 \(senderName) (\(gameTitle))",
+                    body: trimmed,
+                    gameId: gameId
+                )
+            } else {
+                FirestoreService.shared.fetchDeviceToken(for: recipientId) { token in
+                    if let token = token, !token.isEmpty {
+                        NotificationService.shared.sendDirectRemotePush(
+                            to: token,
+                            title: "💬 \(senderName) (\(gameTitle))",
+                            body: trimmed,
+                            gameId: gameId
+                        )
+                    }
+                }
+            }
+        }
         
         return (true, "Message sent!")
     }
