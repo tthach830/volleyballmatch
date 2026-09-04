@@ -399,6 +399,12 @@ header {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pool-box-header.collapsed {
+  margin-bottom: 0;
 }
 
 .pool-box-title {

@@ -75,7 +75,7 @@ export function subscribeToPlayers(onUpdate) {
   return onSnapshot(collection(db, "players"), (snapshot) => {
     const players = [];
     snapshot.forEach((doc) => {
-      players.push(doc.data());
+      players.push({ id: doc.id, ...doc.data() });
     });
     onUpdate(players);
   }, (error) => {
@@ -88,7 +88,7 @@ export function subscribeToGames(onUpdate) {
   return onSnapshot(collection(db, "games"), (snapshot) => {
     const games = [];
     snapshot.forEach((doc) => {
-      games.push(doc.data());
+      games.push({ id: doc.id, ...doc.data() });
     });
     onUpdate(games);
   }, (error) => {
@@ -101,7 +101,7 @@ export function subscribeToSlots(onUpdate) {
   return onSnapshot(collection(db, "availabilitySlots"), (snapshot) => {
     const slots = [];
     snapshot.forEach((doc) => {
-      slots.push(doc.data());
+      slots.push({ id: doc.id, ...doc.data() });
     });
     onUpdate(slots);
   }, (error) => {

@@ -288,7 +288,8 @@
 
     <!-- Auth Modal (Phone Number Login & Sign Up - No Verification) -->
     <div id="auth-modal" class="modal-backdrop">
-      <div class="modal-card" style="max-width: 420px;">
+      <div class="modal-card" style="max-width: 420px; position: relative;">
+        <button type="button" class="modal-close" style="position: absolute; right: 16px; top: 16px; z-index: 10;" onclick="window.closeAuthModal()" title="Close">&times;</button>
         <div style="text-align: center; margin-bottom: 16px;">
           <div style="font-size: 40px; margin-bottom: 6px;">🏐</div>
           <h2 style="font-size: 22px; font-weight: 900; margin: 0;">Volleyball Match</h2>
@@ -372,6 +373,10 @@
           </div>
           <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Create Player & Play</button>
         </form>
+
+        <div style="text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <button type="button" class="btn btn-outline" style="width: 100%; font-size: 13px; font-weight: 700;" onclick="window.closeAuthModal()">👀 Browse Games as Guest</button>
+        </div>
       </div>
     </div>
 
@@ -942,6 +947,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=4.3"></script>
+  <script type="module" src="app.js?v=4.4"></script>
 </body>
 </html>

@@ -16,6 +16,7 @@ public struct GameDetailView: View {
     @State private var selectedSubMatchForScore: SubMatch? = nil
     @State private var showQRCodeSheet: Bool = false
     @State private var isMatchesCollapsed: Bool = true
+    @State private var isPoolCollapsed: Bool = false
     @State private var isChatCollapsed: Bool = false
     @State private var playerToRemove: Player? = nil
     @State private var showRemovePlayerConfirmation: Bool = false
@@ -205,67 +206,80 @@ public struct GameDetailView: View {
                         
                         // Unified Players Pool
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "person.3.fill")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.orange)
-                                    Text("PLAYERS POOL (\(game.allPlayerIds.count)/\(game.maxPlayers) PLAYERS)")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundColor(.secondary)
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    isPoolCollapsed.toggle()
                                 }
-                                Spacer()
-                                if game.isFull {
-                                    Text("Pool Full ✓")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(.green)
-                                } else {
-                                    Text("\(game.spotsRemaining) Spot\(game.spotsRemaining > 1 ? "s" : "") Open")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(.orange)
-                                }
-                            }
-                            .padding(.horizontal)
-                            
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                                ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
-                                    playerCard(dataManager.player(for: pid), game: game)
-                                }
-                                
-                                if game.spotsRemaining > 0 && !isUserInMatch {
-                                    Button {
-                                        let res = dataManager.joinGamePool(gameId: game.id)
-                                        if !res.success {
-                                            alertTitle = "Cannot Join Pool"
-                                            alertMessage = res.message
-                                            showAlert = true
-                                        }
-                                    } label: {
-                                        VStack(spacing: 4) {
-                                            Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
-                                                .font(.system(size: 18))
-                                                .foregroundColor(.orange)
-                                            Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "+ Join Player Pool")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundColor(.orange)
-                                                .lineLimit(1)
-                                        }
-                                        .padding(12)
-                                        .frame(maxWidth: .infinity)
-                                        .background(Color.orange.opacity(0.08))
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
-                                                .foregroundColor(.orange.opacity(0.5))
-                                        )
+                            } label: {
+                                HStack {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: isPoolCollapsed ? "chevron.right" : "chevron.down")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                        Image(systemName: "person.3.fill")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.orange)
+                                        Text("PLAYERS POOL (\(game.allPlayerIds.count)/\(game.maxPlayers) PLAYERS)")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    if game.isFull {
+                                        Text("Pool Full ✓")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.green)
+                                    } else {
+                                        Text("\(game.spotsRemaining) Spot\(game.spotsRemaining > 1 ? "s" : "") Open")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.orange)
                                     }
                                 }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                             .padding(.horizontal)
                             
-                            // Waitlist Section
-                            waitlistSection(game: game)
+                            if !isPoolCollapsed {
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                                    ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
+                                        playerCard(dataManager.player(for: pid), game: game)
+                                    }
+                                    
+                                    if game.spotsRemaining > 0 && !isUserInMatch {
+                                        Button {
+                                            let res = dataManager.joinGamePool(gameId: game.id)
+                                            if !res.success {
+                                                alertTitle = "Cannot Join Pool"
+                                                alertMessage = res.message
+                                                showAlert = true
+                                            }
+                                        } label: {
+                                            VStack(spacing: 4) {
+                                                Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
+                                                    .font(.system(size: 18))
+                                                    .foregroundColor(.orange)
+                                                Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "+ Join Player Pool")
+                                                    .font(.system(size: 11, weight: .bold))
+                                                    .foregroundColor(.orange)
+                                                    .lineLimit(1)
+                                            }
+                                            .padding(12)
+                                            .frame(maxWidth: .infinity)
+                                            .background(Color.orange.opacity(0.08))
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                                    .foregroundColor(.orange.opacity(0.5))
+                                            )
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal)
+                                
+                                // Waitlist Section
+                                waitlistSection(game: game)
+                            }
                         }
                         
                         // Matches in this Game

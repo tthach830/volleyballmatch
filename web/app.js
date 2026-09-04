@@ -279,6 +279,7 @@ class AppState {
     this.pickupQueue = [];
     this.selectedLadderTier = "All";
     this.collapsedMatches = {};
+    this.collapsedPools = {};
     
     // Active user session
     const savedUserId = localStorage.getItem("setgames_current_user_id");
@@ -615,6 +616,12 @@ window.toggleMatchesCollapse = (gameId) => {
   renderMatches();
 };
 
+window.togglePoolCollapse = (gameId) => {
+  state.collapsedPools = state.collapsedPools || {};
+  state.collapsedPools[gameId] = !state.collapsedPools[gameId];
+  renderMatches();
+};
+
 function revertSubMatchStatsWeb(match, prevWinner) {
   if (match.team1Score === undefined || match.team2Score === undefined) return;
   const s1 = match.team1Score;
@@ -900,6 +907,7 @@ function renderMatches() {
     const waitlistPos = isWaitlisted ? (waitlistIds.indexOf(currentUserId) + 1) : null;
 
     const isMatchesCollapsed = !(state.expandedMatches && state.expandedMatches[game.id]);
+    const isPoolCollapsed = !!(state.collapsedPools && state.collapsedPools[game.id]);
     const msgCount = game.messages ? game.messages.length : 0;
 
     return `
@@ -938,14 +946,19 @@ function renderMatches() {
 
         <!-- Players Pool Box -->
         <div class="pool-box-container">
-          <div class="pool-box-header">
+          <div class="pool-box-header ${isPoolCollapsed ? 'collapsed' : ''}" onclick="window.togglePoolCollapse('${game.id}')">
             <span class="pool-box-title">
+              <span style="font-size: 13px; font-weight: 800; color: #475569; display: inline-block; width: 14px;">${isPoolCollapsed ? '▸' : '▾'}</span>
               👥 PLAYERS POOL (${allPlayerIds.length}/${maxPlayers} PLAYERS)
             </span>
-            <span class="${spotsLeft === 0 ? 'pool-box-status-full' : 'pool-box-status-open'}">
-              ${spotsLeft === 0 ? 'Pool Full ✓' : spotsLeft + ' Open Spot' + (spotsLeft > 1 ? 's' : '')}
-            </span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="${spotsLeft === 0 ? 'pool-box-status-full' : 'pool-box-status-open'}">
+                ${spotsLeft === 0 ? 'Pool Full ✓' : spotsLeft + ' Open Spot' + (spotsLeft > 1 ? 's' : '')}
+              </span>
+              <span style="font-size: 12px; font-weight: 800; color: #64748b;">${isPoolCollapsed ? '▸' : '▾'}</span>
+            </div>
           </div>
+          ${!isPoolCollapsed ? `
           <div class="pool-grid-2x2">
             ${poolPlayersHtml}
             ${needsPlayers && !isMember ? `
@@ -1014,6 +1027,7 @@ function renderMatches() {
                 </div>
               `}
             </div>
+          ` : ''}
           ` : ''}
         </div>
 
@@ -3469,7 +3483,7 @@ window.saveGeneratedMatchesToSchedule = () => {
   showToast(`Saved ${window.currentGeneratedMatches.length} sets to schedule!`);
 };
 
-window.addEventListener("DOMContentLoaded", () => {
+function initApp() {
   renderHeader();
   renderMatches();
   renderLadder();
@@ -3479,6 +3493,13 @@ window.addEventListener("DOMContentLoaded", () => {
   if (!state.currentUser) {
     window.showAuthModal();
   }
+
+  // Backdrop click to close auth modal for guest browsing
+  document.getElementById("auth-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "auth-modal") {
+      window.closeAuthModal();
+    }
+  });
 
   // Bottom navigation tab click
   document.querySelectorAll(".nav-item").forEach(item => {
@@ -3586,4 +3607,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Handle incoming deep link or game route from QR scan
   handleIncomingGameRoute();
-});
+}
+
+if (document.readyState === "loading") {
+  window.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+}

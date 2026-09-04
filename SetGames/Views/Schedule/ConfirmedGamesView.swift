@@ -15,6 +15,7 @@ public struct ConfirmedGamesView: View {
     @State private var showDeleteAlert: Bool = false
     @State private var gameToDelete: SetGame? = nil
     @State private var expandedMatches: Set<UUID> = []
+    @State private var collapsedPoolGameIds: Set<UUID> = []
     @State private var playerToRemove: (gameId: UUID, player: Player)? = nil
     @State private var showRemovePlayerAlert: Bool = false
     
@@ -531,25 +532,42 @@ public struct ConfirmedGamesView: View {
 
     private func playersPoolBox(game: SetGame, isMyGame: Bool, currentUserId: UUID?) -> some View {
         let isHost = (game.hostPlayerId == currentUserId) || (dataManager.currentUser?.isRoot == true)
+        let isCollapsed = collapsedPoolGameIds.contains(game.id)
         return VStack(spacing: 8) {
-            HStack {
-                Text("👥 PLAYERS POOL (\(game.allPlayerIds.count)/\(game.maxPlayers) PLAYERS)")
-                    .font(.system(size: 11, weight: .black))
-                    .foregroundColor(Color(.label))
-                Spacer()
-                if game.spotsRemaining == 0 {
-                    Text("Pool Full ✓")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.green)
-                } else {
-                    Text("\(game.spotsRemaining) Open Spot\(game.spotsRemaining > 1 ? "s" : "")")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.orange)
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if isCollapsed {
+                        collapsedPoolGameIds.remove(game.id)
+                    } else {
+                        collapsedPoolGameIds.insert(game.id)
+                    }
                 }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.secondary)
+                    Text("👥 PLAYERS POOL (\(game.allPlayerIds.count)/\(game.maxPlayers) PLAYERS)")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(Color(.label))
+                    Spacer()
+                    if game.spotsRemaining == 0 {
+                        Text("Pool Full ✓")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.green)
+                    } else {
+                        Text("\(game.spotsRemaining) Open Spot\(game.spotsRemaining > 1 ? "s" : "")")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.orange)
+                    }
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             
-            // 2-Column Grid
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+            if !isCollapsed {
+                // 2-Column Grid
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                 ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
                     playerPoolTile(pid: pid, game: game, isHost: isHost)
                 }
@@ -718,6 +736,7 @@ public struct ConfirmedGamesView: View {
                     }
                 }
                 .padding(.top, 4)
+            }
             }
         }
         .padding(10)
