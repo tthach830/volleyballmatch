@@ -597,9 +597,7 @@ function renderMatches() {
       footerButtons += `<button class="btn btn-outline btn-sm" style="color:#ef4444; border-color:#fca5a5; margin-right:6px;" onclick="window.leaveGame('${game.id}')">Leave Game</button> `;
       footerButtons += `<button class="btn btn-outline btn-sm" style="color:#a855f7; border-color:#d8b4fe; margin-right:6px;" onclick="window.openRandomTeamsModalForGame('${game.id}')">🎲 Random</button> `;
       footerButtons += `<button class="btn btn-outline btn-sm" style="margin-right:6px;" onclick="window.openEditMatchModal('${game.id}')">⚙️ Edit</button> `;
-      if (!game.subMatches || game.subMatches.length === 0) {
-        footerButtons += `<button class="btn btn-primary btn-sm" onclick="window.openScoreModal('${game.id}')">Log Score 🏆</button> `;
-      }
+
       const otherPlayers = allPlayerIds.filter(id => id !== currentUserId);
       if ((isHost && otherPlayers.length === 0) || isRootUser(state.currentUser)) {
         footerButtons += `<button class="btn btn-outline btn-sm" style="color:#ef4444; border-color:#ef4444; margin-left:6px;" onclick="window.deleteGame('${game.id}')">🗑️ Delete Game ${isRootUser(state.currentUser) ? '(Root)' : ''}</button>`;

@@ -5,7 +5,6 @@ public struct GameDetailView: View {
     let gameId: UUID
     
     @Environment(\.dismiss) private var dismiss
-    @State private var showScoreSheet: Bool = false
     @State private var showEditSheet: Bool = false
     @State private var showRandomTeamsSheet: Bool = false
     @State private var showLeaveConfirmAlert: Bool = false
@@ -420,21 +419,7 @@ public struct GameDetailView: View {
                                     .foregroundColor(.purple)
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                 }
-                                
-                                Button {
-                                    showScoreSheet = true
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "checkmark.circle.fill")
-                                        Text("Record / Finalize Match Scores")
-                                    }
-                                    .font(.system(size: 16, weight: .bold))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(Color.orange)
-                                    .foregroundColor(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                                }
+
                                 
                                 if canHostCancelMatch(game: game) || (dataManager.currentUser?.isRoot == true) {
                                     Button(role: .destructive) {
@@ -483,9 +468,7 @@ public struct GameDetailView: View {
                     }
                     .padding(.bottom, 30)
                 }
-                .sheet(isPresented: $showScoreSheet) {
-                    RecordScoreSheet(dataManager: dataManager, game: game)
-                }
+
                 .sheet(isPresented: $showEditSheet) {
                     EditMatchSheet(dataManager: dataManager, game: game)
                 }
