@@ -57,7 +57,15 @@ public struct GameDetailView: View {
                         // Header Card
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
-                                RatingBadge(rating: game.targetRating, size: .regular)
+                                if game.allowedRatings.count > 1 {
+                                    HStack(spacing: 4) {
+                                        ForEach(game.allowedRatings, id: \.self) { r in
+                                            RatingBadge(rating: r, size: .small)
+                                        }
+                                    }
+                                } else {
+                                    RatingBadge(rating: game.targetRating, size: .regular)
+                                }
                                 
                                 if game.isLevelLocked {
                                     HStack(spacing: 4) {
@@ -216,7 +224,7 @@ public struct GameDetailView: View {
                                             Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
                                                 .font(.system(size: 18))
                                                 .foregroundColor(.orange)
-                                            Text(game.isLevelLocked ? "Join (\(game.targetRating.rawValue))" : "+ Join Player Pool")
+                                            Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "+ Join Player Pool")
                                                 .font(.system(size: 11, weight: .bold))
                                                 .foregroundColor(.orange)
                                                 .lineLimit(1)
@@ -355,7 +363,7 @@ public struct GameDetailView: View {
                                     }
                                 }
                             } message: {
-                                Text("Are you sure you want to back out? Your spot will be reopened for other \(game.targetRating.rawValue) beach players.")
+                                Text("Are you sure you want to back out? Your spot will be reopened for other \(game.allowedRatingsDescription) beach players.")
                             }
                         }
                         
@@ -705,7 +713,7 @@ public struct GameDetailView: View {
                 Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "plus.circle.dashed")
                     .font(.system(size: 18))
                     .foregroundColor(.orange)
-                Text(game.isLevelLocked ? "Join (\(game.targetRating.rawValue) Only)" : "Open Spot")
+                Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "Open Spot")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.orange)
                     .lineLimit(1)

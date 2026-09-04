@@ -278,8 +278,8 @@ public class DataManager: ObservableObject {
         }
         
         // Level Lock Check
-        if game.isLevelLocked && user.rating != game.targetRating {
-            return (false, "Level Locked: This match is locked to \(game.targetRating.rawValue) players only. Your current rating is \(user.rating.rawValue).")
+        if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
+            return (false, "Level Locked: This match is locked to \(game.allowedRatingsDescription) players only. Your current rating is \(user.rating.rawValue).")
         }
         
         let capacity = game.teamCapacity
@@ -322,8 +322,8 @@ public class DataManager: ObservableObject {
         }
         
         // Level Lock Check
-        if game.isLevelLocked && user.rating != game.targetRating {
-            return (false, "Level Locked: This match is locked to \(game.targetRating.rawValue) players only. Your current rating is \(user.rating.rawValue).")
+        if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
+            return (false, "Level Locked: This match is locked to \(game.allowedRatingsDescription) players only. Your current rating is \(user.rating.rawValue).")
         }
         
         game.waitlistPlayerIds.append(user.id)
@@ -464,6 +464,7 @@ public class DataManager: ObservableObject {
         gameId: UUID,
         title: String,
         targetRating: RatingTier,
+        allowedRatings: [RatingTier]? = nil,
         format: GameFormat,
         maxPlayers: Int = 4,
         scheduledDate: Date,
@@ -484,7 +485,13 @@ public class DataManager: ObservableObject {
         }
         
         game.title = title
-        game.targetRating = targetRating
+        if let allowed = allowedRatings, !allowed.isEmpty {
+            game.allowedRatings = allowed
+            game.targetRating = allowed.first ?? targetRating
+        } else {
+            game.targetRating = targetRating
+            game.allowedRatings = [targetRating]
+        }
         game.format = format
         game.maxPlayers = max(2, maxPlayers)
         game.scheduledDate = scheduledDate
@@ -625,6 +632,7 @@ public class DataManager: ObservableObject {
     public func createMatch(
         title: String,
         targetRating: RatingTier,
+        allowedRatings: [RatingTier] = [],
         format: GameFormat = .bestOfThree,
         courtLocation: String = "Main Beach",
         courtNumber: String = "Court #1",
@@ -634,9 +642,13 @@ public class DataManager: ObservableObject {
         notes: String = ""
     ) -> SetGame {
         let hostId = currentUser?.id ?? UUID()
+        let effectiveAllowed = allowedRatings.isEmpty ? [targetRating] : allowedRatings
+        let primaryRating = effectiveAllowed.first ?? targetRating
+        let defaultTitle = effectiveAllowed.count > 1 ? "\(effectiveAllowed.map { $0.rawValue }.joined(separator: "/")) Match" : "\(primaryRating.rawValue) Match"
         let newGame = SetGame(
-            title: title.isEmpty ? "\(targetRating.rawValue) Match" : title,
-            targetRating: targetRating,
+            title: title.isEmpty ? defaultTitle : title,
+            targetRating: primaryRating,
+            allowedRatings: effectiveAllowed,
             format: format,
             status: .scheduled,
             scheduledDate: scheduledDate,

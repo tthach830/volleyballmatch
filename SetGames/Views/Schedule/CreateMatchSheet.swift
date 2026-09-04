@@ -5,7 +5,7 @@ public struct CreateMatchSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var title: String = ""
-    @State private var targetRating: RatingTier = .b
+    @State private var selectedRatings: Set<RatingTier> = [.b]
     @State private var format: GameFormat = .bestOfThree
     @State private var maxPlayers: Int = 4
     @State private var courtLocation: String = "Main Beach"
@@ -18,7 +18,7 @@ public struct CreateMatchSheet: View {
     public init(dataManager: DataManager) {
         self.dataManager = dataManager
         if let user = dataManager.currentUser {
-            _targetRating = State(initialValue: user.rating)
+            _selectedRatings = State(initialValue: [user.rating])
             _courtLocation = State(initialValue: user.homeBeach.isEmpty ? "Main Beach" : user.homeBeach)
         }
     }
@@ -37,22 +37,44 @@ public struct CreateMatchSheet: View {
                 Section("MATCH INFORMATION") {
                     TextField("e.g. Sunset Doubles Clash", text: $title)
                     
-                    Picker("Skill Level Tier", selection: $targetRating) {
-                        ForEach(RatingTier.allCases, id: \.self) { tier in
-                            Text(tier.rawValue).tag(tier)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .center) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 8) {
+                                    Text("Skill Level Tier")
+                                        .font(.system(size: 15, weight: .semibold))
+                                    
+                                    HStack(spacing: 4) {
+                                        Image(systemName: isLevelLocked ? "lock.fill" : "lock.open")
+                                            .font(.system(size: 10))
+                                        Text("Level Locked")
+                                            .font(.system(size: 12, weight: .bold))
+                                    }
+                                    .foregroundColor(isLevelLocked ? .orange : .secondary)
+                                }
+                                
+                                Text("Only matching tier players can join")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: $isLevelLocked)
+                                .labelsHidden()
+                                .tint(.orange)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        Divider()
+                        
+                        VStack(spacing: 8) {
+                            ForEach(RatingTier.allCases, id: \.self) { tier in
+                                tierCheckboxRow(tier: tier)
+                            }
                         }
                     }
-                    
-                    Toggle(isOn: $isLevelLocked) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Level Locked")
-                                .font(.system(size: 15, weight: .semibold))
-                            Text("Only \(targetRating.rawValue) players can join this match")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .tint(.orange)
+                    .padding(.vertical, 4)
                     
                     HStack {
                         Text("Max. Players")
@@ -130,12 +152,15 @@ public struct CreateMatchSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Host Match") {
-                        let defaultTitle = "\(targetRating.rawValue) Match"
+                        let chosenRatings = RatingTier.allCases.filter { selectedRatings.contains($0) }
+                        let primaryRating = chosenRatings.first ?? .b
+                        let defaultTitle = chosenRatings.count > 1 ? "\(chosenRatings.map { $0.rawValue }.joined(separator: "/")) Match" : "\(primaryRating.rawValue) Match"
                         let finalTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? defaultTitle : title.trimmingCharacters(in: .whitespacesAndNewlines)
                         
                         dataManager.createMatch(
                             title: finalTitle,
-                            targetRating: targetRating,
+                            targetRating: primaryRating,
+                            allowedRatings: chosenRatings,
                             format: format,
                             courtLocation: effectiveCourt,
                             courtNumber: courtNumber.isEmpty ? "Court #1" : courtNumber,
@@ -150,6 +175,51 @@ public struct CreateMatchSheet: View {
                     .foregroundColor(.orange)
                 }
             }
+        }
+    }
+    
+    @ViewBuilder
+    private func tierCheckboxRow(tier: RatingTier) -> some View {
+        let isChecked = selectedRatings.contains(tier)
+        Button {
+            if isChecked {
+                if selectedRatings.count > 1 {
+                    selectedRatings.remove(tier)
+                }
+            } else {
+                selectedRatings.insert(tier)
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(isChecked ? .orange : Color(UIColor.tertiaryLabel))
+                
+                RatingBadge(rating: tier, size: .small)
+                
+                Text(tier.rawValue)
+                    .font(.system(size: 14, weight: isChecked ? .bold : .medium))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text(tierSummary(tier))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func tierSummary(_ tier: RatingTier) -> String {
+        switch tier {
+        case .novice: return "Beginner (~1100)"
+        case .intermediate: return "Casual (~1350)"
+        case .b: return "Solid (~1550)"
+        case .a: return "Comp (~1800)"
+        case .aa: return "Advanced (~2100)"
+        case .open: return "Pro (~2300)"
         }
     }
 }

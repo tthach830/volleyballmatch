@@ -6,7 +6,7 @@ public struct EditMatchSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var title: String
-    @State private var targetRating: RatingTier
+    @State private var selectedRatings: Set<RatingTier>
     @State private var format: GameFormat
     @State private var maxPlayers: Int
     @State private var courtLocation: String
@@ -22,7 +22,7 @@ public struct EditMatchSheet: View {
         self.dataManager = dataManager
         self.game = game
         _title = State(initialValue: game.title)
-        _targetRating = State(initialValue: game.targetRating)
+        _selectedRatings = State(initialValue: Set(game.effectiveAllowedRatings))
         _format = State(initialValue: game.format)
         _maxPlayers = State(initialValue: game.maxPlayers)
         _courtLocation = State(initialValue: game.courtLocation)
@@ -46,22 +46,44 @@ public struct EditMatchSheet: View {
                 Section("MATCH INFORMATION") {
                     TextField("Match Title", text: $title)
                     
-                    Picker("Skill Level Tier", selection: $targetRating) {
-                        ForEach(RatingTier.allCases, id: \.self) { tier in
-                            Text(tier.rawValue).tag(tier)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .center) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 8) {
+                                    Text("Skill Level Tier")
+                                        .font(.system(size: 15, weight: .semibold))
+                                    
+                                    HStack(spacing: 4) {
+                                        Image(systemName: isLevelLocked ? "lock.fill" : "lock.open")
+                                            .font(.system(size: 10))
+                                        Text("Level Locked")
+                                            .font(.system(size: 12, weight: .bold))
+                                    }
+                                    .foregroundColor(isLevelLocked ? .orange : .secondary)
+                                }
+                                
+                                Text("Only matching tier players can join")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: $isLevelLocked)
+                                .labelsHidden()
+                                .tint(.orange)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        Divider()
+                        
+                        VStack(spacing: 8) {
+                            ForEach(RatingTier.allCases, id: \.self) { tier in
+                                tierCheckboxRow(tier: tier)
+                            }
                         }
                     }
-                    
-                    Toggle(isOn: $isLevelLocked) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Level Locked")
-                                .font(.system(size: 15, weight: .semibold))
-                            Text("Only players rated \(targetRating.rawValue) can join this match")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .tint(.orange)
+                    .padding(.vertical, 4)
                     
                     HStack {
                         Text("Max. Players")
@@ -139,10 +161,13 @@ public struct EditMatchSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        let chosenRatings = RatingTier.allCases.filter { selectedRatings.contains($0) }
+                        let primaryRating = chosenRatings.first ?? game.targetRating
                         let res = dataManager.updateGamePreferences(
                             gameId: game.id,
                             title: title,
-                            targetRating: targetRating,
+                            targetRating: primaryRating,
+                            allowedRatings: chosenRatings,
                             format: format,
                             maxPlayers: maxPlayers,
                             scheduledDate: scheduledDate,
@@ -167,6 +192,51 @@ public struct EditMatchSheet: View {
             } message: {
                 Text(alertMessage ?? "")
             }
+        }
+    }
+    
+    @ViewBuilder
+    private func tierCheckboxRow(tier: RatingTier) -> some View {
+        let isChecked = selectedRatings.contains(tier)
+        Button {
+            if isChecked {
+                if selectedRatings.count > 1 {
+                    selectedRatings.remove(tier)
+                }
+            } else {
+                selectedRatings.insert(tier)
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(isChecked ? .orange : Color(UIColor.tertiaryLabel))
+                
+                RatingBadge(rating: tier, size: .small)
+                
+                Text(tier.rawValue)
+                    .font(.system(size: 14, weight: isChecked ? .bold : .medium))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text(tierSummary(tier))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func tierSummary(_ tier: RatingTier) -> String {
+        switch tier {
+        case .novice: return "Beginner (~1100)"
+        case .intermediate: return "Casual (~1350)"
+        case .b: return "Solid (~1550)"
+        case .a: return "Comp (~1800)"
+        case .aa: return "Advanced (~2100)"
+        case .open: return "Pro (~2300)"
         }
     }
 }

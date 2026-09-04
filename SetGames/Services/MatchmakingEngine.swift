@@ -92,7 +92,7 @@ public class MatchmakingEngine {
     /// Calculates compatibility score (0 - 100%) between a player and an existing open game
     public func calculateCompatibility(player: Player, game: SetGame) -> Int {
         // Tier difference penalty
-        let tierDiff = abs(player.rating.levelScore - game.targetRating.levelScore)
+        let tierDiff = game.effectiveAllowedRatings.map { abs(player.rating.levelScore - $0.levelScore) }.min() ?? 0
         var score = 100
         
         if tierDiff == 0 {

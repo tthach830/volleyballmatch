@@ -140,12 +140,15 @@ public struct SetGame: Identifiable, Codable, Hashable {
     public var subMatches: [SubMatch]
     // Waitlist for full games
     public var waitlistPlayerIds: [UUID]
+    // Multiple selectable skill level tiers
+    public var allowedRatings: [RatingTier]
     
     public init(
         id: UUID = UUID(),
         rawId: String? = nil,
         title: String = "Beach Doubles Set",
         targetRating: RatingTier,
+        allowedRatings: [RatingTier] = [],
         format: GameFormat = .bestOfThree,
         status: GameStatus = .scheduled,
         scheduledDate: Date,
@@ -170,6 +173,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
         self.rawId = rawId ?? id.uuidString
         self.title = title
         self.targetRating = targetRating
+        self.allowedRatings = allowedRatings.isEmpty ? [targetRating] : allowedRatings
         self.format = format
         self.status = status
         self.scheduledDate = scheduledDate
@@ -189,6 +193,26 @@ public struct SetGame: Identifiable, Codable, Hashable {
         self.submittedRatings = submittedRatings
         self.messages = messages
         self.waitlistPlayerIds = waitlistPlayerIds
+    }
+    
+    public var effectiveAllowedRatings: [RatingTier] {
+        if !allowedRatings.isEmpty {
+            return allowedRatings
+        }
+        return [targetRating]
+    }
+    
+    public var allowedRatingsDescription: String {
+        let list = effectiveAllowedRatings
+        if list.count >= RatingTier.allCases.count {
+            return "All Levels"
+        }
+        return list.map { $0.rawValue }.joined(separator: ", ")
+    }
+    
+    public func isPlayerTierAllowed(_ playerRating: RatingTier) -> Bool {
+        if !isLevelLocked { return true }
+        return effectiveAllowedRatings.contains(playerRating)
     }
     
     public var allPlayerIds: [UUID] {
@@ -263,7 +287,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, title, targetRating, format, status, scheduledDate, courtLocation, courtNumber
         case team1PlayerIds, team2PlayerIds, setScores, winningTeam, isAutoMatched, matchedOptionName, notes
-        case hostPlayerId, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches, waitlistPlayerIds
+        case hostPlayerId, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches, waitlistPlayerIds, allowedRatings
     }
 
     public init(from decoder: Decoder) throws {
@@ -405,6 +429,24 @@ public struct SetGame: Identifiable, Codable, Hashable {
         } else {
             waitlistPlayerIds = []
         }
+        
+        if let ar = try? c.decode([RatingTier].self, forKey: .allowedRatings) {
+            allowedRatings = ar
+        } else if let arStr = try? c.decode([String].self, forKey: .allowedRatings) {
+            allowedRatings = arStr.compactMap { str in
+                switch str.lowercased() {
+                case "novice", "nov": return .novice
+                case "intermediate", "int": return .intermediate
+                case "b": return .b
+                case "a": return .a
+                case "aa": return .aa
+                case "open": return .open
+                default: return nil
+                }
+            }
+        } else {
+            allowedRatings = [targetRating]
+        }
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -431,5 +473,6 @@ public struct SetGame: Identifiable, Codable, Hashable {
         try c.encode(messages, forKey: .messages)
         try c.encode(subMatches, forKey: .subMatches)
         try c.encode(waitlistPlayerIds, forKey: .waitlistPlayerIds)
+        try c.encode(allowedRatings.isEmpty ? [targetRating] : allowedRatings, forKey: .allowedRatings)
     }
 }

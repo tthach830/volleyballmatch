@@ -116,7 +116,7 @@ public struct ConfirmedGamesView: View {
             .sheet(isPresented: $showNotificationsSheet) {
                 NotificationsSheet(dataManager: dataManager)
             }
-            .sheet(isPresented: $showCreateMatchSheet) {
+            .fullScreenCover(isPresented: $showCreateMatchSheet) {
                 CreateMatchSheet(dataManager: dataManager)
             }
             .sheet(isPresented: $showRandomTeamsSheet) {
@@ -132,7 +132,7 @@ public struct ConfirmedGamesView: View {
         guard game.spotsRemaining > 0 else { return false }
         guard let user = dataManager.currentUser else { return true }
         if game.allPlayerIds.contains(user.id) { return false }
-        if game.isLevelLocked && user.rating != game.targetRating {
+        if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
             return false
         }
         return true
@@ -165,7 +165,15 @@ public struct ConfirmedGamesView: View {
         
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                RatingBadge(rating: game.targetRating, size: .small)
+                if game.allowedRatings.count > 1 {
+                    HStack(spacing: 3) {
+                        ForEach(game.allowedRatings, id: \.self) { r in
+                            RatingBadge(rating: r, size: .small)
+                        }
+                    }
+                } else {
+                    RatingBadge(rating: game.targetRating, size: .small)
+                }
                 
                 if isMyGame {
                     HStack(spacing: 3) {

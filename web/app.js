@@ -424,8 +424,9 @@ window.joinWaitlist = (gameId) => {
     showToast("You are already on the waitlist!");
     return;
   }
-  if (game.isLevelLocked && state.currentUser.rating !== game.targetRating) {
-    showToast(`Level Locked: ${game.targetRating} only.`);
+  const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
+  if (game.isLevelLocked && !allowed.includes(state.currentUser.rating)) {
+    showToast(`Level Locked: ${allowed.join(", ")} only (Your rating: ${state.currentUser.rating}).`);
     return;
   }
   game.waitlistPlayerIds.push(uid);
@@ -502,7 +503,8 @@ function renderMatches() {
     if (game.team1PlayerIds?.includes(state.currentUser.id) || game.team2PlayerIds?.includes(state.currentUser.id)) {
       return false; // already in match
     }
-    if (game.isLevelLocked && state.currentUser.rating !== game.targetRating) {
+    const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
+    if (game.isLevelLocked && !allowed.includes(state.currentUser.rating)) {
       return false;
     }
     return true;
@@ -653,7 +655,7 @@ function renderMatches() {
             ${subMatchesBadge}
             ${playersBadge}
             ${lockedBadge}
-            <span class="badge badge-tier-${game.targetRating.toLowerCase()}">${game.targetRating}</span>
+            ${((game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"]).map(t => `<span class="badge badge-tier-${t.toLowerCase()}">${t}</span>`).join(" ")}
           </div>
         </div>
 
@@ -1335,8 +1337,9 @@ window.joinGame = (gameId) => {
   }
 
   // Level Lock Check
-  if (game.isLevelLocked && state.currentUser.rating !== game.targetRating) {
-    showToast(`Level Locked: This match is locked to ${game.targetRating} players only (Your rating: ${state.currentUser.rating}).`);
+  const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
+  if (game.isLevelLocked && !allowed.includes(state.currentUser.rating)) {
+    showToast(`Level Locked: This match is locked to ${allowed.join(", ")} players only (Your rating: ${state.currentUser.rating}).`);
     return;
   }
 
@@ -1451,7 +1454,9 @@ window.handleCreateMatch = (e) => {
   e.preventDefault();
   if (!state.currentUser) return;
   const title = document.getElementById("create-title").value.trim();
-  const targetRating = document.getElementById("create-tier").value;
+  const checkedBoxes = Array.from(document.querySelectorAll("input[name='create-tier-cb']:checked"));
+  const allowedRatings = checkedBoxes.map(cb => cb.value);
+  const targetRating = allowedRatings[0] || (state.currentUser?.rating || "B");
   const isLevelLocked = document.getElementById("create-level-locked").checked;
   const maxPlayers = parseInt(document.getElementById("create-max-players")?.value) || 4;
   const format = document.getElementById("create-format").value;
@@ -1460,10 +1465,12 @@ window.handleCreateMatch = (e) => {
   const scheduledDate = new Date(document.getElementById("create-date").value).toISOString();
   const notes = document.getElementById("create-notes").value.trim();
 
+  const defaultTitle = allowedRatings.length > 1 ? `${allowedRatings.join("/")} Match` : `${targetRating} Match`;
   const newGame = {
     id: "game-" + Date.now(),
-    title: title || `${targetRating} Match`,
+    title: title || defaultTitle,
     targetRating,
+    allowedRatings: allowedRatings.length > 0 ? allowedRatings : [targetRating],
     isLevelLocked,
     maxPlayers,
     format,
@@ -1505,7 +1512,12 @@ window.openEditMatchModal = (gameId) => {
 
   document.getElementById("edit-game-id").value = gameId;
   document.getElementById("edit-title").value = game.title;
-  document.getElementById("edit-tier").value = game.targetRating;
+  
+  const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
+  document.querySelectorAll("input[name='edit-tier-cb']").forEach(cb => {
+    cb.checked = allowed.includes(cb.value);
+  });
+  
   document.getElementById("edit-level-locked").checked = !!game.isLevelLocked;
   if (document.getElementById("edit-max-players")) {
     document.getElementById("edit-max-players").value = game.maxPlayers || 4;
@@ -1536,8 +1548,12 @@ window.handleSaveMatchEdit = (e) => {
   const game = state.games.find(g => g.id === gameId);
   if (!game) return;
 
+  const checkedBoxes = Array.from(document.querySelectorAll("input[name='edit-tier-cb']:checked"));
+  const allowedRatings = checkedBoxes.map(cb => cb.value);
+  game.allowedRatings = allowedRatings.length > 0 ? allowedRatings : [game.targetRating || "B"];
+  game.targetRating = game.allowedRatings[0] || "B";
+
   game.title = document.getElementById("edit-title").value.trim();
-  game.targetRating = document.getElementById("edit-tier").value;
   game.isLevelLocked = document.getElementById("edit-level-locked").checked;
   game.maxPlayers = parseInt(document.getElementById("edit-max-players")?.value) || game.maxPlayers || 4;
   game.format = document.getElementById("edit-format").value;

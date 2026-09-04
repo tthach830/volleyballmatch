@@ -413,8 +413,8 @@
     </div>
 
     <!-- Create Match Modal -->
-    <div id="create-match-modal" class="modal-backdrop">
-      <div class="modal-card" style="max-width: 440px;">
+    <div id="create-match-modal" class="modal-backdrop modal-fullscreen">
+      <div class="modal-card modal-card-fullscreen">
         <div class="modal-header">
           <h2 class="modal-title">🏐 Host New Match</h2>
           <button type="button" class="modal-close" onclick="window.closeCreateMatchModal()">&times;</button>
@@ -424,21 +424,51 @@
             <label class="form-label" for="create-title">Match Title</label>
             <input type="text" id="create-title" class="form-input" placeholder="e.g. Saturday Beach Doubles" required>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="create-tier">Skill Level Tier</label>
-            <select id="create-tier" class="form-select">
-              <option value="AA">AA — Advanced Tournament Player (2100 ELO)</option>
-              <option value="A">A — Competitive Beach (1800 ELO)</option>
-              <option value="B" selected>B — Solid Rallies & Passing (1550 ELO)</option>
-              <option value="Intermediate">Intermediate — Fun Sets (1350 ELO)</option>
-              <option value="Novice">Novice — Learning (1100 ELO)</option>
-            </select>
-          </div>
-          <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-            <input type="checkbox" id="create-level-locked" checked style="width: 18px; height: 18px;">
-            <label for="create-level-locked" style="font-size: 13px; font-weight: 700; cursor: pointer;">
-              🔒 Level Locked (Only matching tier players can join)
-            </label>
+          <div class="form-group" style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="form-label" style="margin: 0;">Skill Level Tier</span>
+                  <label for="create-level-locked" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #f97316; cursor: pointer; margin: 0; background: rgba(249, 115, 22, 0.1); padding: 2px 8px; border-radius: 6px;">
+                    <input type="checkbox" id="create-level-locked" checked style="width: 15px; height: 15px; accent-color: #f97316; cursor: pointer;">
+                    🔒 Level Locked
+                  </label>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Only matching tier players can join</div>
+              </div>
+            </div>
+            <div class="tier-checkbox-grid">
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="create-tier-cb" value="Open" />
+                <span class="tier-chip tier-open">Open</span>
+                <span class="tier-desc">Pro (~2300)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="create-tier-cb" value="AA" />
+                <span class="tier-chip tier-aa">AA</span>
+                <span class="tier-desc">Adv (~2100)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="create-tier-cb" value="A" />
+                <span class="tier-chip tier-a">A</span>
+                <span class="tier-desc">Comp (~1800)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="create-tier-cb" value="B" checked />
+                <span class="tier-chip tier-b">B</span>
+                <span class="tier-desc">Solid (~1550)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="create-tier-cb" value="Intermediate" />
+                <span class="tier-chip tier-intermediate">Intermediate</span>
+                <span class="tier-desc">Casual (~1350)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="create-tier-cb" value="Novice" />
+                <span class="tier-chip tier-novice">Novice</span>
+                <span class="tier-desc">Beginner (~1100)</span>
+              </label>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="create-max-players">Max. Players</label>
@@ -484,8 +514,8 @@
     </div>
 
     <!-- Edit Match Modal (Host Only) -->
-    <div id="edit-match-modal" class="modal-backdrop">
-      <div class="modal-card" style="max-width: 440px;">
+    <div id="edit-match-modal" class="modal-backdrop modal-fullscreen">
+      <div class="modal-card modal-card-fullscreen">
         <div class="modal-header">
           <h2 class="modal-title">⚙️ Edit Match Preferences</h2>
           <button type="button" class="modal-close" onclick="window.closeEditMatchModal()">&times;</button>
@@ -496,21 +526,51 @@
             <label class="form-label" for="edit-title">Match Title</label>
             <input type="text" id="edit-title" class="form-input" required>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-tier">Skill Level Tier</label>
-            <select id="edit-tier" class="form-select">
-              <option value="AA">AA — Advanced Tournament Player (2100 ELO)</option>
-              <option value="A">A — Competitive Beach (1800 ELO)</option>
-              <option value="B">B — Solid Rallies & Passing (1550 ELO)</option>
-              <option value="Intermediate">Intermediate — Fun Sets (1350 ELO)</option>
-              <option value="Novice">Novice — Learning (1100 ELO)</option>
-            </select>
-          </div>
-          <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="edit-level-locked" style="width: 18px; height: 18px;">
-            <label for="edit-level-locked" style="font-size: 13px; font-weight: 700; cursor: pointer;">
-              🔒 Level Locked (Only matching tier players can join)
-            </label>
+          <div class="form-group" style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="form-label" style="margin: 0;">Skill Level Tier</span>
+                  <label for="edit-level-locked" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #f97316; cursor: pointer; margin: 0; background: rgba(249, 115, 22, 0.1); padding: 2px 8px; border-radius: 6px;">
+                    <input type="checkbox" id="edit-level-locked" style="width: 15px; height: 15px; accent-color: #f97316; cursor: pointer;">
+                    🔒 Level Locked
+                  </label>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Only matching tier players can join</div>
+              </div>
+            </div>
+            <div class="tier-checkbox-grid">
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="edit-tier-cb" value="Open" />
+                <span class="tier-chip tier-open">Open</span>
+                <span class="tier-desc">Pro (~2300)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="edit-tier-cb" value="AA" />
+                <span class="tier-chip tier-aa">AA</span>
+                <span class="tier-desc">Adv (~2100)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="edit-tier-cb" value="A" />
+                <span class="tier-chip tier-a">A</span>
+                <span class="tier-desc">Comp (~1800)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="edit-tier-cb" value="B" />
+                <span class="tier-chip tier-b">B</span>
+                <span class="tier-desc">Solid (~1550)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="edit-tier-cb" value="Intermediate" />
+                <span class="tier-chip tier-intermediate">Intermediate</span>
+                <span class="tier-desc">Casual (~1350)</span>
+              </label>
+              <label class="tier-checkbox-item">
+                <input type="checkbox" name="edit-tier-cb" value="Novice" />
+                <span class="tier-chip tier-novice">Novice</span>
+                <span class="tier-desc">Beginner (~1100)</span>
+              </label>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="edit-max-players">Max. Players</label>
