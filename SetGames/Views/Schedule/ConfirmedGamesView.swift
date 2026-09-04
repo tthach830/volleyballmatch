@@ -503,7 +503,7 @@ public struct ConfirmedGamesView: View {
             
             // 2-Column Grid
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                ForEach(game.allPlayerIds, id: \.self) { pid in
+                ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
                     playerPoolTile(pid: pid)
                 }
                 
@@ -598,7 +598,7 @@ public struct ConfirmedGamesView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.element) { idx, wId in
+                    ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.offset) { idx, wId in
                         let wp = dataManager.player(for: wId)
                         let wpName = wp.nickname.isEmpty ? wp.name : "\(wp.name) (\(wp.nickname))"
                         HStack {
@@ -985,8 +985,8 @@ public struct ConfirmedGamesView: View {
                                 .font(.system(size: 13, weight: .bold))
                             Text("Join\nGame")
                                 .font(.system(size: 9, weight: .black))
-                            multilineTextAlignment(.center)
-                            .lineSpacing(-2)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(-2)
                         }
                         .frame(width: 50, height: 46)
                         .background(Color(red: 0.94, green: 0.99, blue: 0.95))

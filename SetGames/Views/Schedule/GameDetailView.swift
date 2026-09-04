@@ -226,8 +226,8 @@ public struct GameDetailView: View {
                             .padding(.horizontal)
                             
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                                ForEach(game.allPlayerIds.map { dataManager.player(for: $0) }) { p in
-                                    playerCard(p)
+                                ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
+                                    playerCard(dataManager.player(for: pid))
                                 }
                                 
                                 if game.spotsRemaining > 0 && !isUserInMatch {
@@ -672,7 +672,7 @@ public struct GameDetailView: View {
                 }
                 .padding(.top, 4)
                 
-                ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.element) { index, pId in
+                ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.offset) { index, pId in
                     waitlistRow(index: index, playerId: pId, gameId: game.id)
                 }
             }
