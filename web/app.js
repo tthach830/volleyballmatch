@@ -3063,8 +3063,46 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  let hasCompletedInitialGamesSyncWeb = false;
+  function playChatNotificationSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    } catch (e) {}
+  }
+
   subscribeToGames((remoteGames) => {
     if (remoteGames && remoteGames.length > 0) {
+      if (hasCompletedInitialGamesSyncWeb && state.currentUser) {
+        const userId = state.currentUser.id;
+        remoteGames.forEach(remoteGame => {
+          const inTeam1 = remoteGame.team1PlayerIds && remoteGame.team1PlayerIds.includes(userId);
+          const inTeam2 = remoteGame.team2PlayerIds && remoteGame.team2PlayerIds.includes(userId);
+          const inWaitlist = remoteGame.waitlistPlayerIds && remoteGame.waitlistPlayerIds.includes(userId);
+          const isHost = remoteGame.hostPlayerId === userId;
+          if (inTeam1 || inTeam2 || inWaitlist || isHost) {
+            const oldGame = state.games.find(g => g.id === remoteGame.id);
+            const oldMsgIds = new Set((oldGame?.messages || []).map(m => m.id));
+            const newMsgs = (remoteGame.messages || []).filter(m => m.senderId !== userId && !oldMsgIds.has(m.id));
+            newMsgs.forEach(msg => {
+              playChatNotificationSound();
+              triggerWebPushNotification(`💬 ${msg.senderName} (${remoteGame.title})`, `"${msg.text}"`);
+              showToast(`💬 ${msg.senderName} (${remoteGame.title}): "${msg.text}"`);
+            });
+          }
+        });
+      }
+      hasCompletedInitialGamesSyncWeb = true;
       state.games = remoteGames.filter(isUpcomingGame);
       state.saveLocal();
       renderMatches();

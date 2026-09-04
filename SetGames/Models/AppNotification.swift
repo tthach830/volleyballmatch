@@ -3,6 +3,7 @@ import Foundation
 public enum NotificationType: String, Codable {
     case matchConfirmed = "Match Confirmed"
     case matchInvite = "Match Update"
+    case matchChat = "Match Chat"
     case scoreLogged = "Score Logged"
     case queueUpdate = "Queue Update"
     case ladderRankChange = "Ladder Update"
@@ -12,6 +13,7 @@ public enum NotificationType: String, Codable {
         switch self {
         case .matchConfirmed: return "volleyball.fill"
         case .matchInvite: return "bell.badge.fill"
+        case .matchChat: return "bubble.left.and.bubble.right.fill"
         case .scoreLogged: return "trophy.fill"
         case .queueUpdate: return "bolt.fill"
         case .ladderRankChange: return "chart.line.uptrend.xyaxis"

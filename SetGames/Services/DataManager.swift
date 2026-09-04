@@ -10,6 +10,7 @@ public class DataManager: ObservableObject {
     @Published public var availabilitySlots: [AvailabilitySlot] = []
     @Published public var pickupQueue: [Player] = []
     @Published public var notifications: [AppNotification] = []
+    private var hasCompletedInitialGamesSync: Bool = false
     
     public init() {
         if !loadFromDisk() {
@@ -632,12 +633,12 @@ public class DataManager: ObservableObject {
         
         // Notify other players in this match
         let game = games[index]
-        let otherPlayerIds = game.allPlayerIds.filter { $0 != user.id }
-        if !otherPlayerIds.isEmpty {
+        let otherPlayerIds = (game.allPlayerIds + game.waitlistPlayerIds).filter { $0 != user.id }
+        if !otherPlayerIds.isEmpty || (game.hostPlayerId != user.id) {
             postNotification(
-                title: "Match Chat: \(game.title)",
-                message: "\(senderName): \"\(trimmed)\"",
-                type: .matchInvite,
+                title: "💬 \(senderName) (\(game.title))",
+                message: "\"\(trimmed)\"",
+                type: .matchChat,
                 relatedGameId: game.id
             )
         }
@@ -779,6 +780,36 @@ public class DataManager: ObservableObject {
             },
             onGamesUpdate: { [weak self] remoteGames in
                 guard let self = self else { return }
+                
+                // Real-time chat notification: check for new messages in games the current user is in
+                if let currentUser = self.currentUser {
+                    for remoteGame in remoteGames {
+                        let isUserInGame = remoteGame.allPlayerIds.contains(currentUser.id) ||
+                                           remoteGame.waitlistPlayerIds.contains(currentUser.id) ||
+                                           remoteGame.hostPlayerId == currentUser.id
+                        guard isUserInGame else { continue }
+                        
+                        let oldGame = self.games.first(where: { $0.id == remoteGame.id })
+                        let oldMsgIds = Set((oldGame?.messages ?? []).map { $0.id })
+                        
+                        let newMessages = remoteGame.messages.filter { msg in
+                            msg.senderId != currentUser.id && !oldMsgIds.contains(msg.id)
+                        }
+                        
+                        if self.hasCompletedInitialGamesSync {
+                            for newMsg in newMessages {
+                                self.postNotification(
+                                    title: "💬 \(newMsg.senderName) (\(remoteGame.title))",
+                                    message: "\"\(newMsg.text)\"",
+                                    type: .matchChat,
+                                    relatedGameId: remoteGame.id
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                self.hasCompletedInitialGamesSync = true
                 self.games = remoteGames.filter { $0.status != .completed }
                 self.saveToDisk()
             },
