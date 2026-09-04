@@ -218,6 +218,20 @@ const server = http.createServer((req, res) => {
   });
 });
 
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`\n⚠️  Port ${PORT} is already in use by another process.`);
+    console.error(`   To free port ${PORT}, run:`);
+    console.error(`   kill -9 $(lsof -t -i :${PORT})\n`);
+    console.error(`   Or specify a different port:`);
+    console.error(`   node server.js ${PORT + 1}\n`);
+    process.exit(1);
+  } else {
+    console.error("Server error:", err);
+    process.exit(1);
+  }
+});
+
 server.listen(PORT, () => {
   console.log(`\n======================================================`);
   console.log(`🚀 SetGames Web & APNs Push Server running on:`);
