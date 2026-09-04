@@ -356,7 +356,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
     }
     
     public var teamCapacity: Int {
-        max(1, maxPlayers / 2)
+        max(1, (maxPlayers + 1) / 2)
     }
     
     public var isFull: Bool {

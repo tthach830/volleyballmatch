@@ -306,22 +306,24 @@ public class DataManager: ObservableObject {
             return (false, "You are already in this match!")
         }
         
+        if game.allPlayerIds.count >= game.maxPlayers {
+            return (false, "Sorry, this match is already full!")
+        }
+        
         // Level Lock Check
         if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
             return (false, "Level Locked: This match is locked to \(game.allowedRatingsDescription) players only. Your current rating is \(user.rating.rawValue).")
         }
         
-        let capacity = game.teamCapacity
-        if teamNumber == 1 && game.team1PlayerIds.count < capacity {
+        let maxTeamSize = (game.maxPlayers + 1) / 2
+        if teamNumber == 1 && game.team1PlayerIds.count < maxTeamSize {
             game.team1PlayerIds.append(user.id)
-        } else if teamNumber == 2 && game.team2PlayerIds.count < capacity {
+        } else if teamNumber == 2 && game.team2PlayerIds.count < maxTeamSize {
             game.team2PlayerIds.append(user.id)
-        } else if game.team1PlayerIds.count < capacity {
+        } else if game.team1PlayerIds.count <= game.team2PlayerIds.count {
             game.team1PlayerIds.append(user.id)
-        } else if game.team2PlayerIds.count < capacity {
-            game.team2PlayerIds.append(user.id)
         } else {
-            return (false, "Sorry, this match is already full!")
+            game.team2PlayerIds.append(user.id)
         }
         
         games[index] = game
@@ -332,7 +334,35 @@ public class DataManager: ObservableObject {
     
     @discardableResult
     public func joinGamePool(gameId: UUID) -> (success: Bool, message: String) {
-        joinOpenGame(gameId: gameId, teamNumber: 1)
+        guard let user = currentUser,
+              let index = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Please log in to join this match.")
+        }
+        
+        var game = games[index]
+        if game.allPlayerIds.contains(user.id) {
+            return (false, "You are already in this match!")
+        }
+        
+        if game.allPlayerIds.count >= game.maxPlayers {
+            return (false, "Sorry, this match is already full!")
+        }
+        
+        // Level Lock Check
+        if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
+            return (false, "Level Locked: This match is locked to \(game.allowedRatingsDescription) players only. Your current rating is \(user.rating.rawValue).")
+        }
+        
+        if game.team1PlayerIds.count <= game.team2PlayerIds.count {
+            game.team1PlayerIds.append(user.id)
+        } else {
+            game.team2PlayerIds.append(user.id)
+        }
+        
+        games[index] = game
+        saveToDisk()
+        FirestoreService.shared.saveGame(game)
+        return (true, "Successfully joined \(game.title)!")
     }
     
     @discardableResult

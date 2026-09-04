@@ -392,6 +392,19 @@ window.joinGamePool = (gameId) => {
     showToast("You are already in this game's pool!");
     return;
   }
+  const maxP = game.maxPlayers || 4;
+  if (allP.length >= maxP) {
+    showToast("Sorry, this match is already full!");
+    return;
+  }
+
+  // Level Lock Check
+  const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
+  if (game.isLevelLocked && !allowed.includes(state.currentUser.rating)) {
+    showToast(`Level Locked: This match is locked to ${allowed.join(", ")} players only (Your rating: ${state.currentUser.rating}).`);
+    return;
+  }
+
   if (!game.team1PlayerIds) game.team1PlayerIds = [];
   if (!game.team2PlayerIds) game.team2PlayerIds = [];
 
@@ -400,10 +413,15 @@ window.joinGamePool = (gameId) => {
   } else {
     game.team2PlayerIds.push(uid);
   }
+
+  if ((game.team1PlayerIds.length + game.team2PlayerIds.length) >= maxP) {
+    triggerWebPushNotification("🏐 Set Game Locked!", `${game.title} at ${game.courtLocation} is now fully locked!`);
+  }
+
   saveGameToFirestore(game);
   state.saveLocal();
   renderMatches();
-  showToast(`Joined ${game.title} player pool!`);
+  showToast(`Joined ${game.title}! See you on the sand.`);
 };
 window.joinGame = window.joinGamePool;
 
@@ -670,10 +688,9 @@ function renderMatches() {
   }
 
   const canJoin = (game) => {
-    const maxPerTeam = Math.max(1, Math.floor((game.maxPlayers || 4) / 2));
-    const team1Spots = maxPerTeam - (game.team1PlayerIds ? game.team1PlayerIds.length : 0);
-    const team2Spots = maxPerTeam - (game.team2PlayerIds ? game.team2PlayerIds.length : 0);
-    const hasOpenSpots = team1Spots > 0 || team2Spots > 0;
+    const allP = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+    const maxP = game.maxPlayers || 4;
+    const hasOpenSpots = allP.length < maxP;
     if (!hasOpenSpots) return false;
     if (!state.currentUser) return true;
     if (game.team1PlayerIds?.includes(state.currentUser.id) || game.team2PlayerIds?.includes(state.currentUser.id)) {
@@ -1583,46 +1600,7 @@ window.handleLogout = () => {
 };
 
 // GLOBAL ACTION HANDLERS (available on window)
-window.joinGame = (gameId) => {
-  const game = state.games.find(g => g.id === gameId);
-  if (!game) return;
-  if (!state.currentUser) {
-    window.showAuthModal();
-    return;
-  }
-
-  if (game.team1PlayerIds?.includes(state.currentUser.id) || game.team2PlayerIds?.includes(state.currentUser.id)) {
-    showToast("You are already registered in this match!");
-    return;
-  }
-
-  // Level Lock Check
-  const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
-  if (game.isLevelLocked && !allowed.includes(state.currentUser.rating)) {
-    showToast(`Level Locked: This match is locked to ${allowed.join(", ")} players only (Your rating: ${state.currentUser.rating}).`);
-    return;
-  }
-
-  const maxPerTeam = Math.max(1, Math.floor((game.maxPlayers || 4) / 2));
-  if ((game.team1PlayerIds?.length || 0) < maxPerTeam) {
-    game.team1PlayerIds.push(state.currentUser.id);
-  } else if ((game.team2PlayerIds?.length || 0) < maxPerTeam) {
-    game.team2PlayerIds.push(state.currentUser.id);
-  } else {
-    showToast("Sorry, this match is already full!");
-    return;
-  }
-
-  // Check if game is now full
-  if ((game.team1PlayerIds?.length || 0) >= maxPerTeam && (game.team2PlayerIds?.length || 0) >= maxPerTeam) {
-    triggerWebPushNotification("🏐 Set Game Locked!", `${game.title} at ${game.courtLocation} is now fully locked!`);
-  }
-
-  state.saveLocal();
-  saveGameToFirestore(game);
-  renderMatches();
-  showToast(`Joined ${game.title}! See you on the sand.`);
-};
+window.joinGame = window.joinGamePool;
 
 window.leaveGame = (gameId) => {
   const game = state.games.find(g => g.id === gameId);
