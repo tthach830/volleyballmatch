@@ -739,17 +739,22 @@ function renderMatches() {
         <div style="margin: 14px 0;">
           <div 
             onclick="window.toggleMatchesCollapse('${game.id}')"
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0);"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; user-select: none; padding: 4px 0;"
             title="Click to ${isMatchesCollapsed ? 'expand' : 'collapse'} matches"
           >
             <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
               🎾 Matches in This Game (${(game.subMatches || []).length})
             </span>
-            <span style="font-size: 11px; font-weight: 700; color: var(--accent, #6366f1); display: flex; align-items: center; gap: 4px;">
-              ${isMatchesCollapsed ? 'Show ▼' : 'Hide ▲'}
-            </span>
+            <button type="button" class="btn btn-sm" style="background: rgba(168, 85, 247, 0.12); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              ${isMatchesCollapsed ? 'Expand ▼' : 'Collapse ▲'}
+            </button>
           </div>
-          ${isMatchesCollapsed ? '' : `
+          ${isMatchesCollapsed ? `
+            <div onclick="window.toggleMatchesCollapse('${game.id}')" style="cursor: pointer; background: var(--bg-card, #fff); border: 1px dashed rgba(168, 85, 247, 0.4); border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 12px; font-weight: 600;">
+              <span>🎾 ${(game.subMatches || []).length > 0 ? (game.subMatches.length + ' matches hidden') : 'Matches section collapsed'}</span>
+              <span style="color: #a855f7; font-weight: 800;">Tap to Expand ▼</span>
+            </div>
+          ` : `
           ${(!game.subMatches || game.subMatches.length === 0) ? `
             <div style="background: rgba(168, 85, 247, 0.05); border: 1px dashed rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
               <div style="font-size: 26px; margin-bottom: 4px;">🎲</div>

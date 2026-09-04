@@ -253,35 +253,79 @@ public struct GameDetailView: View {
                         // Matches in this Game
                         VStack(alignment: .leading, spacing: 12) {
                             Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                withAnimation(.easeInOut(duration: 0.25)) {
                                     isMatchesCollapsed.toggle()
                                 }
                             } label: {
                                 HStack {
                                     HStack(spacing: 6) {
                                         Image(systemName: "circle.grid.2x2.fill")
-                                            .font(.system(size: 11))
+                                            .font(.system(size: 12))
                                             .foregroundColor(.orange)
                                         Text("MATCHES IN THIS GAME")
                                             .font(.system(size: 11, weight: .bold))
                                             .foregroundColor(.secondary)
+                                        if !game.subMatches.isEmpty {
+                                            Text("(\(game.subMatches.count))")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .foregroundColor(.purple)
+                                        }
                                     }
                                     Spacer()
-                                    if !game.subMatches.isEmpty {
-                                        Text("\(game.subMatches.count) Match\(game.subMatches.count > 1 ? "es" : "")")
+                                    
+                                    // Prominent, interactive Collapse/Expand capsule button
+                                    HStack(spacing: 4) {
+                                        Text(isMatchesCollapsed ? "Expand" : "Collapse")
                                             .font(.system(size: 11, weight: .bold))
-                                            .foregroundColor(.purple)
+                                        Image(systemName: isMatchesCollapsed ? "chevron.down" : "chevron.up")
+                                            .font(.system(size: 10, weight: .bold))
                                     }
-                                    Image(systemName: isMatchesCollapsed ? "chevron.down" : "chevron.up")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(.secondary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.purple.opacity(0.15))
+                                    .foregroundColor(.purple)
+                                    .clipShape(Capsule())
                                 }
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .padding(.horizontal)
                             
-                            if !isMatchesCollapsed {
+                            if isMatchesCollapsed {
+                                // Informative summary card showing matches are collapsed, tap to expand
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        isMatchesCollapsed = false
+                                    }
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "circle.grid.2x2.fill")
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.purple)
+                                        Text(game.subMatches.isEmpty ? "Matches section collapsed" : "\(game.subMatches.count) match\(game.subMatches.count > 1 ? "es" : "") hidden")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        HStack(spacing: 4) {
+                                            Text("Tap to Expand")
+                                                .font(.system(size: 11, weight: .bold))
+                                            Image(systemName: "chevron.down")
+                                                .font(.system(size: 10, weight: .bold))
+                                        }
+                                        .foregroundColor(.purple)
+                                    }
+                                    .padding(14)
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .strokeBorder(Color.purple.opacity(0.25), lineWidth: 1)
+                                    )
+                                    .padding(.horizontal)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
                                 if game.subMatches.isEmpty {
                                     VStack(spacing: 12) {
                                         Image(systemName: "dice.fill")

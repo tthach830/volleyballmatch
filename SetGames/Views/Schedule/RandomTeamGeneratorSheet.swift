@@ -119,7 +119,7 @@ public struct GeneratedMatchRow: View {
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 65)
-                    .onChange(of: match.team1Score) { _ in
+                    .onChange(of: match.team1Score) {
                         updateCompletion()
                     }
                 
@@ -130,7 +130,7 @@ public struct GeneratedMatchRow: View {
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 65)
-                    .onChange(of: match.team2Score) { _ in
+                    .onChange(of: match.team2Score) {
                         updateCompletion()
                     }
                 
