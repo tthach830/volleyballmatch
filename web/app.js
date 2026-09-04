@@ -648,9 +648,7 @@ function renderMatches() {
     const emptyMsg = isCompletedFilter ?
       "No past completed games found." :
       (currentMatchFilter === "myGames" || currentMatchFilter === "myMatches") ?
-      "You are not registered in any upcoming games.<br>Tap 'Needs Players' to join or '+ New Game' to host!" :
-      currentMatchFilter === "openSpots" ?
-      "No open games needing players for your rating tier.<br>Tap '+ New Game' above to host a game!" :
+      "You are not registered in any upcoming games.<br>Tap 'All Upcoming' to join or '+ New Game' to host!" :
       "No upcoming games available.<br>Tap '+ New Game' above to host a game!";
     container.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted);">${emptyMsg}</div>`;
     return;

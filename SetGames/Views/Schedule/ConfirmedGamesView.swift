@@ -19,7 +19,6 @@ public struct ConfirmedGamesView: View {
     public enum GameFilter: String, CaseIterable {
         case all = "📅 All Upcoming"
         case myGames = "🎮 My Games"
-        case openSpots = "👥 Needs Players"
         case completed = "🕒 Past Games"
     }
     
@@ -202,10 +201,6 @@ public struct ConfirmedGamesView: View {
             guard let currentUserId = currentUserId else { return [] }
             return dataManager.games
                 .filter { $0.status != .canceled && ($0.allPlayerIds.contains(currentUserId) || $0.hostPlayerId == currentUserId) }
-                .sorted { $0.scheduledDate < $1.scheduledDate }
-        case .openSpots:
-            return upcoming
-                .filter { canUserJoin($0) }
                 .sorted { $0.scheduledDate < $1.scheduledDate }
         case .completed:
             return completed.sorted { $0.scheduledDate > $1.scheduledDate }
