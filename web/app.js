@@ -455,6 +455,103 @@ window.toggleMatchesCollapse = (gameId) => {
   renderMatches();
 };
 
+function revertSubMatchStatsWeb(match, prevWinner) {
+  if (match.team1Score === undefined || match.team2Score === undefined) return;
+  const s1 = match.team1Score;
+  const s2 = match.team2Score;
+  const team1Ids = match.team1PlayerIds || [];
+  const team2Ids = match.team2PlayerIds || [];
+
+  const prevWinners = prevWinner === 1 ? team1Ids : team2Ids;
+  const prevLosers = prevWinner === 1 ? team2Ids : team1Ids;
+  const winPts = prevWinner === 1 ? s1 : s2;
+  const losePts = prevWinner === 1 ? s2 : s1;
+
+  prevWinners.forEach(pid => {
+    const p = state.players.find(x => x.id === pid);
+    if (p) {
+      p.wins = Math.max(0, (p.wins || 0) - 1);
+      p.eloRating = Math.max(800, (p.eloRating || 1500) - 24);
+      p.pointsScored = Math.max(0, (p.pointsScored || 0) - winPts);
+      p.pointsAllowed = Math.max(0, (p.pointsAllowed || 0) - losePts);
+      if (p.recentForm && p.recentForm.length > 0) p.recentForm.pop();
+      savePlayerToFirestore(p);
+    }
+  });
+
+  prevLosers.forEach(pid => {
+    const p = state.players.find(x => x.id === pid);
+    if (p) {
+      p.losses = Math.max(0, (p.losses || 0) - 1);
+      p.eloRating = (p.eloRating || 1500) + 20;
+      p.pointsScored = Math.max(0, (p.pointsScored || 0) - losePts);
+      p.pointsAllowed = Math.max(0, (p.pointsAllowed || 0) - winPts);
+      if (p.recentForm && p.recentForm.length > 0) p.recentForm.pop();
+      savePlayerToFirestore(p);
+    }
+  });
+}
+
+function applySubMatchStatsWeb(match) {
+  if (!match.isCompleted || match.team1Score === undefined || match.team2Score === undefined) return;
+  const s1 = match.team1Score;
+  const s2 = match.team2Score;
+  const winningTeam = s1 > s2 ? 1 : 2;
+
+  if (match.appliedStatsWinner === winningTeam) return;
+
+  if (match.appliedStatsWinner && match.appliedStatsWinner !== winningTeam) {
+    revertSubMatchStatsWeb(match, match.appliedStatsWinner);
+  }
+
+  const team1Ids = match.team1PlayerIds || [];
+  const team2Ids = match.team2PlayerIds || [];
+
+  const winners = winningTeam === 1 ? team1Ids : team2Ids;
+  const losers = winningTeam === 1 ? team2Ids : team1Ids;
+  const winnerScore = winningTeam === 1 ? s1 : s2;
+  const loserScore = winningTeam === 1 ? s2 : s1;
+
+  winners.forEach(pid => {
+    const p = state.players.find(x => x.id === pid);
+    if (p) {
+      p.wins = (p.wins || 0) + 1;
+      p.streak = (p.streak && p.streak > 0) ? p.streak + 1 : 1;
+      p.eloRating = (p.eloRating || 1500) + 24;
+      p.pointsScored = (p.pointsScored || 0) + winnerScore;
+      p.pointsAllowed = (p.pointsAllowed || 0) + loserScore;
+      p.recentForm = p.recentForm || [];
+      p.recentForm.push(true);
+      if (p.recentForm.length > 5) p.recentForm.shift();
+      p.consecutiveBackouts = 0;
+      savePlayerToFirestore(p);
+    }
+  });
+
+  losers.forEach(pid => {
+    const p = state.players.find(x => x.id === pid);
+    if (p) {
+      p.losses = (p.losses || 0) + 1;
+      p.streak = (p.streak && p.streak < 0) ? p.streak - 1 : -1;
+      p.eloRating = Math.max(800, (p.eloRating || 1500) - 20);
+      p.pointsScored = (p.pointsScored || 0) + loserScore;
+      p.pointsAllowed = (p.pointsAllowed || 0) + winnerScore;
+      p.recentForm = p.recentForm || [];
+      p.recentForm.push(false);
+      if (p.recentForm.length > 5) p.recentForm.shift();
+      p.consecutiveBackouts = 0;
+      savePlayerToFirestore(p);
+    }
+  });
+
+  match.appliedStatsWinner = winningTeam;
+
+  if (state.currentUser && (winners.includes(state.currentUser.id) || losers.includes(state.currentUser.id))) {
+    const updated = state.players.find(x => x.id === state.currentUser.id);
+    if (updated) state.currentUser = updated;
+  }
+}
+
 window.updateSubMatchScoreWeb = (gameId, matchId) => {
   const game = state.games.find(g => g.id === gameId);
   if (!game || !game.subMatches) return;
@@ -471,13 +568,19 @@ window.updateSubMatchScoreWeb = (gameId, matchId) => {
       match.team2Score = s2;
       match.isCompleted = true;
       match.winningTeam = s1 > s2 ? 1 : 2;
+
+      applySubMatchStatsWeb(match);
+
       if (game.subMatches.every(m => m.isCompleted)) {
         game.status = "completed";
       }
       saveGameToFirestore(game);
       state.saveLocal();
       renderMatches();
-      showToast(`Saved score for Match ${match.matchNumber}!`);
+      renderLadder();
+      renderHeader();
+      renderProfile();
+      showToast(`Saved score for Match ${match.matchNumber}! Stats updated.`);
     }
   }
 };

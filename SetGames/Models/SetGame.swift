@@ -54,6 +54,7 @@ public struct SubMatch: Identifiable, Codable, Hashable {
     public var team2Score: Int?
     public var isCompleted: Bool
     public var winningTeam: Int?
+    public var appliedStatsWinner: Int?
     
     public init(
         id: UUID = UUID(),
@@ -66,7 +67,8 @@ public struct SubMatch: Identifiable, Codable, Hashable {
         team1Score: Int? = nil,
         team2Score: Int? = nil,
         isCompleted: Bool = false,
-        winningTeam: Int? = nil
+        winningTeam: Int? = nil,
+        appliedStatsWinner: Int? = nil
     ) {
         self.id = id
         self.matchNumber = matchNumber
@@ -79,6 +81,7 @@ public struct SubMatch: Identifiable, Codable, Hashable {
         self.team2Score = team2Score
         self.isCompleted = isCompleted
         self.winningTeam = winningTeam
+        self.appliedStatsWinner = appliedStatsWinner
     }
 }
 

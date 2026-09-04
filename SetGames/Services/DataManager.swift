@@ -371,12 +371,29 @@ public class DataManager: ObservableObject {
         games[gIdx].subMatches[mIdx].isCompleted = true
         games[gIdx].subMatches[mIdx].winningTeam = team1Score > team2Score ? 1 : 2
         
+        // Award career stats (wins/losses/Elo/points) to participating players
+        StatsManager.shared.applySubMatchResult(subMatch: &games[gIdx].subMatches[mIdx], players: &players)
+        
         if !games[gIdx].subMatches.isEmpty && games[gIdx].subMatches.allSatisfy({ $0.isCompleted }) {
             games[gIdx].status = .completed
         }
         
+        // Refresh currentUser
+        if let user = currentUser, let updatedUser = players.first(where: { $0.id == user.id }) {
+            currentUser = updatedUser
+        }
+        
         saveToDisk()
         FirestoreService.shared.saveGame(games[gIdx])
+        
+        // Save affected players to Firestore
+        let affectedIds = Set(games[gIdx].subMatches[mIdx].team1PlayerIds + games[gIdx].subMatches[mIdx].team2PlayerIds)
+        for pid in affectedIds {
+            if let p = players.first(where: { $0.id == pid }) {
+                FirestoreService.shared.savePlayer(p)
+            }
+        }
+        
         return true
     }
     
