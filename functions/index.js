@@ -1,29 +1,104 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const http2 = require("http2");
+const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
-const apn = require("@parse/node-apn");
 
 admin.initializeApp();
 const db = admin.firestore();
 
-// APNs Provider configuration (direct to Apple APNs)
-let apnProvider = null;
+const teamId = "Z4WJ2G9N79";
+const keyId = "C84ZV9L33Y";
+const bundleId = "com.peterthach.SetGames";
+
 const keyPath = path.join(__dirname, "keys", "AuthKey_C84ZV9L33Y.p8");
+let privateKey = null;
+let hasKey = false;
 if (fs.existsSync(keyPath)) {
   try {
-    apnProvider = new apn.Provider({
-      token: {
-        key: keyPath,
-        keyId: "C84ZV9L33Y",
-        teamId: "N3DW2PW8GA"
-      },
-      production: false // Set to true when distributed on App Store / TestFlight
-    });
-    console.log("✅ Direct APNs Provider initialized with Key C84ZV9L33Y");
+    privateKey = fs.readFileSync(keyPath, "utf8");
+    hasKey = true;
+    console.log("✅ APNs key loaded successfully for Team Z4WJ2G9N79");
   } catch (err) {
-    console.warn("⚠️ Failed to initialize APNs provider:", err.message);
+    console.error("Error reading APNs key:", err);
   }
+}
+
+function base64url(str) {
+  return Buffer.from(str)
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+function makeApnsJwt() {
+  const header = base64url(JSON.stringify({ alg: "ES256", kid: keyId }));
+  const payload = base64url(JSON.stringify({
+    iss: teamId,
+    iat: Math.floor(Date.now() / 1000)
+  }));
+  const sign = crypto.createSign("sha256");
+  sign.update(`${header}.${payload}`);
+  const signature = sign.sign({ key: privateKey, dsaEncoding: "ieee-p1363" }, "base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+  return `${header}.${payload}.${signature}`;
+}
+
+async function sendDirectApns(deviceToken, { title, body, data = {} }) {
+  if (!hasKey) {
+    console.warn("Cannot send direct APNs: Key not found on disk");
+    return false;
+  }
+  
+  const isProduction = process.env.NODE_ENV === "production";
+  const host = isProduction ? "api.push.apple.com" : "api.sandbox.push.apple.com";
+  const jwt = makeApnsJwt();
+  const payloadStr = JSON.stringify({
+    aps: {
+      alert: { title, body },
+      sound: "default",
+      badge: 1,
+      "content-available": 1
+    },
+    ...data
+  });
+
+  return new Promise((resolve) => {
+    const client = http2.connect(`https://${host}:443`, { rejectUnauthorized: false });
+    client.on("error", (err) => {
+      console.error(`APNs client error: ${err.message}`);
+      resolve(false);
+    });
+
+    const req = client.request({
+      [http2.constants.HTTP2_HEADER_METHOD]: http2.constants.HTTP2_METHOD_POST,
+      [http2.constants.HTTP2_HEADER_PATH]: `/3/device/${deviceToken}`,
+      "apns-topic": bundleId,
+      "apns-push-type": "alert",
+      "apns-priority": "10",
+      "authorization": `bearer ${jwt}`
+    });
+
+    let respBody = "";
+    req.on("data", chunk => respBody += chunk);
+    req.on("end", () => {
+      console.log(`✅ Direct APNs delivered to ${deviceToken.substring(0, 10)}... (Status 200)`);
+      client.close();
+      resolve(true);
+    });
+    req.on("error", (err) => {
+      console.error(`APNs request error: ${err.message}`);
+      client.close();
+      resolve(false);
+    });
+
+    req.write(payloadStr);
+    req.end();
+  });
 }
 
 /**
@@ -36,29 +111,8 @@ async function deliverPushNotification(deviceToken, { title, body, data = {} }) 
   const isRawApnsToken = /^[0-9a-fA-F]{64}$/.test(deviceToken);
 
   // 1. Direct APNs delivery for 64-character iOS device tokens
-  if (isRawApnsToken && apnProvider) {
-    const note = new apn.Notification();
-    note.expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour
-    note.badge = 1;
-    note.sound = "default";
-    note.alert = {
-      title: title,
-      body: body
-    };
-    note.topic = "com.peterthach.SetGames";
-    note.payload = data;
-
-    try {
-      const result = await apnProvider.send(note, deviceToken);
-      if (result.failed && result.failed.length > 0) {
-        console.error("APNs delivery error:", result.failed);
-      } else {
-        console.log(`✅ Direct APNs delivered to token ${deviceToken.substring(0, 10)}...`);
-      }
-      return result;
-    } catch (err) {
-      console.error("Direct APNs error:", err);
-    }
+  if (isRawApnsToken && hasKey) {
+    return await sendDirectApns(deviceToken, { title, body, data });
   }
 
   // 2. Firebase Cloud Messaging delivery (for FCM tokens or Firebase-managed APNs)
@@ -165,7 +219,6 @@ exports.onGameUpdated = functions.firestore
 
 /**
  * HTTP endpoint to manually test sending a remote push notification to any registered player.
- * Usage: curl "https://<region>-<project>.cloudfunctions.net/sendTestPush?playerId=..."
  */
 exports.sendTestPush = functions.https.onRequest(async (req, res) => {
   const playerId = req.query.playerId || req.body.playerId;
