@@ -2577,6 +2577,120 @@ window.handleSaveAvailability = (e) => {
 window.currentGeneratedMatches = [];
 window.randomGeneratorMode = 'king'; // 'king' or 'mixer'
 window.currentRandomPoolPlayers = ["Player 1", "Player 2", "Player 3", "Player 4"];
+window.selectedCourtNumbers = new Set([1]);
+
+window.getSelectedCourts = () => {
+  if (!window.selectedCourtNumbers || window.selectedCourtNumbers.size === 0) {
+    return [1];
+  }
+  return Array.from(window.selectedCourtNumbers).sort((a, b) => a - b);
+};
+
+window.courtForIndex = (index) => {
+  const courts = window.getSelectedCourts();
+  if (index < courts.length) {
+    return courts[index];
+  }
+  return courts[index % courts.length];
+};
+
+window.toggleCourtsDropdown = () => {
+  const menu = document.getElementById("rt-courts-dropdown-menu");
+  if (!menu) return;
+  const isHidden = menu.style.display === "none" || !menu.style.display;
+  menu.style.display = isHidden ? "block" : "none";
+  if (isHidden) {
+    window.renderCourtsCheckboxGrid();
+  }
+};
+
+window.renderCourtsCheckboxGrid = () => {
+  const grid = document.getElementById("rt-courts-checkbox-grid");
+  if (!grid) return;
+  let html = "";
+  for (let num = 1; num <= 18; num++) {
+    const isChecked = window.selectedCourtNumbers && window.selectedCourtNumbers.has(num);
+    html += `
+      <label style="display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; font-size: 12px; cursor: pointer; background: ${isChecked ? 'rgba(255, 106, 0, 0.12)' : 'var(--bg-input, #f1f5f9)'}; border: 1px solid ${isChecked ? 'rgba(255, 106, 0, 0.4)' : 'transparent'};">
+        <input type="checkbox" style="cursor: pointer; accent-color: var(--accent);" value="${num}" ${isChecked ? 'checked' : ''} onchange="window.toggleCourtCheckbox(${num})">
+        <span style="font-weight: ${isChecked ? '700' : '500'}; color: var(--text-main);">#${num}</span>
+      </label>
+    `;
+  }
+  grid.innerHTML = html;
+  window.updateCourtsDropdownUI();
+};
+
+window.toggleCourtCheckbox = (num) => {
+  if (!window.selectedCourtNumbers) window.selectedCourtNumbers = new Set([1]);
+  if (window.selectedCourtNumbers.has(num)) {
+    if (window.selectedCourtNumbers.size > 1) {
+      window.selectedCourtNumbers.delete(num);
+    }
+  } else {
+    window.selectedCourtNumbers.add(num);
+  }
+  window.renderCourtsCheckboxGrid();
+  window.renderRandomPoolPlayers();
+  if (window.currentGeneratedMatches && window.currentGeneratedMatches.length > 0) {
+    window.handleGenerateRandomTeams(new Event("submit"));
+  }
+};
+
+window.selectNeededCourts = () => {
+  const count = window.currentRandomPoolPlayers ? window.currentRandomPoolPlayers.length : 4;
+  const needed = Math.max(1, window.randomGeneratorMode === 'king' ? Math.floor(count / 4) : 1);
+  const start = window.getSelectedCourts()[0] || 1;
+  const newSet = new Set();
+  for (let i = 0; i < needed; i++) {
+    newSet.add(Math.min(18, start + i));
+  }
+  window.selectedCourtNumbers = newSet;
+  window.renderCourtsCheckboxGrid();
+  window.renderRandomPoolPlayers();
+  if (window.currentGeneratedMatches && window.currentGeneratedMatches.length > 0) {
+    window.handleGenerateRandomTeams(new Event("submit"));
+  }
+};
+
+window.selectAllCourts = () => {
+  const set = new Set();
+  for (let i = 1; i <= 18; i++) set.add(i);
+  window.selectedCourtNumbers = set;
+  window.renderCourtsCheckboxGrid();
+  window.renderRandomPoolPlayers();
+  if (window.currentGeneratedMatches && window.currentGeneratedMatches.length > 0) {
+    window.handleGenerateRandomTeams(new Event("submit"));
+  }
+};
+
+window.resetCourts = () => {
+  window.selectedCourtNumbers = new Set([1]);
+  window.renderCourtsCheckboxGrid();
+  window.renderRandomPoolPlayers();
+  if (window.currentGeneratedMatches && window.currentGeneratedMatches.length > 0) {
+    window.handleGenerateRandomTeams(new Event("submit"));
+  }
+};
+
+window.updateCourtsDropdownUI = () => {
+  const courts = window.getSelectedCourts();
+  const label = courts.length <= 3 
+    ? courts.map(n => `Court #${n}`).join(", ") 
+    : `${courts.length} Courts (#${courts.slice(0, 2).join(", ")}...)`;
+  const btnText = document.getElementById("rt-courts-btn-text");
+  if (btnText) btnText.textContent = label;
+  const labelSpan = document.getElementById("rt-selected-courts-label");
+  if (labelSpan) labelSpan.textContent = label;
+};
+
+document.addEventListener("click", (e) => {
+  const grp = document.getElementById("rt-court-num-group");
+  const menu = document.getElementById("rt-courts-dropdown-menu");
+  if (grp && menu && !grp.contains(e.target)) {
+    menu.style.display = "none";
+  }
+});
 
 window.setRandomGeneratorMode = (m) => {
   window.randomGeneratorMode = m;
@@ -2589,9 +2703,9 @@ window.setRandomGeneratorMode = (m) => {
 
   const descEl = document.getElementById("rt-mode-desc");
   if (descEl) {
-    const startCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
+    const courts = window.getSelectedCourts();
     descEl.textContent = isKing
-      ? `4 Players per court (e.g. 8 players = 2 courts). Players 1–4 on Court #${startCourt}, 5–8 on Court #${startCourt + 1}, etc. Each court plays 3 rotating sets with live individual score tracking!`
+      ? `4 Players per court (e.g. 8 players = 2 courts). Assigned Courts: ${courts.map(c => `Court #${c}`).join(", ")}. Each court plays 3 rotating sets with live individual score tracking!`
       : "Continuous social rotations across all players with an equitable resting queue.";
   }
 
@@ -2622,7 +2736,7 @@ window.renderRandomPoolPlayers = () => {
   const total = window.currentRandomPoolPlayers.length;
   if (countEl) countEl.textContent = total;
 
-  const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
+  window.updateCourtsDropdownUI();
 
   // Validation badge
   const badgeEl = document.getElementById("rt-validation-badge");
@@ -2648,11 +2762,12 @@ window.renderRandomPoolPlayers = () => {
         let lines = `<strong>🏟️ ${courts} Court${courts > 1 ? 's' : ''} Needed (${courts * 4} Players)</strong>`;
         for (let c = 0; c < courts; c++) {
           const cPlayers = window.currentRandomPoolPlayers.slice(c * 4, (c + 1) * 4);
-          lines += `<div style="margin-top: 2px; color: var(--text-muted);">• Court #${startingCourt + c}: ${cPlayers.join(", ")}</div>`;
+          const cNum = window.courtForIndex(c);
+          lines += `<div style="margin-top: 2px; color: var(--text-muted);">• Court #${cNum}: ${cPlayers.join(", ")}</div>`;
         }
         if (total % 4 !== 0) {
           const rest = window.currentRandomPoolPlayers.slice(courts * 4);
-          lines += `<div style="margin-top: 4px; color: #ef4444; font-weight: 600;">⚠️ ${total % 4} Alternate/Bye: ${rest.join(", ")} (Add ${4 - (total % 4)} more for Court #${startingCourt + courts})</div>`;
+          lines += `<div style="margin-top: 4px; color: #ef4444; font-weight: 600;">⚠️ ${total % 4} Alternate/Bye: ${rest.join(", ")}</div>`;
         }
         summaryCard.innerHTML = lines;
         summaryCard.style.display = "block";
@@ -2668,7 +2783,7 @@ window.renderRandomPoolPlayers = () => {
   if (!container) return;
 
   container.innerHTML = window.currentRandomPoolPlayers.map((pName, idx) => {
-    const courtNum = startingCourt + Math.floor(idx / 4);
+    const courtNum = window.courtForIndex(Math.floor(idx / 4));
     return `
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 10px; font-weight: 800;">${idx + 1}</span>
@@ -2717,9 +2832,11 @@ window.openRandomTeamsModal = (initialPlayers, initialCourt, initialFormat, init
   }
   if (initialCourtNumber) {
     const num = parseInt(String(initialCourtNumber).replace(/\D/g, '')) || 1;
-    const courtNumSelect = document.getElementById("rt-court-number");
-    if (courtNumSelect) courtNumSelect.value = String(Math.min(18, Math.max(1, num)));
+    window.selectedCourtNumbers = new Set([Math.min(18, Math.max(1, num))]);
+  } else {
+    window.selectedCourtNumbers = new Set([1]);
   }
+  window.updateCourtsDropdownUI();
   const isKing = initialFormat && (initialFormat.toLowerCase().includes("king"));
   window.setRandomGeneratorMode(isKing ? 'king' : 'king');
 
@@ -2798,11 +2915,9 @@ function renderGeneratedMatches() {
 
   if (window.randomGeneratorMode === 'king') {
     const courtCount = Math.floor(window.currentRandomPoolPlayers.length / 4);
-    const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
     let html = "";
-
     for (let c = 0; c < courtCount; c++) {
-      const assignedCourtNum = startingCourt + c;
+      const assignedCourtNum = window.courtForIndex(c);
       const courtPlayers = window.currentRandomPoolPlayers.slice(c * 4, (c + 1) * 4);
       const courtMatches = window.currentGeneratedMatches.filter(m => m.courtNumber === `Court #${assignedCourtNum}`);
       const standings = calculateKingStandings(courtPlayers, courtMatches);
@@ -2937,7 +3052,6 @@ window.handleGenerateRandomTeams = (e) => {
 
   if (window.randomGeneratorMode === 'king') {
     const courtCount = Math.floor(players.length / 4);
-    const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
     const matches = [];
     let globalIdx = 1;
 
@@ -2945,7 +3059,7 @@ window.handleGenerateRandomTeams = (e) => {
     for (let round = 1; round <= 3; round++) {
       for (let c = 0; c < courtCount; c++) {
         const courtPlayers = players.slice(c * 4, (c + 1) * 4);
-        const assignedCourtNum = startingCourt + c;
+        const assignedCourtNum = window.courtForIndex(c);
         const courtName = `Court #${assignedCourtNum}`;
 
         let team1, team2;
@@ -2992,6 +3106,7 @@ window.handleGenerateRandomTeams = (e) => {
     });
 
     const matches = [];
+    const courts = window.getSelectedCourts();
 
     for (let i = 0; i < numGames; i++) {
       const sorted = [...players]
@@ -3033,10 +3148,10 @@ window.handleGenerateRandomTeams = (e) => {
       partnerHistory[t2[0]]?.add(t2[1]);
       partnerHistory[t2[1]]?.add(t2[0]);
 
-      const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
+      const assignedCourtNum = courts[i % courts.length];
       matches.push({
         matchNumber: i + 1,
-        courtNumber: `Court #${startingCourt}`,
+        courtNumber: `Court #${assignedCourtNum}`,
         team1: t1,
         team2: t2,
         resting: byes,
@@ -3075,10 +3190,11 @@ window.addAnotherRandomMatch = () => {
   const picked = sorted.slice(0, 4);
   const byes = sorted.slice(4);
 
-  const startingCourt = parseInt(document.getElementById("rt-court-number")?.value) || 1;
+  const courts = window.getSelectedCourts();
+  const assignedCourtNum = courts[(window.currentGeneratedMatches || []).length % courts.length];
   window.currentGeneratedMatches.push({
     matchNumber: window.currentGeneratedMatches.length + 1,
-    courtNumber: `Court #${startingCourt}`,
+    courtNumber: `Court #${assignedCourtNum}`,
     team1: [picked[0], picked[1]],
     team2: [picked[2], picked[3]],
     resting: byes,

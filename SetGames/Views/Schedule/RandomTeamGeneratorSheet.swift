@@ -170,10 +170,36 @@ public struct RandomTeamGeneratorSheet: View {
     @State private var newPlayerName: String = ""
     @State private var numberOfGames: Int = 4
     @State private var courtLocation: String = "Main Beach"
-    @State private var startingCourtNumber: Int = 1
+    @State private var selectedCourtNumbers: Set<Int> = [1]
+    @State private var isCourtsDropdownOpen: Bool = false
     @State private var generatedMatches: [GeneratedMatch] = []
     @State private var alertMessage: String? = nil
     @State private var showAlert: Bool = false
+    
+    private var startingCourtNumber: Int {
+        selectedCourtNumbers.sorted().first ?? 1
+    }
+    
+    private func courtForIndex(_ index: Int) -> Int {
+        let sorted = selectedCourtNumbers.sorted()
+        guard !sorted.isEmpty else { return index + 1 }
+        if index < sorted.count {
+            return sorted[index]
+        } else {
+            return sorted[index % sorted.count]
+        }
+    }
+    
+    private var selectedCourtsLabel: String {
+        let sorted = selectedCourtNumbers.sorted()
+        if sorted.isEmpty {
+            return "None"
+        } else if sorted.count <= 3 {
+            return sorted.map { "Court #\($0)" }.joined(separator: ", ")
+        } else {
+            return "\(sorted.count) Courts (#\(sorted.prefix(2).map(String.init).joined(separator: ", "))...)"
+        }
+    }
     
     private let initialGameId: UUID?
     
@@ -226,7 +252,10 @@ public struct RandomTeamGeneratorSheet: View {
             _courtLocation = State(initialValue: beach)
         }
         if let courtStr = initialCourtNumber {
-            _startingCourtNumber = State(initialValue: Self.parseCourtNumber(courtStr))
+            let parsed = Self.parseCourtNumber(courtStr)
+            _selectedCourtNumbers = State(initialValue: [parsed])
+        } else {
+            _selectedCourtNumbers = State(initialValue: [1])
         }
     }
     
@@ -254,7 +283,8 @@ public struct RandomTeamGeneratorSheet: View {
                                 Text("\(courtCount) Court\(courtCount > 1 ? "s" : "") Needed for \(courtCount * 4) players.")
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.orange)
-                                Text("Player 1–4 on Court #\(startingCourtNumber), Player 5–8 on Court #\(startingCourtNumber + 1), etc. Individual points and records are tracked per player.")
+                                let courtNames = (0..<courtCount).map { "Court #\(courtForIndex($0))" }.joined(separator: ", ")
+                                Text("Assigned Courts: \(courtNames). Individual points and records are tracked per player.")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             }
@@ -291,7 +321,7 @@ public struct RandomTeamGeneratorSheet: View {
                             
                             // Court assignment badge preview
                             if let idx = playersList.firstIndex(where: { $0.id == player.id }) {
-                                let cNum = startingCourtNumber + (idx / 4)
+                                let cNum = courtForIndex(idx / 4)
                                 Text("Court #\(cNum)")
                                     .font(.system(size: 10, weight: .bold))
                                     .padding(.horizontal, 6)
@@ -359,12 +389,103 @@ public struct RandomTeamGeneratorSheet: View {
                         }
                     }
                     
-                    Picker("Select Court # (1–18)", selection: $startingCourtNumber) {
-                        ForEach(1...18, id: \.self) { num in
-                            Text("Court #\(num)").tag(num)
+                    // Multiple Court Selection - Dropped-down Checkbox
+                    DisclosureGroup(isExpanded: $isCourtsDropdownOpen) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                let needed = max(1, mode == .kingOfTheCourt ? (playersList.count / 4) : 1)
+                                Button {
+                                    let start = selectedCourtNumbers.sorted().first ?? 1
+                                    var set: Set<Int> = []
+                                    for i in 0..<needed {
+                                        let c = min(18, start + i)
+                                        set.insert(c)
+                                    }
+                                    selectedCourtNumbers = set
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "wand.and.stars")
+                                        Text("Select Needed (\(needed))")
+                                    }
+                                    .font(.system(size: 11, weight: .bold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.orange.opacity(0.15))
+                                    .foregroundColor(.orange)
+                                    .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                
+                                Spacer()
+                                
+                                Button("Select All") {
+                                    selectedCourtNumbers = Set(1...18)
+                                }
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .buttonStyle(.plain)
+                                
+                                Text("•")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                
+                                Button("Reset (1)") {
+                                    selectedCourtNumbers = [1]
+                                }
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.top, 4)
+                            
+                            let columns = [
+                                GridItem(.flexible(), spacing: 8),
+                                GridItem(.flexible(), spacing: 8),
+                                GridItem(.flexible(), spacing: 8)
+                            ]
+                            LazyVGrid(columns: columns, spacing: 8) {
+                                ForEach(1...18, id: \.self) { num in
+                                    let isChecked = selectedCourtNumbers.contains(num)
+                                    Button {
+                                        if isChecked {
+                                            if selectedCourtNumbers.count > 1 {
+                                                selectedCourtNumbers.remove(num)
+                                            }
+                                        } else {
+                                            selectedCourtNumbers.insert(num)
+                                        }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+                                                .font(.system(size: 15, weight: .semibold))
+                                                .foregroundColor(isChecked ? .orange : Color(UIColor.tertiaryLabel))
+                                            Text("Court #\(num)")
+                                                .font(.system(size: 12, weight: isChecked ? .bold : .medium))
+                                                .foregroundColor(.primary)
+                                            Spacer(minLength: 0)
+                                        }
+                                        .padding(.vertical, 6)
+                                        .padding(.horizontal, 6)
+                                        .background(isChecked ? Color.orange.opacity(0.12) : Color(.secondarySystemBackground))
+                                        .cornerRadius(6)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.bottom, 4)
+                        }
+                    } label: {
+                        HStack {
+                            Text("Select Courts (1–18)")
+                                .font(.system(size: 14, weight: .medium))
+                            Spacer()
+                            Text(selectedCourtsLabel)
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.orange)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                         }
                     }
-                    .pickerStyle(.menu)
                     
                     Button {
                         if mode == .kingOfTheCourt {
@@ -441,7 +562,7 @@ public struct RandomTeamGeneratorSheet: View {
     private var kingOfTheCourtResultsSection: some View {
         let courtCount = playersList.count / 4
         return ForEach(0..<courtCount, id: \.self) { c in
-            let assignedCourtNum = startingCourtNumber + c
+            let assignedCourtNum = courtForIndex(c)
             let courtString = "Court #\(assignedCourtNum)"
             let courtMatchesIndices = generatedMatches.indices.filter {
                 generatedMatches[$0].courtNumber == courtString
@@ -603,7 +724,7 @@ public struct RandomTeamGeneratorSheet: View {
         for round in 1...3 {
             for c in 0..<courtCount {
                 let courtPlayers = Array(cleanPlayers[c*4 ..< (c+1)*4])
-                let assignedCourt = "Court #\(startingCourtNumber + c)"
+                let assignedCourt = "Court #\(courtForIndex(c))"
                 
                 let t1: (PoolPlayer, PoolPlayer)
                 let t2: (PoolPlayer, PoolPlayer)
@@ -725,9 +846,12 @@ public struct RandomTeamGeneratorSheet: View {
             partnerHistory[t2.0.id]?.insert(t2.1.id)
             partnerHistory[t2.1.id]?.insert(t2.0.id)
             
+            let sortedCourts = selectedCourtNumbers.sorted()
+            let assignedCourtNum = sortedCourts.isEmpty ? 1 : sortedCourts[i % sortedCourts.count]
+            
             matches.append(GeneratedMatch(
                 matchNumber: i + 1,
-                courtNumber: "Court #\(startingCourtNumber)",
+                courtNumber: "Court #\(assignedCourtNum)",
                 team1Player1: t1.0,
                 team1Player2: t1.1,
                 team2Player1: t2.0,
@@ -758,9 +882,12 @@ public struct RandomTeamGeneratorSheet: View {
         
         guard picked.count == 4 else { return }
         
+        let sortedCourts = selectedCourtNumbers.sorted()
+        let assignedCourtNum = sortedCourts.isEmpty ? 1 : sortedCourts[generatedMatches.count % sortedCourts.count]
+        
         let newMatch = GeneratedMatch(
             matchNumber: generatedMatches.count + 1,
-            courtNumber: "Court #\(startingCourtNumber)",
+            courtNumber: "Court #\(assignedCourtNum)",
             team1Player1: picked[0],
             team1Player2: picked[1],
             team2Player1: picked[2],
