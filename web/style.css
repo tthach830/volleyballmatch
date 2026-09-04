@@ -604,6 +604,14 @@ nav#bottom-nav {
   display: flex;
 }
 
+#modal-game-qr {
+  display: none;
+}
+
+#modal-game-qr.active {
+  display: flex !important;
+}
+
 .modal-card {
   width: 100%;
   max-width: 500px;
