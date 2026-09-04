@@ -298,7 +298,7 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         print("📲 Dispatching test remote push to Apple APNs for \(token.prefix(8))...")
         sendDirectRemotePush(
             to: token,
-            title: "🏐 SetGames Alert",
+            title: "🏐 Volleyball Match Alert",
             body: "Lock screen push working! Delivered via Apple APNs even if app is killed."
         )
     }

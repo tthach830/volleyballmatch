@@ -41,7 +41,7 @@ async function trySend(teamId, isProduction = false) {
   const body = JSON.stringify({
     aps: {
       alert: {
-        title: "🏐 SetGames Alert",
+        title: "🏐 Volleyball Match Alert",
         body: "Success! Remote push notification delivered directly to your iPhone!"
       },
       sound: "default",

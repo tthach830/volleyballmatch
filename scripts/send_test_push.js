@@ -95,7 +95,7 @@ async function sendPush(deviceToken, title, body) {
 
 async function main() {
   const targetToken = process.argv[2];
-  const title = process.argv[3] || "🏐 SetGames Alert";
+  const title = process.argv[3] || "🏐 Volleyball Match Alert";
   const body = process.argv[4] || "Hello! Remote background notifications are working on your iPhone!";
 
   if (targetToken) {

@@ -155,7 +155,7 @@ const server = http.createServer((req, res) => {
       try {
         const body = JSON.parse(bodyData || "{}");
         const tokens = Array.isArray(body.tokens) ? body.tokens : (body.token ? [body.token] : []);
-        const title = body.title || "🏐 SetGames Match";
+        const title = body.title || "🏐 Volleyball Match Alert";
         const msg = body.body || "New match message received";
         const gameId = body.gameId || null;
 
