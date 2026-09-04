@@ -209,15 +209,30 @@ public struct ConfirmedGamesView: View {
                     .clipShape(Capsule())
                 }
                 
-                if game.isAutoMatched {
+                if !game.waitlistPlayerIds.isEmpty {
                     HStack(spacing: 3) {
-                        Image(systemName: "sparkles")
-                        Text("Auto-Matched")
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 8))
+                        Text("\(game.waitlistPlayerIds.count) Waitlist")
                     }
                     .font(.system(size: 10, weight: .bold))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Color.purple.opacity(0.15))
+                    .foregroundColor(.purple)
+                    .clipShape(Capsule())
+                }
+                
+                if let uid = dataManager.currentUser?.id, let pos = game.waitlistPosition(for: uid) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock.badge.checkmark.fill")
+                            .font(.system(size: 8))
+                        Text("Waitlisted #\(pos)")
+                    }
+                    .font(.system(size: 10, weight: .bold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.purple.opacity(0.25))
                     .foregroundColor(.purple)
                     .clipShape(Capsule())
                 }

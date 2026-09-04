@@ -307,6 +307,53 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    public func joinWaitlist(gameId: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let index = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Please log in to join the waitlist.")
+        }
+        
+        var game = games[index]
+        if game.allPlayerIds.contains(user.id) {
+            return (false, "You are already an active player in this game!")
+        }
+        if game.waitlistPlayerIds.contains(user.id) {
+            return (false, "You are already on the waitlist for this game.")
+        }
+        
+        // Level Lock Check
+        if game.isLevelLocked && user.rating != game.targetRating {
+            return (false, "Level Locked: This match is locked to \(game.targetRating.rawValue) players only. Your current rating is \(user.rating.rawValue).")
+        }
+        
+        game.waitlistPlayerIds.append(user.id)
+        games[index] = game
+        saveToDisk()
+        FirestoreService.shared.saveGame(game)
+        let pos = game.waitlistPlayerIds.count
+        return (true, "Added to waitlist (#\(pos)) for \(game.title)!")
+    }
+    
+    @discardableResult
+    public func leaveWaitlist(gameId: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let index = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Game not found.")
+        }
+        
+        var game = games[index]
+        guard game.waitlistPlayerIds.contains(user.id) else {
+            return (false, "You are not on the waitlist.")
+        }
+        
+        game.waitlistPlayerIds.removeAll(where: { $0 == user.id })
+        games[index] = game
+        saveToDisk()
+        FirestoreService.shared.saveGame(game)
+        return (true, "Removed from waitlist.")
+    }
+    
+    @discardableResult
     public func saveSubMatches(gameId: UUID, matches: [SubMatch]) -> Bool {
         guard let index = games.firstIndex(where: { $0.id == gameId }) else { return false }
         games[index].subMatches = matches
@@ -341,12 +388,32 @@ public class DataManager: ObservableObject {
         }
         
         var game = games[index]
+        
+        // If user was on the waitlist instead of the active pool, just remove from waitlist
+        if game.waitlistPlayerIds.contains(user.id) {
+            return leaveWaitlist(gameId: gameId)
+        }
+        
         guard game.allPlayerIds.contains(user.id) else {
             return (false, "You are not registered in this match.")
         }
         
         game.team1PlayerIds.removeAll(where: { $0 == user.id })
         game.team2PlayerIds.removeAll(where: { $0 == user.id })
+        
+        // Auto-promote first waitlisted player into the open spot
+        var promotedName: String? = nil
+        if !game.waitlistPlayerIds.isEmpty && game.allPlayerIds.count < game.maxPlayers {
+            let promotedId = game.waitlistPlayerIds.removeFirst()
+            if game.team1PlayerIds.count <= game.team2PlayerIds.count {
+                game.team1PlayerIds.append(promotedId)
+            } else {
+                game.team2PlayerIds.append(promotedId)
+            }
+            if let p = players.first(where: { $0.id == promotedId }) {
+                promotedName = p.nickname.isEmpty ? p.name : p.nickname
+            }
+        }
         
         // If host leaves, reassign to another player if any remain
         if game.hostPlayerId == user.id {
@@ -366,6 +433,15 @@ public class DataManager: ObservableObject {
         saveToDisk()
         FirestoreService.shared.saveGame(game)
         
+        if let promoted = promotedName {
+            postNotification(
+                title: "🎉 Waitlist Promotion",
+                message: "\(promoted) was auto-promoted from the waitlist into \(game.title)!",
+                type: .matchInvite,
+                relatedGameId: game.id
+            )
+        }
+        
         postNotification(
             title: isFlakerNow ? "⚠️ Flaker Penalty Applied (F)" : "⚠️ Player Backed Out",
             message: isFlakerNow ?
@@ -377,7 +453,9 @@ public class DataManager: ObservableObject {
         
         let msg = isFlakerNow ?
             "You have left the match. Notice: You backed out 3 times in a row. You received an 'F' flaker badge and your rating has been lowered by 1 point. Complete a match to restore it." :
-            "You have left the match. Your spot has been reopened."
+            (promotedName != nil ?
+                "You left the match. \(promotedName!) has been moved from the waitlist into your spot." :
+                "You have left the match. Your spot has been reopened.")
         return (true, msg)
     }
     

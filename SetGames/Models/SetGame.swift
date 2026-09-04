@@ -138,6 +138,8 @@ public struct SetGame: Identifiable, Codable, Hashable {
     public var messages: [GameChatMessage]
     public var rawId: String?
     public var subMatches: [SubMatch]
+    // Waitlist for full games
+    public var waitlistPlayerIds: [UUID]
     
     public init(
         id: UUID = UUID(),
@@ -161,7 +163,8 @@ public struct SetGame: Identifiable, Codable, Hashable {
         isLevelLocked: Bool = true,
         submittedRatings: [UUID: [UUID: Int]] = [:],
         messages: [GameChatMessage] = [],
-        subMatches: [SubMatch] = []
+        subMatches: [SubMatch] = [],
+        waitlistPlayerIds: [UUID] = []
     ) {
         self.id = id
         self.rawId = rawId ?? id.uuidString
@@ -185,10 +188,22 @@ public struct SetGame: Identifiable, Codable, Hashable {
         self.isLevelLocked = isLevelLocked
         self.submittedRatings = submittedRatings
         self.messages = messages
+        self.waitlistPlayerIds = waitlistPlayerIds
     }
     
     public var allPlayerIds: [UUID] {
         team1PlayerIds + team2PlayerIds
+    }
+    
+    public func isPlayerWaitlisted(_ playerId: UUID) -> Bool {
+        waitlistPlayerIds.contains(playerId)
+    }
+    
+    public func waitlistPosition(for playerId: UUID) -> Int? {
+        if let idx = waitlistPlayerIds.firstIndex(of: playerId) {
+            return idx + 1
+        }
+        return nil
     }
     
     public var teamCapacity: Int {
@@ -248,7 +263,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, title, targetRating, format, status, scheduledDate, courtLocation, courtNumber
         case team1PlayerIds, team2PlayerIds, setScores, winningTeam, isAutoMatched, matchedOptionName, notes
-        case hostPlayerId, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches
+        case hostPlayerId, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches, waitlistPlayerIds
     }
 
     public init(from decoder: Decoder) throws {
@@ -382,6 +397,14 @@ public struct SetGame: Identifiable, Codable, Hashable {
         submittedRatings = (try? c.decode([UUID: [UUID: Int]].self, forKey: .submittedRatings)) ?? [:]
         messages = (try? c.decode([GameChatMessage].self, forKey: .messages)) ?? []
         subMatches = (try? c.decode([SubMatch].self, forKey: .subMatches)) ?? []
+        
+        if let wl = try? c.decode([UUID].self, forKey: .waitlistPlayerIds) {
+            waitlistPlayerIds = wl
+        } else if let wlStr = try? c.decode([String].self, forKey: .waitlistPlayerIds) {
+            waitlistPlayerIds = wlStr.compactMap { SetGame.parseUUID(from: $0) }
+        } else {
+            waitlistPlayerIds = []
+        }
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -407,5 +430,6 @@ public struct SetGame: Identifiable, Codable, Hashable {
         try c.encode(submittedRatings, forKey: .submittedRatings)
         try c.encode(messages, forKey: .messages)
         try c.encode(subMatches, forKey: .subMatches)
+        try c.encode(waitlistPlayerIds, forKey: .waitlistPlayerIds)
     }
 }

@@ -406,6 +406,47 @@ window.joinGamePool = (gameId) => {
 };
 window.joinGame = window.joinGamePool;
 
+window.joinWaitlist = (gameId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game) return;
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
+  const uid = state.currentUser.id;
+  const allP = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+  if (allP.includes(uid)) {
+    showToast("You are already an active player in this game!");
+    return;
+  }
+  if (!game.waitlistPlayerIds) game.waitlistPlayerIds = [];
+  if (game.waitlistPlayerIds.includes(uid)) {
+    showToast("You are already on the waitlist!");
+    return;
+  }
+  if (game.isLevelLocked && state.currentUser.rating !== game.targetRating) {
+    showToast(`Level Locked: ${game.targetRating} only.`);
+    return;
+  }
+  game.waitlistPlayerIds.push(uid);
+  saveGameToFirestore(game);
+  state.saveLocal();
+  renderMatches();
+  showToast(`Added to waitlist (#${game.waitlistPlayerIds.length}) for ${game.title}!`);
+};
+
+window.leaveWaitlist = (gameId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game || !state.currentUser) return;
+  const uid = state.currentUser.id;
+  if (!game.waitlistPlayerIds) return;
+  game.waitlistPlayerIds = game.waitlistPlayerIds.filter(id => id !== uid);
+  saveGameToFirestore(game);
+  state.saveLocal();
+  renderMatches();
+  showToast(`Removed from waitlist for ${game.title}.`);
+};
+
 window.updateSubMatchScoreWeb = (gameId, matchId) => {
   const game = state.games.find(g => g.id === gameId);
   if (!game || !game.subMatches) return;
@@ -542,6 +583,10 @@ function renderMatches() {
 
     const poolPlayersHtml = allPlayerIds.map(renderPoolPlayer).join("");
 
+    const waitlistIds = game.waitlistPlayerIds || [];
+    const isWaitlisted = currentUserId && waitlistIds.includes(currentUserId);
+    const waitlistPos = isWaitlisted ? (waitlistIds.indexOf(currentUserId) + 1) : null;
+
     let footerButtons = "";
     if (isMember) {
       const msgCount = game.messages ? game.messages.length : 0;
@@ -559,6 +604,9 @@ function renderMatches() {
       }
     } else {
       footerButtons += `<button class="btn btn-outline btn-sm" style="color:#0284c7; border-color:#bae6fd; margin-right:6px;" onclick="window.openGameQRCodeModal('${game.id}')">📱 QR Code</button> `;
+      if (isWaitlisted) {
+        footerButtons += `<button class="btn btn-outline btn-sm" style="color:#ef4444; border-color:#fca5a5; margin-right:6px;" onclick="window.leaveWaitlist('${game.id}')">Leave Waitlist (#${waitlistPos})</button> `;
+      }
       if (isRootUser(state.currentUser)) {
         footerButtons += `<button class="btn btn-outline btn-sm" style="color:#ef4444; border-color:#ef4444; margin-left:6px;" onclick="window.deleteGame('${game.id}')">🗑️ Delete Game (Root)</button>`;
       }
@@ -566,6 +614,12 @@ function renderMatches() {
 
     const myMatchBadge = isMember ? 
       `<span class="badge" style="background:#dbeafe; color:#1d4ed8; font-weight:800; font-size:10px; margin-right:4px;">🏐 My Game</span>` : '';
+
+    const myWaitlistBadge = isWaitlisted ?
+      `<span class="badge" style="background:#f3e8ff; color:#7e22ce; font-weight:800; font-size:10px; margin-right:4px;">⏳ Waitlisted #${waitlistPos}</span>` : '';
+
+    const waitlistCountBadge = (!isWaitlisted && waitlistIds.length > 0) ?
+      `<span class="badge" style="background:#f3e8ff; color:#7e22ce; font-weight:800; font-size:10px; margin-right:4px;">⏳ ${waitlistIds.length} Waitlist</span>` : '';
 
     const subMatchesBadge = (game.subMatches && game.subMatches.length > 0) ? 
       `<span class="badge" style="background:rgba(168, 85, 247, 0.15); color:#a855f7; font-weight:800; font-size:10px; margin-right:4px;">🎾 ${game.subMatches.length} Matches</span>` : '';
@@ -594,6 +648,8 @@ function renderMatches() {
           <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
             <button type="button" class="btn btn-outline btn-sm" style="padding: 2px 7px; font-size: 11px; border-radius: 6px; border-color: #cbd5e1; color: #0284c7; background: #f0f9ff; font-weight:700;" onclick="window.openGameQRCodeModal('${game.id}')" title="Scan QR Code to Join">📱 QR</button>
             ${myMatchBadge}
+            ${myWaitlistBadge}
+            ${waitlistCountBadge}
             ${subMatchesBadge}
             ${playersBadge}
             ${lockedBadge}
@@ -619,6 +675,55 @@ function renderMatches() {
               </button>
             ` : ''}
           </div>
+
+          ${spotsLeft === 0 && !isMember ? (
+            isWaitlisted ? `
+              <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 10px 14px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 12px; font-weight: 700; color: #7e22ce;">
+                  ⏳ You are #${waitlistPos} on the Waitlist
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 3px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">
+                  Leave Waitlist
+                </button>
+              </div>
+            ` : `
+              <button type="button" class="btn btn-sm" style="background: #f3e8ff; color: #7e22ce; border: 1px dashed #c084fc; font-weight: 700; width: 100%; margin-top: 10px; padding: 9px 12px; border-radius: 8px; font-size: 12px;" onclick="window.joinWaitlist('${game.id}')">
+                ⏳ Pool Full • Join Waitlist (${waitlistIds.length} queued)
+              </button>
+            `
+          ) : ''}
+
+          ${waitlistIds.length > 0 ? `
+            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border, #e2e8f0);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 11px; font-weight: 800; color: #7e22ce; text-transform: uppercase;">
+                  ⏳ Waitlist (${waitlistIds.length} Queued)
+                </span>
+                <span style="font-size: 10px; color: var(--text-muted);">Auto-promotes when a spot opens</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${waitlistIds.map((pid, idx) => {
+                  const p = state.players.find(x => x.id === pid) || { id: pid, name: "Player", nickname: "", rating: "B" };
+                  const pName = p.nickname ? `${p.name} (${p.nickname})` : p.name;
+                  const isMe = currentUserId === pid;
+                  return `
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 6px 10px;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 11px; font-weight: 800; background: #a855f7; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">#${idx + 1}</span>
+                        <div>
+                          <div style="font-size: 12px; font-weight: 700; color: var(--text-main);">${pName}</div>
+                          <div style="font-size: 10px; color: var(--text-muted);">${p.rating}</div>
+                        </div>
+                      </div>
+                      ${isMe ? `
+                        <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">Leave</button>
+                      ` : ''}
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+          ` : ''}
         </div>
 
         <!-- Matches in this Game Section -->
@@ -1261,12 +1366,37 @@ window.leaveGame = (gameId) => {
   if (!game || !state.currentUser) return;
 
   const userId = state.currentUser.id;
+
+  // If user was simply waitlisted, remove from waitlist without penalty
+  if (game.waitlistPlayerIds && game.waitlistPlayerIds.includes(userId)) {
+    window.leaveWaitlist(gameId);
+    return;
+  }
+
   const wasInTeam1 = game.team1PlayerIds?.includes(userId);
   const wasInTeam2 = game.team2PlayerIds?.includes(userId);
   if (!wasInTeam1 && !wasInTeam2) return;
 
   game.team1PlayerIds = (game.team1PlayerIds || []).filter(id => id !== userId);
   game.team2PlayerIds = (game.team2PlayerIds || []).filter(id => id !== userId);
+
+  // Auto-promote first player from waitlist if spots opened
+  let promotedPlayerName = null;
+  if (!game.waitlistPlayerIds) game.waitlistPlayerIds = [];
+  const currentTotal = (game.team1PlayerIds?.length || 0) + (game.team2PlayerIds?.length || 0);
+  const maxP = game.maxPlayers || 4;
+  if (game.waitlistPlayerIds.length > 0 && currentTotal < maxP) {
+    const promotedId = game.waitlistPlayerIds.shift();
+    if ((game.team1PlayerIds?.length || 0) <= (game.team2PlayerIds?.length || 0)) {
+      if (!game.team1PlayerIds) game.team1PlayerIds = [];
+      game.team1PlayerIds.push(promotedId);
+    } else {
+      if (!game.team2PlayerIds) game.team2PlayerIds = [];
+      game.team2PlayerIds.push(promotedId);
+    }
+    const promotedPlayer = state.players.find(p => p.id === promotedId);
+    promotedPlayerName = promotedPlayer ? (promotedPlayer.nickname || promotedPlayer.name) : "A waitlisted player";
+  }
 
   // If host leaves, reassign host if another player remains
   if (game.hostPlayerId === userId) {
@@ -1287,6 +1417,8 @@ window.leaveGame = (gameId) => {
 
   if (isFlaker) {
     showToast(`You backed out 3x in a row: flagged as Flaker (F) and your rating was lowered by 1 point! Complete a match to restore it.`);
+  } else if (promotedPlayerName) {
+    showToast(`You left ${game.title}. ${promotedPlayerName} was auto-promoted from the waitlist into your spot!`);
   } else {
     showToast(`You left ${game.title}. (Backed out ${state.currentUser.consecutiveBackouts}/3 times)`);
   }
