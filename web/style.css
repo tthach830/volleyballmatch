@@ -782,6 +782,70 @@ nav#bottom-nav {
   padding-bottom: 30px;
 }
 
+/* Tier Dropdown Multi-Select */
+.tier-dropdown-container {
+  position: relative;
+  margin-top: 6px;
+}
+
+.tier-dropdown-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  min-height: 42px;
+  user-select: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tier-dropdown-trigger:hover {
+  border-color: rgba(255, 106, 0, 0.4);
+}
+
+.tier-dropdown-trigger.open {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(255, 106, 0, 0.15);
+}
+
+.tier-dropdown-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.tier-dropdown-arrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  margin-left: 8px;
+}
+
+.tier-dropdown-trigger.open .tier-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.tier-dropdown-menu {
+  display: none;
+  position: relative;
+  margin-top: 6px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  padding: 8px;
+  z-index: 20;
+}
+
+.tier-dropdown-menu.show {
+  display: block;
+}
+
 /* Tier Multi-Select Checkboxes */
 .tier-checkbox-grid {
   display: grid;

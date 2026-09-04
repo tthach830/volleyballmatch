@@ -7,6 +7,7 @@ public struct EditMatchSheet: View {
     
     @State private var title: String
     @State private var selectedRatings: Set<RatingTier>
+    @State private var isTierDropdownOpen: Bool = false
     @State private var format: GameFormat
     @State private var maxPlayers: Int
     @State private var courtLocation: String
@@ -93,12 +94,46 @@ public struct EditMatchSheet: View {
                         }
                         .padding(.vertical, 2)
                         
-                        Divider()
-                        
-                        VStack(spacing: 8) {
-                            ForEach(RatingTier.allCases, id: \.self) { tier in
-                                tierCheckboxRow(tier: tier)
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isTierDropdownOpen.toggle()
                             }
+                        } label: {
+                            HStack(spacing: 8) {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 6) {
+                                        ForEach(RatingTier.allCases.filter { selectedRatings.contains($0) }, id: \.self) { tier in
+                                            RatingBadge(rating: tier, size: .small)
+                                        }
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Text("\(selectedRatings.count) selected")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                
+                                Image(systemName: isTierDropdownOpen ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color(UIColor.tertiarySystemFill))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                        
+                        if isTierDropdownOpen {
+                            VStack(spacing: 8) {
+                                ForEach(RatingTier.allCases, id: \.self) { tier in
+                                    tierCheckboxRow(tier: tier)
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 6)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
                     .padding(.vertical, 4)

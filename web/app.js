@@ -1572,6 +1572,52 @@ export function formatDefaultGameTitle(dateObj) {
   return `${dayName} ${month}/${day}/${year} ${timeStr}`;
 }
 
+// Tier Dropdown Multi-Select
+window.toggleTierDropdown = (type) => {
+  const menu = document.getElementById(`${type}-tier-dropdown-menu`);
+  const btn = document.getElementById(`${type}-tier-dropdown-btn`);
+  if (!menu || !btn) return;
+
+  const isOpen = menu.classList.contains("show");
+  
+  // Close any other open dropdowns
+  document.querySelectorAll(".tier-dropdown-menu").forEach(m => m.classList.remove("show"));
+  document.querySelectorAll(".tier-dropdown-trigger").forEach(b => b.classList.remove("open"));
+
+  if (!isOpen) {
+    menu.classList.add("show");
+    btn.classList.add("open");
+  }
+};
+
+window.updateTierDropdownDisplay = (type) => {
+  const displayEl = document.getElementById(`${type}-tier-selected-display`);
+  if (!displayEl) return;
+
+  const checkedBoxes = Array.from(document.querySelectorAll(`input[name='${type}-tier-cb']:checked`));
+  
+  if (checkedBoxes.length === 0) {
+    displayEl.innerHTML = `<span style="color:var(--text-muted); font-size:13px;">Select at least 1 tier</span>`;
+    return;
+  }
+
+  const chipsHtml = checkedBoxes.map(cb => {
+    const val = cb.value;
+    const lower = val.toLowerCase();
+    return `<span class="tier-chip tier-${lower}">${val}</span>`;
+  }).join(" ");
+
+  const countText = `<span style="color:var(--text-muted); font-size:13px; margin-left:4px;">(${checkedBoxes.length} selected)</span>`;
+  displayEl.innerHTML = chipsHtml + countText;
+};
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".tier-dropdown-container")) {
+    document.querySelectorAll(".tier-dropdown-menu").forEach(m => m.classList.remove("show"));
+    document.querySelectorAll(".tier-dropdown-trigger").forEach(b => b.classList.remove("open"));
+  }
+});
+
 // Create Game
 window.openCreateMatchModal = () => {
   if (!state.currentUser) {
@@ -1584,6 +1630,15 @@ window.openCreateMatchModal = () => {
   const titleInput = document.getElementById("create-title");
 
   if (tierSelect) tierSelect.value = state.currentUser.rating || "B";
+
+  // Pre-check user's current rating tier by default if not set
+  if (state.currentUser && state.currentUser.rating) {
+    const currentRating = state.currentUser.rating;
+    document.querySelectorAll("input[name='create-tier-cb']").forEach(cb => {
+      cb.checked = (cb.value === currentRating);
+    });
+  }
+  window.updateTierDropdownDisplay('create');
 
   const d = new Date(Date.now() + 86400000);
   d.setMinutes(0, 0, 0);
@@ -1677,6 +1732,7 @@ window.openEditMatchModal = (gameId) => {
   document.querySelectorAll("input[name='edit-tier-cb']").forEach(cb => {
     cb.checked = allowed.includes(cb.value);
   });
+  window.updateTierDropdownDisplay('edit');
   
   document.getElementById("edit-level-locked").checked = !!game.isLevelLocked;
   if (document.getElementById("edit-max-players")) {
