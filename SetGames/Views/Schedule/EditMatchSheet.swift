@@ -48,23 +48,41 @@ public struct EditMatchSheet: View {
                     
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .center) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 8) {
-                                    Text("Skill Level Tier")
-                                        .font(.system(size: 15, weight: .semibold))
-                                    
-                                    HStack(spacing: 4) {
-                                        Image(systemName: isLevelLocked ? "lock.fill" : "lock.open")
+                            VStack(alignment: .leading, spacing: 3) {
+                                ViewThatFits(in: .horizontal) {
+                                    HStack(spacing: 6) {
+                                        Text("Skill Level Tier")
+                                            .font(.system(size: 15, weight: .semibold))
+                                        
+                                        HStack(spacing: 4) {
+                                            Image(systemName: isLevelLocked ? "lock.fill" : "lock.open")
+                                                .font(.system(size: 10))
+                                            Text("Level Locked")
+                                                .font(.system(size: 12, weight: .bold))
+                                        }
+                                        .foregroundColor(isLevelLocked ? .orange : .secondary)
+                                        
+                                        Text("(Only matching tier players can join)")
                                             .font(.system(size: 10))
-                                        Text("Level Locked")
-                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(.secondary)
                                     }
-                                    .foregroundColor(isLevelLocked ? .orange : .secondary)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Skill Level Tier")
+                                            .font(.system(size: 15, weight: .semibold))
+                                        
+                                        HStack(spacing: 4) {
+                                            Image(systemName: isLevelLocked ? "lock.fill" : "lock.open")
+                                                .font(.system(size: 10))
+                                            Text("Level Locked")
+                                                .font(.system(size: 12, weight: .bold))
+                                            Text("(Only matching tier players can join)")
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .foregroundColor(isLevelLocked ? .orange : .secondary)
+                                    }
                                 }
-                                
-                                Text("Only matching tier players can join")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
                             }
                             
                             Spacer()

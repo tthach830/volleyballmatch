@@ -427,14 +427,14 @@
           <div class="form-group" style="margin-bottom: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <div>
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                   <span class="form-label" style="margin: 0;">Skill Level Tier</span>
                   <label for="create-level-locked" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #f97316; cursor: pointer; margin: 0; background: rgba(249, 115, 22, 0.1); padding: 2px 8px; border-radius: 6px;">
                     <input type="checkbox" id="create-level-locked" checked style="width: 15px; height: 15px; accent-color: #f97316; cursor: pointer;">
                     🔒 Level Locked
                   </label>
+                  <span style="font-size: 11px; color: var(--text-secondary);">(Only matching tier players can join)</span>
                 </div>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Only matching tier players can join</div>
               </div>
             </div>
             <div class="tier-checkbox-grid">
@@ -529,14 +529,14 @@
           <div class="form-group" style="margin-bottom: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <div>
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                   <span class="form-label" style="margin: 0;">Skill Level Tier</span>
                   <label for="edit-level-locked" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #f97316; cursor: pointer; margin: 0; background: rgba(249, 115, 22, 0.1); padding: 2px 8px; border-radius: 6px;">
                     <input type="checkbox" id="edit-level-locked" style="width: 15px; height: 15px; accent-color: #f97316; cursor: pointer;">
                     🔒 Level Locked
                   </label>
+                  <span style="font-size: 11px; color: var(--text-secondary);">(Only matching tier players can join)</span>
                 </div>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Only matching tier players can join</div>
               </div>
             </div>
             <div class="tier-checkbox-grid">
@@ -887,6 +887,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=2.4"></script>
+  <script type="module" src="app.js?v=2.5"></script>
 </body>
 </html>
