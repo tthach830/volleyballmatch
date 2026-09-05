@@ -3631,6 +3631,8 @@ function initApp() {
         window.renderChatMessages();
       }
       handleIncomingGameRoute();
+    } else if (state.games && state.games.length > 0) {
+      state.games.forEach(g => saveGameToFirestore(g));
     }
   });
 

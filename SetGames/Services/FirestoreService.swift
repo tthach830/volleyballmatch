@@ -173,14 +173,27 @@ public class FirestoreService: ObservableObject {
     }
     
     public func seedInitialCommunityIfEmpty(initialPlayers: [Player], initialGames: [SetGame], initialSlots: [AvailabilitySlot]) {
-        db.collection("players").limit(to: 1).getDocuments { snapshot, error in
+        db.collection("players").limit(to: 1).getDocuments { [weak self] snapshot, error in
+            guard let self = self else { return }
             if let count = snapshot?.documents.count, count == 0 {
                 for p in initialPlayers {
                     self.savePlayer(p)
                 }
+            }
+        }
+        
+        db.collection("games").limit(to: 1).getDocuments { [weak self] snapshot, error in
+            guard let self = self else { return }
+            if let count = snapshot?.documents.count, count == 0 {
                 for g in initialGames {
                     self.saveGame(g)
                 }
+            }
+        }
+        
+        db.collection("availabilitySlots").limit(to: 1).getDocuments { [weak self] snapshot, error in
+            guard let self = self else { return }
+            if let count = snapshot?.documents.count, count == 0 {
                 for s in initialSlots {
                     self.saveAvailabilitySlot(s)
                 }
