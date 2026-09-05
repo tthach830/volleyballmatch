@@ -129,6 +129,14 @@ header {
   border: 1px solid rgba(0,0,0,0.06);
 }
 
+.avatar.sm,
+.avatar.avatar-sm,
+.avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+}
+
 .avatar.lg {
   width: 50px;
   height: 50px;
@@ -447,9 +455,24 @@ header {
 }
 
 .player-tile-avatar {
-  font-size: 26px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
   line-height: 1;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.player-tile-avatar .avatar-slug-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 
 .player-tile-info {

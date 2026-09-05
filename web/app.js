@@ -341,14 +341,21 @@ export function showToast(message) {
 }
 
 // Avatar HTML Renderer
-export function renderAvatar(avatarKey, sizeClass = "", isFlaker = false) {
-  let inner = "";
-  if (avatarKey === "slug" || avatarKey === "🍌") {
-    inner = `<img src="assets/slug.png" alt="Banana Slug" class="avatar-slug-img">`;
-  } else {
-    inner = `${avatarKey || "🏐"}`;
+export function isSlugAvatar(avatarKey) {
+  if (!avatarKey) return false;
+  const s = String(avatarKey).trim().toLowerCase();
+  return s === "slug" || s === "🍌" || s.includes("slug");
+}
+
+export function renderAvatarContent(avatarKey) {
+  if (isSlugAvatar(avatarKey)) {
+    return `<img src="assets/slug.png" alt="Banana Slug" class="avatar-slug-img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;">`;
   }
-  
+  return `${avatarKey || "🏐"}`;
+}
+
+export function renderAvatar(avatarKey, sizeClass = "", isFlaker = false) {
+  const inner = renderAvatarContent(avatarKey);
   if (isFlaker) {
     return `<div style="display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle;">
       <div class="avatar ${sizeClass}">${inner}</div>
@@ -894,7 +901,7 @@ function renderMatches() {
       if (!p) {
         const name = pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player";
         return `<div class="player-tile-mock">
-          <div class="player-tile-avatar">🏐</div>
+          <div class="player-tile-avatar">${renderAvatarContent('🏐')}</div>
           <div class="player-tile-info">
             <span class="player-tile-name">${name}</span>
             <div class="player-tile-sub">
@@ -908,7 +915,7 @@ function renderMatches() {
       const tierLower = (p.rating || 'b').toLowerCase();
       const ratingVal = formatStarRating(p);
       return `<div class="player-tile-mock">
-        <div class="player-tile-avatar">${p.avatarEmoji || '🏐'}</div>
+        <div class="player-tile-avatar">${renderAvatarContent(p.avatarEmoji)}</div>
         <div class="player-tile-info">
           <span class="player-tile-name">${p.nickname || p.name}</span>
           <div class="player-tile-sub">
