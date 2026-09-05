@@ -182,15 +182,6 @@ public class FirestoreService: ObservableObject {
             }
         }
         
-        db.collection("games").limit(to: 1).getDocuments { [weak self] snapshot, error in
-            guard let self = self else { return }
-            if let count = snapshot?.documents.count, count == 0 {
-                for g in initialGames {
-                    self.saveGame(g)
-                }
-            }
-        }
-        
         db.collection("availabilitySlots").limit(to: 1).getDocuments { [weak self] snapshot, error in
             guard let self = self else { return }
             if let count = snapshot?.documents.count, count == 0 {

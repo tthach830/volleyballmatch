@@ -1187,22 +1187,8 @@ public class DataManager: ObservableObject {
                 }
                 
                 self.hasCompletedInitialGamesSync = true
-                let validGames = remoteGames.filter { $0.status != .canceled }
-                if !validGames.isEmpty {
-                    self.games = validGames
-                    self.saveToDisk()
-                } else if self.games.isEmpty {
-                    self.loadMockCommunityData()
-                    for g in self.games {
-                        FirestoreService.shared.saveGame(g)
-                    }
-                    self.saveToDisk()
-                } else {
-                    // Local games exist while remote collection is empty: seed them to Firestore!
-                    for g in self.games {
-                        FirestoreService.shared.saveGame(g)
-                    }
-                }
+                self.games = remoteGames.filter { $0.status != .canceled }
+                self.saveToDisk()
             },
             onSlotsUpdate: { [weak self] remoteSlots in
                 guard let self = self else { return }

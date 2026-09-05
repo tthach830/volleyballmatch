@@ -287,11 +287,7 @@ class AppState {
     }
 
     this.players = (savedPlayers && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
-    const rawGames = (savedGames && savedGames.length > 0) ? savedGames : initialCommunityGames;
-    this.games = rawGames.filter(isUpcomingGame);
-    if (this.games.length === 0 && initialCommunityGames.length > 0) {
-      this.games = initialCommunityGames.filter(isUpcomingGame);
-    }
+    this.games = Array.isArray(savedGames) ? savedGames.filter(isUpcomingGame) : [];
     this.availabilitySlots = savedSlots || [];
     this.pickupQueue = [];
     this.selectedLadderTier = "All";
@@ -787,10 +783,6 @@ function renderMatches() {
   if (!container) return;
 
   const currentUserId = state.currentUser?.id;
-
-  if ((!state.games || state.games.length === 0) && initialCommunityGames.length > 0) {
-    state.games = initialCommunityGames.filter(isUpcomingGame);
-  }
 
   // 1. Determine games for current view filter
   const isCompletedFilter = currentMatchFilter === "completed";
@@ -3599,41 +3591,38 @@ function initApp() {
   }
 
   subscribeToGames((remoteGames) => {
-    if (remoteGames && remoteGames.length > 0) {
-      if (hasCompletedInitialGamesSyncWeb && state.currentUser) {
-        const userId = state.currentUser.id;
-        remoteGames.forEach(remoteGame => {
-          const inTeam1 = remoteGame.team1PlayerIds && remoteGame.team1PlayerIds.includes(userId);
-          const inTeam2 = remoteGame.team2PlayerIds && remoteGame.team2PlayerIds.includes(userId);
-          const inWaitlist = remoteGame.waitlistPlayerIds && remoteGame.waitlistPlayerIds.includes(userId);
-          const isHost = remoteGame.hostPlayerId === userId;
-          if (inTeam1 || inTeam2 || inWaitlist || isHost) {
-            const oldGame = state.games.find(g => g.id === remoteGame.id);
-            const oldMsgIds = new Set((oldGame?.messages || []).map(m => m.id));
-            const newMsgs = (remoteGame.messages || []).filter(m => m.senderId !== userId && !oldMsgIds.has(m.id));
-            newMsgs.forEach(msg => {
-              playChatNotificationSound();
-              triggerWebPushNotification(`💬 ${msg.senderName} (${remoteGame.title})`, `"${msg.text}"`);
-              showToast(`💬 ${msg.senderName} (${remoteGame.title}): "${msg.text}"`);
-            });
-          }
-        });
-      }
-      hasCompletedInitialGamesSyncWeb = true;
-      const validGames = remoteGames.filter(g => {
-        const s = String(g.status || "").trim().toLowerCase();
-        return s !== "canceled";
+    const list = Array.isArray(remoteGames) ? remoteGames : [];
+    if (list.length > 0 && hasCompletedInitialGamesSyncWeb && state.currentUser) {
+      const userId = state.currentUser.id;
+      list.forEach(remoteGame => {
+        const inTeam1 = remoteGame.team1PlayerIds && remoteGame.team1PlayerIds.includes(userId);
+        const inTeam2 = remoteGame.team2PlayerIds && remoteGame.team2PlayerIds.includes(userId);
+        const inWaitlist = remoteGame.waitlistPlayerIds && remoteGame.waitlistPlayerIds.includes(userId);
+        const isHost = remoteGame.hostPlayerId === userId;
+        if (inTeam1 || inTeam2 || inWaitlist || isHost) {
+          const oldGame = state.games.find(g => g.id === remoteGame.id);
+          const oldMsgIds = new Set((oldGame?.messages || []).map(m => m.id));
+          const newMsgs = (remoteGame.messages || []).filter(m => m.senderId !== userId && !oldMsgIds.has(m.id));
+          newMsgs.forEach(msg => {
+            playChatNotificationSound();
+            triggerWebPushNotification(`💬 ${msg.senderName} (${remoteGame.title})`, `"${msg.text}"`);
+            showToast(`💬 ${msg.senderName} (${remoteGame.title}): "${msg.text}"`);
+          });
+        }
       });
-      state.games = validGames.length > 0 ? validGames : initialCommunityGames;
-      state.saveLocal();
-      renderMatches();
-      if (window.activeChatGameId) {
-        window.renderChatMessages();
-      }
-      handleIncomingGameRoute();
-    } else if (state.games && state.games.length > 0) {
-      state.games.forEach(g => saveGameToFirestore(g));
     }
+    hasCompletedInitialGamesSyncWeb = true;
+    const validGames = list.filter(g => {
+      const s = String(g.status || "").trim().toLowerCase();
+      return s !== "canceled";
+    });
+    state.games = validGames;
+    state.saveLocal();
+    renderMatches();
+    if (window.activeChatGameId) {
+      window.renderChatMessages();
+    }
+    handleIncomingGameRoute();
   });
 
   subscribeToSlots((remoteSlots) => {
