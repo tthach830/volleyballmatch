@@ -2104,7 +2104,7 @@ window.openEditMatchModal = (gameId) => {
   
   const dateInput = document.getElementById("edit-date");
   if (dateInput) {
-    const d = new Date(game.scheduledDate);
+    const d = parseGameDate(game.scheduledDate);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     dateInput.value = d.toISOString().slice(0, 16);
   }
@@ -2236,14 +2236,19 @@ window.openGameQRCodeModal = (gameId) => {
 
   if (titleEl) titleEl.textContent = game.title;
   if (detailsEl) {
-    const formattedDate = new Date(game.scheduledTime).toLocaleDateString("en-US", {
+    const d = parseGameDate(game.scheduledDate || game.scheduledTime);
+    const formattedDate = d.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit"
     });
-    detailsEl.textContent = `📍 ${game.courtLocation} • ${game.courtNumber || "Court #1"} • 📅 ${formattedDate}`;
+    const courtLocation = game.courtLocation || "Main Beach";
+    const courtDisplay = game.courtNumber
+      ? (game.courtNumber.toLowerCase().includes("court") ? game.courtNumber : (game.courtNumber.startsWith("#") ? `Court ${game.courtNumber}` : `Court #${game.courtNumber}`))
+      : "Court #1";
+    detailsEl.textContent = `📍 ${courtLocation} • ${courtDisplay} • 📅 ${formattedDate}`;
   }
 
   const shareUrl = getGameShareUrl(game.id);
