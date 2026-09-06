@@ -3,6 +3,7 @@ import SwiftUI
 public struct LaddersView: View {
     @ObservedObject var dataManager: DataManager
     @State private var selectedTab: LadderTab = .popularKids
+    @State private var showAuthSheet: Bool = false
     
     public enum LadderTab: String, CaseIterable {
         case topPlayers = "🏆 Top Players"
@@ -36,6 +37,25 @@ public struct LaddersView: View {
             }
             .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("Beach Ladders")
+            .toolbar {
+                if dataManager.currentUser == nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showAuthSheet = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "person.crop.circle.badge.plus")
+                                Text("Log In")
+                            }
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.orange)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showAuthSheet) {
+                AuthView(dataManager: dataManager)
+            }
         }
     }
 }

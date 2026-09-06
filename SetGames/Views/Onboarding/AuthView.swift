@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct AuthView: View {
     @ObservedObject var dataManager: DataManager
+    @Environment(\.dismiss) private var dismiss
     
     @State private var authMode: Int = 0 // 0 = Log In, 1 = New Player
     
@@ -88,6 +89,18 @@ public struct AuthView: View {
                 .padding(.bottom, 40)
             }
             .background(Color(UIColor.systemGroupedBackground))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+            .onChange(of: dataManager.currentUser) { newUser in
+                if newUser != nil {
+                    dismiss()
+                }
+            }
             .sheet(isPresented: $showRatingGuide) {
                 RatingGuideSheet(selectedTier: $selectedRating)
             }

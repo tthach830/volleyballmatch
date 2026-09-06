@@ -43,7 +43,7 @@
     </header>
 
     <!-- TAB 1: SET GAMES (Matches iOS ConfirmedGamesView.swift) -->
-    <main id="tab-matches" class="tab-content active">
+    <main id="tab-matches" class="tab-content">
       <div class="ios-view-header" style="justify-content: flex-end; margin-bottom: 8px;">
         <div class="ios-toolbar-actions" style="margin-left: auto;">
           <button type="button" class="btn-ios-toolbar btn-ios-purple" onclick="window.openCreateMatchModal()" title="Host a new game"><span style="font-size:16px; font-weight:900; line-height:1;">+</span> New Game</button>
@@ -148,7 +148,7 @@
     </main>
 
     <!-- TAB 3: LADDERS (Matches iOS LaddersView.swift) -->
-    <main id="tab-ladders" class="tab-content">
+    <main id="tab-ladders" class="tab-content active">
       <div class="ios-view-header">
         <div>
           <h1 class="ios-large-title">Beach Ladders</h1>
@@ -398,7 +398,7 @@
         </form>
 
         <div style="text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
-          <button type="button" class="btn btn-outline" style="width: 100%; font-size: 13px; font-weight: 700;" onclick="window.closeAuthModal()">👀 Browse Games as Guest</button>
+          <button type="button" class="btn btn-outline" style="width: 100%; font-size: 13px; font-weight: 700;" onclick="window.closeAuthModal(); window.switchTab('ladders');">🏆 Browse Beach Ladders</button>
         </div>
       </div>
     </div>
@@ -951,7 +951,7 @@
 
     <!-- Bottom Navigation Bar (Matches iOS TabView: Set Games, Auto-Match, Ladders, Profile) -->
     <nav id="bottom-nav">
-      <button type="button" class="nav-item active" id="nav-matches" data-tab="matches">
+      <button type="button" class="nav-item" id="nav-matches" data-tab="matches">
         <span class="nav-icon">🏐</span>
         <span class="nav-label">Set Games</span>
       </button>
@@ -959,7 +959,7 @@
         <span class="nav-icon">✨</span>
         <span class="nav-label">Auto-Match</span>
       </button>
-      <button type="button" class="nav-item" id="nav-ladders" data-tab="ladders">
+      <button type="button" class="nav-item active" id="nav-ladders" data-tab="ladders">
         <span class="nav-icon">🏆</span>
         <span class="nav-label">Ladders</span>
       </button>
@@ -970,6 +970,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=5.0"></script>
+  <script type="module" src="app.js?v=5.1"></script>
 </body>
 </html>

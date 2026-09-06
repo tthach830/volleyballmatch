@@ -792,6 +792,23 @@ function renderMatches() {
   const container = document.getElementById("matches-list");
   if (!container) return;
 
+  if (!state.currentUser) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 50px 20px; background: var(--card-bg, #ffffff); border-radius: 16px; border: 1px solid var(--border, #e2e8f0); margin: 20px 0;">
+        <div style="font-size: 48px; margin-bottom: 12px;">🔒</div>
+        <h3 style="font-size: 19px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">Log In to Access Set Games</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; max-width: 320px; margin-left: auto; margin-right: auto;">
+          Only authenticated community members can view scheduled matches, team rosters, and court details.
+        </p>
+        <button class="btn btn-primary" onclick="window.showAuthModal()" style="padding: 10px 24px; font-weight: 700; border-radius: 10px;">Log In / Sign Up</button>
+        <div style="margin-top: 14px;">
+          <button class="btn btn-outline btn-sm" onclick="window.switchTab('ladders')">🏆 View Beach Ladders</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   const currentUserId = state.currentUser?.id;
 
   // 1. Determine games for current view filter
@@ -1562,10 +1579,21 @@ window.sendTestNotification = () => {
 
 // NAVIGATION
 export function switchTab(tabId) {
+  const normalizedId = (tabId === "ladder" || tabId === "popular") ? "ladders" : tabId;
+
+  // If player isn't logged in, they cannot access Set games, Auto-Match, or Profile. Only Ladders is visible.
+  if (!state.currentUser && normalizedId !== "ladders") {
+    window.showAuthModal();
+    const activeTab = document.querySelector(".tab-content.active");
+    if (!activeTab || activeTab.id !== "tab-ladders") {
+      switchTab("ladders");
+    }
+    return;
+  }
+
   document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
   document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
 
-  const normalizedId = (tabId === "ladder" || tabId === "popular") ? "ladders" : tabId;
   const targetTab = document.getElementById(`tab-${normalizedId}`);
   const targetNav = document.getElementById(`nav-${normalizedId}`);
 
@@ -1766,6 +1794,9 @@ window.handleLogout = () => {
   localStorage.removeItem("setgames_current_user_id");
   state.saveLocal();
   renderHeader();
+  renderLadder();
+  renderPopularKids();
+  switchTab("ladders");
   window.showAuthModal();
   showToast("Logged out successfully.");
 };
@@ -1830,8 +1861,8 @@ window.handleDeleteProfile = () => {
   // 5. Update UI & show login
   renderHeader();
   renderLadder();
-  renderMatches();
   renderPopularKids();
+  switchTab("ladders");
   window.showAuthModal();
   showToast("Your profile has been permanently deleted.");
 };
@@ -2826,6 +2857,19 @@ export function renderAvailabilityWindows() {
   if (!container) return;
 
   const currentUser = state.currentUser;
+  if (!currentUser) {
+    if (countEl) countEl.textContent = "0";
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 0;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🔒</div>
+        <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px;">Log In Required</div>
+        <div style="font-size: 12px; margin-bottom: 12px;">Log in or create an account to post your availability and get auto-matched.</div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.showAuthModal()">Log In / Sign Up</button>
+      </div>
+    `;
+    return;
+  }
+
   const isRoot = isRootUser(currentUser);
   if (titleEl) {
     titleEl.textContent = isRoot ? "🗓 All Active Windows (Admin View)" : "🗓 Your Active Availability Windows";
@@ -3200,6 +3244,10 @@ window.removePlayerFromRandomPool = (idx) => {
 };
 
 window.openRandomTeamsModal = (initialPlayers, initialCourt, initialFormat, initialCourtNumber) => {
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
   window.currentEditingGameId = null;
   if (initialPlayers && initialPlayers.length >= 4) {
     window.currentRandomPoolPlayers = [...initialPlayers];
@@ -3679,10 +3727,16 @@ window.saveGeneratedMatchesToSchedule = () => {
 
 function initApp() {
   renderHeader();
-  renderMatches();
   renderLadder();
   renderPopularKids();
-  renderProfile();
+
+  if (state.currentUser) {
+    renderMatches();
+    renderProfile();
+    switchTab("matches");
+  } else {
+    switchTab("ladders");
+  }
 
   // Backdrop click to close auth modal for guest browsing
   document.getElementById("auth-modal")?.addEventListener("click", (e) => {
