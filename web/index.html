@@ -132,6 +132,20 @@
           <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Post Window & Find Matches</button>
         </form>
       </div>
+
+      <!-- Active Availability Windows Section -->
+      <div class="match-card" style="margin-top: 18px;" id="avail-slots-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <div style="font-weight: 800; font-size: 15px;" id="avail-slots-title">🗓 Active Availability Windows</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Only 4087869405 and the creator can delete windows.</div>
+          </div>
+          <span id="avail-slots-count" class="badge" style="background: #f1f5f9; color: #475569; font-weight: 700;">0</span>
+        </div>
+        <div id="avail-slots-list">
+          <!-- Injected via renderAvailabilityWindows() -->
+        </div>
+      </div>
     </main>
 
     <!-- TAB 3: LADDERS (Matches iOS LaddersView.swift) -->
@@ -266,13 +280,20 @@
         </div>
       </div>
 
-      <!-- Switch Active Profile Section for testing multiple accounts -->
-      <div class="match-card" style="margin-top: 20px;">
-        <div style="font-weight: 800; font-size: 14px; margin-bottom: 4px;">👥 Switch Active Player (Demo/Test Mode)</div>
-        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
-          Easily test the app from different players' perspectives:
+      <!-- Switch Active Profile Section (Demo Mode) - restricted to 4087869405 -->
+      <div class="match-card" style="margin-top: 20px; display: none;" id="demo-mode-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div style="font-weight: 800; font-size: 14px;">👥 Demo Mode (Switch Profiles)</div>
+          <span class="badge" style="background: #ffedd5; color: #c2410c; font-weight: 800; font-size: 10px;">ADMIN ONLY</span>
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+          Only 4087869405 can enable demo mode and test different accounts:
+        </div>
+        <div id="demo-mode-toggle-container" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 8px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <label for="demo-mode-toggle" style="font-size: 13px; font-weight: 700; cursor: pointer;">Enable Demo Mode</label>
+          <input type="checkbox" id="demo-mode-toggle" onchange="window.toggleDemoMode(this.checked)" style="cursor: pointer; width: 18px; height: 18px;">
+        </div>
+        <div id="demo-switch-box" style="display: none; gap: 8px;">
           <select id="switch-user-select" class="form-select" style="flex: 1;"></select>
           <button class="btn btn-outline btn-sm" onclick="window.handleSwitchUser()">Switch</button>
         </div>
@@ -318,7 +339,7 @@
           <div id="login-error" style="display: none; color: #ef4444; font-size: 12px; margin-bottom: 10px; font-weight: 600;"></div>
           <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 6px;">Log In</button>
 
-          <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;">
+          <div id="quick-demo-accounts-box" style="display: none; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;">
             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">QUICK DEMO PLAYERS (PW: volleyball123):</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
               <button type="button" class="badge" style="cursor: pointer; background: #ffedd5; color: #c2410c; border: none; padding: 6px 10px;" onclick="window.fillDemoPhone('8315550102')">🍌 Taylor</button>
@@ -950,6 +971,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=4.8"></script>
+  <script type="module" src="app.js?v=4.9"></script>
 </body>
 </html>

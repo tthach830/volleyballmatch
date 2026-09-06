@@ -196,22 +196,24 @@ public struct AuthView: View {
             }
             .padding(.top, 4)
             
-            // Demo Accounts Quick Tap
-            VStack(alignment: .leading, spacing: 8) {
-                Text("QUICK DEMO PLAYERS (PW: volleyball123)")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.secondary)
-                
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        demoPill(name: "Taylor (Slugger)", phone: "8315550102", emoji: "slug")
-                        demoPill(name: "Kai (The Jet)", phone: "8315550101", emoji: "🦈")
-                        demoPill(name: "Maya (SpikeQueen)", phone: "8315550103", emoji: "🐋")
-                        demoPill(name: "Chloe (Sunny)", phone: "8315550105", emoji: "slug")
+            // Demo Accounts Quick Tap (only if enabled by admin)
+            if dataManager.isDemoModeEnabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("QUICK DEMO PLAYERS (PW: volleyball123)")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.secondary)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            demoPill(name: "Taylor (Slugger)", phone: "8315550102", emoji: "slug")
+                            demoPill(name: "Kai (The Jet)", phone: "8315550101", emoji: "🦈")
+                            demoPill(name: "Maya (SpikeQueen)", phone: "8315550103", emoji: "🐋")
+                            demoPill(name: "Chloe (Sunny)", phone: "8315550105", emoji: "slug")
+                        }
                     }
                 }
+                .padding(.top, 10)
             }
-            .padding(.top, 10)
         }
         .padding(20)
         .background(Color(UIColor.secondarySystemGroupedBackground))

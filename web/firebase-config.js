@@ -70,6 +70,16 @@ export async function saveSlotToFirestore(slot) {
   }
 }
 
+// Delete availability slot from Firestore
+export async function deleteSlotFromFirestore(slotId) {
+  try {
+    const slotRef = doc(db, "availabilitySlots", slotId);
+    await deleteDoc(slotRef);
+  } catch (error) {
+    console.error("Error deleting availability slot from Firestore:", error);
+  }
+}
+
 // Real-time listener for players collection
 export function subscribeToPlayers(onUpdate) {
   return onSnapshot(collection(db, "players"), (snapshot) => {

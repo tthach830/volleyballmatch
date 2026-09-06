@@ -4,6 +4,7 @@ import {
   saveGameToFirestore, 
   deleteGameFromFirestore,
   saveSlotToFirestore, 
+  deleteSlotFromFirestore,
   subscribeToPlayers, 
   subscribeToGames, 
   subscribeToSlots 
@@ -293,6 +294,7 @@ class AppState {
     this.selectedLadderTier = "All";
     this.collapsedMatches = {};
     this.collapsedPools = {};
+    this.isDemoModeEnabled = localStorage.getItem("setgames_demo_mode") === "true";
     
     // Active user session
     this.currentUser = this.players.find(p => p.id === savedUserId) || null;
@@ -303,6 +305,7 @@ class AppState {
       localStorage.setItem("setgames_players", JSON.stringify(this.players));
       localStorage.setItem("setgames_games", JSON.stringify(this.games));
       localStorage.setItem("setgames_slots", JSON.stringify(this.availabilitySlots));
+      localStorage.setItem("setgames_demo_mode", this.isDemoModeEnabled ? "true" : "false");
       if (this.currentUser) {
         localStorage.setItem("setgames_current_user_id", this.currentUser.id);
       } else {
@@ -1369,6 +1372,30 @@ function renderProfile() {
 
   updatePushStatusBadge();
 
+  // Demo Mode Profile Switcher - strictly restricted to 4087869405
+  const demoCard = document.getElementById("demo-mode-card");
+  const isRoot = isRootUser(user);
+  if (demoCard) {
+    if (isRoot) {
+      demoCard.style.display = "block";
+      const toggleEl = document.getElementById("demo-mode-toggle");
+      if (toggleEl) toggleEl.checked = !!state.isDemoModeEnabled;
+      const toggleContainer = document.getElementById("demo-mode-toggle-container");
+      if (toggleContainer) toggleContainer.style.display = "flex";
+      const switchBox = document.getElementById("demo-switch-box");
+      if (switchBox) switchBox.style.display = state.isDemoModeEnabled ? "flex" : "none";
+    } else if (state.isDemoModeEnabled) {
+      // Demo mode was enabled by 4087869405, allow active switching
+      demoCard.style.display = "block";
+      const toggleContainer = document.getElementById("demo-mode-toggle-container");
+      if (toggleContainer) toggleContainer.style.display = "none";
+      const switchBox = document.getElementById("demo-switch-box");
+      if (switchBox) switchBox.style.display = "flex";
+    } else {
+      demoCard.style.display = "none";
+    }
+  }
+
   // Populate Switch User dropdown
   const switchSelect = document.getElementById("switch-user-select");
   if (switchSelect) {
@@ -1553,6 +1580,10 @@ export function switchTab(tabId) {
   }
   if (normalizedId === "profile") renderProfile();
 }
+
+window.switchTab = switchTab;
+window.renderProfile = renderProfile;
+window.renderAvailabilityWindows = renderAvailabilityWindows;
 
 window.switchLadderTab = (type) => {
   const topView = document.getElementById("ladder-top-players-view");
@@ -2716,7 +2747,24 @@ window.handleSaveProfile = (e) => {
   switchTab("matches");
 };
 
+window.toggleDemoMode = (enabled) => {
+  if (!isRootUser(state.currentUser)) {
+    showToast("Only 4087869405 can enable demo mode.");
+    return;
+  }
+  state.isDemoModeEnabled = Boolean(enabled);
+  state.saveLocal();
+  renderProfile();
+  const demoBox = document.getElementById("quick-demo-accounts-box");
+  if (demoBox) demoBox.style.display = state.isDemoModeEnabled ? "block" : "none";
+  showToast(state.isDemoModeEnabled ? "Demo Mode enabled" : "Demo Mode disabled");
+};
+
 window.handleSwitchUser = () => {
+  if (!isRootUser(state.currentUser) && !state.isDemoModeEnabled) {
+    showToast("Only 4087869405 can enable demo mode.");
+    return;
+  }
   const select = document.getElementById("switch-user-select");
   const player = state.players.find(p => p.id === select.value);
   if (player) {
@@ -2724,6 +2772,8 @@ window.handleSwitchUser = () => {
     state.saveLocal();
     renderHeader();
     renderProfile();
+    renderMatches();
+    renderAvailabilityWindows();
     showToast(`Switched active profile to ${player.name}`);
   }
 };
@@ -2769,9 +2819,110 @@ window.handleJoinPickup = () => {
   }
 };
 
+export function renderAvailabilityWindows() {
+  const container = document.getElementById("avail-slots-list");
+  const countEl = document.getElementById("avail-slots-count");
+  const titleEl = document.getElementById("avail-slots-title");
+  if (!container) return;
+
+  const currentUser = state.currentUser;
+  const isRoot = isRootUser(currentUser);
+  if (titleEl) {
+    titleEl.textContent = isRoot ? "🗓 All Active Windows (Admin View)" : "🗓 Your Active Availability Windows";
+  }
+
+  const slots = state.availabilitySlots || [];
+  const visibleSlots = slots.filter(s => {
+    if (isRoot) return true;
+    return currentUser && s.playerId === currentUser.id;
+  });
+
+  if (countEl) countEl.textContent = `${visibleSlots.length}`;
+
+  if (visibleSlots.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 14px 0;">
+        ${currentUser ? "No active availability windows. Post a free window above to get auto-matched!" : "Log in to view and post availability windows."}
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = visibleSlots.map(slot => {
+    const isOwner = currentUser && slot.playerId === currentUser.id;
+    const canDelete = isRoot || isOwner;
+    const creator = state.getPlayer(slot.playerId);
+    const creatorName = creator ? (creator.nickname || creator.name) : "Player";
+    const tiers = (slot.acceptedTiers && slot.acceptedTiers.length > 0) ? slot.acceptedTiers.join(", ") : "All Tiers";
+
+    return `
+      <div class="avail-slot-card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--card-bg, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; margin-bottom: 8px;">
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-weight: 700; font-size: 13px; color: #0f172a;">📅 ${slot.date}</span>
+            ${slot.isMatched ? '<span style="font-size: 10px; font-weight: 800; background: #dcfce7; color: #15803d; padding: 1px 6px; border-radius: 999px;">MATCHED</span>' : ''}
+          </div>
+          ${isRoot ? `<div style="font-size: 11px; font-weight: 600; color: #64748b;">👤 Created by: <strong>${creatorName}</strong></div>` : ''}
+          <div style="font-size: 12px; color: var(--text-muted);">⏰ ${slot.startTime} – ${slot.endTime} • 📍 ${slot.preferredBeach || "Main Beach"}</div>
+          <div style="font-size: 11px; color: #ea580c; font-weight: 600;">🏐 Skill: ${tiers}</div>
+        </div>
+        <div>
+          ${canDelete ? `
+            <button type="button" class="btn btn-sm btn-delete-slot" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-weight: 700; padding: 5px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="window.deleteAvailabilitySlot('${slot.id}')">
+              🗑️ Delete
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+export function renderPickupQueue() {
+  const queueCountEl = document.getElementById("pickup-count");
+  if (queueCountEl) {
+    queueCountEl.textContent = `${(state.pickupQueue || []).length}/4`;
+  }
+  renderAvailabilityWindows();
+}
+
+window.deleteAvailabilitySlot = async (slotId) => {
+  const user = state.currentUser;
+  if (!user) {
+    showToast("Please log in first.");
+    return;
+  }
+  const slot = (state.availabilitySlots || []).find(s => s.id === slotId);
+  if (!slot) {
+    showToast("Availability window not found.");
+    return;
+  }
+
+  // Only 4087869405 and the player that created them can delete availability windows
+  const isRoot = isRootUser(user);
+  const isOwner = slot.playerId === user.id;
+  if (!isRoot && !isOwner) {
+    showToast("Permission denied: Only 4087869405 and the creator can delete this availability window.");
+    return;
+  }
+
+  if (!confirm("Are you sure you want to delete this availability window?")) {
+    return;
+  }
+
+  state.availabilitySlots = (state.availabilitySlots || []).filter(s => s.id !== slotId);
+  state.saveLocal();
+  renderAvailabilityWindows();
+  await deleteSlotFromFirestore(slotId);
+  showToast("Availability window deleted.");
+};
+
 window.handleSaveAvailability = (e) => {
   e.preventDefault();
-  if (!state.currentUser) return;
+  if (!state.currentUser) {
+    showToast("Please log in to post an availability window.");
+    return;
+  }
 
   const date = document.getElementById("avail-date").value;
   const start = document.getElementById("avail-start").value;
@@ -2781,18 +2932,21 @@ window.handleSaveAvailability = (e) => {
   const checkedTiers = Array.from(document.querySelectorAll("input[name='avail-tier']:checked")).map(el => el.value);
 
   const slot = {
-    id: "slot-" + Date.now(),
+    id: (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : ("slot-" + Date.now()),
     playerId: state.currentUser.id,
     date,
     startTime: start,
     endTime: end,
     preferredBeach: beach,
-    acceptedTiers: checkedTiers
+    acceptedTiers: checkedTiers,
+    isMatched: false,
+    createdAt: new Date().toISOString()
   };
 
   state.availabilitySlots.push(slot);
   state.saveLocal();
   saveSlotToFirestore(slot);
+  renderAvailabilityWindows();
   showToast("Free window saved! Matchmaker is searching for partners.");
 };
 
@@ -3638,10 +3792,9 @@ function initApp() {
   });
 
   subscribeToSlots((remoteSlots) => {
-    if (remoteSlots && remoteSlots.length > 0) {
-      state.availabilitySlots = remoteSlots;
-      state.saveLocal();
-    }
+    state.availabilitySlots = Array.isArray(remoteSlots) ? remoteSlots : [];
+    state.saveLocal();
+    renderAvailabilityWindows();
   });
 
   // Handle incoming deep link or game route from QR scan

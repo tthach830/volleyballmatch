@@ -100,10 +100,8 @@ public class FirestoreService: ObservableObject {
                     return nil
                 }
             }
-            if !slots.isEmpty {
-                DispatchQueue.main.async {
-                    onSlotsUpdate(slots)
-                }
+            DispatchQueue.main.async {
+                onSlotsUpdate(slots)
             }
         }
     }
@@ -170,6 +168,14 @@ public class FirestoreService: ObservableObject {
               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         
         db.collection("availabilitySlots").document(slot.id.uuidString).setData(dict, merge: true)
+    }
+    
+    public func deleteAvailabilitySlot(id: UUID) {
+        db.collection("availabilitySlots").document(id.uuidString).delete { error in
+            if let error = error {
+                print("Error deleting availability slot from Firestore: \(error.localizedDescription)")
+            }
+        }
     }
     
     public func seedInitialCommunityIfEmpty(initialPlayers: [Player], initialGames: [SetGame], initialSlots: [AvailabilitySlot]) {

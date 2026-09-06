@@ -262,13 +262,15 @@ public struct SignUpView: View {
                             .shadow(color: Color.orange.opacity(0.3), radius: 6, y: 3)
                         }
                         
-                        // Switcher button for testing/demoing
-                        Button {
-                            showUserSwitcher = true
-                        } label: {
-                            Text("Switch to Demo Player Profile")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.orange)
+                        // Switcher button for testing/demoing (only visible when demo mode enabled by admin)
+                        if dataManager.isDemoModeEnabled {
+                            Button {
+                                showUserSwitcher = true
+                            } label: {
+                                Text("Switch to Demo Player Profile")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            }
                         }
                     }
                     .padding(.horizontal)

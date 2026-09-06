@@ -208,19 +208,49 @@ public struct ProfileView: View {
                         
                         // Account & Demo Actions
                         VStack(spacing: 12) {
-                            Button {
-                                showUserSwitcher = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                    Text("Switch Active Profile (Demo Mode)")
+                            if user.isRoot {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    HStack {
+                                        Image(systemName: "wrench.and.screwdriver.fill")
+                                            .foregroundColor(.orange)
+                                        Text("ADMIN CONTROLS")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Toggle(isOn: Binding(
+                                        get: { dataManager.isDemoModeEnabled },
+                                        set: { dataManager.setDemoModeEnabled($0) }
+                                    )) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Enable Demo Mode")
+                                                .font(.system(size: 14, weight: .semibold))
+                                            Text("Allows profile switching and quick demo accounts")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
                                 }
-                                .font(.system(size: 14, weight: .bold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
+                                .padding(14)
                                 .background(Color(UIColor.secondarySystemGroupedBackground))
-                                .foregroundColor(.primary)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            
+                            if user.isRoot || dataManager.isDemoModeEnabled {
+                                Button {
+                                    showUserSwitcher = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "arrow.triangle.2.circlepath")
+                                        Text("Switch Active Profile (Demo Mode)")
+                                    }
+                                    .font(.system(size: 14, weight: .bold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                                    .foregroundColor(.primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                }
                             }
                             
                             Button {

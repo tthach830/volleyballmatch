@@ -154,16 +154,31 @@ public struct AutoMatchmakerView: View {
             
             // Player's Free Windows
             VStack(alignment: .leading, spacing: 12) {
-                Text("YOUR ACTIVE AVAILABILITY WINDOWS")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
+                let isRoot = dataManager.currentUser?.isRoot == true
+                let visibleSlots = isRoot
+                    ? dataManager.availabilitySlots
+                    : dataManager.availabilitySlots.filter { $0.playerId == dataManager.currentUser?.id }
                 
-                let userSlots = dataManager.availabilitySlots.filter { $0.playerId == dataManager.currentUser?.id }
+                HStack {
+                    Text(isRoot ? "ALL COMMUNITY AVAILABILITY WINDOWS (\(visibleSlots.count))" : "YOUR ACTIVE AVAILABILITY WINDOWS (\(visibleSlots.count))")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    if isRoot {
+                        Text("Root Admin")
+                            .font(.system(size: 9, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.15))
+                            .foregroundColor(.orange)
+                            .clipShape(Capsule())
+                    }
+                }
+                .padding(.horizontal)
                 
-                if userSlots.isEmpty {
+                if visibleSlots.isEmpty {
                     VStack(spacing: 8) {
-                        Text("No free windows set yet.")
+                        Text(isRoot ? "No community availability windows active." : "No free windows set yet.")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                         Text("Tap 'Add Free Window' to tell the engine when you can play.")
@@ -176,8 +191,11 @@ public struct AutoMatchmakerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .padding(.horizontal)
                 } else {
-                    ForEach(userSlots) { slot in
-                        HStack {
+                    ForEach(visibleSlots) { slot in
+                        let canDelete = isRoot || (slot.playerId == dataManager.currentUser?.id)
+                        let creator = dataManager.players.first(where: { $0.id == slot.playerId })
+                        
+                        HStack(alignment: .center) {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 6) {
                                     Text(slot.dayFormatted)
@@ -197,16 +215,40 @@ public struct AutoMatchmakerView: View {
                                     .font(.system(size: 13))
                                     .foregroundColor(.secondary)
                                 
-                                Text(slot.preferredBeach)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.orange)
+                                HStack(spacing: 6) {
+                                    Text(slot.preferredBeach)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.orange)
+                                    
+                                    if isRoot, let creator = creator {
+                                        Text("• \(creator.name)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
                             }
                             
                             Spacer()
                             
-                            HStack(spacing: 4) {
-                                ForEach(slot.acceptedTiers) { tier in
-                                    RatingBadge(rating: tier, size: .small)
+                            HStack(spacing: 8) {
+                                HStack(spacing: 4) {
+                                    ForEach(slot.acceptedTiers) { tier in
+                                        RatingBadge(rating: tier, size: .small)
+                                    }
+                                }
+                                
+                                if canDelete {
+                                    Button(role: .destructive) {
+                                        dataManager.deleteAvailabilitySlot(id: slot.id)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.red.opacity(0.85))
+                                            .padding(7)
+                                            .background(Color.red.opacity(0.1))
+                                            .clipShape(Circle())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }

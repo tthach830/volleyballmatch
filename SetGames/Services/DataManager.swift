@@ -10,9 +10,11 @@ public class DataManager: ObservableObject {
     @Published public var availabilitySlots: [AvailabilitySlot] = []
     @Published public var pickupQueue: [Player] = []
     @Published public var notifications: [AppNotification] = []
+    @Published public var isDemoModeEnabled: Bool = false
     private var hasCompletedInitialGamesSync: Bool = false
     
     public init() {
+        self.isDemoModeEnabled = UserDefaults.standard.bool(forKey: "isDemoModeEnabled")
         if !loadFromDisk() {
             loadMockCommunityData()
         }
@@ -169,7 +171,14 @@ public class DataManager: ObservableObject {
         FirestoreService.shared.saveAvailabilitySlot(initialSlot)
     }
     
+    public func setDemoModeEnabled(_ enabled: Bool) {
+        guard currentUser?.isRoot == true else { return }
+        isDemoModeEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "isDemoModeEnabled")
+    }
+    
     public func switchUser(to player: Player) {
+        guard isDemoModeEnabled || currentUser?.isRoot == true else { return }
         currentUser = player
         saveToDisk()
     }
@@ -318,6 +327,18 @@ public class DataManager: ObservableObject {
         availabilitySlots.append(slot)
         saveToDisk()
         FirestoreService.shared.saveAvailabilitySlot(slot)
+    }
+    
+    public func deleteAvailabilitySlot(id: UUID) {
+        guard let user = currentUser else { return }
+        guard let slot = availabilitySlots.first(where: { $0.id == id }) else { return }
+        guard user.isRoot || slot.playerId == user.id else {
+            print("Unauthorized deletion attempt for availability slot \(id)")
+            return
+        }
+        availabilitySlots.removeAll(where: { $0.id == id })
+        saveToDisk()
+        FirestoreService.shared.deleteAvailabilitySlot(id: id)
     }
     
     public func joinPickupQueue() {
