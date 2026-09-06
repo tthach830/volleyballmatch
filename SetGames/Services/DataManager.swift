@@ -4,7 +4,14 @@ import Combine
 public class DataManager: ObservableObject {
     public static let shared = DataManager()
     
-    @Published public var currentUser: Player?
+    @Published public var currentUser: Player? {
+        didSet {
+            if currentUser != nil {
+                NotificationService.shared.requestPermission()
+                syncMatchReminders()
+            }
+        }
+    }
     @Published public var players: [Player] = []
     @Published public var games: [SetGame] = []
     @Published public var availabilitySlots: [AvailabilitySlot] = []
@@ -30,6 +37,7 @@ public class DataManager: ObservableObject {
             if let token = NotificationService.shared.apnsDeviceToken {
                 updateDeviceToken(token)
             }
+            syncMatchReminders()
         }
     }
     
@@ -40,6 +48,32 @@ public class DataManager: ObservableObject {
     public func markAllNotificationsRead() {
         for i in 0..<notifications.count {
             notifications[i].isRead = true
+        }
+    }
+    
+    // MARK: - Upcoming Match Reminders (30 Minutes Before Game)
+    
+    public func syncMatchReminders() {
+        guard let user = currentUser else { return }
+        let now = Date()
+        let myUpcomingGames = games.filter { game in
+            game.status != .completed &&
+            game.status != .canceled &&
+            (game.allPlayerIds.contains(user.id) || game.hostPlayerId == user.id)
+        }
+        
+        for game in myUpcomingGames {
+            // Check if 30-minute reminder trigger is in the future
+            if game.scheduledDate.addingTimeInterval(-1800) > now {
+                NotificationService.shared.scheduleMatchReminder(
+                    gameId: game.id,
+                    gameTitle: game.title,
+                    courtLocation: game.courtLocation,
+                    courtNumber: game.courtNumber,
+                    scheduledDate: game.scheduledDate,
+                    minutesBefore: 30
+                )
+            }
         }
     }
     
@@ -317,6 +351,8 @@ public class DataManager: ObservableObject {
                     FirestoreService.shared.saveAvailabilitySlot(availabilitySlots[i])
                 }
             }
+        if addedCount > 0 {
+            syncMatchReminders()
         }
         return addedCount
     }
@@ -398,6 +434,7 @@ public class DataManager: ObservableObject {
                 games.insert(fastGame, at: 0)
                 saveToDisk()
                 FirestoreService.shared.saveGame(fastGame)
+                syncMatchReminders()
                 
                 postNotification(
                     title: "⚡️ Pickup Lobby Full (4/4)!",
@@ -449,6 +486,7 @@ public class DataManager: ObservableObject {
         games[index] = game
         saveToDisk()
         FirestoreService.shared.saveGame(game)
+        syncMatchReminders()
         return (true, "Successfully joined \(game.title)!")
     }
     
@@ -482,6 +520,7 @@ public class DataManager: ObservableObject {
         games[index] = game
         saveToDisk()
         FirestoreService.shared.saveGame(game)
+        syncMatchReminders()
         return (true, "Successfully joined \(game.title)!")
     }
     
@@ -810,6 +849,8 @@ public class DataManager: ObservableObject {
         games[index] = game
         saveToDisk()
         FirestoreService.shared.saveGame(game)
+        NotificationService.shared.cancelMatchReminder(gameId: gameId)
+        syncMatchReminders()
         
         if let promoted = promotedName {
             postNotification(
@@ -937,6 +978,8 @@ public class DataManager: ObservableObject {
         games.remove(at: index)
         saveToDisk()
         FirestoreService.shared.deleteGame(id: gameId, rawId: game.rawId)
+        NotificationService.shared.cancelMatchReminder(gameId: gameId)
+        syncMatchReminders()
         return (true, "Match cancelled and deleted.")
     }
     
@@ -1110,6 +1153,7 @@ public class DataManager: ObservableObject {
         games.insert(newGame, at: 0)
         saveToDisk()
         FirestoreService.shared.saveGame(newGame)
+        syncMatchReminders()
         
         postNotification(
             title: "🏐 New Game Scheduled",
@@ -1181,6 +1225,8 @@ public class DataManager: ObservableObject {
         games.remove(at: index)
         saveToDisk()
         FirestoreService.shared.deleteGame(id: gameId)
+        NotificationService.shared.cancelMatchReminder(gameId: gameId)
+        syncMatchReminders()
         
         for pid in game.allPlayerIds {
             if let pIdx = players.firstIndex(where: { $0.id == pid }) {
@@ -1237,6 +1283,7 @@ public class DataManager: ObservableObject {
                 self.hasCompletedInitialGamesSync = true
                 self.games = remoteGames.filter { $0.status != .canceled }
                 self.saveToDisk()
+                self.syncMatchReminders()
             },
             onSlotsUpdate: { [weak self] remoteSlots in
                 guard let self = self else { return }

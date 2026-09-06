@@ -99,20 +99,80 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         }
     }
     
+    // MARK: - Upcoming Match Reminder (30 Minutes Before Game)
+    
+    /// Schedules a local notification 30 minutes before a confirmed game
+    public func scheduleMatchReminder(
+        gameId: UUID,
+        gameTitle: String,
+        courtLocation: String,
+        courtNumber: String,
+        scheduledDate: Date,
+        minutesBefore: Int = 30
+    ) {
+        let reminderIdentifier = "match-reminder-30m-\(gameId.uuidString)"
+        
+        // Remove any existing pending request for this game first
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminderIdentifier])
+        
+        let fireDate = scheduledDate.addingTimeInterval(-Double(minutesBefore * 60))
+        let timeInterval = fireDate.timeIntervalSince(Date())
+        
+        // Only schedule if the fire date is in the future
+        guard timeInterval > 0 else { return }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "⏰ Upcoming Match in \(minutesBefore) Minutes!"
+        content.body = "\(gameTitle) at \(courtLocation) (\(courtNumber)) starts in \(minutesBefore) mins. Time to head to the courts!"
+        content.sound = .default
+        content.badge = 1
+        content.userInfo = ["gameId": gameId.uuidString, "type": "matchReminder"]
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
+        let request = UNNotificationRequest(identifier: reminderIdentifier, content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("⚠️ Error scheduling match reminder: \(error.localizedDescription)")
+            } else {
+                print("✅ Scheduled \(minutesBefore)m pre-game reminder for \(gameTitle) at \(fireDate)")
+            }
+        }
+    }
+    
+    public func cancelMatchReminder(gameId: UUID) {
+        let reminderIdentifier = "match-reminder-30m-\(gameId.uuidString)"
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminderIdentifier])
+    }
+    
     // MARK: - Push Deduplication Cache
     private static var recentPushes = [String: Date]()
     private static let pushLock = NSLock()
     
-    // When the app is actively in the foreground, suppress system drop-down banners (.banner, .list)
-    // because the app displays its own clean in-app toast view (NotificationToastView).
-    // System banners, sound, and list display are handled automatically by iOS when the app
-    // is in the background, locked, or killed.
+    // When the app is actively in the foreground, present drop-down banner for match reminders;
+    // other notifications use custom in-app toast view (NotificationToastView).
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([.badge])
+        if notification.request.identifier.hasPrefix("match-reminder") {
+            completionHandler([.banner, .sound, .badge])
+        } else {
+            completionHandler([.badge])
+        }
+    }
+    
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        if let gameIdStr = userInfo["gameId"] as? String {
+            print("📲 User opened notification for game: \(gameIdStr)")
+        }
+        completionHandler()
     }
     
     // MARK: - Direct APNs Push Implementation ($0 Cost, Zero Backend)

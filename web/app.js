@@ -827,6 +827,7 @@ function renderMatches() {
   }
 
   const currentUserId = state.currentUser?.id;
+  checkUpcomingMatchReminders();
 
   // 1. Determine games for current view filter
   const isCompletedFilter = currentMatchFilter === "completed";
@@ -1597,6 +1598,38 @@ window.sendTestNotification = () => {
     showToast("Please click 'Enable Browser Push' first!");
   }
 };
+
+// 30-Minute Upcoming Match Reminders (Web Parity)
+export function checkUpcomingMatchReminders() {
+  if (!state.currentUser || !("Notification" in window) || Notification.permission !== "granted") return;
+  const now = Date.now();
+  const myUpcomingGames = (state.games || []).filter(g => {
+    if (g.status === "completed" || g.status === "canceled") return false;
+    const isMember = (g.team1PlayerIds && g.team1PlayerIds.includes(state.currentUser.id)) ||
+                     (g.team2PlayerIds && g.team2PlayerIds.includes(state.currentUser.id)) ||
+                     g.hostPlayerId === state.currentUser.id;
+    return isMember;
+  });
+
+  for (const game of myUpcomingGames) {
+    if (!game.scheduledDate) continue;
+    const gameTime = new Date(game.scheduledDate).getTime();
+    if (isNaN(gameTime)) continue;
+    const diffMins = Math.round((gameTime - now) / 60000);
+    // Alert if match starts within 30 minutes (between 1 and 30 minutes away)
+    if (diffMins > 0 && diffMins <= 30) {
+      const storageKey = `match_reminded_30m_${game.id}`;
+      if (!sessionStorage.getItem(storageKey)) {
+        sessionStorage.setItem(storageKey, "true");
+        triggerWebPushNotification(
+          `⏰ Upcoming Match in ${diffMins} Minutes!`,
+          `${game.title} at ${game.courtLocation} (${game.courtNumber || 'Court #1'}) starts soon. Time to head to the courts!`
+        );
+      }
+    }
+  }
+}
+setInterval(checkUpcomingMatchReminders, 60000);
 
 // NAVIGATION
 export function switchTab(tabId) {
