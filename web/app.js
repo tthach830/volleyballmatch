@@ -838,7 +838,7 @@ window.joinWaitlist = (gameId) => {
   }
   if (!game.waitlistPlayerIds) game.waitlistPlayerIds = [];
   if (game.waitlistPlayerIds.includes(uid)) {
-    showToast("You are already on the waitlist!");
+    showToast("You are already on the waiting list!");
     return;
   }
 
@@ -857,7 +857,7 @@ window.joinWaitlist = (gameId) => {
   saveGameToFirestore(game);
   state.saveLocal();
   renderMatches();
-  showToast(`Added to waitlist (#${game.waitlistPlayerIds.length}) for ${game.title}!`);
+  showToast(`Added to waiting list (#${game.waitlistPlayerIds.length}) for ${game.title}!`);
 };
 
 window.leaveWaitlist = (gameId) => {
@@ -869,7 +869,7 @@ window.leaveWaitlist = (gameId) => {
   saveGameToFirestore(game);
   state.saveLocal();
   renderMatches();
-  showToast(`Removed from waitlist for ${game.title}.`);
+  showToast(`Removed from waiting list for ${game.title}.`);
 };
 
 window.promoteWaitlistPlayer = (gameId, playerId) => {
@@ -877,14 +877,14 @@ window.promoteWaitlistPlayer = (gameId, playerId) => {
   if (!game || !state.currentUser) return;
 
   const currentUserId = state.currentUser.id;
-  const isHost = game.hostPlayerId === currentUserId || (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId) || state.currentUser.isRoot;
+  const isHost = (game.hostPlayerId === currentUserId) || (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId) || (state.currentUser && state.currentUser.isRoot);
   if (!isHost) {
-    showToast("Only the match host can promote players from the waitlist.");
+    showToast("Only the match host or admin can add waiting players.");
     return;
   }
 
   if (!game.waitlistPlayerIds || !game.waitlistPlayerIds.includes(playerId)) {
-    showToast("Player is no longer on the waitlist.");
+    showToast("Player is no longer on the waiting list.");
     return;
   }
 
@@ -912,22 +912,44 @@ window.promoteWaitlistPlayer = (gameId, playerId) => {
 
   const promoted = state.getPlayer(playerId);
   const pName = promoted.nickname ? `${promoted.name} (${promoted.nickname})` : promoted.name;
-  showToast(`Promoted ${pName} into the match!`);
+  showToast(`Added ${pName} to the game!`);
 
   // Dispatch APNs push
   const token = promoted.deviceToken;
+  const hostPlayer = state.getPlayer(currentUserId);
+  const hostName = hostPlayer ? (hostPlayer.nickname || hostPlayer.name) : "The host";
   if (token && token !== state.currentUser?.deviceToken) {
     fetch("/api/send-push", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tokens: [token],
-        title: "🏐 Volleyball Match Alert",
-        body: `🎉 The host promoted you from the waitlist into '${game.title || "Match"}'!`,
+        title: "🎉 Added from Waiting",
+        body: `${hostName} added you to the game '${game.title || "Match"}'!`,
         gameId: game.id
       })
     }).catch(err => console.log("Push note:", err));
   }
+};
+
+window.addSpotToGame = (gameId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game || !state.currentUser) return;
+
+  const currentUserId = state.currentUser.id;
+  const isHost = (game.hostPlayerId === currentUserId) || (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId) || (state.currentUser && state.currentUser.isRoot);
+  if (!isHost) {
+    showToast("Only the match host or admin can add spots to this game.");
+    return;
+  }
+
+  const currentTotal = (game.team1PlayerIds?.length || 0) + (game.team2PlayerIds?.length || 0);
+  game.maxPlayers = Math.max(game.maxPlayers || 4, currentTotal) + 1;
+
+  state.saveLocal();
+  saveGameToFirestore(game);
+  renderMatches();
+  showToast(`Added an open spot to ${game.title || "Match"}!`);
 };
 
 window.removePlayerFromPool = (gameId, playerId) => {
@@ -1292,7 +1314,7 @@ function renderMatches() {
     const hostStarVal = hostPlayer ? formatStarRating(hostPlayer) : "5.0";
 
     const t1Ids = (game.team1PlayerIds && game.team1PlayerIds.length > 0) ? game.team1PlayerIds : allPlayerIds.slice(0, 2);
-    const t2Ids = (game.team2PlayerIds && game.team2PlayerIds.length > 0) ? game.team2PlayerIds : allPlayerIds.slice(2, 4);
+    const t2Ids = (game.team2PlayerIds && game.team2PlayerIds.length > 0) ? game.team2PlayerIds : allPlayerIds.slice(2);
 
     const renderSlot = (pid, isTeam1) => {
       if (pid) {
@@ -1359,6 +1381,11 @@ function renderMatches() {
               <button type="button" class="card-dropdown-item" onclick="window.openEditMatchModal('${game.id}')">
                 <span>✏️</span> Edit Details
               </button>
+              ${(isHost || isRoot) && spotsLeft === 0 ? `
+                <button type="button" class="card-dropdown-item" style="color: #38bdf8;" onclick="window.addSpotToGame('${game.id}')">
+                  <span>➕</span> + Add Spot to Full Game
+                </button>
+              ` : ''}
               ${(isHost || isRoot) ? `
                 <button type="button" class="card-dropdown-item" style="color: #ef4444;" onclick="window.deleteGame('${game.id}')">
                   <span>🗑️</span> Cancel Game
@@ -1398,22 +1425,38 @@ function renderMatches() {
           ${renderWeatherDetailsCard(game)}
         </div>
 
-        <!-- 2x2 Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
+        <!-- Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
         <div class="player-grid-2x2">
-          ${renderSlot(t1Ids[0], true)}
-          ${renderSlot(t1Ids[1], true)}
-          ${renderSlot(t2Ids[0], false)}
-          ${renderSlot(t2Ids[1], false)}
+          ${(() => {
+            const t1Count = Math.max(2, t1Ids.length);
+            const t1Slots = [];
+            for (let i = 0; i < t1Count; i++) {
+              t1Slots.push(renderSlot(t1Ids[i], true));
+            }
+            if (t1Count % 2 !== 0) {
+              t1Slots.push(`<div style="visibility: hidden;"></div>`);
+            }
+            
+            const t2Count = Math.max(2, t2Ids.length);
+            const t2Slots = [];
+            for (let i = 0; i < t2Count; i++) {
+              t2Slots.push(renderSlot(t2Ids[i], false));
+            }
+            if (t2Count % 2 !== 0) {
+              t2Slots.push(`<div style="visibility: hidden;"></div>`);
+            }
+            return [...t1Slots, ...t2Slots].join('');
+          })()}
         </div>
 
-        <!-- Waitlist Section (if pool full or waitlist has players) -->
+        <!-- Waiting Section (if pool full or waitlist has players) -->
         ${(spotsLeft === 0 || waitlistIds.length > 0) ? `
           <div style="margin-top: -6px; margin-bottom: 14px; padding: 10px 12px; background: rgba(147, 51, 234, 0.08); border: 1px dashed rgba(168, 85, 247, 0.4); border-radius: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <span style="font-size: 11px; font-weight: 800; color: #c084fc; text-transform: uppercase; letter-spacing: 0.5px;">
-                ⏳ Waitlist (${waitlistIds.length} Queued)
+                ⏳ WAITING (${waitlistIds.length} Queued)
               </span>
-              <span style="font-size: 10px; color: rgba(255, 255, 255, 0.6);">Auto-promotes when spot opens</span>
+              <span style="font-size: 10px; color: rgba(255, 255, 255, 0.6);">Host or Admin can add to game</span>
             </div>
 
             ${spotsLeft === 0 && !isMember ? (
@@ -1425,15 +1468,15 @@ function renderMatches() {
                 isWaitlisted ? `
                   <div style="background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-size: 12px; font-weight: 700; color: #d8b4fe;">
-                      ⏳ You are #${waitlistPos} on the Waitlist
+                      ⏳ You are #${waitlistPos} on Waiting List
                     </div>
                     <button type="button" class="btn btn-outline btn-sm" style="color: #f87171; border-color: #f87171; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">
-                      Leave Waitlist
+                      Leave Waiting
                     </button>
                   </div>
                 ` : `
                   <button type="button" class="btn btn-sm" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border: 1px dashed #a855f7; font-weight: 700; width: 100%; margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;" onclick="window.joinWaitlist('${game.id}')">
-                    ⏳ Pool Full • Join Waitlist (${waitlistIds.length} queued)
+                    ⏳ Full Game • Join Waiting List (${waitlistIds.length} queued)
                   </button>
                 `
               )
@@ -1441,7 +1484,7 @@ function renderMatches() {
 
             ${waitlistIds.length === 0 ? `
               <div style="padding: 8px 10px; background: rgba(0, 0, 0, 0.2); border-radius: 6px; font-size: 11px; color: rgba(255, 255, 255, 0.6);">
-                No players currently on the waitlist. Next signups will queue here in order.
+                No players currently waiting. Next signups will queue here in order.
               </div>
             ` : `
               <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -1460,8 +1503,10 @@ function renderMatches() {
                         </div>
                       </div>
                       <div style="display: flex; align-items: center; gap: 6px;">
-                        ${isHost ? `
-                          <button type="button" class="btn btn-sm" style="background: #10b981; color: white; border: none; font-weight: 700; padding: 3px 8px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="window.promoteWaitlistPlayer('${game.id}', '${pid}')">⬆️ Promote</button>
+                        ${(isHost || isRoot) ? `
+                          <button type="button" class="btn btn-sm" style="background: #10b981; color: white; border: none; font-weight: 700; padding: 4px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="window.promoteWaitlistPlayer('${game.id}', '${pid}')">
+                            <span>➕</span> Add to Game
+                          </button>
                         ` : ''}
                         ${isMe ? `
                           <button type="button" class="btn btn-outline btn-sm" style="color: #f87171; border-color: #f87171; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">Leave</button>
@@ -1586,15 +1631,16 @@ function renderMatches() {
                 </button>
               ` : ''}
 
-              <!-- Button 3: Leave / Join / Waitlist -->
+              <!-- Button 3: Leave / Join / Waiting -->
               ${isMember ? `
                 <button type="button" class="card-btn-danger" onclick="window.leaveGame('${game.id}')" title="Leave Match">
                   <span style="font-size: 11px; font-weight: 800; line-height: 1.1; text-align: center;">Leave<br>Game</span>
                 </button>
               ` : (
                 isWaitlisted ? `
-                  <button type="button" class="card-btn-danger" onclick="window.leaveWaitlist('${game.id}')" title="Leave Waitlist">
-                    <span style="font-size: 10px; font-weight: 800; line-height: 1.1; text-align: center;">Leave<br>Waitlist<br>(#${waitlistPos})</span>
+                  <button type="button" class="card-btn-white" style="background: #f3e8ff; border: 1.5px solid #d8b4fe; color: #7e22ce;" onclick="window.leaveWaitlist('${game.id}')" title="Leave Waiting List">
+                    <span style="font-size: 14px;">⏳</span>
+                    <span style="font-size: 10px; font-weight: 800; line-height: 1.1; text-align: center;">Waiting<br>#${waitlistPos}</span>
                   </button>
                 ` : (
                   game.isPrivate ? `
@@ -1609,9 +1655,9 @@ function renderMatches() {
                         <span style="font-size: 10px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Game</span>
                       </button>
                     ` : `
-                      <button type="button" class="card-btn-white" style="background: #f3e8ff; border: 1.5px solid #d8b4fe; color: #7e22ce;" onclick="window.joinWaitlist('${game.id}')" title="Join Waitlist">
+                      <button type="button" class="card-btn-white" style="background: #f3e8ff; border: 1.5px solid #d8b4fe; color: #7e22ce;" onclick="window.joinWaitlist('${game.id}')" title="Join Waiting List">
                         <span style="font-size: 14px;">⏳</span>
-                        <span style="font-size: 9px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Waitlist</span>
+                        <span style="font-size: 11px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Waiting</span>
                       </button>
                     `
                   )
@@ -2645,6 +2691,29 @@ window.toggleCardAdminMenu = (gameId) => {
       <span>Edit Game Preferences</span>
     </button>
 
+    ${(isHost || isRoot) && game.waitlistPlayerIds && game.waitlistPlayerIds.length > 0 ? `
+      <div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; margin-top: 4px;">
+        <div style="font-size: 11px; font-weight: 800; color: #c084fc; text-transform: uppercase; padding: 2px 4px;">Waiting Players (${game.waitlistPlayerIds.length})</div>
+        ${game.waitlistPlayerIds.map((pid, idx) => {
+          const p = state.getPlayer(pid);
+          const pName = p ? (p.nickname || p.name) : `Player ${idx + 1}`;
+          return `
+            <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #10b981; border-color: #6ee7b7; padding: 8px 12px;" onclick="window.closeAdminActionsModal(); window.promoteWaitlistPlayer('${game.id}', '${pid}')">
+              <span>➕</span>
+              <span>Add ${pName} to Game</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    ` : ''}
+
+    ${(isHost || isRoot) && (game.spotsRemaining === 0 || ((game.team1PlayerIds?.length || 0) + (game.team2PlayerIds?.length || 0) >= (game.maxPlayers || 4))) ? `
+      <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #38bdf8; border-color: #7dd3fc; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.addSpotToGame('${game.id}')">
+        <span style="font-size: 16px;">➕</span>
+        <span>+ Add Spot to Full Game</span>
+      </button>
+    ` : ''}
+
     ${(isHost || isRoot) ? `
       <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #dc2626; border-color: #fca5a5; margin-top: 6px; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.deleteGame('${game.id}');">
         <span style="font-size: 16px;">❌</span>
@@ -2655,6 +2724,10 @@ window.toggleCardAdminMenu = (gameId) => {
 
   const m = document.getElementById("admin-actions-modal");
   if (m) m.classList.add("active");
+};
+
+window.showGameDetailsModal = (gameId) => {
+  window.openEditMatchModal(gameId);
 };
 
 // Edit Match (Participants)

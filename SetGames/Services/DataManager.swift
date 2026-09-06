@@ -708,13 +708,13 @@ public class DataManager: ObservableObject {
         }
         
         var game = games[index]
-        let isHost = (game.hostPlayerId == user.id) || user.isRoot
+        let isHost = (game.hostPlayerId == user.id) || (game.team1PlayerIds.first == user.id) || user.isRoot
         guard isHost else {
-            return (false, "Only the match host can promote players from the waitlist.")
+            return (false, "Only the match host or admin can add players from waiting.")
         }
         
         guard game.waitlistPlayerIds.contains(playerId) else {
-            return (false, "Player is no longer on the waitlist.")
+            return (false, "Player is no longer waiting.")
         }
         
         // Remove from waitlist
@@ -740,8 +740,8 @@ public class DataManager: ObservableObject {
         let promotedName = promoted.nickname.isEmpty ? promoted.name : promoted.nickname
         
         postNotification(
-            title: "🎉 Waitlist Promotion",
-            message: "\(promotedName) was promoted into \(game.title) by the host!",
+            title: "🎉 Added from Waiting",
+            message: "\(promotedName) was added into \(game.title) by the host!",
             type: .matchInvite,
             relatedGameId: game.id
         )
@@ -751,7 +751,7 @@ public class DataManager: ObservableObject {
             NotificationService.shared.sendDirectRemotePush(
                 to: token,
                 title: "🏐 Volleyball Match Alert",
-                body: "🎉 The host promoted you from the waitlist into '\(game.title)'!",
+                body: "🎉 The host added you from Waiting into '\(game.title)'!",
                 gameId: game.id
             )
         } else {
@@ -760,14 +760,82 @@ public class DataManager: ObservableObject {
                     NotificationService.shared.sendDirectRemotePush(
                         to: token,
                         title: "🏐 Volleyball Match Alert",
-                        body: "🎉 The host promoted you from the waitlist into '\(game.title)'!",
+                        body: "🎉 The host added you from Waiting into '\(game.title)'!",
                         gameId: game.id
                     )
                 }
             }
         }
         
-        return (true, "Successfully promoted \(promotedName) into the match!")
+        return (true, "Successfully added \(promotedName) into the match!")
+    }
+
+    @discardableResult
+    public func addSpotToGame(gameId: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let index = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Match not found.")
+        }
+        
+        var game = games[index]
+        let isHost = (game.hostPlayerId == user.id) || (game.team1PlayerIds.first == user.id) || user.isRoot
+        guard isHost else {
+            return (false, "Only the match host or admin can add spots to this game.")
+        }
+        
+        game.maxPlayers += 1
+        games[index] = game
+        saveToDisk()
+        FirestoreService.shared.saveGame(game)
+        return (true, "Added 1 open spot to \(game.title)!")
+    }
+
+    @discardableResult
+    public func addPlayerToGame(gameId: UUID, playerId: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let index = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Match not found.")
+        }
+        
+        var game = games[index]
+        let isHost = (game.hostPlayerId == user.id) || (game.team1PlayerIds.first == user.id) || user.isRoot
+        guard isHost else {
+            return (false, "Only the match host or admin can add players.")
+        }
+        
+        if game.allPlayerIds.contains(playerId) {
+            return (false, "Player is already in this game.")
+        }
+        
+        game.waitlistPlayerIds.removeAll(where: { $0 == playerId })
+        
+        if game.allPlayerIds.count >= game.maxPlayers {
+            game.maxPlayers = game.allPlayerIds.count + 1
+        }
+        
+        if game.team1PlayerIds.count <= game.team2PlayerIds.count {
+            game.team1PlayerIds.append(playerId)
+        } else {
+            game.team2PlayerIds.append(playerId)
+        }
+        
+        games[index] = game
+        saveToDisk()
+        FirestoreService.shared.saveGame(game)
+        
+        let p = player(for: playerId)
+        let pName = p.nickname.isEmpty ? p.name : p.nickname
+        
+        if let token = p.deviceToken, !token.isEmpty {
+            NotificationService.shared.sendDirectRemotePush(
+                to: token,
+                title: "🏐 Volleyball Match Alert",
+                body: "🎉 The host added you into '\(game.title)'!",
+                gameId: game.id
+            )
+        }
+        
+        return (true, "Added \(pName) to the game!")
     }
     
     @discardableResult

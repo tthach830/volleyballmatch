@@ -608,42 +608,61 @@ public struct ConfirmedGamesView: View {
     }
 
     private func playersPoolBox(game: SetGame, isMyGame: Bool, currentUserId: UUID?) -> some View {
-        let isHost = (game.hostPlayerId == currentUserId) || (dataManager.currentUser?.isRoot == true)
+        let isHost = (game.hostPlayerId == currentUserId) || (game.team1PlayerIds.first == currentUserId) || (dataManager.currentUser?.isRoot == true)
         let t1Ids: [UUID] = !game.team1PlayerIds.isEmpty ? game.team1PlayerIds : Array(game.allPlayerIds.prefix(2))
         let t2Ids: [UUID] = !game.team2PlayerIds.isEmpty ? game.team2PlayerIds : Array(game.allPlayerIds.dropFirst(2).prefix(2))
         
+        let t1Count = max(2, t1Ids.count)
+        let t1Rows = (t1Count + 1) / 2
+        let t2Count = max(2, t2Ids.count)
+        let t2Rows = (t2Count + 1) / 2
+        
         return VStack(spacing: 8) {
-            // Row 1: Team 1 (Cyan/Blue Border)
-            HStack(spacing: 8) {
-                if t1Ids.count > 0 {
-                    playerCardTile(pid: t1Ids[0], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
-                } else {
-                    emptyPlayerSpotTile(game: game, isTeam1: true)
-                }
-                
-                if t1Ids.count > 1 {
-                    playerCardTile(pid: t1Ids[1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
-                } else {
-                    emptyPlayerSpotTile(game: game, isTeam1: true)
-                }
-            }
-            
-            // Row 2: Team 2 (Coral/Red Border)
-            HStack(spacing: 8) {
-                if t2Ids.count > 0 {
-                    playerCardTile(pid: t2Ids[0], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
-                } else {
-                    emptyPlayerSpotTile(game: game, isTeam1: false)
-                }
-                
-                if t2Ids.count > 1 {
-                    playerCardTile(pid: t2Ids[1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
-                } else {
-                    emptyPlayerSpotTile(game: game, isTeam1: false)
+            // Team 1 (Cyan/Blue Border)
+            ForEach(0..<t1Rows, id: \.self) { r in
+                HStack(spacing: 8) {
+                    let i1 = r * 2
+                    let i2 = i1 + 1
+                    if i1 < t1Ids.count {
+                        playerCardTile(pid: t1Ids[i1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
+                    } else {
+                        emptyPlayerSpotTile(game: game, isTeam1: true)
+                    }
+                    if i2 < t1Count {
+                        if i2 < t1Ids.count {
+                            playerCardTile(pid: t1Ids[i2], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
+                        } else {
+                            emptyPlayerSpotTile(game: game, isTeam1: true)
+                        }
+                    } else {
+                        Spacer(minLength: 0).frame(maxWidth: .infinity)
+                    }
                 }
             }
             
-            // Waitlist Section (Visible whenever pool is full or waitlist has queued players)
+            // Team 2 (Coral/Red Border)
+            ForEach(0..<t2Rows, id: \.self) { r in
+                HStack(spacing: 8) {
+                    let i1 = r * 2
+                    let i2 = i1 + 1
+                    if i1 < t2Ids.count {
+                        playerCardTile(pid: t2Ids[i1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
+                    } else {
+                        emptyPlayerSpotTile(game: game, isTeam1: false)
+                    }
+                    if i2 < t2Count {
+                        if i2 < t2Ids.count {
+                            playerCardTile(pid: t2Ids[i2], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
+                        } else {
+                            emptyPlayerSpotTile(game: game, isTeam1: false)
+                        }
+                    } else {
+                        Spacer(minLength: 0).frame(maxWidth: .infinity)
+                    }
+                }
+            }
+            
+            // Waitlist / Waiting Section (Visible whenever pool is full or waitlist has queued players)
             if game.spotsRemaining == 0 || !game.waitlistPlayerIds.isEmpty {
                 waitlistSection(game: game, currentUserId: currentUserId, isMyGame: isMyGame, isHost: isHost)
             }
@@ -651,26 +670,27 @@ public struct ConfirmedGamesView: View {
     }
 
     private func waitlistSection(game: SetGame, currentUserId: UUID?, isMyGame: Bool, isHost: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let canAddWaitingPlayer = isHost || (dataManager.currentUser?.isRoot == true)
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "clock.badge.checkmark.fill")
                     .font(.system(size: 11))
                     .foregroundColor(.purple)
-                Text("⏳ WAITLIST (\(game.waitlistPlayerIds.count) QUEUED)")
+                Text("⏳ WAITING (\(game.waitlistPlayerIds.count) QUEUED)")
                     .font(.system(size: 10, weight: .heavy))
                     .foregroundColor(.purple)
                 Spacer()
-                Text("Auto-promotes when spot opens")
+                Text("Auto-promotes or host/admin can add")
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
             }
             
-            // Join / Leave Waitlist Controls for non-members
+            // Join / Leave Waiting Controls for non-members
             if game.spotsRemaining == 0 && !isMyGame {
                 if let uid = currentUserId, let index = game.waitlistPlayerIds.firstIndex(of: uid) {
                     let pos = index + 1
                     HStack {
-                        Text("⏳ You are #\(pos) on the Waitlist")
+                        Text("⏳ You are #\(pos) on Waiting list")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(Color.purple)
                         Spacer()
@@ -679,7 +699,7 @@ public struct ConfirmedGamesView: View {
                             alertMessage = res.message
                             showAlert = true
                         } label: {
-                            Text("Leave Waitlist")
+                            Text("Leave Waiting")
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.red)
                                 .padding(.horizontal, 8)
@@ -711,7 +731,7 @@ public struct ConfirmedGamesView: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Text("⏳")
-                                Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
+                                Text("Pool Full • Join Waiting (\(game.waitlistPlayerIds.count) queued)")
                                     .font(.system(size: 12, weight: .bold))
                             }
                             .foregroundColor(Color.purple)
@@ -752,17 +772,18 @@ public struct ConfirmedGamesView: View {
                         }
                         Spacer()
                         
-                        if isHost {
+                        if canAddWaitingPlayer {
                             Button {
                                 let res = dataManager.promoteWaitlistPlayer(gameId: game.id, playerId: wId)
                                 alertMessage = res.message
                                 showAlert = true
                             } label: {
                                 HStack(spacing: 3) {
-                                    Image(systemName: "arrow.up.circle.fill")
-                                    Text("Promote")
+                                    Image(systemName: "person.badge.plus")
+                                        .font(.system(size: 10, weight: .bold))
+                                    Text("Add to Game")
+                                        .font(.system(size: 10, weight: .bold))
                                 }
-                                .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -978,6 +999,29 @@ public struct ConfirmedGamesView: View {
                         Label("Edit Game", systemImage: "pencil")
                     }
                     if isHost || dataManager.currentUser?.isRoot == true {
+                        if !game.waitlistPlayerIds.isEmpty {
+                            let firstWaitingId = game.waitlistPlayerIds[0]
+                            let wp = dataManager.player(for: firstWaitingId)
+                            let wpName = wp.nickname.isEmpty ? wp.name : wp.nickname
+                            Button {
+                                let res = dataManager.promoteWaitlistPlayer(gameId: game.id, playerId: firstWaitingId)
+                                alertMessage = res.message
+                                showAlert = true
+                            } label: {
+                                Label("Add \(wpName) to Game", systemImage: "person.badge.plus")
+                            }
+                        }
+                        
+                        if game.spotsRemaining == 0 {
+                            Button {
+                                let res = dataManager.addSpotToGame(gameId: game.id)
+                                alertMessage = res.message
+                                showAlert = true
+                            } label: {
+                                Label("+ Add Spot to Full Game", systemImage: "plus.circle")
+                            }
+                        }
+                        
                         Button(role: .destructive) {
                             gameToDelete = game
                             showDeleteAlert = true
@@ -1053,7 +1097,7 @@ public struct ConfirmedGamesView: View {
                 }
                 .buttonStyle(.borderless)
                 
-                // Button 3: Leave Game (or Join)
+                // Button 3: Leave Game (or Join / Waiting)
                 if isMyGame {
                     Button {
                         let res = dataManager.leaveGame(gameId: game.id)
@@ -1095,6 +1139,55 @@ public struct ConfirmedGamesView: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color(red: 0.52, green: 0.92, blue: 0.65), lineWidth: 1.5)
+                        )
+                    }
+                    .buttonStyle(.borderless)
+                } else if let uid = currentUserId, game.waitlistPlayerIds.contains(uid) {
+                    let pos = (game.waitlistPlayerIds.firstIndex(of: uid) ?? 0) + 1
+                    Button {
+                        let res = dataManager.leaveWaitlist(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Waiting\n#\(pos)")
+                                .font(.system(size: 10, weight: .heavy))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(-2)
+                        }
+                        .frame(width: 58, height: 54)
+                        .background(Color(red: 0.95, green: 0.90, blue: 1.0))
+                        .foregroundColor(Color.purple)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.purple.opacity(0.4), lineWidth: 1.5)
+                        )
+                    }
+                    .buttonStyle(.borderless)
+                } else if game.spotsRemaining == 0 && !game.isPrivate {
+                    Button {
+                        let res = dataManager.joinWaitlist(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Waiting")
+                                .font(.system(size: 11, weight: .heavy))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(-2)
+                        }
+                        .frame(width: 58, height: 54)
+                        .background(Color(red: 0.95, green: 0.90, blue: 1.0))
+                        .foregroundColor(Color.purple)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.purple.opacity(0.4), lineWidth: 1.5)
                         )
                     }
                     .buttonStyle(.borderless)
@@ -1152,14 +1245,15 @@ public struct ConfirmedGamesView: View {
 
     private func gameRow(_ game: SetGame) -> some View {
         let currentUserId = dataManager.currentUser?.id
+        let isRoot = dataManager.currentUser?.isRoot == true
         let isMyGame: Bool
         let isHost: Bool
         if let uid = currentUserId {
             isMyGame = game.allPlayerIds.contains(uid) || game.hostPlayerId == uid
-            isHost = (game.hostPlayerId != nil && game.hostPlayerId == uid) || (game.team1PlayerIds.first == uid)
+            isHost = (game.hostPlayerId != nil && game.hostPlayerId == uid) || (game.team1PlayerIds.first == uid) || isRoot
         } else {
             isMyGame = false
-            isHost = false
+            isHost = isRoot
         }
         
         return VStack(alignment: .leading, spacing: 12) {

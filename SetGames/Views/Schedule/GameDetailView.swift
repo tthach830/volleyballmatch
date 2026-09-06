@@ -661,11 +661,11 @@ public struct GameDetailView: View {
                     Image(systemName: "clock.badge.checkmark.fill")
                         .font(.system(size: 12))
                         .foregroundColor(.purple)
-                    Text("WAITLIST (\(game.waitlistPlayerIds.count) QUEUED)")
+                    Text("WAITING (\(game.waitlistPlayerIds.count) QUEUED)")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.purple)
                     Spacer()
-                    Text("Auto-promotes when spot opens")
+                    Text("Auto-promotes or host/admin can add")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.secondary)
                 }
@@ -677,19 +677,19 @@ public struct GameDetailView: View {
                         HStack {
                             Image(systemName: "clock.fill")
                                 .foregroundColor(.purple)
-                            Text("You are #\(game.waitlistPosition(for: user.id) ?? 1) on the Waitlist")
+                            Text("You are #\(game.waitlistPosition(for: user.id) ?? 1) on Waiting list")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.purple)
                             Spacer()
                             Button(role: .destructive) {
                                 let res = dataManager.leaveWaitlist(gameId: game.id)
                                 if !res.success {
-                                    alertTitle = "Waitlist"
+                                    alertTitle = "Waiting"
                                     alertMessage = res.message
                                     showAlert = true
                                 }
                             } label: {
-                                Text("Leave Waitlist")
+                                Text("Leave Waiting")
                                     .font(.system(size: 11, weight: .bold))
                                     .foregroundColor(.red)
                                     .padding(.horizontal, 10)
@@ -722,7 +722,7 @@ public struct GameDetailView: View {
                                 Button {
                                     let res = dataManager.joinWaitlist(gameId: game.id)
                                     if !res.success {
-                                        alertTitle = "Cannot Join Waitlist"
+                                        alertTitle = "Cannot Join Waiting"
                                         alertMessage = res.message
                                         showAlert = true
                                     }
@@ -730,7 +730,7 @@ public struct GameDetailView: View {
                                     HStack(spacing: 6) {
                                         Image(systemName: "clock.badge.plus")
                                             .font(.system(size: 14, weight: .bold))
-                                        Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
+                                        Text("Pool Full • Join Waiting (\(game.waitlistPlayerIds.count) queued)")
                                             .font(.system(size: 12, weight: .bold))
                                     }
                                     .foregroundColor(.purple)
@@ -810,13 +810,13 @@ public struct GameDetailView: View {
             if isHost {
                 Button {
                     let res = dataManager.promoteWaitlistPlayer(gameId: gameId, playerId: playerId)
-                    alertTitle = "Waitlist Promotion"
+                    alertTitle = "Added to Game"
                     alertMessage = res.message
                     showAlert = true
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "arrow.up.circle.fill")
-                        Text("Promote")
+                        Image(systemName: "person.badge.plus")
+                        Text("Add to Game")
                     }
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
