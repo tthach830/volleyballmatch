@@ -562,7 +562,7 @@ public struct ConfirmedGamesView: View {
                     HStack(spacing: 4) {
                         Text("💨")
                             .font(.system(size: 12))
-                        Text("\(w.windMph) mph\(w.windDirection.isEmpty ? " NW" : " " + w.windDirection)")
+                        Text("\(w.windMph) mph \(w.windDirection)")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.white)
                     }

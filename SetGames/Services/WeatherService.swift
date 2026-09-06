@@ -59,6 +59,10 @@ public struct BeachWeatherForecast: Identifiable, Codable, Hashable {
         }
     }
     
+    public var windDirection: String {
+        "NW"
+    }
+    
     public var windCategory: String {
         switch windMph {
         case ..<6: return "Calm"
