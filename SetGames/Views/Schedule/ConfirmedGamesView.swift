@@ -483,15 +483,11 @@ public struct ConfirmedGamesView: View {
                     .foregroundColor(.white)
             }
             
-            // Line 2: Format & Skill & Privacy
+            // Line 2: Format & Skill
             HStack(spacing: 6) {
                 Text("\(formatStr) Skill: \(skillStr)")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(Color.white.opacity(0.9))
-                if game.isPrivate {
-                    Text("🔒")
-                        .font(.system(size: 13))
-                }
                 if game.isLevelLocked {
                     HStack(spacing: 2) {
                         Image(systemName: "lock.fill")
@@ -512,6 +508,10 @@ public struct ConfirmedGamesView: View {
                 Text("Host: \(hostName)")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(Color.white.opacity(0.85))
+                if game.isPrivate {
+                    Text("🔒")
+                        .font(.system(size: 13))
+                }
                 HStack(spacing: 3) {
                     Text("⭐")
                         .font(.system(size: 12))

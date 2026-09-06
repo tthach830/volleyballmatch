@@ -1378,11 +1378,11 @@ function renderMatches() {
           </div>
           <div class="card-metadata-line-item">
             <span>${formatLabel} Skill: ${skillStr}</span>
-            ${game.isPrivate ? `<span>🔒</span>` : ''}
             ${game.isLevelLocked ? `<span style="font-size:10px; font-weight:700; background:rgba(234,88,12,0.2); color:#fb923c; padding:2px 6px; border-radius:4px;">🔒 Locked</span>` : ''}
           </div>
           <div class="card-metadata-line-item">
             <span>Host: ${hostDisplayName}</span>
+            ${game.isPrivate ? `<span>🔒</span>` : ''}
             <span style="color:#fbbf24; font-size:13px; font-weight:700;">⭐ ${hostStarVal}</span>
           </div>
         </div>
