@@ -20,7 +20,7 @@ public enum MatchmakingType: String, CaseIterable, Identifiable {
     public var title: String {
         switch self {
         case .smartAvailability: return "Smart Availability Matcher"
-        case .instantQueue: return "Instant Pickup Lobby"
+        case .instantQueue: return "Quick-Play Lobby"
         case .kingOfTheBeach: return "King of the Beach (Solo Queue)"
         case .openBoard: return "Open Court Compatibility Fill"
         }

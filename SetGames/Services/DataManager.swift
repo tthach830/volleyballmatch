@@ -432,7 +432,7 @@ public class DataManager: ObservableObject {
                     team1PlayerIds: team1.map { $0.id },
                     team2PlayerIds: team2.map { $0.id },
                     isAutoMatched: true,
-                    matchedOptionName: "Instant Pickup Lobby"
+                    matchedOptionName: "Quick-Play Lobby"
                 )
                 games.insert(fastGame, at: 0)
                 saveToDisk()
@@ -488,7 +488,7 @@ public class DataManager: ObservableObject {
                     team1PlayerIds: team1.map { $0.id },
                     team2PlayerIds: team2.map { $0.id },
                     isAutoMatched: true,
-                    matchedOptionName: "Instant Pickup Lobby"
+                    matchedOptionName: "Quick-Play Lobby"
                 )
                 games.insert(fastGame, at: 0)
                 saveToDisk()
@@ -548,7 +548,7 @@ public class DataManager: ObservableObject {
                 team1PlayerIds: team1.map { $0.id },
                 team2PlayerIds: team2.map { $0.id },
                 isAutoMatched: true,
-                matchedOptionName: "Instant Pickup Lobby"
+                matchedOptionName: "Quick-Play Lobby"
             )
             games.insert(fastGame, at: 0)
             saveToDisk()

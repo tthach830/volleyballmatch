@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct InstantPickupSheet: View {
     @ObservedObject var dataManager: DataManager
+    @ObservedObject private var weatherService = WeatherService.shared
     @Environment(\.dismiss) private var dismiss
     
     @State private var selectedBeach: String = "Main Beach"
@@ -45,7 +46,7 @@ public struct InstantPickupSheet: View {
                                 .foregroundColor(.orange)
                         }
                         
-                        Text("Instant Pickup Lobby")
+                        Text("Quick-Play Lobby")
                             .font(.system(size: 22, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                         
@@ -53,6 +54,20 @@ public struct InstantPickupSheet: View {
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                        
+                        Divider()
+                            .padding(.vertical, 2)
+                        
+                        // Weather Snapshot Line
+                        HStack(spacing: 6) {
+                            Text("🌤️")
+                                .font(.system(size: 14))
+                            Text(weatherSnapshotLine)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color.blue)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
                     }
                     .padding(18)
                     .background(Color(UIColor.secondarySystemGroupedBackground))
@@ -149,8 +164,12 @@ public struct InstantPickupSheet: View {
                 .padding(.vertical, 16)
             }
             .background(Color(UIColor.systemGroupedBackground))
-            .navigationTitle("Instant Pickup")
+            .navigationTitle("Quick-Play Lobby")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                weatherService.loadForecast(for: "Main Beach", on: Date())
+                weatherService.loadForecast(for: "Harbor Beach", on: Date())
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
@@ -355,6 +374,23 @@ public struct InstantPickupSheet: View {
                 }
             }
         }
+    }
+    
+    // MARK: - Weather Snapshot
+    private var weatherSnapshotLine: String {
+        let now = Date()
+        let mainW = weatherService.cachedForecast(for: "Main Beach", on: now)
+        let harborW = weatherService.cachedForecast(for: "Harbor Beach", on: now)
+        
+        let mainTemp = mainW?.tempF ?? 73
+        let mainUV = Int((mainW?.uvIndex ?? 5.0).rounded())
+        let mainWind = mainW?.windMph ?? 13
+        
+        let harborTemp = harborW?.tempF ?? 73
+        let harborUV = Int((harborW?.uvIndex ?? 5.0).rounded())
+        let harborWind = harborW?.windMph ?? 10
+        
+        return "Main: \(mainTemp)F, UV-\(mainUV), \(mainWind)mph. Harbor: \(harborTemp)F, UV-\(harborUV), \(harborWind)mph"
     }
 }
 

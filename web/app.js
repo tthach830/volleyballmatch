@@ -3360,7 +3360,7 @@ const MM_OPTIONS = {
   instantQueue: {
     tag: "FASTEST",
     icon: "⚡️",
-    title: "Instant Pickup Lobby",
+    title: "Quick-Play Lobby",
     sub: "Drop into today's live morning or sunset waves. Fills 4-player lobbies and alerts you once full.",
     color: "#0284c7"
   },
@@ -3549,6 +3549,35 @@ window.renderInstantPickupModal = () => {
       autoBtn.innerHTML = queue.length === 0 ? "<span>👥</span><span>Quick-Fill 4 Players (Test)</span>" : "<span>👥</span><span>Auto-Fill Remaining Spots</span>";
     }
   }
+
+  // Update One-Line Weather Snapshot for Main and Harbor
+  const weatherEl = document.getElementById("ip-weather-snapshot-text");
+  if (weatherEl) {
+    const now = new Date();
+    const mainW = weatherService.getCached("Main Beach", now) || weatherService.getFallback("Main Beach", now);
+    const harborW = weatherService.getCached("Harbor Beach", now) || weatherService.getFallback("Harbor Beach", now);
+
+    const mTemp = mainW ? mainW.tempF : 73;
+    const mUV = mainW ? Math.round(mainW.uvIndex) : 5;
+    const mWind = mainW ? mainW.windMph : 13;
+
+    const hTemp = harborW ? harborW.tempF : 73;
+    const hUV = harborW ? Math.round(harborW.uvIndex) : 5;
+    const hWind = harborW ? harborW.windMph : 10;
+
+    weatherEl.textContent = `Main: ${mTemp}F, UV-${mUV}, ${mWind}mph. Harbor: ${hTemp}F, UV-${hUV}, ${hWind}mph`;
+
+    weatherService.getForecast("Main Beach", now).then(() => {
+      weatherService.getForecast("Harbor Beach", now).then(() => {
+        const m = weatherService.getCached("Main Beach", now);
+        const h = weatherService.getCached("Harbor Beach", now);
+        const el = document.getElementById("ip-weather-snapshot-text");
+        if (m && h && el) {
+          el.textContent = `Main: ${m.tempF}F, UV-${Math.round(m.uvIndex)}, ${m.windMph}mph. Harbor: ${h.tempF}F, UV-${Math.round(h.uvIndex)}, ${h.windMph}mph`;
+        }
+      });
+    });
+  }
 };
 
 window.handleInstantPickupSpotClick = (index) => {
@@ -3676,7 +3705,7 @@ window.handleInstantPickupFilled = (beach) => {
     scheduledDate: new Date(Date.now() + 1800000).toISOString(),
     status: "scheduled",
     isAutoMatched: true,
-    matchedOptionName: "Instant Pickup Lobby",
+    matchedOptionName: "Quick-Play Lobby",
     team1PlayerIds: [players[0], players[3]],
     team2PlayerIds: [players[1], players[2]],
     team1Score: 0,
