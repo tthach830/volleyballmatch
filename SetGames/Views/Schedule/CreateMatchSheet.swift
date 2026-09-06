@@ -13,6 +13,7 @@ public struct CreateMatchSheet: View {
     @State private var courtNumber: String = "Court #1"
     @State private var scheduledDate: Date = Date().addingTimeInterval(3600 * 24)
     @State private var isLevelLocked: Bool = true
+    @State private var isPrivate: Bool = false
     @State private var notes: String = "Bring an official Wilson or Molten beach volleyball!"
     
     public static func defaultScheduledDate() -> Date {
@@ -110,6 +111,25 @@ public struct CreateMatchSheet: View {
                             Toggle("", isOn: $isLevelLocked)
                                 .labelsHidden()
                                 .tint(.orange)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        HStack(alignment: .center) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: isPrivate ? "lock.shield.fill" : "lock.shield")
+                                        .foregroundColor(isPrivate ? .purple : .secondary)
+                                    Text("Private Game")
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                                Text(isPrivate ? "Invite only (hidden pool names for non-members)" : "Public match (open for beach players to join)")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $isPrivate)
+                                .labelsHidden()
+                                .tint(.purple)
                         }
                         .padding(.vertical, 2)
                         
@@ -247,7 +267,8 @@ public struct CreateMatchSheet: View {
                             scheduledDate: scheduledDate,
                             isLevelLocked: isLevelLocked,
                             maxPlayers: maxPlayers,
-                            notes: notes
+                            notes: notes,
+                            isPrivate: isPrivate
                         )
                         dismiss()
                     }

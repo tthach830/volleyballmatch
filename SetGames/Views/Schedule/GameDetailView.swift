@@ -100,18 +100,35 @@ public struct GameDetailView: View {
                                     .clipShape(Capsule())
                             }
                             
-                            if game.isLevelLocked {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 9))
-                                    Text("Level Locked • \(game.allowedRatingsDescription) only")
-                                        .font(.system(size: 11, weight: .bold))
+                            if game.isPrivate || game.isLevelLocked {
+                                HStack(spacing: 6) {
+                                    if game.isPrivate {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "lock.shield.fill")
+                                                .font(.system(size: 9))
+                                            Text("Private Game")
+                                                .font(.system(size: 11, weight: .bold))
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.purple.opacity(0.15))
+                                        .foregroundColor(.purple)
+                                        .clipShape(Capsule())
+                                    }
+                                    if game.isLevelLocked {
+                                        HStack(spacing: 5) {
+                                            Image(systemName: "lock.fill")
+                                                .font(.system(size: 9))
+                                            Text("Level Locked • \(game.allowedRatingsDescription) only")
+                                                .font(.system(size: 11, weight: .bold))
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.orange.opacity(0.15))
+                                        .foregroundColor(.orange)
+                                        .clipShape(Capsule())
+                                    }
                                 }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.orange.opacity(0.15))
-                                .foregroundColor(.orange)
-                                .clipShape(Capsule())
                             }
                             
                             Text(game.title)
@@ -241,37 +258,53 @@ public struct GameDetailView: View {
                             
                             if !isPoolCollapsed {
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                                    ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
-                                        playerCard(dataManager.player(for: pid), game: game)
+                                    ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { index, pid in
+                                        playerCard(dataManager.player(for: pid), game: game, playerIndex: index + 1)
                                     }
                                     
                                     if game.spotsRemaining > 0 && !isUserInMatch {
-                                        Button {
-                                            let res = dataManager.joinGamePool(gameId: game.id)
-                                            if !res.success {
-                                                alertTitle = "Cannot Join Pool"
-                                                alertMessage = res.message
-                                                showAlert = true
-                                            }
-                                        } label: {
+                                        if game.isPrivate {
                                             VStack(spacing: 4) {
-                                                Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
+                                                Image(systemName: "lock.shield")
                                                     .font(.system(size: 18))
-                                                    .foregroundColor(.orange)
-                                                Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "+ Join Player Pool")
+                                                    .foregroundColor(.secondary)
+                                                Text("Private Game • Invite Only")
                                                     .font(.system(size: 11, weight: .bold))
-                                                    .foregroundColor(.orange)
+                                                    .foregroundColor(.secondary)
                                                     .lineLimit(1)
                                             }
                                             .padding(12)
                                             .frame(maxWidth: .infinity)
-                                            .background(Color.orange.opacity(0.08))
+                                            .background(Color(UIColor.systemGray6))
                                             .clipShape(RoundedRectangle(cornerRadius: 12))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 12)
-                                                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
-                                                    .foregroundColor(.orange.opacity(0.5))
-                                            )
+                                        } else {
+                                            Button {
+                                                let res = dataManager.joinGamePool(gameId: game.id)
+                                                if !res.success {
+                                                    alertTitle = "Cannot Join Pool"
+                                                    alertMessage = res.message
+                                                    showAlert = true
+                                                }
+                                            } label: {
+                                                VStack(spacing: 4) {
+                                                    Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
+                                                        .font(.system(size: 18))
+                                                        .foregroundColor(.orange)
+                                                    Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "+ Join Player Pool")
+                                                        .font(.system(size: 11, weight: .bold))
+                                                        .foregroundColor(.orange)
+                                                        .lineLimit(1)
+                                                }
+                                                .padding(12)
+                                                .frame(maxWidth: .infinity)
+                                                .background(Color.orange.opacity(0.08))
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                                        .foregroundColor(.orange.opacity(0.5))
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -664,38 +697,52 @@ public struct GameDetailView: View {
                         .padding(12)
                         .background(Color.purple.opacity(0.08))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .strokeBorder(Color.purple.opacity(0.3), lineWidth: 1)
-                        )
-                    } else if game.isFull || game.spotsRemaining == 0 {
-                        Button {
-                            let res = dataManager.joinWaitlist(gameId: game.id)
-                            if !res.success {
-                                alertTitle = "Cannot Join Waitlist"
-                                alertMessage = res.message
-                                showAlert = true
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "clock.badge.plus")
-                                    .font(.system(size: 14, weight: .bold))
-                                Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
-                                    .font(.system(size: 12, weight: .bold))
-                            }
-                            .foregroundColor(.purple)
-                            .frame(maxWidth: .infinity)
-                            .padding(12)
-                            .background(Color.purple.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
-                                    .foregroundColor(.purple.opacity(0.5))
+                                    .strokeBorder(Color.purple.opacity(0.3), lineWidth: 1)
                             )
+                        } else if game.isFull || game.spotsRemaining == 0 {
+                            if game.isPrivate {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "lock.shield")
+                                        .font(.system(size: 14, weight: .bold))
+                                    Text("Private Game • Invite Only")
+                                        .font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(12)
+                                .background(Color(UIColor.systemGray6))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            } else {
+                                Button {
+                                    let res = dataManager.joinWaitlist(gameId: game.id)
+                                    if !res.success {
+                                        alertTitle = "Cannot Join Waitlist"
+                                        alertMessage = res.message
+                                        showAlert = true
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "clock.badge.plus")
+                                            .font(.system(size: 14, weight: .bold))
+                                        Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
+                                            .font(.system(size: 12, weight: .bold))
+                                    }
+                                    .foregroundColor(.purple)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(12)
+                                    .background(Color.purple.opacity(0.08))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                            .foregroundColor(.purple.opacity(0.5))
+                                    )
+                                }
+                            }
                         }
                     }
-                }
                 
                 // Queued players list or informative placeholder
                 if game.waitlistPlayerIds.isEmpty {
@@ -724,6 +771,7 @@ public struct GameDetailView: View {
     private func waitlistRow(index: Int, playerId: UUID, gameId: UUID) -> some View {
         let p = dataManager.player(for: playerId)
         let isMe = dataManager.currentUser?.id == p.id
+        let displayName = isUserInMatch ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player \(index + 1)"
         return HStack(spacing: 12) {
             Text("#\(index + 1)")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -732,10 +780,19 @@ public struct GameDetailView: View {
                 .background(Color.purple)
                 .clipShape(Circle())
             
-            PlayerAvatarView(player: p, dimension: 36)
+            if isUserInMatch {
+                PlayerAvatarView(player: p, dimension: 36)
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(Color(UIColor.systemGray5))
+                        .frame(width: 36, height: 36)
+                    CourtAvatarIconView(avatarKey: "🏐", size: 24)
+                }
+            }
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(p.nickname.isEmpty ? p.name : p.nickname)
+                Text(displayName)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.primary)
                 Text("Rating: \(p.rating.rawValue)")
@@ -793,12 +850,22 @@ public struct GameDetailView: View {
         return isHost
     }
     
-    private func playerCard(_ p: Player, game: SetGame) -> some View {
+    private func playerCard(_ p: Player, game: SetGame, playerIndex: Int) -> some View {
         let isMatchHost = (game.hostPlayerId == dataManager.currentUser?.id) || (dataManager.currentUser?.isRoot == true)
+        let displayName = isUserInMatch ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player \(playerIndex)"
         return HStack(spacing: 8) {
-            PlayerAvatarView(player: p, dimension: 36, showBadge: false)
+            if isUserInMatch {
+                PlayerAvatarView(player: p, dimension: 36, showBadge: false)
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(Color(UIColor.systemGray5))
+                        .frame(width: 36, height: 36)
+                    CourtAvatarIconView(avatarKey: "🏐", size: 24)
+                }
+            }
             VStack(alignment: .leading, spacing: 2) {
-                Text(p.nickname.isEmpty ? p.name : p.nickname)
+                Text(displayName)
                     .font(.system(size: 13, weight: .bold))
                     .lineLimit(1)
                 
@@ -836,32 +903,48 @@ public struct GameDetailView: View {
     }
     
     private func emptySpotCard(teamNumber: Int, game: SetGame) -> some View {
-        Button {
-            let res = dataManager.joinOpenGame(gameId: game.id, teamNumber: teamNumber)
-            if !res.success {
-                alertTitle = "Cannot Join Match"
-                alertMessage = res.message
-                showAlert = true
-            }
-        } label: {
+        if game.isPrivate && !isUserInMatch {
             VStack(spacing: 4) {
-                Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "plus.circle.dashed")
+                Image(systemName: "lock.shield")
                     .font(.system(size: 18))
-                    .foregroundColor(.orange)
-                Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "Open Spot")
+                    .foregroundColor(.secondary)
+                Text("Private Game")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.orange)
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
             }
             .padding(12)
             .frame(maxWidth: .infinity)
-            .background(Color.orange.opacity(0.08))
+            .background(Color(UIColor.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
-                    .foregroundColor(.orange.opacity(0.5))
-            )
+        } else {
+            Button {
+                let res = dataManager.joinOpenGame(gameId: game.id, teamNumber: teamNumber)
+                if !res.success {
+                    alertTitle = "Cannot Join Match"
+                    alertMessage = res.message
+                    showAlert = true
+                }
+            } label: {
+                VStack(spacing: 4) {
+                    Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "plus.circle.dashed")
+                        .font(.system(size: 18))
+                        .foregroundColor(.orange)
+                    Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "Open Spot")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.orange)
+                        .lineLimit(1)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity)
+                .background(Color.orange.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                        .foregroundColor(.orange.opacity(0.5))
+                )
+            }
         }
     }
     
@@ -1098,8 +1181,20 @@ public struct GameDetailView: View {
         let t2Players = match.team2PlayerIds.map { dataManager.player(for: $0) }
         let resting = match.restingPlayerIds.map { dataManager.player(for: $0) }
         
-        let t1Names = t1Players.map { $0.nickname.isEmpty ? $0.name : $0.nickname }.joined(separator: " & ")
-        let t2Names = t2Players.map { $0.nickname.isEmpty ? $0.name : $0.nickname }.joined(separator: " & ")
+        let t1Names = t1Players.map { p in
+            if !isUserInMatch {
+                let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
+                return "Player \(idx)"
+            }
+            return p.nickname.isEmpty ? p.name : p.nickname
+        }.joined(separator: " & ")
+        let t2Names = t2Players.map { p in
+            if !isUserInMatch {
+                let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
+                return "Player \(idx)"
+            }
+            return p.nickname.isEmpty ? p.name : p.nickname
+        }.joined(separator: " & ")
         
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -1148,7 +1243,14 @@ public struct GameDetailView: View {
             }
             
             if !resting.isEmpty {
-                Text("⏸ Resting: \(resting.map { $0.nickname.isEmpty ? $0.name : $0.nickname }.joined(separator: ", "))")
+                let restingNames = resting.map { p in
+                    if !isUserInMatch {
+                        let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
+                        return "Player \(idx)"
+                    }
+                    return p.nickname.isEmpty ? p.name : p.nickname
+                }.joined(separator: ", ")
+                Text("⏸ Resting: \(restingNames)")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }

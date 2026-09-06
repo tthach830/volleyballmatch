@@ -256,6 +256,8 @@ export function parseGameDate(rawDate) {
   }
   return new Date();
 }
+window.isUpcomingGame = isUpcomingGame;
+window.parseGameDate = parseGameDate;
 
 export function getUniqueConnectionsCount(player) {
   if (!player) return 0;
@@ -421,9 +423,14 @@ export function isRootUser(user) {
   return cleaned === "4087869405" || user.id === "47519EF2-207D-4C20-B9A6-BFEDA40FE581" || user.isRoot === true;
 }
 
-function resolvePlayerNames(pids) {
+function resolvePlayerNames(pids, game, isHidden) {
   if (!pids || pids.length === 0) return "TBD";
   return pids.map(id => {
+    if (isHidden && game) {
+      const allP = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+      const idx = allP.indexOf(id);
+      return `Player ${idx >= 0 ? idx + 1 : 1}`;
+    }
     const p = state.getPlayer(id);
     return p ? (p.nickname || p.name) : (typeof id === 'string' && id.startsWith("guest_") ? id.replace("guest_", "") : "Player");
   }).join(" & ");
@@ -445,6 +452,12 @@ window.joinGamePool = (gameId) => {
   const maxP = game.maxPlayers || 4;
   if (allP.length >= maxP) {
     showToast("Sorry, this match is already full!");
+    return;
+  }
+
+  // Private Game Check
+  if (game.isPrivate && !isRootUser(state.currentUser) && game.hostPlayerId !== uid) {
+    showToast("Private Game: This match is private and invite-only.");
     return;
   }
 
@@ -498,6 +511,13 @@ window.joinWaitlist = (gameId) => {
     showToast("You are already on the waitlist!");
     return;
   }
+
+  // Private Game Check
+  if (game.isPrivate && !isRootUser(state.currentUser) && game.hostPlayerId !== uid) {
+    showToast("Private Game: This match is private and invite-only.");
+    return;
+  }
+
   const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
   if (game.isLevelLocked && !allowed.includes(state.currentUser.rating)) {
     showToast(`Level Locked: ${allowed.join(", ")} only (Your rating: ${state.currentUser.rating}).`);
@@ -856,6 +876,7 @@ function renderMatches() {
     const maxP = game.maxPlayers || 4;
     const hasOpenSpots = allP.length < maxP;
     if (!hasOpenSpots) return false;
+    if (game.isPrivate) return false;
     if (!state.currentUser) return true;
     if (game.team1PlayerIds?.includes(state.currentUser.id) || game.team2PlayerIds?.includes(state.currentUser.id)) {
       return false; // already in match
@@ -903,10 +924,11 @@ function renderMatches() {
       allPlayerIds.includes(currentUserId) ||
       game.hostPlayerId === currentUserId
     );
+    const isRoot = isRootUser(state.currentUser);
     const isHost = currentUserId && (
       (game.hostPlayerId && game.hostPlayerId === currentUserId) ||
       (game.team1PlayerIds?.[0] === currentUserId) ||
-      (state.currentUser && state.currentUser.isRoot)
+      isRoot
     );
     const hostPlayer = game.hostPlayerId ? state.getPlayer(game.hostPlayerId) : (game.team1PlayerIds?.[0] ? state.getPlayer(game.team1PlayerIds[0]) : null);
 
@@ -938,19 +960,22 @@ function renderMatches() {
     const hostDisplayName = hostPlayer ? (hostPlayer.nickname || hostPlayer.name) : "Host";
     const hostStarVal = hostPlayer ? formatStarRating(hostPlayer) : "5.0";
 
-    const renderPoolPlayer = (pid) => {
+    const renderPoolPlayer = (pid, idx) => {
       const p = state.getPlayer(pid);
       const canRemove = isHost && pid !== game.hostPlayerId;
       const removeBtnHtml = canRemove ? `
         <button type="button" style="background:none; border:none; color:#ef4444; font-size:16px; font-weight:bold; cursor:pointer; padding:2px 6px; margin-left:auto; line-height:1;" title="Remove player from match" onclick="window.removePlayerFromPool('${game.id}', '${pid}')">✕</button>
       ` : '';
 
+      const isHidden = !isMember && !isRoot;
+      const displayName = isHidden ? `Player ${idx + 1}` : (p ? (p.nickname || p.name) : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player"));
+      const avatarDisplay = isHidden ? renderAvatarContent('🏐') : renderAvatarContent(p ? p.avatarEmoji : '🏐');
+
       if (!p) {
-        const name = pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player";
         return `<div class="player-tile-mock">
-          <div class="player-tile-avatar">${renderAvatarContent('🏐')}</div>
+          <div class="player-tile-avatar">${avatarDisplay}</div>
           <div class="player-tile-info">
-            <span class="player-tile-name">${name}</span>
+            <span class="player-tile-name">${displayName}</span>
             <div class="player-tile-sub">
               <span class="badge badge-tier-b" style="font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px;">B</span>
               <span style="font-size:11px; font-weight:700; color:#b45309;">⭐ 5.0</span>
@@ -962,9 +987,9 @@ function renderMatches() {
       const tierLower = (p.rating || 'b').toLowerCase();
       const ratingVal = formatStarRating(p);
       return `<div class="player-tile-mock">
-        <div class="player-tile-avatar">${renderAvatarContent(p.avatarEmoji)}</div>
+        <div class="player-tile-avatar">${avatarDisplay}</div>
         <div class="player-tile-info">
-          <span class="player-tile-name">${p.nickname || p.name}</span>
+          <span class="player-tile-name">${displayName}</span>
           <div class="player-tile-sub">
             <span class="badge badge-tier-${tierLower}" style="font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px;">${p.rating || 'B'}</span>
             <span style="font-size:11px; font-weight:700; color:#b45309;">⭐ ${ratingVal}</span>
@@ -1015,6 +1040,7 @@ function renderMatches() {
           <span>👑 <strong>HOST:</strong> ${hostDisplayName}</span>
           <span>•</span>
           <span>⭐ ${hostStarVal}</span>
+          ${game.isPrivate ? `<span class="badge-private-lock">🔒 Private Game</span>` : ''}
           ${game.isLevelLocked ? `<span class="badge-level-lock">🔒 Level Locked</span>` : ''}
         </div>
 
@@ -1035,11 +1061,17 @@ function renderMatches() {
           ${!isPoolCollapsed ? `
           <div class="pool-grid-2x2">
             ${poolPlayersHtml}
-            ${needsPlayers && !isMember ? `
-              <button type="button" class="btn btn-outline btn-sm" style="color:var(--accent); border-color:var(--accent); border-style:dashed; min-height: 48px; border-radius:10px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff;" onclick="window.joinGamePool('${game.id}')">
-                <span style="font-size:16px;">+</span> Join Player Pool
-              </button>
-            ` : ''}
+            ${needsPlayers && !isMember ? (
+              game.isPrivate ? `
+                <div style="min-height: 48px; border-radius: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; background: #f1f5f9; color: var(--text-muted); font-size: 12px; border: 1px dashed #cbd5e1;">
+                  🔒 Private Game • Invite Only
+                </div>
+              ` : `
+                <button type="button" class="btn btn-outline btn-sm" style="color:var(--accent); border-color:var(--accent); border-style:dashed; min-height: 48px; border-radius:10px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff;" onclick="window.joinGamePool('${game.id}')">
+                  <span style="font-size:16px;">+</span> Join Player Pool
+                </button>
+              `
+            ) : ''}
           </div>
 
           ${(spotsLeft === 0 || waitlistIds.length > 0) ? `
@@ -1052,20 +1084,26 @@ function renderMatches() {
               </div>
 
               ${spotsLeft === 0 && !isMember ? (
-                isWaitlisted ? `
-                  <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="font-size: 12px; font-weight: 700; color: #7e22ce;">
-                      ⏳ You are #${waitlistPos} on the Waitlist
-                    </div>
-                    <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 3px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">
-                      Leave Waitlist
-                    </button>
+                game.isPrivate ? `
+                  <div style="background: #f1f5f9; color: var(--text-muted); border: 1px dashed #cbd5e1; font-weight: 700; width: 100%; margin-bottom: 8px; padding: 9px 12px; border-radius: 8px; font-size: 12px; text-align: center;">
+                    🔒 Private Game • Invite Only
                   </div>
-                ` : `
-                  <button type="button" class="btn btn-sm" style="background: #f3e8ff; color: #7e22ce; border: 1px dashed #c084fc; font-weight: 700; width: 100%; margin-bottom: 8px; padding: 9px 12px; border-radius: 8px; font-size: 12px;" onclick="window.joinWaitlist('${game.id}')">
-                    ⏳ Pool Full • Join Waitlist (${waitlistIds.length} queued)
-                  </button>
-                `
+                ` : (
+                  isWaitlisted ? `
+                    <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                      <div style="font-size: 12px; font-weight: 700; color: #7e22ce;">
+                        ⏳ You are #${waitlistPos} on the Waitlist
+                      </div>
+                      <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 3px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">
+                        Leave Waitlist
+                      </button>
+                    </div>
+                  ` : `
+                    <button type="button" class="btn btn-sm" style="background: #f3e8ff; color: #7e22ce; border: 1px dashed #c084fc; font-weight: 700; width: 100%; margin-bottom: 8px; padding: 9px 12px; border-radius: 8px; font-size: 12px;" onclick="window.joinWaitlist('${game.id}')">
+                      ⏳ Pool Full • Join Waitlist (${waitlistIds.length} queued)
+                    </button>
+                  `
+                )
               ) : ''}
 
               ${waitlistIds.length === 0 ? `
@@ -1076,7 +1114,8 @@ function renderMatches() {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   ${waitlistIds.map((pid, idx) => {
                     const p = state.players.find(x => x.id === pid) || { id: pid, name: "Player", nickname: "", rating: "B" };
-                    const pName = p.nickname ? `${p.name} (${p.nickname})` : p.name;
+                    const isHidden = !isMember && !isRoot;
+                    const pName = isHidden ? `Player ${idx + 1}` : (p.nickname ? `${p.name} (${p.nickname})` : p.name);
                     const isMe = currentUserId === pid;
                     return `
                       <div style="display: flex; align-items: center; justify-content: space-between; background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 6px 10px;">
@@ -1150,13 +1189,13 @@ function renderMatches() {
                         ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: var(--text-muted);">Scheduled</span>'}
                       </div>
                       <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px;">
-                        <div style="flex: 1; text-align: left;">${resolvePlayerNames(m.team1PlayerIds)}</div>
+                        <div style="flex: 1; text-align: left;">${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}</div>
                         <span style="color: var(--text-muted); font-size: 11px; font-weight: 900; padding: 0 8px;">VS</span>
-                        <div style="flex: 1; text-align: right;">${resolvePlayerNames(m.team2PlayerIds)}</div>
+                        <div style="flex: 1; text-align: right;">${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot)}</div>
                       </div>
                       ${m.restingPlayerIds && m.restingPlayerIds.length > 0 ? `
                         <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">
-                          ⏸ Resting: ${resolvePlayerNames(m.restingPlayerIds)}
+                          ⏸ Resting: ${resolvePlayerNames(m.restingPlayerIds, game, !isMember && !isRoot)}
                         </div>
                       ` : ''}
                       <div style="display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid var(--border, #f1f5f9);">
@@ -1224,17 +1263,24 @@ function renderMatches() {
                     <span style="font-size: 10px; font-weight: 800; color: #991b1b; line-height: 1.1; text-align: center;">Leave<br>Waitlist<br>(#${waitlistPos})</span>
                   </button>
                 ` : (
-                  needsPlayers ? `
-                    <button type="button" class="footer-action-btn-stacked" style="background: #f0fdf4; border-color: #86efac; color: #166534; min-height: 48px; padding: 6px 10px;" onclick="window.joinGamePool('${game.id}')" title="Join Match">
-                      <span style="font-size: 16px;">🏐</span>
-                      <span style="font-size: 10px; font-weight: 800; color: #166534; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Game</span>
+                  game.isPrivate ? `
+                    <button type="button" class="footer-action-btn-stacked" style="background: #f1f5f9; border-color: #cbd5e1; color: var(--text-muted); min-height: 48px; padding: 6px 8px; cursor: default;" title="Private Game • Invite Only">
+                      <span style="font-size: 14px;">🔒</span>
+                      <span style="font-size: 9px; font-weight: 800; color: var(--text-muted); margin-top: 2px; line-height: 1.1; text-align: center;">Private<br>Game</span>
                     </button>
-                  ` : `
-                    <button type="button" class="footer-action-btn-stacked" style="background: #faf5ff; border-color: #d8b4fe; color: #7e22ce; min-height: 48px; padding: 6px 8px;" onclick="window.joinWaitlist('${game.id}')" title="Join Waitlist">
-                      <span style="font-size: 14px;">⏳</span>
-                      <span style="font-size: 9px; font-weight: 800; color: #7e22ce; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Waitlist</span>
-                    </button>
-                  `
+                  ` : (
+                    needsPlayers ? `
+                      <button type="button" class="footer-action-btn-stacked" style="background: #f0fdf4; border-color: #86efac; color: #166534; min-height: 48px; padding: 6px 10px;" onclick="window.joinGamePool('${game.id}')" title="Join Match">
+                        <span style="font-size: 16px;">🏐</span>
+                        <span style="font-size: 10px; font-weight: 800; color: #166534; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Game</span>
+                      </button>
+                    ` : `
+                      <button type="button" class="footer-action-btn-stacked" style="background: #faf5ff; border-color: #d8b4fe; color: #7e22ce; min-height: 48px; padding: 6px 8px;" onclick="window.joinWaitlist('${game.id}')" title="Join Waitlist">
+                        <span style="font-size: 14px;">⏳</span>
+                        <span style="font-size: 9px; font-weight: 800; color: #7e22ce; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Waitlist</span>
+                      </button>
+                    `
+                  )
                 )
               )}
             </div>
@@ -2167,6 +2213,7 @@ window.handleCreateMatch = (e) => {
   const allowedRatings = checkedBoxes.map(cb => cb.value);
   const targetRating = allowedRatings[0] || (state.currentUser?.rating || "B");
   const isLevelLocked = document.getElementById("create-level-locked").checked;
+  const isPrivate = document.getElementById("create-is-private") ? document.getElementById("create-is-private").checked : false;
   const maxPlayers = parseInt(document.getElementById("create-max-players")?.value) || 4;
   const format = document.getElementById("create-format").value;
   const courtLocation = document.getElementById("create-beach").value;
@@ -2182,6 +2229,7 @@ window.handleCreateMatch = (e) => {
     targetRating,
     allowedRatings: allowedRatings.length > 0 ? allowedRatings : [targetRating],
     isLevelLocked,
+    isPrivate,
     maxPlayers,
     format,
     hostPlayerId: state.currentUser.id,
@@ -2272,7 +2320,8 @@ window.openEditMatchModal = (gameId) => {
   const isMember = state.currentUser && (
     game.team1PlayerIds?.includes(state.currentUser.id) ||
     game.team2PlayerIds?.includes(state.currentUser.id) ||
-    game.hostPlayerId === state.currentUser.id
+    game.hostPlayerId === state.currentUser.id ||
+    isRootUser(state.currentUser)
   );
   if (!isMember) {
     showToast("Only match participants can edit match preferences.");
@@ -2289,6 +2338,9 @@ window.openEditMatchModal = (gameId) => {
   window.updateTierDropdownDisplay('edit');
   
   document.getElementById("edit-level-locked").checked = !!game.isLevelLocked;
+  if (document.getElementById("edit-is-private")) {
+    document.getElementById("edit-is-private").checked = !!game.isPrivate;
+  }
   if (document.getElementById("edit-max-players")) {
     document.getElementById("edit-max-players").value = game.maxPlayers || 4;
   }
@@ -2325,6 +2377,9 @@ window.handleSaveMatchEdit = (e) => {
 
   game.title = document.getElementById("edit-title").value.trim();
   game.isLevelLocked = document.getElementById("edit-level-locked").checked;
+  if (document.getElementById("edit-is-private")) {
+    game.isPrivate = document.getElementById("edit-is-private").checked;
+  }
   game.maxPlayers = parseInt(document.getElementById("edit-max-players")?.value) || game.maxPlayers || 4;
   game.format = document.getElementById("edit-format").value;
   game.courtLocation = document.getElementById("edit-beach").value;

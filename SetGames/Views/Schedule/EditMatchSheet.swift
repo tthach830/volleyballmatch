@@ -15,6 +15,7 @@ public struct EditMatchSheet: View {
     @State private var courtNumber: String
     @State private var scheduledDate: Date
     @State private var isLevelLocked: Bool
+    @State private var isPrivate: Bool
     @State private var notes: String
     @State private var alertMessage: String? = nil
     @State private var showAlert: Bool = false
@@ -30,6 +31,7 @@ public struct EditMatchSheet: View {
         _courtNumber = State(initialValue: game.courtNumber)
         _scheduledDate = State(initialValue: game.scheduledDate)
         _isLevelLocked = State(initialValue: game.isLevelLocked)
+        _isPrivate = State(initialValue: game.isPrivate)
         _notes = State(initialValue: game.notes)
     }
     
@@ -91,6 +93,25 @@ public struct EditMatchSheet: View {
                             Toggle("", isOn: $isLevelLocked)
                                 .labelsHidden()
                                 .tint(.orange)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        HStack(alignment: .center) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: isPrivate ? "lock.shield.fill" : "lock.shield")
+                                        .foregroundColor(isPrivate ? .purple : .secondary)
+                                    Text("Private Game")
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                                Text(isPrivate ? "Invite only (hidden pool names for non-members)" : "Public match (open for beach players to join)")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $isPrivate)
+                                .labelsHidden()
+                                .tint(.purple)
                         }
                         .padding(.vertical, 2)
                         
@@ -227,7 +248,8 @@ public struct EditMatchSheet: View {
                             courtLocation: effectiveCourt,
                             courtNumber: courtNumber.isEmpty ? "Court #1" : courtNumber,
                             isLevelLocked: isLevelLocked,
-                            notes: notes
+                            notes: notes,
+                            isPrivate: isPrivate
                         )
                         if res.success {
                             dismiss()

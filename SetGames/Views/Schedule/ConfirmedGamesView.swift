@@ -201,6 +201,7 @@ public struct ConfirmedGamesView: View {
     
     private func canUserJoin(_ game: SetGame) -> Bool {
         guard game.spotsRemaining > 0 else { return false }
+        if game.isPrivate { return false }
         guard let user = dataManager.currentUser else { return true }
         if game.allPlayerIds.contains(user.id) { return false }
         if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
@@ -256,14 +257,23 @@ public struct ConfirmedGamesView: View {
         }.joined(separator: " & ")
     }
 
-    private func playerPoolTile(pid: UUID, game: SetGame, isHost: Bool) -> some View {
+    private func playerPoolTile(pid: UUID, game: SetGame, isHost: Bool, isMyGame: Bool, playerIndex: Int) -> some View {
         let p = dataManager.player(for: pid)
-        let displayName = p.nickname.isEmpty ? p.name : p.nickname
+        let displayName = isMyGame ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player \(playerIndex)"
         let ratingTier = p.rating
         let starStr = String(format: "%.1f", p.averageStarRating)
         
         return HStack(spacing: 8) {
-            PlayerAvatarView(player: p, dimension: 32, showBadge: false)
+            if isMyGame {
+                PlayerAvatarView(player: p, dimension: 32, showBadge: false)
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(Color(UIColor.systemGray5))
+                        .frame(width: 32, height: 32)
+                    CourtAvatarIconView(avatarKey: "🏐", size: 22)
+                }
+            }
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayName)
@@ -525,6 +535,19 @@ public struct ConfirmedGamesView: View {
                     .foregroundColor(.orange)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
+                if game.isPrivate {
+                    HStack(spacing: 3) {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 9))
+                        Text("Private Game")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.purple.opacity(0.15))
+                    .foregroundColor(.purple)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
                 Spacer(minLength: 0)
             }
             .lineLimit(1)
@@ -574,33 +597,46 @@ public struct ConfirmedGamesView: View {
             if !isCollapsed {
                 // 2-Column Grid
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { _, pid in
-                    playerPoolTile(pid: pid, game: game, isHost: isHost)
+                ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { index, pid in
+                    playerPoolTile(pid: pid, game: game, isHost: isHost, isMyGame: isMyGame, playerIndex: index + 1)
                 }
                 
                 if game.spotsRemaining > 0 && !isMyGame {
-                    Button {
-                        let res = dataManager.joinGamePool(gameId: game.id)
-                        alertMessage = res.message
-                        showAlert = true
-                    } label: {
+                    if game.isPrivate {
                         HStack(spacing: 6) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 13, weight: .bold))
-                            Text("Join Player Pool")
+                            Text("🔒")
+                                .font(.system(size: 13))
+                            Text("Private Game • Invite Only")
                                 .font(.system(size: 12, weight: .bold))
                         }
-                        .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
+                        .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, minHeight: 46)
-                        .background(Color(.systemBackground))
+                        .background(Color(.systemGray6))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
-                                .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93).opacity(0.6))
-                        )
+                    } else {
+                        Button {
+                            let res = dataManager.joinGamePool(gameId: game.id)
+                            alertMessage = res.message
+                            showAlert = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text("Join Player Pool")
+                                    .font(.system(size: 12, weight: .bold))
+                            }
+                            .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                    .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93).opacity(0.6))
+                            )
+                        }
+                        .buttonStyle(.borderless)
                     }
-                    .buttonStyle(.borderless)
                 }
             }
             
@@ -648,27 +684,39 @@ public struct ConfirmedGamesView: View {
                             .background(Color.purple.opacity(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         } else {
-                            Button {
-                                let res = dataManager.joinWaitlist(gameId: game.id)
-                                alertMessage = res.message
-                                showAlert = true
-                            } label: {
+                            if game.isPrivate {
                                 HStack(spacing: 6) {
-                                    Text("⏳")
-                                    Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
+                                    Text("🔒")
+                                    Text("Private Game • Invite Only")
                                         .font(.system(size: 12, weight: .bold))
                                 }
-                                .foregroundColor(Color.purple)
+                                .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, minHeight: 36)
-                                .background(Color.purple.opacity(0.08))
+                                .background(Color(.systemGray6))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                                        .foregroundColor(Color.purple.opacity(0.5))
-                                )
+                            } else {
+                                Button {
+                                    let res = dataManager.joinWaitlist(gameId: game.id)
+                                    alertMessage = res.message
+                                    showAlert = true
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Text("⏳")
+                                        Text("Pool Full • Join Waitlist (\(game.waitlistPlayerIds.count) queued)")
+                                            .font(.system(size: 12, weight: .bold))
+                                    }
+                                    .foregroundColor(Color.purple)
+                                    .frame(maxWidth: .infinity, minHeight: 36)
+                                    .background(Color.purple.opacity(0.08))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                            .foregroundColor(Color.purple.opacity(0.5))
+                                    )
+                                }
+                                .buttonStyle(.borderless)
                             }
-                            .buttonStyle(.borderless)
                         }
                     }
                     
@@ -681,7 +729,7 @@ public struct ConfirmedGamesView: View {
                     } else {
                         ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.offset) { idx, wId in
                             let wp = dataManager.player(for: wId)
-                            let wpName = wp.nickname.isEmpty ? wp.name : "\(wp.name) (\(wp.nickname))"
+                            let wpName = isMyGame ? (wp.nickname.isEmpty ? wp.name : "\(wp.name) (\(wp.nickname))") : "Player \(idx + 1)"
                             HStack {
                                 Text("#\(idx + 1)")
                                     .font(.system(size: 10, weight: .black))

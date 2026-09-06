@@ -467,6 +467,11 @@ public class DataManager: ObservableObject {
             return (false, "Sorry, this match is already full!")
         }
         
+        // Private Game Check
+        if game.isPrivate && !user.isRoot && game.hostPlayerId != user.id {
+            return (false, "Private Game: This match is private and invite-only.")
+        }
+        
         // Level Lock Check
         if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
             return (false, "Level Locked: This match is locked to \(game.allowedRatingsDescription) players only. Your current rating is \(user.rating.rawValue).")
@@ -506,6 +511,11 @@ public class DataManager: ObservableObject {
             return (false, "Sorry, this match is already full!")
         }
         
+        // Private Game Check
+        if game.isPrivate && !user.isRoot && game.hostPlayerId != user.id {
+            return (false, "Private Game: This match is private and invite-only.")
+        }
+        
         // Level Lock Check
         if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
             return (false, "Level Locked: This match is locked to \(game.allowedRatingsDescription) players only. Your current rating is \(user.rating.rawValue).")
@@ -537,6 +547,11 @@ public class DataManager: ObservableObject {
         }
         if game.waitlistPlayerIds.contains(user.id) {
             return (false, "You are already on the waitlist for this game.")
+        }
+        
+        // Private Game Check
+        if game.isPrivate && !user.isRoot && game.hostPlayerId != user.id {
+            return (false, "Private Game: This match is private and invite-only.")
         }
         
         // Level Lock Check
@@ -890,7 +905,8 @@ public class DataManager: ObservableObject {
         courtLocation: String,
         courtNumber: String,
         isLevelLocked: Bool,
-        notes: String
+        notes: String,
+        isPrivate: Bool = false
     ) -> (success: Bool, message: String) {
         guard let user = currentUser,
               let index = games.firstIndex(where: { $0.id == gameId }) else {
@@ -918,6 +934,7 @@ public class DataManager: ObservableObject {
         game.courtNumber = courtNumber
         game.isLevelLocked = isLevelLocked
         game.notes = notes
+        game.isPrivate = isPrivate
         
         games[index] = game
         saveToDisk()
@@ -1125,7 +1142,8 @@ public class DataManager: ObservableObject {
         scheduledDate: Date,
         isLevelLocked: Bool = true,
         maxPlayers: Int = 4,
-        notes: String = ""
+        notes: String = "",
+        isPrivate: Bool = false
     ) -> SetGame {
         let hostId = currentUser?.id ?? UUID()
         let effectiveAllowed = allowedRatings.isEmpty ? [targetRating] : allowedRatings
@@ -1147,7 +1165,8 @@ public class DataManager: ObservableObject {
             matchedOptionName: "Community Open Match",
             notes: notes,
             hostPlayerId: hostId,
-            isLevelLocked: isLevelLocked
+            isLevelLocked: isLevelLocked,
+            isPrivate: isPrivate
         )
         
         games.insert(newGame, at: 0)

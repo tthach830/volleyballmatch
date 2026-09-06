@@ -271,6 +271,8 @@ public struct SetGame: Identifiable, Codable, Hashable {
     public var waitlistPlayerIds: [UUID]
     // Multiple selectable skill level tiers
     public var allowedRatings: [RatingTier]
+    // Private / Invite-Only match
+    public var isPrivate: Bool
     
     public init(
         id: UUID = UUID(),
@@ -296,7 +298,8 @@ public struct SetGame: Identifiable, Codable, Hashable {
         submittedRatings: [UUID: [UUID: Int]] = [:],
         messages: [GameChatMessage] = [],
         subMatches: [SubMatch] = [],
-        waitlistPlayerIds: [UUID] = []
+        waitlistPlayerIds: [UUID] = [],
+        isPrivate: Bool = false
     ) {
         self.id = id
         self.rawId = rawId ?? id.uuidString
@@ -322,6 +325,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
         self.submittedRatings = submittedRatings
         self.messages = messages
         self.waitlistPlayerIds = waitlistPlayerIds
+        self.isPrivate = isPrivate
     }
     
     public var effectiveAllowedRatings: [RatingTier] {
@@ -416,7 +420,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, title, targetRating, format, status, scheduledDate, courtLocation, courtNumber
         case team1PlayerIds, team2PlayerIds, setScores, winningTeam, isAutoMatched, matchedOptionName, notes
-        case hostPlayerId, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches, waitlistPlayerIds, allowedRatings
+        case hostPlayerId, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches, waitlistPlayerIds, allowedRatings, isPrivate
     }
 
     public init(from decoder: Decoder) throws {
@@ -576,6 +580,8 @@ public struct SetGame: Identifiable, Codable, Hashable {
         } else {
             allowedRatings = [targetRating]
         }
+        
+        isPrivate = (try? c.decode(Bool.self, forKey: .isPrivate)) ?? false
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -603,5 +609,6 @@ public struct SetGame: Identifiable, Codable, Hashable {
         try c.encode(subMatches, forKey: .subMatches)
         try c.encode(waitlistPlayerIds, forKey: .waitlistPlayerIds)
         try c.encode(allowedRatings.isEmpty ? [targetRating] : allowedRatings, forKey: .allowedRatings)
+        try c.encode(isPrivate, forKey: .isPrivate)
     }
 }
