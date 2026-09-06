@@ -1425,29 +1425,73 @@ function renderMatches() {
           ${renderWeatherDetailsCard(game)}
         </div>
 
-        <!-- Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
-        <div class="player-grid-2x2">
-          ${(() => {
-            const t1Count = Math.max(2, t1Ids.length);
-            const t1Slots = [];
-            for (let i = 0; i < t1Count; i++) {
-              t1Slots.push(renderSlot(t1Ids[i], true));
-            }
-            if (t1Count % 2 !== 0) {
-              t1Slots.push(`<div style="visibility: hidden;"></div>`);
-            }
-            
-            const t2Count = Math.max(2, t2Ids.length);
-            const t2Slots = [];
-            for (let i = 0; i < t2Count; i++) {
-              t2Slots.push(renderSlot(t2Ids[i], false));
-            }
-            if (t2Count % 2 !== 0) {
-              t2Slots.push(`<div style="visibility: hidden;"></div>`);
-            }
-            return [...t1Slots, ...t2Slots].join('');
-          })()}
-        </div>
+        <!-- Player Pool: List with Count (if > 4 players) OR 2x2 Grid (if <= 4 players) -->
+        ${allPlayerIds.length > 4 ? `
+          <div class="player-pool-list-container">
+            <div class="player-pool-list-header">
+              <span class="player-pool-list-title">
+                <span>👥</span> PLAYER POOL (${allPlayerIds.length} PLAYERS)
+              </span>
+              <span class="player-pool-list-badge" style="color: ${spotsLeft > 0 ? '#fb923c' : '#4ade80'};">
+                ${spotsLeft > 0 ? `${spotsLeft} Spot${spotsLeft > 1 ? 's' : ''} Open` : 'Pool Full ✓'}
+              </span>
+            </div>
+
+            <div class="player-pool-list-items">
+              ${allPlayerIds.map((pid, idx) => {
+                const p = state.getPlayer(pid);
+                const isHidden = !isMember && !isRoot;
+                const displayName = isHidden ? 'Player' : (p ? (p.nickname || p.name) : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player"));
+                const avatarDisplay = isHidden ? renderAvatarContent('🏐') : renderAvatarContent(p ? p.avatarEmoji : '🏐');
+                const tierVal = (p?.rating || 'B');
+                const tierClass = tierVal.toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${tierVal.toLowerCase()}`;
+                const starVal = p ? formatStarRating(p) : "5.0";
+                const isGameHost = pid === game.hostPlayerId;
+                const canRemove = isHost && !isGameHost;
+
+                return `
+                  <div class="player-pool-list-row">
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                      <span style="font-size: 10px; font-weight: 800; background: rgba(56, 189, 248, 0.18); color: #38bdf8; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        #${idx + 1}
+                      </span>
+                      <div style="width: 28px; height: 28px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">
+                        ${avatarDisplay}
+                      </div>
+                      <div style="min-width: 0;">
+                        <div style="font-size: 12px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
+                          <span>${displayName}</span>
+                          ${isGameHost ? `<span style="font-size: 8px; font-weight: 800; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 1px 4px; border-radius: 3px;">HOST</span>` : ''}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 5px; margin-top: 1px;">
+                          <span class="badge-tier-pill ${tierClass}" style="font-size: 9px; padding: 1px 5px;">${tierVal}</span>
+                          <span style="font-size: 10px; font-weight: 700; color: #fbbf24;">⭐ ${starVal}</span>
+                        </div>
+                      </div>
+                    </div>
+                    ${canRemove ? `
+                      <button type="button" class="player-tile-trash" title="Remove player from match" style="margin-left: 8px; flex-shrink: 0;" onclick="event.stopPropagation(); window.removePlayerFromPool('${game.id}', '${pid}')">🗑️</button>
+                    ` : ''}
+                  </div>
+                `;
+              }).join("")}
+
+              ${spotsLeft > 0 ? `
+                <div class="player-tile-dark player-tile-empty-t1" style="min-height: 38px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="${needsPlayers && !isMember && !game.isPrivate ? `window.joinGamePool('${game.id}')` : ''}">
+                  <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">+ Open Spot (${spotsLeft} remaining)</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        ` : `
+          <!-- 2x2 Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
+          <div class="player-grid-2x2">
+            ${renderSlot(t1Ids[0], true)}
+            ${renderSlot(t1Ids[1], true)}
+            ${renderSlot(t2Ids[0], false)}
+            ${renderSlot(t2Ids[1], false)}
+          </div>
+        `}
 
         <!-- Waiting Section (if pool full or waitlist has players) -->
         ${(spotsLeft === 0 || waitlistIds.length > 0) ? `
