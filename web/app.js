@@ -2902,7 +2902,7 @@ window.deleteAvailabilitySlot = async (slotId) => {
   const isRoot = isRootUser(user);
   const isOwner = slot.playerId === user.id;
   if (!isRoot && !isOwner) {
-    showToast("Permission denied: Only 4087869405 and the creator can delete this availability window.");
+    showToast("Permission denied: You cannot delete this availability window.");
     return;
   }
 
