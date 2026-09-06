@@ -906,6 +906,7 @@ public struct GameDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
     
+    @ViewBuilder
     private func emptySpotCard(teamNumber: Int, game: SetGame) -> some View {
         if game.isPrivate && !isUserInMatch {
             VStack(spacing: 4) {
