@@ -4,9 +4,14 @@ import {
   collection, 
   doc, 
   setDoc, 
-  deleteDoc,
+  deleteDoc, 
   onSnapshot 
 } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+import { 
+  getAnalytics, 
+  isSupported, 
+  logEvent 
+} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZZo-WxBBrfU-ctKyWDM0MP-ErTDt1QBg",
@@ -19,6 +24,55 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+
+// Safe Firebase Analytics initialization with fallback
+let analyticsInstance = null;
+isSupported().then(supported => {
+  if (supported) {
+    try {
+      analyticsInstance = getAnalytics(app);
+      console.log("📊 Firebase Analytics initialized");
+    } catch (e) {
+      console.warn("Firebase Analytics init notice:", e);
+    }
+  }
+}).catch(() => {});
+
+// Unified event tracking for both Firebase Analytics & Microsoft Clarity
+export function trackEvent(eventName, params = {}) {
+  // 1. Log to Firebase Analytics
+  try {
+    if (analyticsInstance) {
+      logEvent(analyticsInstance, eventName, params);
+    }
+  } catch (e) {
+    console.warn("Firebase logEvent error:", eventName, e);
+  }
+
+  // 2. Tag Microsoft Clarity
+  try {
+    if (typeof window !== "undefined" && window.clarity) {
+      window.clarity("event", eventName);
+      if (params.page_title || params.screen_name) {
+        window.clarity("set", "active_tab", params.page_title || params.screen_name);
+      }
+    }
+  } catch (e) {
+    console.warn("Clarity event notice:", e);
+  }
+}
+
+// Associate user identity with Clarity & Firebase
+export function setUserAnalyticsIdentity(user) {
+  if (!user) return;
+  try {
+    if (typeof window !== "undefined" && window.clarity) {
+      window.clarity("identify", user.id, undefined, undefined, user.name);
+      window.clarity("set", "user_tier", user.rating || "Unrated");
+      window.clarity("set", "user_beach", user.homeBeach || "Main Beach");
+    }
+  } catch (e) {}
+}
 
 // Save or update player in Firestore
 export async function savePlayerToFirestore(player) {

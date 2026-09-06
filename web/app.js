@@ -7,7 +7,9 @@ import {
   deleteSlotFromFirestore,
   subscribeToPlayers, 
   subscribeToGames, 
-  subscribeToSlots 
+  subscribeToSlots,
+  trackEvent,
+  setUserAnalyticsIdentity
 } from "./firebase-config.js";
 
 // Register Service Worker for background Push Notifications
@@ -460,6 +462,11 @@ window.joinGamePool = (gameId) => {
   saveGameToFirestore(game);
   state.saveLocal();
   renderMatches();
+  trackEvent("join_game", {
+    game_id: game.id,
+    game_title: game.title,
+    court: game.courtLocation
+  });
   showToast(`Joined ${game.title}! See you on the sand.`);
 };
 window.joinGame = window.joinGamePool;
@@ -1612,6 +1619,12 @@ export function switchTab(tabId) {
   if (targetTab) targetTab.classList.add("active");
   if (targetNav) targetNav.classList.add("active");
 
+  // Track screen view in Firebase Analytics & Microsoft Clarity
+  trackEvent("screen_view", {
+    screen_name: normalizedId,
+    page_title: normalizedId
+  });
+
   if (normalizedId === "matches") renderMatches();
   if (normalizedId === "matchmaker") renderPickupQueue();
   if (normalizedId === "ladders") {
@@ -1741,6 +1754,8 @@ window.handlePhoneLogin = (e) => {
       } catch (e) {}
     }
     state.saveLocal();
+    setUserAnalyticsIdentity(player);
+    trackEvent("login", { method: "phone", tier: player.rating || "Unrated" });
     if (errEl) errEl.style.display = "none";
     window.closeAuthModal();
     renderHeader();
@@ -1802,6 +1817,8 @@ window.handlePhoneSignUp = (e) => {
   } catch (e) {}
   state.saveLocal();
   savePlayerToFirestore(newPlayer);
+  setUserAnalyticsIdentity(newPlayer);
+  trackEvent("sign_up", { method: "phone", tier: newPlayer.rating, beach: newPlayer.homeBeach });
 
   window.closeAuthModal();
   renderHeader();
@@ -3020,6 +3037,10 @@ window.handleSaveAvailability = (e) => {
   state.availabilitySlots.push(slot);
   state.saveLocal();
   saveSlotToFirestore(slot);
+  trackEvent("create_availability", {
+    beach: slot.preferredBeach,
+    tiers: slot.acceptedTiers ? slot.acceptedTiers.join(",") : ""
+  });
   renderAvailabilityWindows();
   showToast("Free window saved! Matchmaker is searching for partners.");
 };

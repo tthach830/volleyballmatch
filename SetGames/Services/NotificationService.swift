@@ -324,3 +324,30 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         )
     }
 }
+
+// MARK: - Analytics Service (Firebase Analytics)
+#if canImport(FirebaseAnalytics)
+import FirebaseAnalytics
+#endif
+
+public struct AnalyticsService {
+    public static let shared = AnalyticsService()
+    private init() {}
+    
+    public func logScreenView(screenName: String, screenClass: String? = nil) {
+        #if canImport(FirebaseAnalytics)
+        Analytics.logEvent(AnalyticsEventScreenView, parameters: [
+            AnalyticsParameterScreenName: screenName,
+            AnalyticsParameterScreenClass: screenClass ?? screenName
+        ])
+        #endif
+        print("📊 [Analytics] Screen view: \(screenName)")
+    }
+    
+    public func logEvent(name: String, parameters: [String: Any]? = nil) {
+        #if canImport(FirebaseAnalytics)
+        Analytics.logEvent(name, parameters: parameters)
+        #endif
+        print("📊 [Analytics] Event: \(name) \(parameters ?? [:])")
+    }
+}

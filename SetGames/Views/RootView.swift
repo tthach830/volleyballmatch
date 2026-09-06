@@ -77,6 +77,10 @@ public struct RootView: View {
                 if dataManager.currentUser == nil {
                     selectedTab = 2
                 }
+                logTabScreen(selectedTab)
+            }
+            .onChange(of: selectedTab) { newTab in
+                logTabScreen(newTab)
             }
             .onChange(of: dataManager.currentUser) { newUser in
                 if newUser != nil {
@@ -125,6 +129,13 @@ public struct RootView: View {
         }) {
             selectedTab = 0
             deepLinkedGame = targetGame
+        }
+    }
+    
+    private func logTabScreen(_ tab: Int) {
+        let screens = ["Set Games", "Auto-Match", "Ladders", "Profile"]
+        if tab >= 0 && tab < screens.count {
+            AnalyticsService.shared.logScreenView(screenName: screens[tab])
         }
     }
 }
