@@ -94,10 +94,16 @@ public struct AvailabilityPickerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save Window") {
+                        let cal = Calendar.current
+                        let startComps = cal.dateComponents([.hour, .minute], from: startTime)
+                        let endComps = cal.dateComponents([.hour, .minute], from: endTime)
+                        let finalStartTime = cal.date(bySettingHour: startComps.hour ?? 9, minute: startComps.minute ?? 0, second: 0, of: selectedDate) ?? startTime
+                        let finalEndTime = cal.date(bySettingHour: endComps.hour ?? 11, minute: endComps.minute ?? 30, second: 0, of: selectedDate) ?? endTime
+                        
                         dataManager.addAvailability(
                             date: selectedDate,
-                            startTime: startTime,
-                            endTime: endTime,
+                            startTime: finalStartTime,
+                            endTime: finalEndTime,
                             beach: effectiveBeach,
                             tiers: Array(selectedTiers),
                             allowPlusMinus: allowPlusMinus

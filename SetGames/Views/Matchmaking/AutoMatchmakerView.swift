@@ -155,9 +155,16 @@ public struct AutoMatchmakerView: View {
             // Player's Free Windows
             VStack(alignment: .leading, spacing: 12) {
                 let isRoot = dataManager.currentUser?.isRoot == true
+                let currentUserId = dataManager.currentUser?.id
+                let currentPhone = dataManager.currentUser?.phoneNumber.filter { $0.isNumber } ?? ""
                 let visibleSlots = isRoot
                     ? dataManager.availabilitySlots
-                    : dataManager.availabilitySlots.filter { $0.playerId == dataManager.currentUser?.id }
+                    : dataManager.availabilitySlots.filter { slot in
+                        guard let cId = currentUserId else { return false }
+                        return slot.playerId == cId ||
+                               (slot.rawPlayerId != nil && slot.rawPlayerId == cId.uuidString) ||
+                               (!currentPhone.isEmpty && slot.rawPlayerId == currentPhone)
+                    }
                 
                 HStack {
                     Text(isRoot ? "ALL COMMUNITY AVAILABILITY WINDOWS (\(visibleSlots.count))" : "YOUR ACTIVE AVAILABILITY WINDOWS (\(visibleSlots.count))")
@@ -192,8 +199,12 @@ public struct AutoMatchmakerView: View {
                     .padding(.horizontal)
                 } else {
                     ForEach(visibleSlots) { slot in
-                        let canDelete = isRoot || (slot.playerId == dataManager.currentUser?.id)
-                        let creator = dataManager.players.first(where: { $0.id == slot.playerId })
+                        let canDelete = isRoot || (slot.playerId == currentUserId) || (slot.rawPlayerId != nil && slot.rawPlayerId == currentUserId?.uuidString) || (!currentPhone.isEmpty && slot.rawPlayerId == currentPhone)
+                        let creator = dataManager.players.first(where: {
+                            $0.id == slot.playerId ||
+                            ($0.id.uuidString == slot.rawPlayerId) ||
+                            (!currentPhone.isEmpty && $0.phoneNumber.filter { $0.isNumber } == slot.rawPlayerId)
+                        })
                         
                         HStack(alignment: .center) {
                             VStack(alignment: .leading, spacing: 4) {
@@ -239,7 +250,7 @@ public struct AutoMatchmakerView: View {
                                 
                                 if canDelete {
                                     Button(role: .destructive) {
-                                        dataManager.deleteAvailabilitySlot(id: slot.id)
+                                        dataManager.deleteAvailabilitySlot(id: slot.id, rawId: slot.rawId)
                                     } label: {
                                         Image(systemName: "trash")
                                             .font(.system(size: 13))

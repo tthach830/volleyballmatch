@@ -12,6 +12,7 @@ public class DataManager: ObservableObject {
     @Published public var notifications: [AppNotification] = []
     @Published public var isDemoModeEnabled: Bool = false
     private var hasCompletedInitialGamesSync: Bool = false
+    private var recentlyDeletedSlotIds = Set<String>()
     
     public init() {
         self.isDemoModeEnabled = UserDefaults.standard.bool(forKey: "isDemoModeEnabled")
@@ -331,6 +332,7 @@ public class DataManager: ObservableObject {
         guard let user = currentUser else { return }
         let slot = AvailabilitySlot(
             playerId: user.id,
+            rawPlayerId: user.id.uuidString,
             date: date,
             startTime: startTime,
             endTime: endTime,
@@ -338,21 +340,32 @@ public class DataManager: ObservableObject {
             acceptedTiers: tiers,
             allowPlusMinusOneTier: allowPlusMinus
         )
-        availabilitySlots.append(slot)
+        availabilitySlots.insert(slot, at: 0)
         saveToDisk()
         FirestoreService.shared.saveAvailabilitySlot(slot)
     }
     
-    public func deleteAvailabilitySlot(id: UUID) {
+    public func deleteAvailabilitySlot(id: UUID, rawId: String? = nil) {
         guard let user = currentUser else { return }
-        guard let slot = availabilitySlots.first(where: { $0.id == id }) else { return }
-        guard user.isRoot || slot.playerId == user.id else {
+        guard let slot = availabilitySlots.first(where: {
+            $0.id == id || (rawId != nil && ($0.rawId == rawId || $0.id.uuidString == rawId))
+        }) else { return }
+        guard user.isRoot || slot.playerId == user.id || (slot.rawPlayerId != nil && slot.rawPlayerId == user.id.uuidString) else {
             print("Unauthorized deletion attempt for availability slot \(id)")
             return
         }
-        availabilitySlots.removeAll(where: { $0.id == id })
+        let targetDocId = slot.rawId ?? rawId ?? slot.id.uuidString
+        recentlyDeletedSlotIds.insert(slot.id.uuidString)
+        recentlyDeletedSlotIds.insert(targetDocId)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            self?.recentlyDeletedSlotIds.remove(slot.id.uuidString)
+            self?.recentlyDeletedSlotIds.remove(targetDocId)
+        }
+        availabilitySlots.removeAll(where: {
+            $0.id == slot.id || ($0.rawId != nil && $0.rawId == slot.rawId)
+        })
         saveToDisk()
-        FirestoreService.shared.deleteAvailabilitySlot(id: id)
+        FirestoreService.shared.deleteAvailabilitySlot(id: slot.id, rawId: targetDocId)
     }
     
     public func joinPickupQueue() {
@@ -1227,7 +1240,19 @@ public class DataManager: ObservableObject {
             },
             onSlotsUpdate: { [weak self] remoteSlots in
                 guard let self = self else { return }
-                self.availabilitySlots = remoteSlots
+                var merged = remoteSlots.filter { remote in
+                    !self.recentlyDeletedSlotIds.contains(remote.id.uuidString) &&
+                    !(remote.rawId != nil && self.recentlyDeletedSlotIds.contains(remote.rawId!))
+                }
+                for local in self.availabilitySlots {
+                    let alreadyPresent = merged.contains { r in
+                        r.id == local.id || (r.rawId != nil && local.rawId != nil && r.rawId == local.rawId)
+                    }
+                    if !alreadyPresent && !self.recentlyDeletedSlotIds.contains(local.id.uuidString) && !(local.rawId != nil && self.recentlyDeletedSlotIds.contains(local.rawId!)) {
+                        merged.append(local)
+                    }
+                }
+                self.availabilitySlots = merged
                 self.saveToDisk()
             }
         )
@@ -1542,6 +1567,7 @@ public class DataManager: ObservableObject {
     public func saveToDisk() {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
+        encoder.dateEncodingStrategy = .iso8601
         
         if let data = try? encoder.encode(players) {
             try? data.write(to: playersFileURL, options: .atomic)
@@ -1561,6 +1587,7 @@ public class DataManager: ObservableObject {
     
     private func loadFromDisk() -> Bool {
         let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
         guard let pData = try? Data(contentsOf: playersFileURL),
               let loadedPlayers = try? decoder.decode([Player].self, from: pData),
               !loadedPlayers.isEmpty else {

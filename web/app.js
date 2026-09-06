@@ -2925,7 +2925,7 @@ export function renderAvailabilityWindows() {
   const slots = state.availabilitySlots || [];
   const visibleSlots = slots.filter(s => {
     if (isRoot) return true;
-    return currentUser && s.playerId === currentUser.id;
+    return currentUser && (s.playerId === currentUser.id || (currentUser.phoneNumber && s.playerId === currentUser.phoneNumber));
   });
 
   if (countEl) countEl.textContent = `${visibleSlots.length}`;
@@ -2940,21 +2940,51 @@ export function renderAvailabilityWindows() {
   }
 
   container.innerHTML = visibleSlots.map(slot => {
-    const isOwner = currentUser && slot.playerId === currentUser.id;
+    const isOwner = currentUser && (slot.playerId === currentUser.id || (currentUser.phoneNumber && slot.playerId === currentUser.phoneNumber));
     const canDelete = isRoot || isOwner;
     const creator = state.getPlayer(slot.playerId);
     const creatorName = creator ? (creator.nickname || creator.name) : "Player";
     const tiers = (slot.acceptedTiers && slot.acceptedTiers.length > 0) ? slot.acceptedTiers.join(", ") : "All Tiers";
 
+    let dateDisplay = slot.date;
+    if (typeof dateDisplay === 'string' && dateDisplay.includes('T')) {
+      try {
+        const d = new Date(dateDisplay);
+        if (!isNaN(d.getTime())) {
+          dateDisplay = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+      } catch (e) {}
+    }
+
+    let startDisplay = slot.startTime;
+    if (typeof startDisplay === 'string' && startDisplay.includes('T')) {
+      try {
+        const s = new Date(startDisplay);
+        if (!isNaN(s.getTime())) {
+          startDisplay = s.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        }
+      } catch (e) {}
+    }
+
+    let endDisplay = slot.endTime;
+    if (typeof endDisplay === 'string' && endDisplay.includes('T')) {
+      try {
+        const e = new Date(endDisplay);
+        if (!isNaN(e.getTime())) {
+          endDisplay = e.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        }
+      } catch (e) {}
+    }
+
     return `
       <div class="avail-slot-card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--card-bg, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; margin-bottom: 8px;">
         <div style="display: flex; flex-direction: column; gap: 3px;">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-weight: 700; font-size: 13px; color: #0f172a;">📅 ${slot.date}</span>
+            <span style="font-weight: 700; font-size: 13px; color: #0f172a;">📅 ${dateDisplay}</span>
             ${slot.isMatched ? '<span style="font-size: 10px; font-weight: 800; background: #dcfce7; color: #15803d; padding: 1px 6px; border-radius: 999px;">MATCHED</span>' : ''}
           </div>
           ${isRoot ? `<div style="font-size: 11px; font-weight: 600; color: #64748b;">👤 Created by: <strong>${creatorName}</strong></div>` : ''}
-          <div style="font-size: 12px; color: var(--text-muted);">⏰ ${slot.startTime} – ${slot.endTime} • 📍 ${slot.preferredBeach || "Main Beach"}</div>
+          <div style="font-size: 12px; color: var(--text-muted);">⏰ ${startDisplay} – ${endDisplay} • 📍 ${slot.preferredBeach || "Main Beach"}</div>
           <div style="font-size: 11px; color: #ea580c; font-weight: 600;">🏐 Skill: ${tiers}</div>
         </div>
         <div>

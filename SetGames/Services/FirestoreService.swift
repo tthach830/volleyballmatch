@@ -90,9 +90,13 @@ public class FirestoreService: ObservableObject {
         slotsListener = db.collection("availabilitySlots").addSnapshotListener { [weak self] snapshot, error in
             guard let self = self, let documents = snapshot?.documents, error == nil else { return }
             let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
             let slots: [AvailabilitySlot] = documents.compactMap { doc in
                 do {
-                    let safeDict = self.sanitizeForJSON(doc.data())
+                    var safeDict = (self.sanitizeForJSON(doc.data()) as? [String: Any]) ?? [:]
+                    if safeDict["id"] == nil {
+                        safeDict["id"] = doc.documentID
+                    }
                     let data = try JSONSerialization.data(withJSONObject: safeDict)
                     return try decoder.decode(AvailabilitySlot.self, from: data)
                 } catch {
@@ -165,13 +169,18 @@ public class FirestoreService: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(slot),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         
-        db.collection("availabilitySlots").document(slot.id.uuidString).setData(dict, merge: true)
+        let docId = slot.rawId ?? slot.id.uuidString
+        if dict["id"] == nil {
+            dict["id"] = docId
+        }
+        db.collection("availabilitySlots").document(docId).setData(dict, merge: true)
     }
     
-    public func deleteAvailabilitySlot(id: UUID) {
-        db.collection("availabilitySlots").document(id.uuidString).delete { error in
+    public func deleteAvailabilitySlot(id: UUID, rawId: String? = nil) {
+        let docId = rawId ?? id.uuidString
+        db.collection("availabilitySlots").document(docId).delete { error in
             if let error = error {
                 print("Error deleting availability slot from Firestore: \(error.localizedDescription)")
             }
