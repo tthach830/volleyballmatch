@@ -170,7 +170,7 @@ public class WeatherService: ObservableObject {
                 return fallbackForecast(for: court, on: date)
             }
             
-            let decoded = try JSONDecoder().decode(OpenMeteoResponse.self, data: data)
+            let decoded = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
             return parseClosestHour(from: decoded, court: court, targetDate: date)
         } catch {
             return fallbackForecast(for: court, on: date)
