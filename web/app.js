@@ -1382,8 +1382,8 @@ function renderMatches() {
           </div>
           <div class="card-metadata-line-item">
             <span>Host: ${hostDisplayName}</span>
-            ${game.isPrivate ? `<span>🔒</span>` : ''}
             <span style="color:#fbbf24; font-size:13px; font-weight:700;">⭐ ${hostStarVal}</span>
+            ${game.isPrivate ? `<span>🔒</span>` : ''}
           </div>
         </div>
 

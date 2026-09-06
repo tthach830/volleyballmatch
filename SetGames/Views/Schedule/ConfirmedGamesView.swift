@@ -508,16 +508,16 @@ public struct ConfirmedGamesView: View {
                 Text("Host: \(hostName)")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(Color.white.opacity(0.85))
-                if game.isPrivate {
-                    Text("🔒")
-                        .font(.system(size: 13))
-                }
                 HStack(spacing: 3) {
                     Text("⭐")
                         .font(.system(size: 12))
                     Text(hostRating)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.2))
+                }
+                if game.isPrivate {
+                    Text("🔒")
+                        .font(.system(size: 13))
                 }
             }
             
