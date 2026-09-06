@@ -91,9 +91,10 @@ public class DataManager: ObservableObject {
             relatedGameId: relatedGameId
         )
         notifications.insert(notif, at: 0)
-        // Foreground in-app notification: trigger custom SwiftUI toast.
-        // Local system banner is omitted here to prevent duplicate banner overlays while in app.
+        // Foreground in-app notification: trigger custom SwiftUI toast
         NotificationService.shared.triggerInAppToast(notif)
+        // Trigger system notification banner with sound on device
+        NotificationService.shared.sendSystemNotification(title: title, body: message)
     }
     
     // MARK: - User Session & Sign Up / Login
@@ -1457,6 +1458,8 @@ public class DataManager: ObservableObject {
                 if let currentUser = self.currentUser {
                     for remoteGame in remoteGames {
                         let isUserInGame = remoteGame.allPlayerIds.contains(currentUser.id) ||
+                                           remoteGame.team1PlayerIds.contains(currentUser.id) ||
+                                           remoteGame.team2PlayerIds.contains(currentUser.id) ||
                                            remoteGame.waitlistPlayerIds.contains(currentUser.id) ||
                                            remoteGame.hostPlayerId == currentUser.id
                         guard isUserInGame else { continue }

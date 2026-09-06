@@ -1426,22 +1426,22 @@ function renderMatches() {
           ${renderWeatherDetailsCard(game)}
         </div>
 
-        <!-- Player Pool: List with Count (if > 4 players) OR 2x2 Grid (if <= 4 players) -->
-        ${allPlayerIds.length > 4 ? `
-          <div class="player-pool-list-container">
-            <div class="player-pool-list-header" style="cursor: pointer; user-select: none;" onclick="window.togglePlayerPoolCollapse('${game.id}', event)">
-              <span class="player-pool-list-title">
-                <span>👥</span> PLAYER POOL (${allPlayerIds.length} PLAYERS)
+        <!-- Player Pool: Collapsible Container (List with Count if > 4, 2x2 Grid if <= 4) -->
+        <div class="player-pool-list-container">
+          <div class="player-pool-list-header" style="cursor: pointer; user-select: none;" onclick="window.togglePlayerPoolCollapse('${game.id}', event)">
+            <span class="player-pool-list-title">
+              <span>👥</span> PLAYER POOL (${allPlayerIds.length} PLAYERS)
+            </span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="player-pool-list-badge" style="color: ${spotsLeft > 0 ? '#fb923c' : '#4ade80'};">
+                ${spotsLeft > 0 ? `${spotsLeft} Spot${spotsLeft > 1 ? 's' : ''} Open` : 'Pool Full ✓'}
               </span>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span class="player-pool-list-badge" style="color: ${spotsLeft > 0 ? '#fb923c' : '#4ade80'};">
-                  ${spotsLeft > 0 ? `${spotsLeft} Spot${spotsLeft > 1 ? 's' : ''} Open` : 'Pool Full ✓'}
-                </span>
-                <span style="font-size: 11px; color: rgba(255, 255, 255, 0.7); font-weight: bold;">${isPoolCollapsed ? '⌵' : '⌃'}</span>
-              </div>
+              <span style="font-size: 11px; color: rgba(255, 255, 255, 0.7); font-weight: bold;">${isPoolCollapsed ? '⌵' : '⌃'}</span>
             </div>
+          </div>
 
-            ${!isPoolCollapsed ? `
+          ${!isPoolCollapsed ? (
+            allPlayerIds.length > 4 ? `
               <div class="player-pool-list-items">
                 ${allPlayerIds.map((pid, idx) => {
                   const p = state.getPlayer(pid);
@@ -1487,17 +1487,17 @@ function renderMatches() {
                   </div>
                 ` : ''}
               </div>
-            ` : ''}
-          </div>
-        ` : `
-          <!-- 2x2 Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
-          <div class="player-grid-2x2">
-            ${renderSlot(t1Ids[0], true)}
-            ${renderSlot(t1Ids[1], true)}
-            ${renderSlot(t2Ids[0], false)}
-            ${renderSlot(t2Ids[1], false)}
-          </div>
-        `}
+            ` : `
+              <!-- 2x2 Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
+              <div class="player-grid-2x2">
+                ${renderSlot(t1Ids[0], true)}
+                ${renderSlot(t1Ids[1], true)}
+                ${renderSlot(t2Ids[0], false)}
+                ${renderSlot(t2Ids[1], false)}
+              </div>
+            `
+          ) : ''}
+        </div>
 
         <!-- Waiting Section (if pool full or waitlist has players) -->
         ${(spotsLeft === 0 || waitlistIds.length > 0) ? `

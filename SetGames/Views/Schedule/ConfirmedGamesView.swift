@@ -619,42 +619,95 @@ public struct ConfirmedGamesView: View {
 
     private func playersPoolBox(game: SetGame, isMyGame: Bool, currentUserId: UUID?) -> some View {
         let isHost = (game.hostPlayerId == currentUserId) || (game.team1PlayerIds.first == currentUserId) || (dataManager.currentUser?.isRoot == true)
+        let isCollapsed = collapsedPoolGameIds.contains(game.id)
         
         return VStack(spacing: 8) {
-            if game.allPlayerIds.count > 4 {
-                playerPoolListView(game: game, isMyGame: isMyGame, currentUserId: currentUserId, isHost: isHost)
-            } else {
-                let t1Ids: [UUID] = !game.team1PlayerIds.isEmpty ? game.team1PlayerIds : Array(game.allPlayerIds.prefix(2))
-                let t2Ids: [UUID] = !game.team2PlayerIds.isEmpty ? game.team2PlayerIds : Array(game.allPlayerIds.dropFirst(2).prefix(2))
-                
-                // Team 1 (Cyan/Blue Border)
-                HStack(spacing: 8) {
-                    if t1Ids.count > 0 {
-                        playerCardTile(pid: t1Ids[0], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
-                    } else {
-                        emptyPlayerSpotTile(game: game, isTeam1: true)
+            // Collapsible Player Pool Container
+            VStack(alignment: .leading, spacing: 8) {
+                // Header Row: Icon + Count (Clickable to Collapse / Expand)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        if isCollapsed {
+                            collapsedPoolGameIds.remove(game.id)
+                        } else {
+                            collapsedPoolGameIds.insert(game.id)
+                        }
                     }
-                    if t1Ids.count > 1 {
-                        playerCardTile(pid: t1Ids[1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
-                    } else {
-                        emptyPlayerSpotTile(game: game, isTeam1: true)
+                } label: {
+                    HStack {
+                        HStack(spacing: 5) {
+                            Text("👥")
+                                .font(.system(size: 12))
+                            Text("PLAYER POOL (\(game.allPlayerIds.count) PLAYERS)")
+                                .font(.system(size: 11, weight: .heavy))
+                                .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
+                        }
+                        Spacer()
+                        if game.spotsRemaining > 0 {
+                            Text("\(game.spotsRemaining) Spot\(game.spotsRemaining > 1 ? "s" : "") Open")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(Color(red: 0.92, green: 0.35, blue: 0.05))
+                        } else {
+                            Text("Pool Full ✓")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.green)
+                        }
+                        Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color.white.opacity(0.7))
+                            .padding(.leading, 4)
                     }
+                    .padding(.horizontal, 2)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 
-                // Team 2 (Coral/Red Border)
-                HStack(spacing: 8) {
-                    if t2Ids.count > 0 {
-                        playerCardTile(pid: t2Ids[0], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
+                if !isCollapsed {
+                    if game.allPlayerIds.count > 4 {
+                        playerPoolListView(game: game, isMyGame: isMyGame, currentUserId: currentUserId, isHost: isHost)
                     } else {
-                        emptyPlayerSpotTile(game: game, isTeam1: false)
-                    }
-                    if t2Ids.count > 1 {
-                        playerCardTile(pid: t2Ids[1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
-                    } else {
-                        emptyPlayerSpotTile(game: game, isTeam1: false)
+                        let t1Ids: [UUID] = !game.team1PlayerIds.isEmpty ? game.team1PlayerIds : Array(game.allPlayerIds.prefix(2))
+                        let t2Ids: [UUID] = !game.team2PlayerIds.isEmpty ? game.team2PlayerIds : Array(game.allPlayerIds.dropFirst(2).prefix(2))
+                        
+                        VStack(spacing: 8) {
+                            // Team 1 (Cyan/Blue Border)
+                            HStack(spacing: 8) {
+                                if t1Ids.count > 0 {
+                                    playerCardTile(pid: t1Ids[0], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
+                                } else {
+                                    emptyPlayerSpotTile(game: game, isTeam1: true)
+                                }
+                                if t1Ids.count > 1 {
+                                    playerCardTile(pid: t1Ids[1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
+                                } else {
+                                    emptyPlayerSpotTile(game: game, isTeam1: true)
+                                }
+                            }
+                            
+                            // Team 2 (Coral/Red Border)
+                            HStack(spacing: 8) {
+                                if t2Ids.count > 0 {
+                                    playerCardTile(pid: t2Ids[0], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
+                                } else {
+                                    emptyPlayerSpotTile(game: game, isTeam1: false)
+                                }
+                                if t2Ids.count > 1 {
+                                    playerCardTile(pid: t2Ids[1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
+                                } else {
+                                    emptyPlayerSpotTile(game: game, isTeam1: false)
+                                }
+                            }
+                        }
                     }
                 }
             }
+            .padding(10)
+            .background(Color.white.opacity(0.02))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
             
             // Waitlist / Waiting Section (Visible whenever pool is full or waitlist has queued players)
             if game.spotsRemaining == 0 || !game.waitlistPlayerIds.isEmpty {
@@ -664,175 +717,122 @@ public struct ConfirmedGamesView: View {
     }
 
     private func playerPoolListView(game: SetGame, isMyGame: Bool, currentUserId: UUID?, isHost: Bool) -> some View {
-        let isCollapsed = collapsedPoolGameIds.contains(game.id)
-        return VStack(alignment: .leading, spacing: 8) {
-            // Header Row: Icon + Count (Clickable to Collapse / Expand)
-            Button {
-                withAnimation(.easeInOut(duration: 0.22)) {
-                    if isCollapsed {
-                        collapsedPoolGameIds.remove(game.id)
-                    } else {
-                        collapsedPoolGameIds.insert(game.id)
-                    }
-                }
-            } label: {
-                HStack {
-                    HStack(spacing: 5) {
-                        Image(systemName: "person.3.fill")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
-                        Text("👥 PLAYER POOL (\(game.allPlayerIds.count) PLAYERS)")
-                            .font(.system(size: 11, weight: .heavy))
-                            .foregroundColor(.white)
-                    }
-                    Spacer()
-                    if game.spotsRemaining > 0 {
-                        Text("\(game.spotsRemaining) Spot\(game.spotsRemaining > 1 ? "s" : "") Open")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Color(red: 0.92, green: 0.35, blue: 0.05))
-                    } else {
-                        Text("Pool Full ✓")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.green)
-                    }
-                    Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(Color.white.opacity(0.7))
-                        .padding(.leading, 4)
-                }
-                .padding(.horizontal, 2)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            
-            // List of Players (Collapsible)
-            if !isCollapsed {
-                VStack(spacing: 6) {
-                    ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { idx, pid in
-                        let p = dataManager.player(for: pid)
-                        let displayName = isMyGame ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player"
-                        let ratingTier = p.rating
-                        let starStr = String(format: "%.1f", p.averageStarRating)
-                        let isGameHost = pid == game.hostPlayerId
-                        let canRemove = isHost && !isGameHost
-                        
-                        HStack(spacing: 8) {
-                            // Number circle
-                            Text("#\(idx + 1)")
-                                .font(.system(size: 10, weight: .black))
-                                .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
-                                .frame(width: 22, height: 22)
-                                .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.18))
-                                .clipShape(Circle())
-                            
-                            // Avatar
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 28, height: 28)
-                                CourtAvatarIconView(avatarKey: isMyGame ? p.avatarEmoji : "🏐", size: 20)
-                            }
-                            
-                            // Name & Badges
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 4) {
-                                    Text(displayName)
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .lineLimit(1)
-                                    
-                                    if isGameHost {
-                                        Text("HOST")
-                                            .font(.system(size: 8, weight: .black))
-                                            .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.2))
-                                            .padding(.horizontal, 4)
-                                            .padding(.vertical, 1)
-                                            .background(Color(red: 1.0, green: 0.75, blue: 0.2).opacity(0.18))
-                                            .clipShape(RoundedRectangle(cornerRadius: 3))
-                                    }
-                                }
-                                
-                                HStack(spacing: 5) {
-                                    Text(ratingTier.rawValue)
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundColor(ratingTier == .intermediate ? Color(red: 0.02, green: 0.52, blue: 0.78) : .white)
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 1)
-                                        .background(ratingTier == .intermediate ? Color(red: 0.75, green: 0.90, blue: 0.99) : ratingTier.badgeColor)
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                    
-                                    HStack(spacing: 2) {
-                                        Text("⭐")
-                                            .font(.system(size: 8))
-                                        Text(starStr)
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.2))
-                                    }
-                                }
-                            }
-                            
-                            Spacer(minLength: 0)
-                            
-                            if canRemove {
-                                Button {
-                                    playerToRemove = (game.id, p)
-                                    showRemovePlayerAlert = true
-                                } label: {
-                                    Image(systemName: "trash")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(Color(red: 0.94, green: 0.27, blue: 0.27))
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color(red: 0.07, green: 0.09, blue: 0.13))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                        )
+        VStack(spacing: 6) {
+            ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { idx, pid in
+                let p = dataManager.player(for: pid)
+                let displayName = isMyGame ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player"
+                let ratingTier = p.rating
+                let starStr = String(format: "%.1f", p.averageStarRating)
+                let isGameHost = pid == game.hostPlayerId
+                let canRemove = isHost && !isGameHost
+                
+                HStack(spacing: 8) {
+                    // Number circle
+                    Text("#\(idx + 1)")
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
+                        .frame(width: 22, height: 22)
+                        .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.18))
+                        .clipShape(Circle())
+                    
+                    // Avatar
+                    ZStack {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 28, height: 28)
+                        CourtAvatarIconView(avatarKey: isMyGame ? p.avatarEmoji : "🏐", size: 20)
                     }
                     
-                    // Open spots if available
-                    if game.spotsRemaining > 0 {
+                    // Name & Badges
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(displayName)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                            
+                            if isGameHost {
+                                Text("HOST")
+                                    .font(.system(size: 8, weight: .black))
+                                    .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.2))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color(red: 1.0, green: 0.75, blue: 0.2).opacity(0.18))
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                            }
+                        }
+                        
+                        HStack(spacing: 5) {
+                            Text(ratingTier.rawValue)
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundColor(ratingTier == .intermediate ? Color(red: 0.02, green: 0.52, blue: 0.78) : .white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(ratingTier == .intermediate ? Color(red: 0.75, green: 0.90, blue: 0.99) : ratingTier.badgeColor)
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                            
+                            HStack(spacing: 2) {
+                                Text("⭐")
+                                    .font(.system(size: 8))
+                                Text(starStr)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.2))
+                            }
+                        }
+                    }
+                    
+                    Spacer(minLength: 0)
+                    
+                    if canRemove {
                         Button {
-                            if canUserJoin(game) {
-                                let res = dataManager.joinGamePool(gameId: game.id)
-                                alertMessage = res.message
-                                showAlert = true
-                            }
+                            playerToRemove = (game.id, p)
+                            showRemovePlayerAlert = true
                         } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 12, weight: .bold))
-                                Text("Open Spot (\(game.spotsRemaining) remaining)")
-                                    .font(.system(size: 11, weight: .bold))
-                            }
-                            .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
-                            .frame(maxWidth: .infinity, minHeight: 36)
-                            .background(Color(red: 0.07, green: 0.09, blue: 0.13))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                                    .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.5))
-                            )
+                            Image(systemName: "trash")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(Color(red: 0.94, green: 0.27, blue: 0.27))
                         }
                         .buttonStyle(.borderless)
                     }
                 }
-                .padding(8)
-                .background(Color(red: 0.10, green: 0.12, blue: 0.16).opacity(0.6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color(red: 0.07, green: 0.09, blue: 0.13))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                 )
             }
+            
+            // Open spots if available
+            if game.spotsRemaining > 0 {
+                Button {
+                    if canUserJoin(game) {
+                        let res = dataManager.joinGamePool(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .bold))
+                        Text("Open Spot (\(game.spotsRemaining) remaining)")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .background(Color(red: 0.07, green: 0.09, blue: 0.13))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                            .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.5))
+                    )
+                }
+                .buttonStyle(.borderless)
+            }
         }
-        .padding(.bottom, 4)
     }
 
     private func waitlistSection(game: SetGame, currentUserId: UUID?, isMyGame: Bool, isHost: Bool) -> some View {

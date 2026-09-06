@@ -149,18 +149,13 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
     private static var recentPushes = [String: Date]()
     private static let pushLock = NSLock()
     
-    // When the app is actively in the foreground, present drop-down banner for match reminders;
-    // other notifications use custom in-app toast view (NotificationToastView).
+    // When the app is actively in the foreground, present drop-down banner and sound for all notifications (chat, matches, reminders)
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        if notification.request.identifier.hasPrefix("match-reminder") {
-            completionHandler([.banner, .sound, .badge])
-        } else {
-            completionHandler([.badge])
-        }
+        completionHandler([.banner, .sound, .badge, .list])
     }
     
     public func userNotificationCenter(
