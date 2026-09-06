@@ -36,6 +36,7 @@
 		BD6AF2D178E7711555730A4D /* AvailabilityPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F21CED46F65B7C6CA73B237 /* AvailabilityPickerView.swift */; };
 		C111190A991DD0EE22088239 /* CourtAvatarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E7DE5288CD0C4AC66B2C578 /* CourtAvatarIconView.swift */; };
 		C3EA583C87BD1403C266FD55 /* RandomTeamGeneratorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EF576A89F7142B9E47BA9A2 /* RandomTeamGeneratorSheet.swift */; };
+		E291F0A228B47E2001AB01A2 /* InstantPickupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E291F0A128B47E2001AB01A1 /* InstantPickupSheet.swift */; };
 		C6128F6115C03531CD40D375 /* PartnerHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE3D5F4001677D882A64DEC /* PartnerHistoryView.swift */; };
 		C69473C9FD2C3C75B3D3285C /* AppNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89644D3F79CF38307B041FDF /* AppNotification.swift */; };
 		DAC52A09883AB259A253053D /* SetGamesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E46AB22167991A3ADA9104E /* SetGamesApp.swift */; };
@@ -97,6 +98,7 @@
 		C2ADC03ABEB9C4A7D57BD7F3 /* FirestoreService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirestoreService.swift; sourceTree = "<group>"; };
 		C859D2F3FE3D251AEFFCC7AD /* TopPlayersLadderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopPlayersLadderView.swift; sourceTree = "<group>"; };
 		C9018E52FC445A56247BA43D /* ConfirmedGamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmedGamesView.swift; sourceTree = "<group>"; };
+		E291F0A128B47E2001AB01A1 /* InstantPickupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstantPickupSheet.swift; sourceTree = "<group>"; };
 		D6AA29CB41B04A8AE570FAA5 /* MatchmakingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchmakingEngine.swift; sourceTree = "<group>"; };
 		DE2DA16A2B877595B04FAAB1 /* LaddersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaddersView.swift; sourceTree = "<group>"; };
 		E1ACEC153DA835530CE13CAD /* PlayerAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAvatarView.swift; sourceTree = "<group>"; };
@@ -235,6 +237,7 @@
 				41571FEC08217D0459B128C4 /* GameDetailView.swift */,
 				5B8AE6D765F7C021B8AEF64E /* GameQRCodeSheet.swift */,
 				1EF576A89F7142B9E47BA9A2 /* RandomTeamGeneratorSheet.swift */,
+				E291F0A128B47E2001AB01A1 /* InstantPickupSheet.swift */,
 				ADB93F8BECD09C731B26AF4D /* RecordScoreSheet.swift */,
 			);
 			path = Schedule;
@@ -394,6 +397,7 @@
 				9F22CC7135CB63DE2017D8DD /* GameDetailView.swift in Sources */,
 				421018582B970F27D4738562 /* GameQRCodeSheet.swift in Sources */,
 				C3EA583C87BD1403C266FD55 /* RandomTeamGeneratorSheet.swift in Sources */,
+				E291F0A228B47E2001AB01A2 /* InstantPickupSheet.swift in Sources */,
 				3C5CE4A04110ADD05D4E7E97 /* RecordScoreSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -16,6 +16,7 @@ public class DataManager: ObservableObject {
     @Published public var games: [SetGame] = []
     @Published public var availabilitySlots: [AvailabilitySlot] = []
     @Published public var pickupQueue: [Player] = []
+    @Published public var beachPickupQueues: [String: [Player]] = ["Main Beach": [], "Harbor Beach": []]
     @Published public var notifications: [AppNotification] = []
     @Published public var isDemoModeEnabled: Bool = false
     private var hasCompletedInitialGamesSync: Bool = false
@@ -451,6 +452,116 @@ public class DataManager: ObservableObject {
     public func leavePickupQueue() {
         guard let user = currentUser else { return }
         pickupQueue.removeAll(where: { $0.id == user.id })
+    }
+    
+    public func pickupQueue(for beach: String) -> [Player] {
+        return beachPickupQueues[beach] ?? []
+    }
+    
+    @discardableResult
+    public func joinBeachPickupQueue(beach: String, player: Player? = nil) -> SetGame? {
+        let playerToAdd = player ?? currentUser
+        guard let p = playerToAdd else { return nil }
+        
+        var queue = beachPickupQueues[beach] ?? []
+        if !queue.contains(where: { $0.id == p.id }) {
+            queue.append(p)
+            beachPickupQueues[beach] = queue
+            
+            // When 4 players join, auto-lock into a confirmed game!
+            if queue.count >= 4 {
+                let four = Array(queue.prefix(4))
+                beachPickupQueues[beach] = Array(queue.dropFirst(4))
+                
+                let sorted = four.sorted { $0.eloRating > $1.eloRating }
+                let team1 = [sorted[0], sorted[3]]
+                let team2 = [sorted[1], sorted[2]]
+                
+                let fastGame = SetGame(
+                    title: "Instant Pickup 2v2",
+                    targetRating: p.rating,
+                    format: .bestOfThree,
+                    status: .scheduled,
+                    scheduledDate: Date().addingTimeInterval(1800),
+                    courtLocation: beach,
+                    courtNumber: "Court #1",
+                    team1PlayerIds: team1.map { $0.id },
+                    team2PlayerIds: team2.map { $0.id },
+                    isAutoMatched: true,
+                    matchedOptionName: "Instant Pickup Lobby"
+                )
+                games.insert(fastGame, at: 0)
+                saveToDisk()
+                FirestoreService.shared.saveGame(fastGame)
+                syncMatchReminders()
+                
+                postNotification(
+                    title: "⚡️ Pickup Lobby Full (4/4)!",
+                    message: "Your instant pickup game at \(beach) is locked and ready!",
+                    type: .queueUpdate,
+                    relatedGameId: fastGame.id
+                )
+                return fastGame
+            }
+        }
+        return nil
+    }
+    
+    public func leaveBeachPickupQueue(beach: String, playerId: UUID? = nil) {
+        let targetId = playerId ?? currentUser?.id
+        guard let uid = targetId else { return }
+        var queue = beachPickupQueues[beach] ?? []
+        queue.removeAll(where: { $0.id == uid })
+        beachPickupQueues[beach] = queue
+    }
+    
+    @discardableResult
+    public func fillBeachPickupQueue(beach: String) -> SetGame? {
+        var queue = beachPickupQueues[beach] ?? []
+        if let user = currentUser, !queue.contains(where: { $0.id == user.id }) {
+            queue.append(user)
+        }
+        let availablePlayers = players.filter { p in
+            !queue.contains(where: { $0.id == p.id })
+        }
+        for p in availablePlayers {
+            if queue.count >= 4 { break }
+            queue.append(p)
+        }
+        beachPickupQueues[beach] = queue
+        
+        if queue.count >= 4 {
+            let four = Array(queue.prefix(4))
+            beachPickupQueues[beach] = Array(queue.dropFirst(4))
+            let sorted = four.sorted { $0.eloRating > $1.eloRating }
+            let team1 = [sorted[0], sorted[3]]
+            let team2 = [sorted[1], sorted[2]]
+            let fastGame = SetGame(
+                title: "Instant Pickup 2v2",
+                targetRating: currentUser?.rating ?? .b,
+                format: .bestOfThree,
+                status: .scheduled,
+                scheduledDate: Date().addingTimeInterval(1800),
+                courtLocation: beach,
+                courtNumber: "Court #1",
+                team1PlayerIds: team1.map { $0.id },
+                team2PlayerIds: team2.map { $0.id },
+                isAutoMatched: true,
+                matchedOptionName: "Instant Pickup Lobby"
+            )
+            games.insert(fastGame, at: 0)
+            saveToDisk()
+            FirestoreService.shared.saveGame(fastGame)
+            syncMatchReminders()
+            postNotification(
+                title: "⚡️ Pickup Lobby Full (4/4)!",
+                message: "Your instant pickup game at \(beach) is locked and ready!",
+                type: .queueUpdate,
+                relatedGameId: fastGame.id
+            )
+            return fastGame
+        }
+        return nil
     }
     
     @discardableResult

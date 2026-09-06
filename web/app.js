@@ -2065,7 +2065,7 @@ window.switchTab = switchTab;
 window.renderProfile = renderProfile;
 window.renderAvailabilityWindows = renderAvailabilityWindows;
 window.renderHeader = renderHeader;
-window.renderPickupQueue = renderPickupQueue;
+window.renderPickupQueue = () => window.renderInstantPickupModal && window.renderInstantPickupModal();
 window.renderOpenGames = renderOpenGames;
 
 window.switchLadderTab = (type) => {
@@ -3401,65 +3401,70 @@ window.closeAddAvailabilityModal = () => {
   if (modal) modal.classList.remove("active");
 };
 
-window.handleJoinPickup = () => {
-  if (!state.currentUser) {
-    window.showAuthModal();
-    return;
-  }
-  const uid = state.currentUser.id;
-  state.pickupQueue = state.pickupQueue || [];
-  const inQueue = state.pickupQueue.includes(uid);
-  if (inQueue) {
-    state.pickupQueue = state.pickupQueue.filter(id => id !== uid);
-    showToast("Left the matchmaking queue.");
-  } else {
-    state.pickupQueue.push(uid);
-    showToast(`Entered matchmaking queue (${state.pickupQueue.length}/4)`);
-  }
-  state.saveLocal();
-  renderPickupQueue();
+// ==========================================================================
+// INSTANT PICKUP LOBBY (Matches iOS InstantPickupSheet.swift)
+// ==========================================================================
+state.selectedPickupBeach = state.selectedPickupBeach || "Main Beach";
+state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
 
-  if (state.pickupQueue.length >= 4) {
-    const players = state.pickupQueue.splice(0, 4);
-    const fastGame = {
-      id: "pickup-" + Date.now(),
-      title: "Fast Pickup 2v2",
-      targetRating: state.currentUser.rating || "B",
-      courtLocation: state.currentUser.homeBeach || "Main Beach",
-      courtNumber: "Court #1",
-      scheduledDate: new Date(Date.now() + 3600000).toISOString(),
-      status: "scheduled",
-      isAutoMatched: true,
-      matchedOptionName: "Instant Pickup Lobby",
-      team1PlayerIds: [players[0], players[3]],
-      team2PlayerIds: [players[1], players[2]],
-      team1Score: 0,
-      team2Score: 0,
-      setScores: []
-    };
-    state.games.unshift(fastGame);
-    state.saveLocal();
-    saveGameToFirestore(fastGame);
-
-    triggerWebPushNotification("⚡️ Pickup Lobby Full (4/4)!", `Your fast pickup game at ${state.currentUser.homeBeach || "Main Beach"} is locked and starting soon!`);
-    showToast("⚡️ Pickup lobby full! Game scheduled on Court #1!");
-    switchTab("matches");
+window.openInstantPickupModal = () => {
+  const modal = document.getElementById("instant-pickup-modal");
+  if (modal) {
+    modal.classList.add("active");
+    window.renderInstantPickupModal();
   }
 };
 
-export function renderPickupQueue() {
-  const queue = state.pickupQueue || [];
-  const queueCountBadge = document.getElementById("pickup-count-badge");
-  if (queueCountBadge) {
-    queueCountBadge.textContent = `${queue.length} / 4 Players`;
+window.closeInstantPickupModal = () => {
+  const modal = document.getElementById("instant-pickup-modal");
+  if (modal) modal.classList.remove("active");
+};
+
+window.switchPickupBeach = (beach) => {
+  state.selectedPickupBeach = beach;
+  window.renderInstantPickupModal();
+};
+
+window.renderInstantPickupModal = () => {
+  const beach = state.selectedPickupBeach || "Main Beach";
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  const queue = state.beachPickupQueues[beach] || [];
+
+  // Update beach selector pills
+  const mainPill = document.getElementById("ip-beach-main");
+  const harborPill = document.getElementById("ip-beach-harbor");
+  if (mainPill) mainPill.classList.toggle("active", beach === "Main Beach");
+  if (harborPill) harborPill.classList.toggle("active", beach === "Harbor Beach");
+
+  // Update pill counts
+  const mainCount = (state.beachPickupQueues["Main Beach"] || []).length;
+  const harborCount = (state.beachPickupQueues["Harbor Beach"] || []).length;
+  const mainBadge = document.getElementById("ip-count-main");
+  const harborBadge = document.getElementById("ip-count-harbor");
+  if (mainBadge) {
+    mainBadge.style.display = mainCount > 0 ? "inline-block" : "none";
+    mainBadge.textContent = mainCount;
+  }
+  if (harborBadge) {
+    harborBadge.style.display = harborCount > 0 ? "inline-block" : "none";
+    harborBadge.textContent = harborCount;
   }
 
-  const progressBar = document.getElementById("queue-progress-bar");
+  // Update Title & Badge
+  const title = document.getElementById("ip-queue-beach-title");
+  if (title) title.textContent = `Today's ${beach} Queue`;
+
+  const badge = document.getElementById("ip-queue-count-badge");
+  if (badge) badge.textContent = `${queue.length} / 4 Players`;
+
+  // Update Progress Bar
+  const progressBar = document.getElementById("ip-queue-progress-bar");
   if (progressBar) {
     progressBar.style.width = `${Math.min(100, (queue.length / 4) * 100)}%`;
   }
 
-  const container = document.getElementById("queue-spots-container");
+  // Render 4 Spots
+  const container = document.getElementById("ip-spots-container");
   if (container) {
     let html = "";
     for (let i = 0; i < 4; i++) {
@@ -3467,38 +3472,200 @@ export function renderPickupQueue() {
         const p = state.getPlayer(queue[i]);
         const avatar = p ? (p.avatarEmoji || "🏐") : "🏐";
         const nick = p ? (p.nickname || p.name) : `Player ${i + 1}`;
+        const isMe = state.currentUser && state.currentUser.id === queue[i];
         html += `
-          <div class="queue-spot-card">
-            <div class="queue-spot-circle filled">${avatar}</div>
-            <div class="queue-spot-label" title="${nick}">${nick}</div>
-          </div>
+          <button type="button" class="ip-spot-card" onclick="window.removeInstantPickupPlayer(${i})" title="Click to remove">
+            <div class="ip-spot-circle filled">
+              <span>${avatar}</span>
+              <span class="ip-remove-badge">&times;</span>
+            </div>
+            <div class="ip-spot-label">${isMe ? "You" : nick}</div>
+          </button>
         `;
       } else {
         html += `
-          <div class="queue-spot-card">
-            <div class="queue-spot-circle empty">+</div>
-            <div class="queue-spot-label">Spot ${i + 1}</div>
-          </div>
+          <button type="button" class="ip-spot-card" onclick="window.handleInstantPickupSpotClick(${i})" title="Click to join Spot ${i + 1}">
+            <div class="ip-spot-circle empty">+</div>
+            <div class="ip-spot-label">Spot ${i + 1}</div>
+          </button>
         `;
       }
     }
     container.innerHTML = html;
   }
 
-  const toggleBtn = document.getElementById("queue-toggle-btn");
+  // Update Toggle Button
+  const toggleBtn = document.getElementById("ip-queue-toggle-btn");
   if (toggleBtn) {
     const inQueue = state.currentUser && queue.includes(state.currentUser.id);
     if (inQueue) {
-      toggleBtn.innerHTML = "✕ Leave Matchmaking Queue";
+      toggleBtn.innerHTML = "<span>✕</span><span>Leave Matchmaking Queue</span>";
       toggleBtn.style.background = "#dc2626";
     } else {
-      toggleBtn.innerHTML = "⚡️ Enter Matchmaking Queue";
+      toggleBtn.innerHTML = "<span>⚡️</span><span>Enter Matchmaking Queue</span>";
       toggleBtn.style.background = "#0284c7";
     }
   }
 
-  renderAvailabilityWindows();
-}
+  // Update Auto-Fill Button Text
+  const autoBtn = document.getElementById("ip-queue-autofill-btn");
+  if (autoBtn) {
+    autoBtn.innerHTML = queue.length === 0 ? "<span>👥</span><span>Quick-Fill 4 Players (Test)</span>" : "<span>👥</span><span>Auto-Fill Remaining Spots</span>";
+  }
+};
+
+window.handleInstantPickupSpotClick = (index) => {
+  const beach = state.selectedPickupBeach || "Main Beach";
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  const queue = state.beachPickupQueues[beach] || [];
+
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
+
+  const inQueue = queue.includes(state.currentUser.id);
+  if (!inQueue) {
+    queue.push(state.currentUser.id);
+    state.beachPickupQueues[beach] = queue;
+    state.saveLocal();
+    showToast(`Joined ${beach} queue (${queue.length}/4)`);
+    window.renderInstantPickupModal();
+    if (queue.length >= 4) {
+      window.handleInstantPickupFilled(beach);
+    }
+  } else {
+    // Already in queue: fill spot with next available player
+    const available = (state.players || []).filter(p => !queue.includes(p.id));
+    if (available.length > 0) {
+      const p = available[0];
+      queue.push(p.id);
+      state.beachPickupQueues[beach] = queue;
+      state.saveLocal();
+      showToast(`Added ${p.name} to ${beach} queue (${queue.length}/4)`);
+      window.renderInstantPickupModal();
+      if (queue.length >= 4) {
+        window.handleInstantPickupFilled(beach);
+      }
+    } else {
+      showToast("All available players are already in queue!");
+    }
+  }
+};
+
+window.removeInstantPickupPlayer = (index) => {
+  const beach = state.selectedPickupBeach || "Main Beach";
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  const queue = state.beachPickupQueues[beach] || [];
+  if (index >= 0 && index < queue.length) {
+    const removedId = queue.splice(index, 1)[0];
+    state.beachPickupQueues[beach] = queue;
+    state.saveLocal();
+    const p = state.getPlayer(removedId);
+    showToast(`Removed ${p ? p.name : "player"} from queue.`);
+    window.renderInstantPickupModal();
+  }
+};
+
+window.toggleInstantPickupQueue = () => {
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
+  const beach = state.selectedPickupBeach || "Main Beach";
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  const queue = state.beachPickupQueues[beach] || [];
+  const uid = state.currentUser.id;
+  const inQueue = queue.includes(uid);
+
+  if (inQueue) {
+    state.beachPickupQueues[beach] = queue.filter(id => id !== uid);
+    showToast(`Left ${beach} matchmaking queue.`);
+  } else {
+    queue.push(uid);
+    state.beachPickupQueues[beach] = queue;
+    showToast(`Entered ${beach} matchmaking queue (${queue.length}/4)`);
+  }
+  state.saveLocal();
+  window.renderInstantPickupModal();
+
+  if (state.beachPickupQueues[beach].length >= 4) {
+    window.handleInstantPickupFilled(beach);
+  }
+};
+
+window.fillInstantPickupQueue = () => {
+  const beach = state.selectedPickupBeach || "Main Beach";
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  const queue = state.beachPickupQueues[beach] || [];
+
+  if (state.currentUser && !queue.includes(state.currentUser.id)) {
+    queue.push(state.currentUser.id);
+  }
+
+  const available = (state.players || []).filter(p => !queue.includes(p.id));
+  for (const p of available) {
+    if (queue.length >= 4) break;
+    queue.push(p.id);
+  }
+
+  state.beachPickupQueues[beach] = queue;
+  state.saveLocal();
+  window.renderInstantPickupModal();
+
+  if (queue.length >= 4) {
+    window.handleInstantPickupFilled(beach);
+  } else {
+    showToast(`Queue updated (${queue.length}/4). Need more players.`);
+  }
+};
+
+window.handleInstantPickupFilled = (beach) => {
+  const queue = state.beachPickupQueues[beach] || [];
+  const players = queue.splice(0, 4);
+  state.beachPickupQueues[beach] = queue;
+
+  const targetRating = state.currentUser ? (state.currentUser.rating || "B") : "B";
+  const fastGame = {
+    id: "pickup-" + Date.now(),
+    title: "Instant Pickup 2v2",
+    targetRating: targetRating,
+    courtLocation: beach,
+    courtNumber: "Court #1",
+    scheduledDate: new Date(Date.now() + 1800000).toISOString(),
+    status: "scheduled",
+    isAutoMatched: true,
+    matchedOptionName: "Instant Pickup Lobby",
+    team1PlayerIds: [players[0], players[3]],
+    team2PlayerIds: [players[1], players[2]],
+    team1Score: 0,
+    team2Score: 0,
+    setScores: []
+  };
+
+  state.games.unshift(fastGame);
+  state.saveLocal();
+  saveGameToFirestore(fastGame);
+
+  window.closeInstantPickupModal();
+  switchTab("matches");
+
+  triggerWebPushNotification("⚡️ Pickup Lobby Full (4/4)!", `Your instant pickup game at ${beach} is locked and starting soon!`);
+  showToast(`⚡️ Pickup lobby full! Game scheduled at ${beach}! Taking you to Game Details...`);
+
+  setTimeout(() => {
+    const card = document.getElementById(`match-card-${fastGame.id}`);
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.style.outline = "3px solid #0284c7";
+      card.style.boxShadow = "0 0 16px rgba(2, 132, 199, 0.4)";
+      setTimeout(() => {
+        card.style.outline = "";
+        card.style.boxShadow = "";
+      }, 3000);
+    }
+  }, 400);
+};
 
 window.handleCreateKingOfBeach = () => {
   if (!state.currentUser) {

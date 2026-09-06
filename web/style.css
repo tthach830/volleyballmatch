@@ -1339,3 +1339,107 @@ nav#bottom-nav {
   font-weight: 500;
 }
 
+/* ==========================================================================
+   INSTANT PICKUP MODAL STYLES (Matches Reference Image)
+   ========================================================================== */
+.ip-beach-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface, #ffffff);
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main, #1e293b);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ip-beach-pill.active {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #ffffff;
+}
+.ip-beach-count {
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+.ip-spots-container {
+  display: flex;
+  justify-content: space-around;
+  gap: 8px;
+  padding: 8px 0;
+}
+.ip-spot-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.ip-spot-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.15s ease;
+  user-select: none;
+}
+.ip-spot-circle:active {
+  transform: scale(0.95);
+}
+.ip-spot-circle.empty {
+  border: 1.5px dashed #94a3b8;
+  color: #64748b;
+  font-size: 20px;
+  font-weight: 400;
+  background: rgba(148, 163, 184, 0.05);
+}
+.ip-spot-circle.filled {
+  border: 1.5px solid #0284c7;
+  background: #f0f9ff;
+  font-size: 26px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.ip-spot-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  text-align: center;
+  max-width: 68px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ip-spot-circle .ip-remove-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  background: #dc2626;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #ffffff;
+}
+
+

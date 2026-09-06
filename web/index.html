@@ -54,7 +54,7 @@
       <div class="ios-view-header" style="justify-content: flex-end; margin-bottom: 8px;">
         <div class="ios-toolbar-actions" style="margin-left: auto;">
           <button type="button" class="btn-ios-toolbar btn-ios-purple" onclick="window.openCreateMatchModal()" title="Host a new game"><span style="font-size:16px; font-weight:900; line-height:1;">+</span> New Game</button>
-          <button type="button" class="btn-ios-toolbar btn-ios-orange" onclick="window.openRandomTeamsModal()" title="Quick Play / Random Round Robin">🎲 Quick Play</button>
+          <button type="button" class="btn-ios-toolbar btn-ios-orange" id="btn-instant-pickup" onclick="window.openInstantPickupModal()" title="Instant Pickup Lobby">⚡️ Instant Pickup</button>
         </div>
       </div>
 
@@ -608,6 +608,76 @@
       </div>
     </div>
 
+    <!-- Instant Pickup Lobby Modal (Matches iOS InstantPickupSheet) -->
+    <div id="instant-pickup-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeInstantPickupModal()">
+      <div class="modal-card" style="max-width: 440px; position: relative;">
+        <!-- Top Hero Banner Card -->
+        <div style="background: var(--surface, #ffffff); border-radius: 16px; padding: 18px; margin-bottom: 16px; border: 1px solid var(--border, #e2e8f0); position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 11px; font-weight: 800; padding: 4px 10px; background: rgba(2, 132, 199, 0.12); color: #0284c7; border-radius: 999px; letter-spacing: 0.5px;">FASTEST</span>
+            <span style="font-size: 20px;">⚡️</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 6px 0; color: var(--text-main, #1e293b);">Instant Pickup Lobby</h2>
+          <p style="font-size: 13px; color: var(--text-muted, #64748b); margin: 0; line-height: 1.4;">
+            Drop into today's live morning or sunset waves. Fills 4-player lobbies and alerts you once full.
+          </p>
+          <button type="button" class="modal-close" style="position: absolute; top: 12px; right: 12px;" onclick="window.closeInstantPickupModal()">&times;</button>
+        </div>
+
+        <!-- Beach Selection (Main Beach vs Harbor Beach) -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 11px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase; margin-bottom: 8px; padding-left: 2px;">
+            SELECT BEACH LOCATION
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="ip-beach-pill active" id="ip-beach-main" onclick="window.switchPickupBeach('Main Beach')">
+              <span>🏖️</span>
+              <span>Main Beach</span>
+              <span class="ip-beach-count" id="ip-count-main" style="display: none;">0</span>
+            </button>
+            <button type="button" class="ip-beach-pill" id="ip-beach-harbor" onclick="window.switchPickupBeach('Harbor Beach')">
+              <span>⛵️</span>
+              <span>Harbor Beach</span>
+              <span class="ip-beach-count" id="ip-count-harbor" style="display: none;">0</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Today's Beach Queue Card -->
+        <div style="background: var(--surface, #ffffff); border-radius: 16px; padding: 18px; border: 1px solid var(--border, #e2e8f0);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <div>
+              <div style="font-size: 17px; font-weight: 800; color: var(--text-main, #1e293b);" id="ip-queue-beach-title">Today's Beach Queue</div>
+              <div style="font-size: 12px; color: var(--text-muted, #64748b);">Auto-locks into a game when 4 players join</div>
+            </div>
+            <span id="ip-queue-count-badge" style="font-size: 13px; font-weight: 800; padding: 4px 10px; background: rgba(2, 132, 199, 0.12); color: #0284c7; border-radius: 999px;">0 / 4 Players</span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-bottom: 16px;">
+            <div id="ip-queue-progress-bar" style="height: 100%; width: 0%; background: #0284c7; border-radius: 999px; transition: width 0.3s ease;"></div>
+          </div>
+
+          <!-- 4 Interactive Spots (Matches Reference Image) -->
+          <div class="ip-spots-container" id="ip-spots-container">
+            <!-- 4 spots injected via renderInstantPickupModal() -->
+          </div>
+
+          <!-- Primary Queue Action Button -->
+          <button type="button" id="ip-queue-toggle-btn" class="btn" style="width: 100%; background: #0284c7; color: #fff; font-weight: 800; padding: 12px; font-size: 15px; border-radius: 12px; margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.toggleInstantPickupQueue()">
+            <span>⚡️</span>
+            <span>Enter Matchmaking Queue</span>
+          </button>
+
+          <!-- Auto-Fill Remaining Spots Helper Button -->
+          <button type="button" id="ip-queue-autofill-btn" class="btn" style="width: 100%; background: rgba(2, 132, 199, 0.08); color: #0284c7; font-weight: 700; padding: 10px; font-size: 13px; border-radius: 10px; margin-top: 8px;" onclick="window.fillInstantPickupQueue()">
+            <span>👥</span>
+            <span>Auto-Fill 4 Players (Test)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Random Teams Generator Modal -->
     <div id="random-teams-modal" class="modal-backdrop">
       <div class="modal-card" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
@@ -898,6 +968,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=5.4"></script>
+  <script type="module" src="app.js?v=5.5"></script>
 </body>
 </html>

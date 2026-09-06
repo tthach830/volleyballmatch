@@ -7,6 +7,7 @@ public struct ConfirmedGamesView: View {
     @State private var showNotificationsSheet: Bool = false
     @State private var showCreateMatchSheet: Bool = false
     @State private var showRandomTeamsSheet: Bool = false
+    @State private var showInstantPickupSheet: Bool = false
     @State private var qrGameForSheet: SetGame? = nil
     @State private var editGameForSheet: SetGame? = nil
     @State private var gameForRandomTeams: SetGame? = nil
@@ -97,12 +98,12 @@ public struct ConfirmedGamesView: View {
                         }
                         
                         Button {
-                            showRandomTeamsSheet = true
+                            showInstantPickupSheet = true
                         } label: {
                             HStack(spacing: 4) {
-                                Image(systemName: "dice.fill")
+                                Image(systemName: "bolt.fill")
                                     .font(.system(size: 11, weight: .bold))
-                                Text("Quick Play")
+                                Text("Instant Pickup")
                                     .font(.system(size: 12, weight: .bold))
                             }
                             .padding(.horizontal, 10)
@@ -143,6 +144,11 @@ public struct ConfirmedGamesView: View {
             }
             .sheet(isPresented: $showRandomTeamsSheet) {
                 RandomTeamGeneratorSheet(dataManager: dataManager)
+            }
+            .sheet(isPresented: $showInstantPickupSheet) {
+                InstantPickupSheet(dataManager: dataManager) { gameId in
+                    navigationPath.append(gameId)
+                }
             }
             .sheet(item: $qrGameForSheet) { game in
                 GameQRCodeSheet(game: game)
