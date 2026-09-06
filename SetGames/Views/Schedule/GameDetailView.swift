@@ -1369,18 +1369,8 @@ public struct MatchChatSheet: View {
                                         if isMe { Spacer(minLength: 40) }
                                         
                                         if !isMe {
-                                            if let sender = dataManager.player(for: msg.senderId) {
-                                                PlayerAvatarView(player: sender, dimension: 28, showBadge: false)
-                                            } else {
-                                                Circle()
-                                                    .fill(Color.orange.opacity(0.2))
-                                                    .frame(width: 28, height: 28)
-                                                    .overlay(
-                                                        Text(String(msg.senderName.prefix(1)))
-                                                            .font(.system(size: 12, weight: .bold))
-                                                            .foregroundColor(.orange)
-                                                    )
-                                            }
+                                            let sender = dataManager.player(for: msg.senderId)
+                                            PlayerAvatarView(player: sender, dimension: 28, showBadge: false)
                                         }
                                         
                                         VStack(alignment: isMe ? .trailing : .leading, spacing: 2) {
