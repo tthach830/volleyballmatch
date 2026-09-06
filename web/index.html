@@ -70,86 +70,127 @@
       </div>
     </main>
 
-    <!-- TAB 2: AUTO-MATCHMAKER -->
+    <!-- TAB 2: AUTO-MATCHMAKER (Matches iOS AutoMatchmakerView.swift) -->
     <main id="tab-matchmaker" class="tab-content">
-      <div class="section-header">
+      <div class="section-header" style="margin-bottom: 12px;">
         <div>
           <h1 class="section-title">Auto-Matchmaker</h1>
           <div class="section-sub">Automated pairing based on time and skill tier</div>
         </div>
       </div>
 
-      <!-- Option 1: Fast Pickup Lobby -->
-      <div class="match-card" style="border-left: 4px solid var(--accent); margin-bottom: 20px;">
-        <div style="font-weight: 800; font-size: 15px; margin-bottom: 4px;">⚡️ Instant Pickup Lobby (2v2)</div>
-        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-          Jump in the queue! Once 4 players join, an automatic match is locked on Court #1.
+      <!-- 4-Option Selector Pills matching iOS MatchmakingType -->
+      <div class="matchmaker-pills-container">
+        <button type="button" class="matchmaker-pill active" data-option="smartAvailability" onclick="window.switchMatchmakerOption('smartAvailability')">
+          <span class="pill-icon">🗓️</span>
+          <span>Smart Availability</span>
+        </button>
+        <button type="button" class="matchmaker-pill" data-option="instantQueue" onclick="window.switchMatchmakerOption('instantQueue')">
+          <span class="pill-icon">⚡️</span>
+          <span>Today's Queue</span>
+        </button>
+        <button type="button" class="matchmaker-pill" data-option="kingOfTheBeach" onclick="window.switchMatchmakerOption('kingOfTheBeach')">
+          <span class="pill-icon">👑</span>
+          <span>King of Beach</span>
+        </button>
+        <button type="button" class="matchmaker-pill" data-option="openBoard" onclick="window.switchMatchmakerOption('openBoard')">
+          <span class="pill-icon">🏐</span>
+          <span>Open Games</span>
+        </button>
+      </div>
+
+      <!-- Dynamic Option Banner Card matching iOS -->
+      <div id="matchmaker-banner-card" class="match-card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <span id="mm-banner-tag" class="badge" style="background: rgba(234, 88, 12, 0.15); color: #ea580c; font-size: 10px; font-weight: 800;">RECOMMENDED</span>
+          <span id="mm-banner-icon" style="font-size: 24px;">🗓️</span>
         </div>
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div style="font-size: 14px; font-weight: 800; color: var(--accent);">Queue: <span id="pickup-count">0/4</span> Waiting</div>
-          <button class="btn btn-accent btn-sm" onclick="window.handleJoinPickup()">Join 2v2 Pickup</button>
+        <div id="mm-banner-title" style="font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 4px;">Smart Availability Matcher</div>
+        <div id="mm-banner-sub" style="font-size: 13px; color: var(--text-muted); line-height: 1.4;">
+          Set recurring or upcoming free windows. The engine pairs 4 players of compatible tier and auto-confirms the match.
         </div>
       </div>
 
-      <!-- Option 2: Availability Window -->
-      <div class="match-card">
-        <div style="font-weight: 800; font-size: 15px; margin-bottom: 4px;">🗓 Post Free Time Window</div>
-        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
-          Tell the algorithm when and where you want to play.
+      <!-- Option A: Smart Availability -->
+      <div id="mm-section-smartAvailability" class="mm-section">
+        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+          <button type="button" class="btn btn-primary" style="flex: 1; font-weight: 700; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.openAddAvailabilityModal()">
+            <span>➕</span>
+            <span>Add Free Window</span>
+          </button>
+          <button type="button" class="btn btn-outline" style="flex: 1; font-weight: 700; padding: 12px; border-color: #ea580c; color: #ea580c; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.handleRunAutoMatch()">
+            <span>✨</span>
+            <span>Run Auto-Match</span>
+          </button>
         </div>
 
-        <form id="avail-form">
-          <div class="form-group">
-            <label class="form-label" for="avail-date">Date</label>
-            <input type="date" id="avail-date" class="form-input" required value="2026-09-05">
+        <div class="match-card" id="avail-slots-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;" id="avail-slots-title">YOUR ACTIVE AVAILABILITY WINDOWS (0)</div>
+            <span id="avail-slots-count" class="badge" style="background: #f1f5f9; color: #475569; font-weight: 700;">0</span>
           </div>
-
-          <div style="display: flex; gap: 12px;">
-            <div class="form-group" style="flex: 1;">
-              <label class="form-label" for="avail-start">Start Time</label>
-              <input type="time" id="avail-start" class="form-input" required value="09:00">
-            </div>
-            <div class="form-group" style="flex: 1;">
-              <label class="form-label" for="avail-end">End Time</label>
-              <input type="time" id="avail-end" class="form-input" required value="11:30">
-            </div>
+          <div id="avail-slots-list">
+            <!-- Injected via renderAvailabilityWindows() -->
           </div>
-
-          <div class="form-group">
-            <label class="form-label" for="avail-beach">Preferred Beach</label>
-            <select id="avail-beach" class="form-select">
-              <option value="Main Beach">Main Beach</option>
-              <option value="Harbor Beach">Harbor Beach</option>
-              <option value="4th Street">4th Street</option>
-              <option value="Custom Court">Custom Court</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Accepted Tiers</label>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px;">
-              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="AA" checked> AA</label>
-              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="A" checked> A</label>
-              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="B"> B</label>
-              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="Intermediate"> Int</label>
-              <label style="font-size: 13px; font-weight: 600;"><input type="checkbox" name="avail-tier" value="Novice"> Novice</label>
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Post Window & Find Matches</button>
-        </form>
+        </div>
       </div>
 
-      <!-- Active Availability Windows Section -->
-      <div class="match-card" style="margin-top: 18px;" id="avail-slots-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <div>
-            <div style="font-weight: 800; font-size: 15px;" id="avail-slots-title">🗓 Active Availability Windows</div>
+      <!-- Option B: Today's Beach Queue -->
+      <div id="mm-section-instantQueue" class="mm-section" style="display: none;">
+        <div class="match-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div>
+              <div style="font-size: 17px; font-weight: 800; color: #0f172a;">Today's Beach Queue</div>
+              <div style="font-size: 13px; color: var(--text-muted);">Auto-locks into a game when 4 players join</div>
+            </div>
+            <span id="pickup-count-badge" class="badge" style="background: rgba(2, 132, 199, 0.15); color: #0284c7; font-weight: 800; font-size: 13px; padding: 4px 10px;">0 / 4 Players</span>
           </div>
-          <span id="avail-slots-count" class="badge" style="background: #f1f5f9; color: #475569; font-weight: 700;">0</span>
+
+          <!-- Progress Bar -->
+          <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin: 12px 0 16px;">
+            <div id="queue-progress-bar" style="height: 100%; width: 0%; background: #0284c7; transition: width 0.3s ease;"></div>
+          </div>
+
+          <!-- 4 Circular Spots matching iOS -->
+          <div id="queue-spots-container" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <!-- Injected via renderPickupQueue() -->
+          </div>
+
+          <!-- Toggle Queue Button -->
+          <button type="button" id="queue-toggle-btn" class="btn" style="width: 100%; font-size: 15px; font-weight: 800; padding: 14px; background: #0284c7; color: #fff; border-radius: 12px;" onclick="window.handleJoinPickup()">
+            ⚡️ Enter Matchmaking Queue
+          </button>
         </div>
-        <div id="avail-slots-list">
-          <!-- Injected via renderAvailabilityWindows() -->
+      </div>
+
+      <!-- Option C: King of the Beach -->
+      <div id="mm-section-kingOfTheBeach" class="mm-section" style="display: none;">
+        <div class="match-card">
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">How King of the Beach Works</div>
+          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4;">
+            No need to find a fixed partner beforehand! You queue as an individual. 4 players play 3 sets where you partner with everyone once:
+          </div>
+
+          <div style="background: rgba(147, 51, 234, 0.08); border: 1px solid rgba(147, 51, 234, 0.15); border-radius: 10px; padding: 12px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 13px;"><strong style="color: #7e22ce;">Set 1:</strong> Player 1 & 2 vs Player 3 & 4</div>
+            <div style="font-size: 13px;"><strong style="color: #7e22ce;">Set 2:</strong> Player 1 & 3 vs Player 2 & 4</div>
+            <div style="font-size: 13px;"><strong style="color: #7e22ce;">Set 3:</strong> Player 1 & 4 vs Player 2 & 3</div>
+          </div>
+
+          <button type="button" class="btn" style="width: 100%; font-size: 15px; font-weight: 800; padding: 14px; background: #9333ea; color: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.handleCreateKingOfBeach()">
+            <span>👑</span>
+            <span>Create King/Queen 4-Player Rotation</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Option D: Open Court Auto-Fill -->
+      <div id="mm-section-openBoard" class="mm-section" style="display: none;">
+        <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; padding-left: 4px;">
+          OPEN SET GAMES NEEDING PLAYERS
+        </div>
+        <div id="open-games-list">
+          <!-- Injected via renderOpenGames() -->
         </div>
       </div>
     </main>
@@ -931,6 +972,91 @@
             <!-- URL injected via JS -->
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Add Free Window Modal (Matches iOS AvailabilityPickerView.swift) -->
+    <div id="add-availability-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeAddAvailabilityModal()">
+      <div class="modal-card" style="max-width: 440px; position: relative;">
+        <div class="modal-header" style="padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--border);">
+          <h2 class="modal-title" style="font-size: 17px; font-weight: 800;">Set Free Window</h2>
+          <button type="button" class="modal-close" onclick="window.closeAddAvailabilityModal()">&times;</button>
+        </div>
+
+        <form id="avail-form" onsubmit="window.handleSaveAvailability(event)">
+          <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Date & Time Window</div>
+          <div class="form-group">
+            <label class="form-label" for="avail-date">Play Date</label>
+            <input type="date" id="avail-date" class="form-input" required>
+          </div>
+
+          <div style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="avail-start">Start Window</label>
+              <input type="time" id="avail-start" class="form-input" required value="09:00">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="avail-end">End Window</label>
+              <input type="time" id="avail-end" class="form-input" required value="11:30">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
+              <input type="checkbox" id="avail-recurring" style="width: 16px; height: 16px;">
+              <span>Recurring Every Week</span>
+            </label>
+          </div>
+
+          <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Court Location</div>
+          <div class="form-group">
+            <label class="form-label" for="avail-beach">Preferred Beach</label>
+            <select id="avail-beach" class="form-select" onchange="document.getElementById('avail-custom-beach-box').style.display = (this.value === 'Custom Court' ? 'block' : 'none')">
+              <option value="Main Beach">Main Beach</option>
+              <option value="South Beach Courts">South Beach Courts</option>
+              <option value="Harbor Beach">Harbor Beach</option>
+              <option value="4th Street">4th Street</option>
+              <option value="Custom Court">Custom Court</option>
+            </select>
+          </div>
+
+          <div id="avail-custom-beach-box" class="form-group" style="display: none;">
+            <label class="form-label" for="avail-custom-beach">Custom Court Name</label>
+            <input type="text" id="avail-custom-beach" class="form-input" placeholder="e.g. Seabright Beach, 26th Ave">
+          </div>
+
+          <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Accepted Skill Levels</div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Select which rating tiers you are comfortable playing with:</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+              <input type="checkbox" name="avail-tier" value="AA" checked> <span>👑 AA</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+              <input type="checkbox" name="avail-tier" value="A" checked> <span>⚡️ A</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+              <input type="checkbox" name="avail-tier" value="B" checked> <span>🔥 B</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+              <input type="checkbox" name="avail-tier" value="Intermediate"> <span>🏐 Int</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+              <input type="checkbox" name="avail-tier" value="Novice"> <span>🌱 Novice</span>
+            </label>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
+              <input type="checkbox" id="avail-plusminus" checked style="width: 16px; height: 16px;">
+              <span>Allow ±1 Tier Tolerance</span>
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-outline" style="flex: 1;" onclick="window.closeAddAvailabilityModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1; font-weight: 800;">Save Window</button>
+          </div>
+        </form>
       </div>
     </div>
 

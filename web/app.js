@@ -1626,7 +1626,13 @@ export function switchTab(tabId) {
   });
 
   if (normalizedId === "matches") renderMatches();
-  if (normalizedId === "matchmaker") renderPickupQueue();
+  if (normalizedId === "matchmaker") {
+    if (window.switchMatchmakerOption) {
+      window.switchMatchmakerOption(window.selectedMatchmakerOption || "smartAvailability");
+    } else {
+      renderPickupQueue();
+    }
+  }
   if (normalizedId === "ladders") {
     renderLadder();
     renderPopularKids();
@@ -1637,6 +1643,9 @@ export function switchTab(tabId) {
 window.switchTab = switchTab;
 window.renderProfile = renderProfile;
 window.renderAvailabilityWindows = renderAvailabilityWindows;
+window.renderHeader = renderHeader;
+window.renderPickupQueue = renderPickupQueue;
+window.renderOpenGames = renderOpenGames;
 
 window.switchLadderTab = (type) => {
   const topView = document.getElementById("ladder-top-players-view");
@@ -2856,22 +2865,118 @@ window.handleSwitchUser = () => {
   }
 };
 
-window.handleJoinPickup = () => {
-  if (!state.currentUser) return;
-  if (!state.pickupQueue.includes(state.currentUser.id)) {
-    state.pickupQueue.push(state.currentUser.id);
-  }
+// ==========================================
+// AUTO-MATCHMAKER (Matches iOS AutoMatchmakerView.swift & MatchmakingEngine.swift)
+// ==========================================
 
-  const queueCountEl = document.getElementById("pickup-count");
-  if (queueCountEl) queueCountEl.textContent = `${state.pickupQueue.length}/4`;
+const MM_OPTIONS = {
+  smartAvailability: {
+    tag: "RECOMMENDED",
+    icon: "🗓️",
+    title: "Smart Availability Matcher",
+    sub: "Set recurring or upcoming free windows. The engine pairs 4 players of compatible tier and auto-confirms the match.",
+    color: "#ea580c"
+  },
+  instantQueue: {
+    tag: "FASTEST",
+    icon: "⚡️",
+    title: "Instant Pickup Lobby",
+    sub: "Drop into today's live morning or sunset waves. Fills 4-player lobbies and alerts you once full.",
+    color: "#0284c7"
+  },
+  kingOfTheBeach: {
+    tag: "ROTATING 2V2",
+    icon: "👑",
+    title: "King of the Beach (Solo Queue)",
+    sub: "No partner required! 4 players rotate partners across 3 sets. Individual win/loss record tracked.",
+    color: "#9333ea"
+  },
+  openBoard: {
+    tag: "DYNAMIC",
+    icon: "✨",
+    title: "Open Court Compatibility Fill",
+    sub: "Matches you with existing games missing 1 player based on 0-100% skill & schedule compatibility.",
+    color: "#0d9488"
+  }
+};
+
+window.selectedMatchmakerOption = "smartAvailability";
+
+window.switchMatchmakerOption = (option) => {
+  window.selectedMatchmakerOption = option;
+  const config = MM_OPTIONS[option] || MM_OPTIONS.smartAvailability;
+
+  document.querySelectorAll(".matchmaker-pill").forEach(pill => {
+    pill.classList.toggle("active", pill.dataset.option === option);
+  });
+
+  const tag = document.getElementById("mm-banner-tag");
+  const icon = document.getElementById("mm-banner-icon");
+  const title = document.getElementById("mm-banner-title");
+  const sub = document.getElementById("mm-banner-sub");
+
+  if (tag) {
+    tag.textContent = config.tag;
+    tag.style.color = config.color;
+    tag.style.background = `${config.color}22`;
+  }
+  if (icon) icon.textContent = config.icon;
+  if (title) title.textContent = config.title;
+  if (sub) sub.textContent = config.sub;
+
+  document.querySelectorAll(".mm-section").forEach(sec => {
+    sec.style.display = (sec.id === `mm-section-${option}`) ? "block" : "none";
+  });
+
+  if (option === "smartAvailability") renderAvailabilityWindows();
+  if (option === "instantQueue") renderPickupQueue();
+  if (option === "openBoard") renderOpenGames();
+};
+
+window.openAddAvailabilityModal = () => {
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
+  const modal = document.getElementById("add-availability-modal");
+  const dateInput = document.getElementById("avail-date");
+  if (dateInput && !dateInput.value) {
+    const tomorrow = new Date(Date.now() + 86400000);
+    dateInput.value = tomorrow.toISOString().split("T")[0];
+  }
+  if (modal) modal.classList.add("active");
+};
+
+window.closeAddAvailabilityModal = () => {
+  const modal = document.getElementById("add-availability-modal");
+  if (modal) modal.classList.remove("active");
+};
+
+window.handleJoinPickup = () => {
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
+  const uid = state.currentUser.id;
+  state.pickupQueue = state.pickupQueue || [];
+  const inQueue = state.pickupQueue.includes(uid);
+  if (inQueue) {
+    state.pickupQueue = state.pickupQueue.filter(id => id !== uid);
+    showToast("Left the matchmaking queue.");
+  } else {
+    state.pickupQueue.push(uid);
+    showToast(`Entered matchmaking queue (${state.pickupQueue.length}/4)`);
+  }
+  state.saveLocal();
+  renderPickupQueue();
 
   if (state.pickupQueue.length >= 4) {
     const players = state.pickupQueue.splice(0, 4);
     const fastGame = {
       id: "pickup-" + Date.now(),
       title: "Fast Pickup 2v2",
-      targetRating: state.currentUser.rating,
-      courtLocation: state.currentUser.homeBeach,
+      targetRating: state.currentUser.rating || "B",
+      courtLocation: state.currentUser.homeBeach || "Main Beach",
       courtNumber: "Court #1",
       scheduledDate: new Date(Date.now() + 3600000).toISOString(),
       status: "scheduled",
@@ -2887,13 +2992,331 @@ window.handleJoinPickup = () => {
     state.saveLocal();
     saveGameToFirestore(fastGame);
 
-    // Trigger Web Push Notification
-    triggerWebPushNotification("⚡️ Pickup Lobby Full (4/4)!", `Your fast pickup game at ${state.currentUser.homeBeach} is locked and starting soon!`);
-
+    triggerWebPushNotification("⚡️ Pickup Lobby Full (4/4)!", `Your fast pickup game at ${state.currentUser.homeBeach || "Main Beach"} is locked and starting soon!`);
     showToast("⚡️ Pickup lobby full! Game scheduled on Court #1!");
     switchTab("matches");
+  }
+};
+
+export function renderPickupQueue() {
+  const queue = state.pickupQueue || [];
+  const queueCountBadge = document.getElementById("pickup-count-badge");
+  if (queueCountBadge) {
+    queueCountBadge.textContent = `${queue.length} / 4 Players`;
+  }
+
+  const progressBar = document.getElementById("queue-progress-bar");
+  if (progressBar) {
+    progressBar.style.width = `${Math.min(100, (queue.length / 4) * 100)}%`;
+  }
+
+  const container = document.getElementById("queue-spots-container");
+  if (container) {
+    let html = "";
+    for (let i = 0; i < 4; i++) {
+      if (i < queue.length) {
+        const p = state.getPlayer(queue[i]);
+        const avatar = p ? (p.avatarEmoji || "🏐") : "🏐";
+        const nick = p ? (p.nickname || p.name) : `Player ${i + 1}`;
+        html += `
+          <div class="queue-spot-card">
+            <div class="queue-spot-circle filled">${avatar}</div>
+            <div class="queue-spot-label" title="${nick}">${nick}</div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="queue-spot-card">
+            <div class="queue-spot-circle empty">+</div>
+            <div class="queue-spot-label">Spot ${i + 1}</div>
+          </div>
+        `;
+      }
+    }
+    container.innerHTML = html;
+  }
+
+  const toggleBtn = document.getElementById("queue-toggle-btn");
+  if (toggleBtn) {
+    const inQueue = state.currentUser && queue.includes(state.currentUser.id);
+    if (inQueue) {
+      toggleBtn.innerHTML = "✕ Leave Matchmaking Queue";
+      toggleBtn.style.background = "#dc2626";
+    } else {
+      toggleBtn.innerHTML = "⚡️ Enter Matchmaking Queue";
+      toggleBtn.style.background = "#0284c7";
+    }
+  }
+
+  renderAvailabilityWindows();
+}
+
+window.handleCreateKingOfBeach = () => {
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
+  const user = state.currentUser;
+  const opponents = (state.players || []).filter(p => p.id !== user.id).sort(() => 0.5 - Math.random()).slice(0, 3);
+  if (opponents.length < 3) {
+    showToast("Need at least 3 other players in the community to form a King of the Beach rotation.");
+    return;
+  }
+  const allFour = [user, ...opponents];
+  const kingGame = {
+    id: "king-" + Date.now(),
+    title: "King of the Beach Session",
+    targetRating: user.rating || "B",
+    format: "kingOfTheBeach",
+    status: "scheduled",
+    scheduledDate: new Date(Date.now() + 3 * 3600000).toISOString(),
+    courtLocation: user.homeBeach || "Main Beach",
+    courtNumber: "Court #1",
+    team1PlayerIds: [allFour[0].id, allFour[1].id],
+    team2PlayerIds: [allFour[2].id, allFour[3].id],
+    team1Score: 0,
+    team2Score: 0,
+    isAutoMatched: true,
+    matchedOptionName: "King of the Beach",
+    notes: "Individual 4-player rotation across 3 sets."
+  };
+  state.games.unshift(kingGame);
+  state.saveLocal();
+  saveGameToFirestore(kingGame);
+  showToast(`Created King of the Beach 4-player rotation with ${opponents.map(p => p.nickname || p.name).join(", ")}!`);
+  switchTab("matches");
+};
+
+export function calculateCompatibility(player, game) {
+  if (!player || !game) return 85;
+  const tierScores = {
+    novice: 1, nov: 1,
+    intermediate: 2, int: 2,
+    b: 3,
+    a: 4,
+    aa: 5,
+    open: 6
+  };
+  const playerLevel = tierScores[(player.rating || "B").toLowerCase()] || 3;
+  const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
+  const allowedLevels = allowed.map(r => tierScores[(r || "B").toLowerCase()] || 3);
+  const diffs = allowedLevels.map(l => Math.abs(playerLevel - l));
+  const minDiff = Math.min(...diffs);
+
+  let score = 100;
+  if (minDiff === 0) score = 98;
+  else if (minDiff === 1) score = 82;
+  else if (minDiff === 2) score = 55;
+  else score = 25;
+
+  const spotsRemaining = Math.max(0, (game.maxPlayers || 4) - ((game.team1PlayerIds || []).length + (game.team2PlayerIds || []).length));
+  if (spotsRemaining === 1) {
+    score = Math.min(100, score + 2);
+  }
+  return score;
+}
+
+export function renderOpenGames() {
+  const container = document.getElementById("open-games-list");
+  if (!container) return;
+
+  const openGames = (state.games || []).filter(g => {
+    const maxP = g.maxPlayers || 4;
+    const currentP = (g.team1PlayerIds || []).length + (g.team2PlayerIds || []).length;
+    return g.status === "scheduled" && currentP < maxP;
+  });
+
+  if (openGames.length === 0) {
+    container.innerHTML = `
+      <div class="match-card" style="text-align: center; padding: 24px 16px; color: var(--text-muted);">
+        <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 4px;">All scheduled games are currently full!</div>
+        <div style="font-size: 12px;">Use Option A or B above to auto-create a new set.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = openGames.map(game => {
+    const compat = state.currentUser ? calculateCompatibility(state.currentUser, game) : 85;
+    const maxP = game.maxPlayers || 4;
+    const currentP = (game.team1PlayerIds || []).length + (game.team2PlayerIds || []).length;
+    const missing = Math.max(0, maxP - currentP);
+    let dateFormatted = "Upcoming";
+    try {
+      const d = parseGameDate(game.scheduledDate);
+      dateFormatted = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + " at " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    } catch (e) {
+      dateFormatted = String(game.scheduledDate || "Upcoming");
+    }
+    const targetRating = game.targetRating || "B";
+    const compatColor = compat >= 80 ? "#16a34a" : "#ea580c";
+    const compatBg = compat >= 80 ? "rgba(22, 163, 74, 0.12)" : "rgba(234, 88, 12, 0.12)";
+
+    return `
+      <div class="match-card" style="margin-bottom: 12px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <div>
+            <div style="font-size: 16px; font-weight: 800; color: #0f172a;">${game.title}</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">📅 ${dateFormatted}</div>
+          </div>
+          <div style="text-align: right; background: ${compatBg}; padding: 4px 8px; border-radius: 8px;">
+            <div style="font-size: 11px; font-weight: 900; color: ${compatColor};">${compat}% MATCH</div>
+            <div style="font-size: 9px; color: var(--text-muted);">Rating & Schedule</div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 12px;">
+          <div style="color: var(--text-muted); font-weight: 600;">📍 ${game.courtLocation || "Main Beach"} • ${game.courtNumber || "Court #1"}</div>
+          <span class="badge" style="background: var(--accent-light); color: var(--accent); font-weight: 800; font-size: 11px;">${targetRating}</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 10px;">
+          <div style="font-size: 12px; font-weight: 700; color: #ea580c;">Missing: ${missing} Player(s)</div>
+          <button type="button" class="btn btn-sm" style="background: #0d9488; color: #fff; font-weight: 700; border-radius: 999px; padding: 6px 14px; font-size: 12px;" onclick="window.handleAutoFillOpenGame('${game.id}')">
+            Auto-Fill & Join
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+window.handleAutoFillOpenGame = (gameId) => {
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
+  const uid = state.currentUser.id;
+  const game = (state.games || []).find(g => g.id === gameId);
+  if (!game) return;
+
+  const t1 = game.team1PlayerIds || [];
+  const t2 = game.team2PlayerIds || [];
+  if (t1.includes(uid) || t2.includes(uid)) {
+    showToast("You are already in this game!");
+    return;
+  }
+  if (t1.length < 2) {
+    t1.push(uid);
+    game.team1PlayerIds = t1;
+  } else if (t2.length < 2) {
+    t2.push(uid);
+    game.team2PlayerIds = t2;
   } else {
-    showToast(`Joined pickup queue (${state.pickupQueue.length}/4). Game locks when 4 players join!`);
+    showToast("This game is already full.");
+    return;
+  }
+  state.saveLocal();
+  saveGameToFirestore(game);
+  showToast(`You joined ${game.title} at ${game.courtLocation}!`);
+  renderOpenGames();
+  renderMatches();
+};
+
+window.handleRunAutoMatch = () => {
+  if (!state.currentUser) {
+    window.showAuthModal();
+    return;
+  }
+  const slots = state.availabilitySlots || [];
+  const players = state.players || [];
+  const playerLookup = new Map(players.map(p => [p.id, p]));
+
+  const tierScores = {
+    novice: 1, nov: 1,
+    intermediate: 2, int: 2,
+    b: 3,
+    a: 4,
+    aa: 5,
+    open: 6
+  };
+  const tierFromScore = (score) => {
+    if (score <= 1) return "Novice";
+    if (score === 2) return "Intermediate";
+    if (score === 3) return "B";
+    if (score === 4) return "A";
+    if (score === 5) return "AA";
+    return "Open";
+  };
+
+  const slotsByDayBeach = new Map();
+  for (const slot of slots) {
+    if (slot.isMatched) continue;
+    const dateStr = (slot.date || "").split("T")[0];
+    const key = `${dateStr}_${slot.preferredBeach || "Main Beach"}`;
+    if (!slotsByDayBeach.has(key)) slotsByDayBeach.set(key, []);
+    slotsByDayBeach.get(key).push(slot);
+  }
+
+  let addedCount = 0;
+  for (const [key, groupSlots] of slotsByDayBeach) {
+    if (groupSlots.length < 4) continue;
+
+    const sortedSlots = [...groupSlots].sort((s1, s2) => {
+      const p1 = playerLookup.get(s1.playerId);
+      const p2 = playerLookup.get(s2.playerId);
+      const l1 = tierScores[(p1?.rating || "B").toLowerCase()] || 3;
+      const l2 = tierScores[(p2?.rating || "B").toLowerCase()] || 3;
+      return l1 - l2;
+    });
+
+    let index = 0;
+    while (index + 3 < sortedSlots.length) {
+      const candidateSlots = sortedSlots.slice(index, index + 4);
+      const candidatePlayers = candidateSlots.map(s => playerLookup.get(s.playerId)).filter(Boolean);
+
+      if (candidatePlayers.length === 4) {
+        const scores = candidatePlayers.map(p => tierScores[(p.rating || "B").toLowerCase()] || 3);
+        const minScore = Math.min(...scores);
+        const maxScore = Math.max(...scores);
+
+        if (maxScore - minScore <= 2) {
+          const sortedByElo = [...candidatePlayers].sort((a, b) => (b.eloRating || 1500) - (a.eloRating || 1500));
+          const avgLevel = Math.round(scores.reduce((a, b) => a + b, 0) / 4);
+          const matchedTier = tierFromScore(avgLevel);
+
+          const autoGame = {
+            id: "match-" + Date.now() + "-" + Math.random().toString(36).substr(2, 4),
+            title: `${matchedTier} Beach Doubles Set`,
+            targetRating: matchedTier,
+            format: "bestOfThree",
+            status: "scheduled",
+            scheduledDate: candidateSlots[0].startTime || candidateSlots[0].date,
+            courtLocation: candidateSlots[0].preferredBeach || "Main Beach",
+            courtNumber: `Court #${Math.floor(Math.random() * 6) + 1}`,
+            team1PlayerIds: [sortedByElo[0].id, sortedByElo[3].id],
+            team2PlayerIds: [sortedByElo[1].id, sortedByElo[2].id],
+            isAutoMatched: true,
+            matchedOptionName: "Smart Availability Matcher",
+            team1Score: 0,
+            team2Score: 0,
+            setScores: []
+          };
+          state.games.unshift(autoGame);
+          saveGameToFirestore(autoGame);
+          addedCount++;
+
+          const matchedIds = new Set(candidatePlayers.map(p => p.id));
+          for (const s of state.availabilitySlots) {
+            if (matchedIds.has(s.playerId) && !s.isMatched) {
+              s.isMatched = true;
+              saveSlotToFirestore(s);
+            }
+          }
+          index += 4;
+          continue;
+        }
+      }
+      index += 1;
+    }
+  }
+
+  state.saveLocal();
+  renderAvailabilityWindows();
+  if (addedCount > 0) {
+    showToast(`Successfully matched ${addedCount} balanced set game(s)!`);
+  } else {
+    showToast("No full 4-player match found yet. Add more availability windows.");
   }
 };
 
@@ -2919,7 +3342,7 @@ export function renderAvailabilityWindows() {
 
   const isRoot = isRootUser(currentUser);
   if (titleEl) {
-    titleEl.textContent = isRoot ? "🗓 All Active Windows (Admin View)" : "🗓 Your Active Availability Windows";
+    titleEl.textContent = isRoot ? `ALL COMMUNITY AVAILABILITY WINDOWS (${visibleSlotsLength(currentUser, isRoot)})` : `YOUR ACTIVE AVAILABILITY WINDOWS (${visibleSlotsLength(currentUser, isRoot)})`;
   }
 
   const slots = state.availabilitySlots || [];
@@ -2933,7 +3356,7 @@ export function renderAvailabilityWindows() {
   if (visibleSlots.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 14px 0;">
-        ${currentUser ? "No active availability windows. Post a free window above to get auto-matched!" : "Log in to view and post availability windows."}
+        ${isRoot ? "No community availability windows active." : "No free windows set yet. Tap 'Add Free Window' to tell the engine when you can play."}
       </div>
     `;
     return;
@@ -2999,12 +3422,12 @@ export function renderAvailabilityWindows() {
   }).join("");
 }
 
-export function renderPickupQueue() {
-  const queueCountEl = document.getElementById("pickup-count");
-  if (queueCountEl) {
-    queueCountEl.textContent = `${(state.pickupQueue || []).length}/4`;
-  }
-  renderAvailabilityWindows();
+function visibleSlotsLength(currentUser, isRoot) {
+  const slots = state.availabilitySlots || [];
+  return slots.filter(s => {
+    if (isRoot) return true;
+    return currentUser && (s.playerId === currentUser.id || (currentUser.phoneNumber && s.playerId === currentUser.phoneNumber));
+  }).length;
 }
 
 window.deleteAvailabilitySlot = async (slotId) => {
@@ -3019,9 +3442,8 @@ window.deleteAvailabilitySlot = async (slotId) => {
     return;
   }
 
-  // Only 4087869405 and the player that created them can delete availability windows
   const isRoot = isRootUser(user);
-  const isOwner = slot.playerId === user.id;
+  const isOwner = slot.playerId === user.id || (user.phoneNumber && slot.playerId === user.phoneNumber);
   if (!isRoot && !isOwner) {
     showToast("Permission denied: You cannot delete this availability window.");
     return;
@@ -3037,6 +3459,7 @@ window.deleteAvailabilitySlot = async (slotId) => {
   await deleteSlotFromFirestore(slotId);
   showToast("Availability window deleted.");
 };
+window.handleDeleteSlot = window.deleteAvailabilitySlot;
 
 window.handleSaveAvailability = (e) => {
   e.preventDefault();
@@ -3048,7 +3471,11 @@ window.handleSaveAvailability = (e) => {
   const date = document.getElementById("avail-date").value;
   const start = document.getElementById("avail-start").value;
   const end = document.getElementById("avail-end").value;
-  const beach = document.getElementById("avail-beach").value;
+  let beach = document.getElementById("avail-beach").value;
+  if (beach === "Custom Court") {
+    const custom = document.getElementById("avail-custom-beach")?.value?.trim();
+    beach = custom || "Custom Court";
+  }
 
   const checkedTiers = Array.from(document.querySelectorAll("input[name='avail-tier']:checked")).map(el => el.value);
 
@@ -3060,17 +3487,20 @@ window.handleSaveAvailability = (e) => {
     endTime: end,
     preferredBeach: beach,
     acceptedTiers: checkedTiers,
+    allowPlusMinusOneTier: document.getElementById("avail-plusminus")?.checked !== false,
+    isRecurringWeekly: document.getElementById("avail-recurring")?.checked === true,
     isMatched: false,
     createdAt: new Date().toISOString()
   };
 
-  state.availabilitySlots.push(slot);
+  state.availabilitySlots.unshift(slot);
   state.saveLocal();
   saveSlotToFirestore(slot);
   trackEvent("create_availability", {
     beach: slot.preferredBeach,
     tiers: slot.acceptedTiers ? slot.acceptedTiers.join(",") : ""
   });
+  window.closeAddAvailabilityModal();
   renderAvailabilityWindows();
   showToast("Free window saved! Matchmaker is searching for partners.");
 };
