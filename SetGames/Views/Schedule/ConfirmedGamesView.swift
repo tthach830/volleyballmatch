@@ -9,6 +9,7 @@ public struct ConfirmedGamesView: View {
     @State private var qrGameForSheet: SetGame? = nil
     @State private var editGameForSheet: SetGame? = nil
     @State private var gameForRandomTeams: SetGame? = nil
+    @State private var chatGameForSheet: SetGame? = nil
     @State private var navigationPath = NavigationPath()
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
@@ -158,6 +159,9 @@ public struct ConfirmedGamesView: View {
                     initialCourtNumber: game.courtNumber,
                     initialFormat: game.format
                 )
+            }
+            .sheet(item: $chatGameForSheet) { game in
+                MatchChatSheet(dataManager: dataManager, game: game)
             }
             .alert("Notice", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
@@ -338,7 +342,7 @@ public struct ConfirmedGamesView: View {
                 }
                 
                 Button {
-                    navigationPath.append(game.id)
+                    chatGameForSheet = game
                 } label: {
                     Label("Match Chat (\(game.messages.count))", systemImage: "message")
                 }
@@ -940,7 +944,7 @@ public struct ConfirmedGamesView: View {
                         Label("QR Code / Share", systemImage: "qrcode")
                     }
                     Button {
-                        navigationPath.append(game.id)
+                        chatGameForSheet = game
                     } label: {
                         Label("Match Chat (\(game.messages.count))", systemImage: "message")
                     }
@@ -995,7 +999,7 @@ public struct ConfirmedGamesView: View {
                 .buttonStyle(.borderless)
                 
                 Button {
-                    navigationPath.append(game.id)
+                    chatGameForSheet = game
                 } label: {
                     ZStack(alignment: .topTrailing) {
                         VStack(spacing: 2) {

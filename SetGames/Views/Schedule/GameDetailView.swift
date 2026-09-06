@@ -420,9 +420,7 @@ public struct GameDetailView: View {
                         }
                         
                         // Match Chat & Quick ETA Statuses
-                        if isUserInMatch {
-                            matchChatSection(game: game)
-                        }
+                        matchChatSection(game: game)
                         
                         // Back Out / Leave Match Button (if user is registered in upcoming game)
                         if isUserInMatch && game.status != .completed {
@@ -919,29 +917,29 @@ public struct GameDetailView: View {
     
     private func matchChatSection(game: SetGame) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    isChatCollapsed.toggle()
-                }
-            } label: {
-                HStack {
-                    HStack(spacing: 6) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .foregroundColor(.orange)
+                    Text("CHAT")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.secondary)
+                    
+                    if !game.messages.isEmpty {
+                        Text("(\(game.messages.count))")
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundColor(.orange)
-                        Text("CHAT")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.secondary)
-                        
-                        if !game.messages.isEmpty {
-                            Text("(\(game.messages.count))")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.orange)
-                        }
                     }
-                    
-                    Spacer()
-                    
-                    // Prominent, interactive Collapse/Expand capsule button
+                }
+                
+                Spacer()
+                
+                // Interactive Collapse/Expand capsule button
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        isChatCollapsed.toggle()
+                    }
+                } label: {
                     HStack(spacing: 4) {
                         Text(isChatCollapsed ? "Expand" : "Collapse")
                             .font(.system(size: 11, weight: .bold))
@@ -954,9 +952,8 @@ public struct GameDetailView: View {
                     .foregroundColor(.orange)
                     .clipShape(Capsule())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             
             if isChatCollapsed {
                 Button {
@@ -1038,20 +1035,27 @@ public struct GameDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 
                 // Message Input
-                HStack(spacing: 8) {
-                    TextField("Message match players...", text: $chatInputText)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    Button {
-                        let text = chatInputText
-                        chatInputText = ""
-                        dataManager.sendMatchMessage(gameId: game.id, text: text)
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 26))
-                            .foregroundColor(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .orange)
+                if dataManager.currentUser != nil {
+                    HStack(spacing: 8) {
+                        TextField("Message match players...", text: $chatInputText)
+                            .textFieldStyle(.roundedBorder)
+                        
+                        Button {
+                            let text = chatInputText
+                            chatInputText = ""
+                            dataManager.sendMatchMessage(gameId: game.id, text: text)
+                        } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .orange)
+                        }
+                        .disabled(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    .disabled(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } else {
+                    Text("Log in to send messages in match chat.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 4)
                 }
             }
         }
@@ -1274,5 +1278,222 @@ public struct RecordSubMatchScoreSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Match Chat Sheet
+public struct MatchChatSheet: View {
+    @ObservedObject var dataManager: DataManager
+    let game: SetGame
+    @Environment(\.dismiss) private var dismiss
+    @State private var chatInputText: String = ""
+    
+    private var currentGame: SetGame {
+        dataManager.games.first(where: { $0.id == game.id }) ?? game
+    }
+    
+    public init(dataManager: DataManager, game: SetGame) {
+        self.dataManager = dataManager
+        self.game = game
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Header Info Bar
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(currentGame.title)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            Text("📍 \(currentGame.courtLocation) • \(currentGame.courtNumber)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            Text("•")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            Text(currentGame.formattedDate)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color(UIColor.secondarySystemBackground))
+                
+                Divider()
+                
+                // Quick Status / ETA Chips
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        quickChip(title: "🏃‍♂️ omw", text: "omw")
+                        quickChip(title: "⏳ 5 min late", text: "5 min late")
+                        quickChip(title: "⏰ 10 min late", text: "10 min late")
+                        quickChip(title: "🏐 Got a court", text: "Got a court")
+                        quickChip(title: "👋 Ready to play!", text: "Ready to play!")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+                .background(Color(UIColor.systemBackground))
+                
+                Divider()
+                
+                // Messages Scroll List
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            if currentGame.messages.isEmpty {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "bubble.left.and.bubble.right")
+                                        .font(.system(size: 36))
+                                        .foregroundColor(.secondary.opacity(0.6))
+                                        .padding(.top, 40)
+                                    Text("No messages yet")
+                                        .font(.system(size: 16, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                    Text("Tap a quick ETA chip above or send a message below to coordinate with players.")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 32)
+                                }
+                            } else {
+                                ForEach(currentGame.messages) { msg in
+                                    let isMe = msg.senderId == dataManager.currentUser?.id
+                                    HStack(alignment: .bottom, spacing: 8) {
+                                        if isMe { Spacer(minLength: 40) }
+                                        
+                                        if !isMe {
+                                            if let sender = dataManager.player(for: msg.senderId) {
+                                                PlayerAvatarView(player: sender, dimension: 28, showBadge: false)
+                                            } else {
+                                                Circle()
+                                                    .fill(Color.orange.opacity(0.2))
+                                                    .frame(width: 28, height: 28)
+                                                    .overlay(
+                                                        Text(String(msg.senderName.prefix(1)))
+                                                            .font(.system(size: 12, weight: .bold))
+                                                            .foregroundColor(.orange)
+                                                    )
+                                            }
+                                        }
+                                        
+                                        VStack(alignment: isMe ? .trailing : .leading, spacing: 2) {
+                                            if !isMe {
+                                                Text(msg.senderName)
+                                                    .font(.system(size: 11, weight: .bold))
+                                                    .foregroundColor(.secondary)
+                                                    .padding(.horizontal, 4)
+                                            }
+                                            
+                                            Text(msg.text)
+                                                .font(.system(size: 14))
+                                                .padding(.horizontal, 14)
+                                                .padding(.vertical, 9)
+                                                .background(isMe ? Color.orange : Color(UIColor.secondarySystemBackground))
+                                                .foregroundColor(isMe ? .white : Color(.label))
+                                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                            
+                                            Text(msg.formattedTime)
+                                                .font(.system(size: 9))
+                                                .foregroundColor(.secondary)
+                                                .padding(.horizontal, 4)
+                                        }
+                                        .id(msg.id)
+                                        
+                                        if !isMe { Spacer(minLength: 40) }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(16)
+                    }
+                    .onChange(of: currentGame.messages.count) { _, _ in
+                        if let lastMsg = currentGame.messages.last {
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                proxy.scrollTo(lastMsg.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        if let lastMsg = currentGame.messages.last {
+                            proxy.scrollTo(lastMsg.id, anchor: .bottom)
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                // Bottom Input Bar
+                HStack(spacing: 10) {
+                    if dataManager.currentUser != nil {
+                        TextField("Type a message or ETA...", text: $chatInputText)
+                            .font(.system(size: 14))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                            .submitLabel(.send)
+                            .onSubmit {
+                                sendMessage()
+                            }
+                        
+                        Button {
+                            sendMessage()
+                        } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .orange)
+                        }
+                        .disabled(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    } else {
+                        Text("Please log in to send messages in match chat.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 8)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color(UIColor.systemBackground))
+            }
+            .navigationTitle("Match Chat")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(.system(size: 15, weight: .bold))
+                }
+            }
+        }
+    }
+    
+    private func quickChip(title: String, text: String) -> some View {
+        Button {
+            dataManager.sendMatchMessage(gameId: currentGame.id, text: text)
+        } label: {
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.orange.opacity(0.12))
+                .foregroundColor(.orange)
+                .clipShape(Capsule())
+        }
+    }
+    
+    private func sendMessage() {
+        let text = chatInputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        chatInputText = ""
+        dataManager.sendMatchMessage(gameId: currentGame.id, text: text)
     }
 }
