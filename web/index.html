@@ -51,18 +51,18 @@
 
     <!-- TAB 1: SET GAMES (Matches iOS ConfirmedGamesView.swift) -->
     <main id="tab-matches" class="tab-content">
-      <div class="ios-view-header" style="justify-content: flex-end; margin-bottom: 8px;">
-        <div class="ios-toolbar-actions" style="margin-left: auto;">
-          <button type="button" class="btn-ios-toolbar btn-ios-purple" onclick="window.openCreateMatchModal()" title="Host a new game"><span style="font-size:16px; font-weight:900; line-height:1;">+</span> New Game</button>
-          <button type="button" class="btn-ios-toolbar btn-ios-orange" id="btn-instant-pickup" onclick="window.openInstantPickupModal()" title="Instant Pickup Lobby">⚡️ Instant Pickup</button>
-        </div>
+      <div style="display: flex; gap: 10px; margin: 8px 16px 12px;">
+        <button type="button" class="btn-ios-teal" onclick="window.openCreateMatchModal()" title="Host a new game"><span style="font-size:16px; font-weight:900; line-height:1;">+</span> New Game</button>
+        <button type="button" class="btn-ios-teal" id="btn-instant-pickup" onclick="window.openInstantPickupModal()" title="Quick Play Lobby"><span style="font-size:14px;">🚀</span> Quick Play</button>
       </div>
 
-      <!-- iOS Segmented Control: All Upcoming | My Games | Past Games -->
-      <div class="ios-segmented-control" id="match-filter-segmented">
-        <button type="button" class="ios-segmented-item active match-filter-chip" data-filter="all" onclick="window.setMatchFilter('all')">📅 All Upcoming</button>
-        <button type="button" class="ios-segmented-item match-filter-chip" data-filter="myGames" onclick="window.setMatchFilter('myGames')">🎮 My Games</button>
-        <button type="button" class="ios-segmented-item match-filter-chip" data-filter="completed" onclick="window.setMatchFilter('completed')">🕒 Past Games</button>
+      <!-- Dark Segmented Capsule: 🗺️ All Upcoming | 🤝 My Games | ⭐ Skill Groups -->
+      <div class="segmented-control-dark" id="match-filter-segmented">
+        <button type="button" class="segmented-item-dark active match-filter-chip" data-filter="all" onclick="window.setMatchFilter('all')">🗺️ All Upcoming</button>
+        <span class="segmented-divider"></span>
+        <button type="button" class="segmented-item-dark match-filter-chip" data-filter="myGames" onclick="window.setMatchFilter('myGames')">🤝 My Games</button>
+        <span class="segmented-divider"></span>
+        <button type="button" class="segmented-item-dark match-filter-chip" data-filter="skillGroups" onclick="window.setMatchFilter('skillGroups')">⭐ Skill Groups</button>
       </div>
 
       <div id="matches-list">

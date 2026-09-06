@@ -516,26 +516,47 @@ export function renderWeatherLine(game) {
   }).catch(() => {});
 
   return `
-    <span style="display:inline-flex; align-items:center; gap:4px;">
-      <span>🌤️</span>
-      <strong>WEATHER:</strong>
-      <span style="color:var(--text-muted); font-size:11px;">Checking Open-Meteo forecast...</span>
-    </span>
+    <div class="weather-capsule-dark">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:18px;">☀️</span>
+        <span style="font-size:13px; color:rgba(255,255,255,0.7);">Checking forecast...</span>
+      </div>
+    </div>
   `;
 }
 
 function buildWeatherLineHtml(gameId, w) {
+  const uvCat = w.uvCategory || (w.uvIndex >= 6 ? "High" : w.uvIndex >= 3 ? "Moderate" : "Low");
+  const uvColor = w.uvColor || (w.uvIndex >= 6 ? "#ef4444" : w.uvIndex >= 3 ? "#f59e0b" : "#10b981");
+  const windCat = w.windCategory || (w.windMph >= 12 ? "Windy" : w.windMph >= 6 ? "Breezy" : "Calm");
+  const windDir = w.windDirection || "NW";
+
   return `
-    <span style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; width:100%;" onclick="window.toggleWeatherDetails('${gameId}')" title="Click for beach volleyball playing conditions">
-      <span>${w.conditionEmoji}</span>
-      <strong>WEATHER:</strong>
-      <span style="font-weight:700; color:var(--text);">${w.tempF}°F</span>
-      <span>•</span>
-      <span>☀️ UV ${Math.round(w.uvIndex)} <span style="font-size:10px; font-weight:800; color:${w.uvColor};">(${w.uvCategory})</span></span>
-      <span>•</span>
-      <span>💨 ${w.windMph} mph <span style="font-size:10px; font-weight:700; color:#0284c7;">(${w.windCategory})</span></span>
-      <span style="font-size:10px; color:var(--text-muted); margin-left:auto;">ℹ️ Volleyball Conditions ▾</span>
-    </span>
+    <div class="weather-capsule-dark" onclick="window.toggleWeatherDetails('${gameId}')" title="Click for beach volleyball playing conditions">
+      <!-- Temp -->
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:18px;">${w.conditionEmoji || '☀️'}</span>
+        <span style="font-size:16px; font-weight:800; color:#ffffff;">${w.tempF}°F</span>
+      </div>
+
+      <!-- UV -->
+      <div class="weather-capsule-sec">
+        <div style="display:flex; align-items:center; gap:4px; font-size:13px; font-weight:800; color:#ffffff;">
+          <span>☀️</span>
+          <span>UV ${Math.round(w.uvIndex)}</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:${uvColor};">(${uvCat})</div>
+      </div>
+
+      <!-- Wind -->
+      <div class="weather-capsule-sec">
+        <div style="display:flex; align-items:center; gap:4px; font-size:13px; font-weight:800; color:#ffffff;">
+          <span>💨</span>
+          <span>${w.windMph} mph ${windDir}</span>
+        </div>
+        <div style="font-size:11px; font-weight:700; color:#38bdf8;">(${windCat})</div>
+      </div>
+    </div>
   `;
 }
 window.renderWeatherLine = renderWeatherLine;
@@ -1197,8 +1218,8 @@ function renderMatches() {
     return true;
   };
 
-  // 2. Apply selected view filter ('all', 'myGames', 'openSpots', 'completed')
-  const displayGames = targetGames.filter(game => {
+  // 2. Apply selected view filter ('all', 'myGames', 'skillGroups', 'completed')
+  let displayGames = targetGames.filter(game => {
     if (isCompletedFilter) return true;
     const isMember = currentUserId && (
       game.team1PlayerIds?.includes(currentUserId) ||
@@ -1212,6 +1233,14 @@ function renderMatches() {
     }
     return true;
   });
+
+  if (currentMatchFilter === "skillGroups") {
+    displayGames.sort((a, b) => {
+      const r1 = (a.allowedRatings && a.allowedRatings[0]) || a.targetRating || "";
+      const r2 = (b.allowedRatings && b.allowedRatings[0]) || b.targetRating || "";
+      return r1.localeCompare(r2);
+    });
+  }
 
   if (displayGames.length === 0) {
     const emptyMsg = isCompletedFilter ?
@@ -1246,7 +1275,7 @@ function renderMatches() {
       weekday: "short",
       month: "short",
       day: "numeric"
-    }) + ", " + d.toLocaleTimeString("en-US", {
+    }) + " • " + d.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit"
     });
@@ -1259,102 +1288,115 @@ function renderMatches() {
       minute: "2-digit"
     });
     const courtClean = game.courtNumber ? (game.courtNumber.includes("#") ? game.courtNumber : "#" + (game.courtNumber.replace(/[^0-9]/g, '') || '1')) : "#1";
+    const courtDisplay = courtClean.startsWith("#") ? `Court ${courtClean}` : courtClean;
 
     const pCount = game.maxPlayers || 4;
-    const formatLabel = pCount === 2 ? "1v1 Singles" : pCount === 6 ? "3v3 Triples" : "2v2 Doubles";
+    const formatLabel = pCount === 2 ? "1v1" : pCount === 6 ? "3v3" : "2v2";
 
     const allowedList = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
-    const skillStr = allowedList.length >= 6 ? "All Levels" : allowedList.join(" / ");
+    const skillStr = allowedList.length >= 6 ? "All Levels" : allowedList.join("/");
 
     const hostDisplayName = hostPlayer ? (hostPlayer.nickname || hostPlayer.name) : "Host";
     const hostStarVal = hostPlayer ? formatStarRating(hostPlayer) : "5.0";
 
-    const renderPoolPlayer = (pid, idx) => {
-      const p = state.getPlayer(pid);
-      const canRemove = isHost && pid !== game.hostPlayerId;
-      const removeBtnHtml = canRemove ? `
-        <button type="button" style="background:none; border:none; color:#ef4444; font-size:16px; font-weight:bold; cursor:pointer; padding:2px 6px; margin-left:auto; line-height:1;" title="Remove player from match" onclick="window.removePlayerFromPool('${game.id}', '${pid}')">✕</button>
-      ` : '';
+    const t1Ids = (game.team1PlayerIds && game.team1PlayerIds.length > 0) ? game.team1PlayerIds : allPlayerIds.slice(0, 2);
+    const t2Ids = (game.team2PlayerIds && game.team2PlayerIds.length > 0) ? game.team2PlayerIds : allPlayerIds.slice(2, 4);
 
-      const isHidden = !isMember && !isRoot;
-      const displayName = isHidden ? `Player ${idx + 1}` : (p ? (p.nickname || p.name) : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player"));
-      const avatarDisplay = isHidden ? renderAvatarContent('🏐') : renderAvatarContent(p ? p.avatarEmoji : '🏐');
+    const renderSlot = (pid, isTeam1) => {
+      if (pid) {
+        const p = state.getPlayer(pid);
+        const isHidden = !isMember && !isRoot;
+        const displayName = isHidden ? 'Player' : (p ? (p.nickname || p.name) : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player"));
+        const avatarDisplay = isHidden ? renderAvatarContent('🏐') : renderAvatarContent(p ? p.avatarEmoji : '🏐');
+        const tierVal = (p?.rating || 'B');
+        const tierClass = tierVal.toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${tierVal.toLowerCase()}`;
+        const starVal = p ? formatStarRating(p) : "5.0";
+        const teamClass = isTeam1 ? 'player-tile-team1' : 'player-tile-team2';
 
-      if (!p) {
-        return `<div class="player-tile-mock">
-          <div class="player-tile-avatar">${avatarDisplay}</div>
-          <div class="player-tile-info">
-            <span class="player-tile-name">${displayName}</span>
-            <div class="player-tile-sub">
-              <span class="badge badge-tier-b" style="font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px;">B</span>
-              <span style="font-size:11px; font-weight:700; color:#b45309;">⭐ 5.0</span>
+        const canRemove = isHost && pid !== game.hostPlayerId;
+        const removeBtnHtml = canRemove ? `
+          <button type="button" class="player-tile-trash" title="Remove player from match" onclick="event.stopPropagation(); window.removePlayerFromPool('${game.id}', '${pid}')">🗑️</button>
+        ` : '';
+
+        return `
+          <div class="player-tile-dark ${teamClass}">
+            <div class="player-tile-avatar">${avatarDisplay}</div>
+            <div class="player-tile-info">
+              <div class="player-tile-name">${displayName}</div>
+              <div style="display:flex; align-items:center; gap:5px;">
+                <span class="badge-tier-pill ${tierClass}">${tierVal}</span>
+                <span style="font-size:11px; font-weight:700; color:#fbbf24;">⭐ ${starVal}</span>
+              </div>
             </div>
+            ${removeBtnHtml}
           </div>
-          ${removeBtnHtml}
-        </div>`;
+        `;
+      } else {
+        const emptyClass = isTeam1 ? 'player-tile-empty-t1' : 'player-tile-empty-t2';
+        const canJoin = needsPlayers && !isMember && !game.isPrivate;
+        const joinAttr = canJoin ? `onclick="window.joinGamePool('${game.id}')"` : '';
+        return `
+          <div class="player-tile-dark ${emptyClass}" ${joinAttr}>
+            <span>+ Open Spot</span>
+          </div>
+        `;
       }
-      const tierLower = (p.rating || 'b').toLowerCase();
-      const ratingVal = formatStarRating(p);
-      return `<div class="player-tile-mock">
-        <div class="player-tile-avatar">${avatarDisplay}</div>
-        <div class="player-tile-info">
-          <span class="player-tile-name">${displayName}</span>
-          <div class="player-tile-sub">
-            <span class="badge badge-tier-${tierLower}" style="font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px;">${p.rating || 'B'}</span>
-            <span style="font-size:11px; font-weight:700; color:#b45309;">⭐ ${ratingVal}</span>
-          </div>
-        </div>
-        ${removeBtnHtml}
-      </div>`;
     };
-
-    const poolPlayersHtml = allPlayerIds.map(renderPoolPlayer).join("");
 
     const waitlistIds = game.waitlistPlayerIds || [];
     const isWaitlisted = currentUserId && waitlistIds.includes(currentUserId);
     const waitlistPos = isWaitlisted ? (waitlistIds.indexOf(currentUserId) + 1) : null;
 
     const isMatchesCollapsed = !(state.expandedMatches && state.expandedMatches[game.id]);
-    const isPoolCollapsed = !!(state.collapsedPools && state.collapsedPools[game.id]);
     const msgCount = game.messages ? game.messages.length : 0;
 
     return `
       <div class="game-details-card" id="match-card-${game.id}">
-        <!-- Top Right Admin Actions Pill -->
-        <button type="button" class="card-top-admin-btn" onclick="window.toggleCardAdminMenu('${game.id}')" title="Admin Actions">
-          ⚙️ ADMIN ACTIONS ▾
-        </button>
-
-        <!-- Centered GAME DETAILS header -->
-        <div class="card-center-title">GAME DETAILS</div>
-
-        <!-- Metadata Line 1: SCHEDULE & COURT -->
-        <div class="card-metadata-line">
-          <span>📅 <strong>SCHEDULE:</strong> ${scheduleFormatted}</span>
-          <span>•</span>
-          <span>📍 ${game.courtLocation} ${courtClean}</span>
+        <!-- Header Row: Date/Time + Dropdown Ellipsis -->
+        <div class="card-header-row">
+          <div class="card-date-title" onclick="window.showGameDetailsModal('${game.id}')">
+            <span>🗓️</span>
+            <span>${scheduleFormatted}</span>
+          </div>
+          <div style="position: relative;">
+            <button type="button" class="card-more-btn" onclick="event.stopPropagation(); window.toggleCardActionsMenu('${game.id}', event)" title="More options">
+              •••
+            </button>
+            <div id="card-menu-${game.id}" class="card-dropdown-menu" style="display: none;">
+              <button type="button" class="card-dropdown-item" onclick="window.openEditMatchModal('${game.id}')">
+                <span>✏️</span> Edit Details
+              </button>
+              ${(isHost || isRoot) ? `
+                <button type="button" class="card-dropdown-item" style="color: #ef4444;" onclick="window.deleteGame('${game.id}')">
+                  <span>🗑️</span> Cancel Game
+                </button>
+              ` : ''}
+              <button type="button" class="card-dropdown-item" onclick="window.openGameQRCodeModal('${game.id}')">
+                <span>🔲</span> View QR Code
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- Metadata Line 2: FORMAT, STATUS & SKILL -->
-        <div class="card-metadata-line">
-          <span>🏐 <strong>FORMAT:</strong> ${formatLabel}</span>
-          <span>•</span>
-          <span class="badge-open-status">${game.status === 'completed' ? 'Completed' : (game.status === 'in_progress' ? 'Live' : 'Open')}</span>
-          <span>•</span>
-          <span>🏅 <strong>SKILL:</strong> ${skillStr}</span>
+        <!-- Metadata Lines -->
+        <div class="card-metadata-lines" onclick="window.showGameDetailsModal('${game.id}')">
+          <div class="card-metadata-line-item">
+            <span>📍</span>
+            <span>${game.courtLocation} - ${courtDisplay}</span>
+          </div>
+          <div class="card-metadata-line-item">
+            <span>${formatLabel} Skill: ${skillStr}</span>
+            ${game.isPrivate ? `<span>🔒</span>` : ''}
+            ${game.isLevelLocked ? `<span style="font-size:10px; font-weight:700; background:rgba(234,88,12,0.2); color:#fb923c; padding:2px 6px; border-radius:4px;">🔒 Locked</span>` : ''}
+          </div>
+          <div class="card-metadata-line-item">
+            <span>Host: ${hostDisplayName}</span>
+            <span style="color:#fbbf24; font-size:13px; font-weight:700;">⭐ ${hostStarVal}</span>
+          </div>
         </div>
 
-        <!-- Metadata Line 3: HOST, RATING & LEVEL LOCKED -->
-        <div class="card-metadata-line">
-          <span>👑 <strong>HOST:</strong> ${hostDisplayName}</span>
-          <span>•</span>
-          <span>⭐ ${hostStarVal}</span>
-          ${game.isPrivate ? `<span class="badge-private-lock">🔒 Private Game</span>` : ''}
-          ${game.isLevelLocked ? `<span class="badge-level-lock">🔒 Level Locked</span>` : ''}
-        </div>
-
-        <!-- Metadata Line 4: WEATHER FORECAST (Temperature, UV, Wind) -->
-        <div class="card-metadata-line weather-forecast-line" id="weather-line-${game.id}" style="margin-bottom: 12px;">
+        <!-- Weather Forecast Capsule (3-column pill) -->
+        <div id="weather-line-${game.id}">
           ${renderWeatherLine(game)}
         </div>
 
@@ -1363,166 +1405,143 @@ function renderMatches() {
           ${renderWeatherDetailsCard(game)}
         </div>
 
-        <!-- Players Pool Box -->
-        <div class="pool-box-container">
-          <div class="pool-box-header ${isPoolCollapsed ? 'collapsed' : ''}" onclick="window.togglePoolCollapse('${game.id}')">
-            <span class="pool-box-title">
-              <span style="font-size: 13px; font-weight: 800; color: #475569; display: inline-block; width: 14px;">${isPoolCollapsed ? '▸' : '▾'}</span>
-              👥 PLAYERS POOL (${allPlayerIds.length}/${maxPlayers} PLAYERS)
-            </span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="${spotsLeft === 0 ? 'pool-box-status-full' : 'pool-box-status-open'}">
-                ${spotsLeft === 0 ? 'Pool Full ✓' : spotsLeft + ' Open Spot' + (spotsLeft > 1 ? 's' : '')}
-              </span>
-              <span style="font-size: 12px; font-weight: 800; color: #64748b;">${isPoolCollapsed ? '▸' : '▾'}</span>
-            </div>
-          </div>
-          ${!isPoolCollapsed ? `
-          <div class="pool-grid-2x2">
-            ${poolPlayersHtml}
-            ${needsPlayers && !isMember ? (
-              game.isPrivate ? `
-                <div style="min-height: 48px; border-radius: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; background: #f1f5f9; color: var(--text-muted); font-size: 12px; border: 1px dashed #cbd5e1;">
-                  🔒 Private Game • Invite Only
-                </div>
-              ` : `
-                <button type="button" class="btn btn-outline btn-sm" style="color:var(--accent); border-color:var(--accent); border-style:dashed; min-height: 48px; border-radius:10px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff;" onclick="window.joinGamePool('${game.id}')">
-                  <span style="font-size:16px;">+</span> Join Player Pool
-                </button>
-              `
-            ) : ''}
-          </div>
-
-          ${(spotsLeft === 0 || waitlistIds.length > 0) ? `
-            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border, #e2e8f0);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 11px; font-weight: 800; color: #7e22ce; text-transform: uppercase;">
-                  ⏳ Waitlist (${waitlistIds.length} Queued)
-                </span>
-                <span style="font-size: 10px; color: var(--text-muted);">Auto-promotes when a spot opens</span>
-              </div>
-
-              ${spotsLeft === 0 && !isMember ? (
-                game.isPrivate ? `
-                  <div style="background: #f1f5f9; color: var(--text-muted); border: 1px dashed #cbd5e1; font-weight: 700; width: 100%; margin-bottom: 8px; padding: 9px 12px; border-radius: 8px; font-size: 12px; text-align: center;">
-                    🔒 Private Game • Invite Only
-                  </div>
-                ` : (
-                  isWaitlisted ? `
-                    <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                      <div style="font-size: 12px; font-weight: 700; color: #7e22ce;">
-                        ⏳ You are #${waitlistPos} on the Waitlist
-                      </div>
-                      <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 3px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">
-                        Leave Waitlist
-                      </button>
-                    </div>
-                  ` : `
-                    <button type="button" class="btn btn-sm" style="background: #f3e8ff; color: #7e22ce; border: 1px dashed #c084fc; font-weight: 700; width: 100%; margin-bottom: 8px; padding: 9px 12px; border-radius: 8px; font-size: 12px;" onclick="window.joinWaitlist('${game.id}')">
-                      ⏳ Pool Full • Join Waitlist (${waitlistIds.length} queued)
-                    </button>
-                  `
-                )
-              ) : ''}
-
-              ${waitlistIds.length === 0 ? `
-                <div style="padding: 10px 12px; background: #faf5ff; border: 1px dashed #d8b4fe; border-radius: 8px; font-size: 11px; color: #6b21a8;">
-                  No players currently on the waitlist. Next signups will queue here in order.
-                </div>
-              ` : `
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                  ${waitlistIds.map((pid, idx) => {
-                    const p = state.players.find(x => x.id === pid) || { id: pid, name: "Player", nickname: "", rating: "B" };
-                    const isHidden = !isMember && !isRoot;
-                    const pName = isHidden ? `Player ${idx + 1}` : (p.nickname ? `${p.name} (${p.nickname})` : p.name);
-                    const isMe = currentUserId === pid;
-                    return `
-                      <div style="display: flex; align-items: center; justify-content: space-between; background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 6px 10px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                          <span style="font-size: 11px; font-weight: 800; background: #a855f7; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">#${idx + 1}</span>
-                          <div>
-                            <div style="font-size: 12px; font-weight: 700; color: var(--text-main);">${pName}</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">${p.rating}</div>
-                          </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                          ${isHost ? `
-                            <button type="button" class="btn btn-sm" style="background: #10b981; color: white; border: none; font-weight: 700; padding: 3px 8px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="window.promoteWaitlistPlayer('${game.id}', '${pid}')">⬆️ Promote</button>
-                          ` : ''}
-                          ${isMe ? `
-                            <button type="button" class="btn btn-outline btn-sm" style="color: #ef4444; border-color: #fca5a5; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">Leave</button>
-                          ` : ''}
-                        </div>
-                      </div>
-                    `;
-                  }).join("")}
-                </div>
-              `}
-            </div>
-          ` : ''}
-          ` : ''}
+        <!-- 2x2 Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
+        <div class="player-grid-2x2">
+          ${renderSlot(t1Ids[0], true)}
+          ${renderSlot(t1Ids[1], true)}
+          ${renderSlot(t2Ids[0], false)}
+          ${renderSlot(t2Ids[1], false)}
         </div>
 
-        <!-- Matches in this Game Section -->
-        <div style="margin-bottom: 14px;">
+        <!-- Waitlist Section (if pool full or waitlist has players) -->
+        ${(spotsLeft === 0 || waitlistIds.length > 0) ? `
+          <div style="margin-top: -6px; margin-bottom: 14px; padding: 10px 12px; background: rgba(147, 51, 234, 0.08); border: 1px dashed rgba(168, 85, 247, 0.4); border-radius: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 11px; font-weight: 800; color: #c084fc; text-transform: uppercase; letter-spacing: 0.5px;">
+                ⏳ Waitlist (${waitlistIds.length} Queued)
+              </span>
+              <span style="font-size: 10px; color: rgba(255, 255, 255, 0.6);">Auto-promotes when spot opens</span>
+            </div>
+
+            ${spotsLeft === 0 && !isMember ? (
+              game.isPrivate ? `
+                <div style="background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.6); border: 1px dashed rgba(255, 255, 255, 0.15); font-weight: 700; width: 100%; margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; font-size: 12px; text-align: center;">
+                  🔒 Private Game • Invite Only
+                </div>
+              ` : (
+                isWaitlisted ? `
+                  <div style="background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 12px; font-weight: 700; color: #d8b4fe;">
+                      ⏳ You are #${waitlistPos} on the Waitlist
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" style="color: #f87171; border-color: #f87171; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">
+                      Leave Waitlist
+                    </button>
+                  </div>
+                ` : `
+                  <button type="button" class="btn btn-sm" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border: 1px dashed #a855f7; font-weight: 700; width: 100%; margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;" onclick="window.joinWaitlist('${game.id}')">
+                    ⏳ Pool Full • Join Waitlist (${waitlistIds.length} queued)
+                  </button>
+                `
+              )
+            ) : ''}
+
+            ${waitlistIds.length === 0 ? `
+              <div style="padding: 8px 10px; background: rgba(0, 0, 0, 0.2); border-radius: 6px; font-size: 11px; color: rgba(255, 255, 255, 0.6);">
+                No players currently on the waitlist. Next signups will queue here in order.
+              </div>
+            ` : `
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${waitlistIds.map((pid, idx) => {
+                  const p = state.players.find(x => x.id === pid) || { id: pid, name: "Player", nickname: "", rating: "B" };
+                  const isHidden = !isMember && !isRoot;
+                  const pName = isHidden ? `Player ${idx + 1}` : (p.nickname ? `${p.name} (${p.nickname})` : p.name);
+                  const isMe = currentUserId === pid;
+                  return `
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #12151f; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 6px 10px;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 11px; font-weight: 800; background: #a855f7; color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">#${idx + 1}</span>
+                        <div>
+                          <div style="font-size: 12px; font-weight: 700; color: #ffffff;">${pName}</div>
+                          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6);">${p.rating}</div>
+                        </div>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        ${isHost ? `
+                          <button type="button" class="btn btn-sm" style="background: #10b981; color: white; border: none; font-weight: 700; padding: 3px 8px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="window.promoteWaitlistPlayer('${game.id}', '${pid}')">⬆️ Promote</button>
+                        ` : ''}
+                        ${isMe ? `
+                          <button type="button" class="btn btn-outline btn-sm" style="color: #f87171; border-color: #f87171; padding: 2px 8px; font-size: 11px;" onclick="window.leaveWaitlist('${game.id}')">Leave</button>
+                        ` : ''}
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            `}
+          </div>
+        ` : ''}
+
+        <!-- Collapsible Matches in this Game Section -->
+        <div style="margin-bottom: 12px;">
           <div 
             onclick="window.toggleMatchesCollapse('${game.id}')"
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; user-select: none;"
+            class="matches-title-row"
           >
-            <span style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
+            <span style="display: flex; align-items: center; gap: 6px;">
               🥎 MATCHES IN THIS GAME (${(game.subMatches || []).length})
             </span>
-            <span style="font-size: 14px; font-weight: 800; color: #0f172a;">${isMatchesCollapsed ? '⌄' : '⌃'}</span>
+            <span style="font-size: 14px;">${isMatchesCollapsed ? '⌄' : '⌃'}</span>
           </div>
 
-          <div onclick="window.toggleMatchesCollapse('${game.id}')" class="matches-summary-row">
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #0f172a;">
+          <div onclick="window.toggleMatchesCollapse('${game.id}')" class="matches-schedule-pill">
+            <div style="display: flex; align-items: center; gap: 8px;">
               <span>🏐</span>
               <span>Match Schedule (${(game.subMatches || []).length})</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 13px;">
+            <div style="display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.6);">
               ${(game.subMatches || []).length > 0 ? `<span>🏐</span><span>🏐</span>` : ''}
-              <span style="font-size: 12px; margin-left: 2px;">${isMatchesCollapsed ? '⌄' : '⌃'}</span>
+              <span style="font-size: 13px;">${isMatchesCollapsed ? '⌄' : '⌃'}</span>
             </div>
           </div>
 
           ${!isMatchesCollapsed ? `
             ${(!game.subMatches || game.subMatches.length === 0) ? `
-              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 10px; margin-top: 8px; text-align: center;">
-                <div style="font-size: 12px; font-weight: 800; color: #9a3412; margin-bottom: 2px;">No matches generated yet</div>
-                <div style="font-size: 11px; color: #c2410c; margin-bottom: 10px;">Generate fair team rotations and schedules automatically for players in this game.</div>
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px; background: #1e1915; border: 1px dashed rgba(249, 115, 22, 0.4); border-radius: 10px; margin-bottom: 10px; text-align: center;">
+                <div style="font-size: 12px; font-weight: 800; color: #fdba74; margin-bottom: 2px;">No matches generated yet</div>
+                <div style="font-size: 11px; color: #fb923c; margin-bottom: 10px;">Generate fair team rotations and schedules automatically for players in this game.</div>
                 <button type="button" class="btn btn-primary btn-sm" style="background: #ea580c; border-color: #ea580c; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 8px;" onclick="window.openRandomTeamsModalForGame('${game.id}')">
                   🎲 Generate Matches (${allPlayerIds.length} Players)
                 </button>
               </div>
             ` : `
-              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
                 ${game.subMatches.map((m, mIdx) => {
                   const s1Val = (m.team1Score !== undefined && m.team1Score !== null) ? m.team1Score : "";
                   const s2Val = (m.team2Score !== undefined && m.team2Score !== null) ? m.team2Score : "";
                   const mKey = m.id || mIdx;
                   return `
-                    <div style="background: var(--bg-card, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 10px 12px;">
+                    <div style="background: #11151f; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px;">
                       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <span style="font-size: 11px; font-weight: 800; color: var(--accent);">MATCH ${m.matchNumber || mIdx + 1} • ${m.courtNumber || "Court #1"}</span>
-                        ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: var(--text-muted);">Scheduled</span>'}
+                        <span style="font-size: 11px; font-weight: 800; color: #38bdf8;">MATCH ${m.matchNumber || mIdx + 1} • ${m.courtNumber || "Court #1"}</span>
+                        ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: rgba(255,255,255,0.5);">Scheduled</span>'}
                       </div>
-                      <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #ffffff;">
                         <div style="flex: 1; text-align: left;">${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}</div>
-                        <span style="color: var(--text-muted); font-size: 11px; font-weight: 900; padding: 0 8px;">VS</span>
+                        <span style="color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 900; padding: 0 8px;">VS</span>
                         <div style="flex: 1; text-align: right;">${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot)}</div>
                       </div>
                       ${m.restingPlayerIds && m.restingPlayerIds.length > 0 ? `
-                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 6px;">
                           ⏸ Resting: ${resolvePlayerNames(m.restingPlayerIds, game, !isMember && !isRoot)}
                         </div>
                       ` : ''}
-                      <div style="display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid var(--border, #f1f5f9);">
-                        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Score:</span>
-                        <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center;" placeholder="T1" value="${s1Val}">
+                      <div style="display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);">
+                        <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6);">Score:</span>
+                        <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center; background:#1e2433; color:#fff; border-color:rgba(255,255,255,0.15);" placeholder="T1" value="${s1Val}">
                         <span>–</span>
-                        <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center;" placeholder="T2" value="${s2Val}">
-                        <button type="button" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 2px 8px; margin-left: 6px;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
+                        <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center; background:#1e2433; color:#fff; border-color:rgba(255,255,255,0.15);" placeholder="T2" value="${s2Val}">
+                        <button type="button" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 2px 8px; margin-left: 6px; color:#38bdf8; border-color:#38bdf8;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
                           Save
                         </button>
                         <span style="font-size: 11px; color: #22c55e; font-weight: 700; margin-left: auto;">
@@ -1543,60 +1562,63 @@ function renderMatches() {
         </div>
 
         <!-- Card Footer -->
-        <div style="border-top: 1px solid #f1f5f9; padding-top: 12px; margin-top: 6px;">
-          <!-- Top Row of Footer: Time & Admin Actions Dropdown Trigger -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 12px; color: #64748b; font-weight: 600;">
+        <div class="card-footer-dark">
+          <!-- Top Row: Time & Admin Actions Dropdown Trigger -->
+          <div class="card-footer-top-row">
             <div style="display: flex; align-items: center; gap: 6px;">
               <span>🕒</span>
               <span>${dateStr}</span>
             </div>
-            <div onclick="window.toggleCardAdminMenu('${game.id}')" style="font-size: 11px; font-weight: 800; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 2px;">
+            <div class="card-footer-admin-trigger" onclick="window.toggleCardAdminMenu('${game.id}')">
               ADMIN ACTIONS • SETTINGS ▾
             </div>
           </div>
 
-          <!-- Bottom Row of Footer: Action Buttons -->
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <!-- Left Button Cluster -->
+          <!-- Bottom Row: Action Buttons -->
+          <div class="card-footer-actions-row">
+            <!-- Left Group -->
             <div style="display: flex; align-items: center; gap: 8px;">
-              <button type="button" class="footer-action-btn-stacked" onclick="window.openGameQRCodeModal('${game.id}')" title="Scan QR Code">
+              <!-- Button 1: QR Code -->
+              <button type="button" class="card-btn-white" onclick="window.openGameQRCodeModal('${game.id}')" title="Scan QR Code">
                 <span style="font-size: 16px;">📱</span>
-                <span style="font-size: 10px; font-weight: 700; color: #0f172a; margin-top: 2px; line-height: 1.1; text-align: center;">QR<br>Code</span>
+                <span style="font-size: 10px; font-weight: 700; margin-top: 2px; line-height: 1.1; text-align: center;">QR<br>Code</span>
               </button>
 
+              <!-- Button 2: Chat -->
               ${isMember ? `
-                <button type="button" class="footer-action-btn-stacked footer-action-btn-chat" onclick="window.openMatchChatModal('${game.id}')" title="Match Chat">
+                <button type="button" class="card-btn-blue" onclick="window.openMatchChatModal('${game.id}')" title="Match Chat">
                   <span style="font-size: 16px;">💬</span>
-                  <span style="font-size: 10px; font-weight: 700; color: #0369a1; margin-top: 2px; line-height: 1.1; text-align: center;">Chat<br>(${msgCount})</span>
-                  ${msgCount > 0 ? `<span class="footer-unread-badge">${msgCount}</span>` : ''}
+                  <span style="font-size: 10px; font-weight: 700; margin-top: 2px; line-height: 1.1; text-align: center;">Chat<br>(${msgCount})</span>
+                  ${msgCount > 0 ? `<span class="card-unread-badge">${msgCount}</span>` : ''}
                 </button>
               ` : ''}
 
+              <!-- Button 3: Leave / Join / Waitlist -->
               ${isMember ? `
-                <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.leaveGame('${game.id}')" title="Leave Match" style="min-height: 48px; padding: 6px 12px;">
-                  <span style="font-size: 11px; font-weight: 800; color: #991b1b; line-height: 1.1; text-align: center;">Leave<br>Game</span>
+                <button type="button" class="card-btn-danger" onclick="window.leaveGame('${game.id}')" title="Leave Match">
+                  <span style="font-size: 11px; font-weight: 800; line-height: 1.1; text-align: center;">Leave<br>Game</span>
                 </button>
               ` : (
                 isWaitlisted ? `
-                  <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.leaveWaitlist('${game.id}')" title="Leave Waitlist" style="min-height: 48px; padding: 6px 8px;">
-                    <span style="font-size: 10px; font-weight: 800; color: #991b1b; line-height: 1.1; text-align: center;">Leave<br>Waitlist<br>(#${waitlistPos})</span>
+                  <button type="button" class="card-btn-danger" onclick="window.leaveWaitlist('${game.id}')" title="Leave Waitlist">
+                    <span style="font-size: 10px; font-weight: 800; line-height: 1.1; text-align: center;">Leave<br>Waitlist<br>(#${waitlistPos})</span>
                   </button>
                 ` : (
                   game.isPrivate ? `
-                    <button type="button" class="footer-action-btn-stacked" style="background: #f1f5f9; border-color: #cbd5e1; color: var(--text-muted); min-height: 48px; padding: 6px 8px; cursor: default;" title="Private Game • Invite Only">
+                    <div style="background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 12px; min-width: 54px; height: 54px; padding: 0 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: rgba(255,255,255,0.5);" title="Private Game • Invite Only">
                       <span style="font-size: 14px;">🔒</span>
-                      <span style="font-size: 9px; font-weight: 800; color: var(--text-muted); margin-top: 2px; line-height: 1.1; text-align: center;">Private<br>Game</span>
-                    </button>
+                      <span style="font-size: 9px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Private<br>Game</span>
+                    </div>
                   ` : (
                     needsPlayers ? `
-                      <button type="button" class="footer-action-btn-stacked" style="background: #f0fdf4; border-color: #86efac; color: #166534; min-height: 48px; padding: 6px 10px;" onclick="window.joinGamePool('${game.id}')" title="Join Match">
+                      <button type="button" class="card-btn-white" style="background: #dcfce7; border: 1.5px solid #86efac; color: #166534;" onclick="window.joinGamePool('${game.id}')" title="Join Match">
                         <span style="font-size: 16px;">🏐</span>
-                        <span style="font-size: 10px; font-weight: 800; color: #166534; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Game</span>
+                        <span style="font-size: 10px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Game</span>
                       </button>
                     ` : `
-                      <button type="button" class="footer-action-btn-stacked" style="background: #faf5ff; border-color: #d8b4fe; color: #7e22ce; min-height: 48px; padding: 6px 8px;" onclick="window.joinWaitlist('${game.id}')" title="Join Waitlist">
+                      <button type="button" class="card-btn-white" style="background: #f3e8ff; border: 1.5px solid #d8b4fe; color: #7e22ce;" onclick="window.joinWaitlist('${game.id}')" title="Join Waitlist">
                         <span style="font-size: 14px;">⏳</span>
-                        <span style="font-size: 9px; font-weight: 800; color: #7e22ce; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Waitlist</span>
+                        <span style="font-size: 9px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Waitlist</span>
                       </button>
                     `
                   )
@@ -1604,20 +1626,22 @@ function renderMatches() {
               )}
             </div>
 
-            <!-- Right Button Cluster -->
+            <!-- Right Group -->
             <div style="display: flex; align-items: center; gap: 8px;">
-              <button type="button" class="footer-action-btn-stacked" onclick="window.openEditMatchModal('${game.id}')" title="Edit Game">
+              <!-- Button 4: Edit -->
+              <button type="button" class="card-btn-white" onclick="window.openEditMatchModal('${game.id}')" title="Edit Game">
                 <span style="font-size: 16px;">✏️</span>
-                <span style="font-size: 10px; font-weight: 700; color: #0f172a; margin-top: 2px;">Edit</span>
+                <span style="font-size: 10px; font-weight: 700; margin-top: 2px;">Edit</span>
               </button>
 
-              ${(isHost || isRootUser(state.currentUser)) ? `
-                <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.deleteGame('${game.id}')" title="Cancel Game" style="min-height: 48px;">
+              <!-- Button 5: Cancel Game (Host / Root) -->
+              ${(isHost || isRoot) ? `
+                <button type="button" class="card-btn-danger" onclick="window.deleteGame('${game.id}')" title="Cancel Game">
                   <span style="font-size: 14px;">❌</span>
-                  <span style="font-size: 9px; font-weight: 800; color: #991b1b; line-height: 1.1; margin-top: 2px; text-align: center;">Cancel<br>Game</span>
+                  <span style="font-size: 9px; font-weight: 800; line-height: 1.1; margin-top: 2px; text-align: center;">Cancel<br>Game</span>
                 </button>
               ` : ''}
-              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1632,6 +1656,21 @@ function renderMatches() {
 }
 
 window.renderMatches = renderMatches;
+
+window.toggleCardActionsMenu = (gameId, event) => {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById(`card-menu-${gameId}`);
+  if (!menu) return;
+  const isShown = menu.style.display === "block";
+  document.querySelectorAll(".card-dropdown-menu").forEach(m => m.style.display = "none");
+  if (!isShown) {
+    menu.style.display = "block";
+  }
+};
+
+document.addEventListener("click", () => {
+  document.querySelectorAll(".card-dropdown-menu").forEach(m => m.style.display = "none");
+});
 
 function renderLadder() {
   const container = document.getElementById("ladder-list");
