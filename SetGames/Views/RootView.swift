@@ -3,7 +3,7 @@ import SwiftUI
 public struct RootView: View {
     @StateObject private var dataManager = DataManager.shared
     @ObservedObject private var notificationService = NotificationService.shared
-    @State private var selectedTab: Int = DataManager.shared.currentUser == nil ? 2 : 0
+    @State private var selectedTab: Int = DataManager.shared.currentUser == nil ? 1 : 0
     @State private var deepLinkedGame: SetGame? = nil
     
     public init() {}
@@ -29,32 +29,14 @@ public struct RootView: View {
                 }
                 .tag(0)
                 
-                // Tab 1: Auto-Match (Gated for non-logged-in users)
-                Group {
-                    if dataManager.currentUser != nil {
-                        AutoMatchmakerView(dataManager: dataManager)
-                    } else {
-                        AuthGateView(
-                            title: "Auto-Match",
-                            icon: "sparkles",
-                            subtitle: "Log in to post your availability windows and join instant pickup games.",
-                            dataManager: dataManager
-                        )
-                    }
-                }
-                .tabItem {
-                    Label("Auto-Match", systemImage: "sparkles")
-                }
-                .tag(1)
-                
-                // Tab 2: Ladders (Always Accessible!)
+                // Tab 1: Ladders (Always Accessible!)
                 LaddersView(dataManager: dataManager)
                     .tabItem {
                         Label("Ladders", systemImage: "trophy.fill")
                     }
-                    .tag(2)
+                    .tag(1)
                 
-                // Tab 3: Profile (Gated for non-logged-in users)
+                // Tab 2: Profile (Gated for non-logged-in users)
                 Group {
                     if dataManager.currentUser != nil {
                         ProfileView(dataManager: dataManager)
@@ -70,12 +52,12 @@ public struct RootView: View {
                 .tabItem {
                     Label(dataManager.currentUser != nil ? "Profile" : "Log In", systemImage: "person.crop.circle.fill")
                 }
-                .tag(3)
+                .tag(2)
             }
             .tint(.orange)
             .onAppear {
                 if dataManager.currentUser == nil {
-                    selectedTab = 2
+                    selectedTab = 1
                 }
                 logTabScreen(selectedTab)
             }
@@ -86,7 +68,7 @@ public struct RootView: View {
                 if newUser != nil {
                     selectedTab = 0
                 } else {
-                    selectedTab = 2
+                    selectedTab = 1
                 }
             }
             
@@ -133,7 +115,7 @@ public struct RootView: View {
     }
     
     private func logTabScreen(_ tab: Int) {
-        let screens = ["Set Games", "Auto-Match", "Ladders", "Profile"]
+        let screens = ["Set Games", "Ladders", "Profile"]
         if tab >= 0 && tab < screens.count {
             AnalyticsService.shared.logScreenView(screenName: screens[tab])
         }

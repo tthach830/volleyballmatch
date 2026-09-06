@@ -2054,13 +2054,6 @@ export function switchTab(tabId) {
   });
 
   if (normalizedId === "matches") renderMatches();
-  if (normalizedId === "matchmaker") {
-    if (window.switchMatchmakerOption) {
-      window.switchMatchmakerOption(window.selectedMatchmakerOption || "smartAvailability");
-    } else {
-      renderPickupQueue();
-    }
-  }
   if (normalizedId === "ladders") {
     renderLadder();
     renderPopularKids();
