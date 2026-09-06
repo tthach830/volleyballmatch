@@ -517,6 +517,7 @@ public class DataManager: ObservableObject {
     
     @discardableResult
     public func fillBeachPickupQueue(beach: String) -> SetGame? {
+        guard currentUser?.isRoot == true else { return nil }
         var queue = beachPickupQueues[beach] ?? []
         if let user = currentUser, !queue.contains(where: { $0.id == user.id }) {
             queue.append(user)

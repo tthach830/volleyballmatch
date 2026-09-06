@@ -3538,10 +3538,16 @@ window.renderInstantPickupModal = () => {
     }
   }
 
-  // Update Auto-Fill Button Text
+  // Update Auto-Fill Button Text & Visibility (Admin only)
   const autoBtn = document.getElementById("ip-queue-autofill-btn");
   if (autoBtn) {
-    autoBtn.innerHTML = queue.length === 0 ? "<span>👥</span><span>Quick-Fill 4 Players (Test)</span>" : "<span>👥</span><span>Auto-Fill Remaining Spots</span>";
+    const isRoot = isRootUser(state.currentUser);
+    if (!isRoot) {
+      autoBtn.style.display = "none";
+    } else {
+      autoBtn.style.display = "block";
+      autoBtn.innerHTML = queue.length === 0 ? "<span>👥</span><span>Quick-Fill 4 Players (Test)</span>" : "<span>👥</span><span>Auto-Fill Remaining Spots</span>";
+    }
   }
 };
 
@@ -3626,6 +3632,10 @@ window.toggleInstantPickupQueue = () => {
 };
 
 window.fillInstantPickupQueue = () => {
+  if (!isRootUser(state.currentUser)) {
+    showToast("Quick-Fill is only available for admins.");
+    return;
+  }
   const beach = state.selectedPickupBeach || "Main Beach";
   state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
   const queue = state.beachPickupQueues[beach] || [];

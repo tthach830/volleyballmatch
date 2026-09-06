@@ -123,20 +123,22 @@ public struct InstantPickupSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
                         
-                        // Auto-Fill Button for Fast Testing / Community Match
-                        Button {
-                            handleAutoFill()
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "person.3.fill")
-                                Text(currentQueue.count == 0 ? "Quick-Fill 4 Players" : "Auto-Fill Remaining Spots")
+                        // Quick-Fill Button (Admin only)
+                        if dataManager.currentUser?.isRoot == true {
+                            Button {
+                                handleAutoFill()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "person.3.fill")
+                                    Text(currentQueue.count == 0 ? "Quick-Fill 4 Players" : "Auto-Fill Remaining Spots")
+                                }
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(Color(red: 0.01, green: 0.52, blue: 0.84))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color.blue.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color(red: 0.01, green: 0.52, blue: 0.84))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.blue.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
                     }
                     .padding(18)
@@ -290,6 +292,7 @@ public struct InstantPickupSheet: View {
     
     // MARK: - Auto-Fill Handler
     private func handleAutoFill() {
+        guard dataManager.currentUser?.isRoot == true else { return }
         withAnimation {
             if let game = dataManager.fillBeachPickupQueue(beach: selectedBeach) {
                 navigateToGame(game)
