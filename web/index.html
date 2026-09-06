@@ -56,13 +56,13 @@
         <button type="button" class="btn-ios-teal" id="btn-instant-pickup" onclick="window.openInstantPickupModal()" title="Quick Play Lobby"><span style="font-size:14px;">🚀</span> Quick Play</button>
       </div>
 
-      <!-- Dark Segmented Capsule: 🗺️ All Upcoming | 🤝 My Games | ⭐ Skill Groups -->
+      <!-- Dark Segmented Capsule: 🗺️ All Upcoming | 🤝 My Games | 📜 Past Games -->
       <div class="segmented-control-dark" id="match-filter-segmented">
         <button type="button" class="segmented-item-dark active match-filter-chip" data-filter="all" onclick="window.setMatchFilter('all')">🗺️ All Upcoming</button>
         <span class="segmented-divider"></span>
         <button type="button" class="segmented-item-dark match-filter-chip" data-filter="myGames" onclick="window.setMatchFilter('myGames')">🤝 My Games</button>
         <span class="segmented-divider"></span>
-        <button type="button" class="segmented-item-dark match-filter-chip" data-filter="skillGroups" onclick="window.setMatchFilter('skillGroups')">⭐ Skill Groups</button>
+        <button type="button" class="segmented-item-dark match-filter-chip" data-filter="pastGames" onclick="window.setMatchFilter('pastGames')">📜 Past Games</button>
       </div>
 
       <div id="matches-list">

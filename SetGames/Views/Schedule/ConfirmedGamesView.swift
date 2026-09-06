@@ -25,7 +25,7 @@ public struct ConfirmedGamesView: View {
     public enum GameFilter: String, CaseIterable {
         case all = "🗺️ All Upcoming"
         case myGames = "🤝 My Games"
-        case skillGroups = "⭐ Skill Groups"
+        case pastGames = "📜 Past Games"
     }
     
     public init(dataManager: DataManager) {
@@ -251,12 +251,9 @@ public struct ConfirmedGamesView: View {
             return dataManager.games
                 .filter { $0.status != .canceled && ($0.allPlayerIds.contains(currentUserId) || $0.hostPlayerId == currentUserId) }
                 .sorted { $0.scheduledDate < $1.scheduledDate }
-        case .skillGroups:
-            return upcoming.sorted { (g1, g2) in
-                let r1 = g1.allowedRatings.first?.rawValue ?? ""
-                let r2 = g2.allowedRatings.first?.rawValue ?? ""
-                return r1 < r2
-            }
+        case .pastGames:
+            let past = dataManager.games.filter { $0.status == .completed || $0.scheduledDate < Date() }
+            return past.sorted { $0.scheduledDate > $1.scheduledDate }
         }
     }
     

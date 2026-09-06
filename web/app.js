@@ -1189,12 +1189,12 @@ function renderMatches() {
   checkUpcomingMatchReminders();
 
   // 1. Determine games for current view filter
-  const isCompletedFilter = currentMatchFilter === "completed";
+  const isCompletedFilter = currentMatchFilter === "completed" || currentMatchFilter === "pastGames";
   let targetGames;
   if (isCompletedFilter) {
     targetGames = state.games.filter(g => {
       const s = String(g.status || "").trim().toLowerCase();
-      return s === "completed";
+      return s === "completed" || parseGameDate(g.scheduledDate) < new Date();
     }).sort((a, b) => parseGameDate(b.scheduledDate).getTime() - parseGameDate(a.scheduledDate).getTime());
   } else {
     targetGames = state.games.filter(isUpcomingGame)
@@ -1218,7 +1218,7 @@ function renderMatches() {
     return true;
   };
 
-  // 2. Apply selected view filter ('all', 'myGames', 'skillGroups', 'completed')
+  // 2. Apply selected view filter ('all', 'myGames', 'pastGames')
   let displayGames = targetGames.filter(game => {
     if (isCompletedFilter) return true;
     const isMember = currentUserId && (
@@ -1233,14 +1233,6 @@ function renderMatches() {
     }
     return true;
   });
-
-  if (currentMatchFilter === "skillGroups") {
-    displayGames.sort((a, b) => {
-      const r1 = (a.allowedRatings && a.allowedRatings[0]) || a.targetRating || "";
-      const r2 = (b.allowedRatings && b.allowedRatings[0]) || b.targetRating || "";
-      return r1.localeCompare(r2);
-    });
-  }
 
   if (displayGames.length === 0) {
     const emptyMsg = isCompletedFilter ?
