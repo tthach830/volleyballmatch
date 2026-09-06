@@ -291,7 +291,7 @@ class AppState {
 
     this.players = (savedPlayers && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
     this.games = Array.isArray(savedGames) ? savedGames.filter(isUpcomingGame) : [];
-    this.availabilitySlots = savedSlots || [];
+    this.availabilitySlots = deduplicateSlots(savedSlots || []);
     this.pickupQueue = [];
     this.selectedLadderTier = "All";
     this.collapsedMatches = {};
@@ -3320,11 +3320,64 @@ window.handleRunAutoMatch = () => {
   }
 };
 
+export function deduplicateSlots(slots) {
+  if (!Array.isArray(slots)) return [];
+  const seenIds = new Set();
+  const seenKeys = new Set();
+  const result = [];
+
+  for (const s of slots) {
+    if (!s) continue;
+    if (s.id && seenIds.has(s.id)) continue;
+
+    const dateClean = typeof s.date === "string" ? s.date.split("T")[0] : "";
+    let startClean = typeof s.startTime === "string" ? s.startTime : "";
+    if (startClean.includes("T")) {
+      try {
+        const d = new Date(startClean);
+        if (!isNaN(d.getTime())) {
+          startClean = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+        }
+      } catch (e) {}
+    }
+    let endClean = typeof s.endTime === "string" ? s.endTime : "";
+    if (endClean.includes("T")) {
+      try {
+        const d = new Date(endClean);
+        if (!isNaN(d.getTime())) {
+          endClean = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+        }
+      } catch (e) {}
+    }
+
+    const playerKey = s.rawPlayerId || s.playerId || "";
+    const beachKey = (s.preferredBeach || "Main Beach").trim().toLowerCase();
+    const compositeKey = `${playerKey}|${dateClean}|${startClean}|${endClean}|${beachKey}`;
+
+    if (seenKeys.has(compositeKey)) {
+      // Duplicate slot found! Clean up from Firestore in background if id exists
+      if (s.id) {
+        deleteSlotFromFirestore(s.id).catch(() => {});
+      }
+      continue;
+    }
+
+    if (s.id) seenIds.add(s.id);
+    seenKeys.add(compositeKey);
+    result.push(s);
+  }
+  return result;
+}
+window.deduplicateSlots = deduplicateSlots;
+
 export function renderAvailabilityWindows() {
   const container = document.getElementById("avail-slots-list");
   const countEl = document.getElementById("avail-slots-count");
   const titleEl = document.getElementById("avail-slots-title");
   if (!container) return;
+
+  // Ensure state slots are deduplicated
+  state.availabilitySlots = deduplicateSlots(state.availabilitySlots || []);
 
   const currentUser = state.currentUser;
   if (!currentUser) {
@@ -3345,7 +3398,7 @@ export function renderAvailabilityWindows() {
     titleEl.textContent = isRoot ? `ALL COMMUNITY AVAILABILITY WINDOWS (${visibleSlotsLength(currentUser, isRoot)})` : `YOUR ACTIVE AVAILABILITY WINDOWS (${visibleSlotsLength(currentUser, isRoot)})`;
   }
 
-  const slots = state.availabilitySlots || [];
+  const slots = state.availabilitySlots;
   const visibleSlots = slots.filter(s => {
     if (isRoot) return true;
     return currentUser && (s.playerId === currentUser.id || (currentUser.phoneNumber && s.playerId === currentUser.phoneNumber));
@@ -3461,48 +3514,89 @@ window.deleteAvailabilitySlot = async (slotId) => {
 };
 window.handleDeleteSlot = window.deleteAvailabilitySlot;
 
-window.handleSaveAvailability = (e) => {
-  e.preventDefault();
-  if (!state.currentUser) {
-    showToast("Please log in to post an availability window.");
-    return;
+let isSavingAvailability = false;
+
+window.handleSaveAvailability = async (e) => {
+  if (e) {
+    e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+  }
+  if (isSavingAvailability) return;
+  isSavingAvailability = true;
+
+  const submitBtn = document.getElementById("avail-submit-btn");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Saving...";
   }
 
-  const date = document.getElementById("avail-date").value;
-  const start = document.getElementById("avail-start").value;
-  const end = document.getElementById("avail-end").value;
-  let beach = document.getElementById("avail-beach").value;
-  if (beach === "Custom Court") {
-    const custom = document.getElementById("avail-custom-beach")?.value?.trim();
-    beach = custom || "Custom Court";
+  try {
+    if (!state.currentUser) {
+      showToast("Please log in to post an availability window.");
+      return;
+    }
+
+    const date = document.getElementById("avail-date").value;
+    const start = document.getElementById("avail-start").value;
+    const end = document.getElementById("avail-end").value;
+    let beach = document.getElementById("avail-beach").value;
+    if (beach === "Custom Court") {
+      const custom = document.getElementById("avail-custom-beach")?.value?.trim();
+      beach = custom || "Custom Court";
+    }
+
+    const checkedTiers = Array.from(document.querySelectorAll("input[name='avail-tier']:checked")).map(el => el.value);
+
+    // Guard against duplicate slots (same player, date, startTime, endTime, preferredBeach)
+    const isDuplicate = (state.availabilitySlots || []).some(s => {
+      const isSamePlayer = (s.playerId === state.currentUser.id) || (state.currentUser.phoneNumber && s.playerId === state.currentUser.phoneNumber);
+      const isSameDate = (s.date === date || (typeof s.date === "string" && s.date.startsWith(date)));
+      const isSameStart = s.startTime === start;
+      const isSameEnd = s.endTime === end;
+      const isSameBeach = (s.preferredBeach || "Main Beach").trim().toLowerCase() === (beach || "Main Beach").trim().toLowerCase();
+      return isSamePlayer && isSameDate && isSameStart && isSameEnd && isSameBeach;
+    });
+
+    if (isDuplicate) {
+      showToast("This availability window is already added.");
+      window.closeAddAvailabilityModal();
+      return;
+    }
+
+    const slot = {
+      id: (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : ("slot-" + Date.now()),
+      playerId: state.currentUser.id,
+      date,
+      startTime: start,
+      endTime: end,
+      preferredBeach: beach,
+      acceptedTiers: checkedTiers,
+      allowPlusMinusOneTier: document.getElementById("avail-plusminus")?.checked !== false,
+      isRecurringWeekly: document.getElementById("avail-recurring")?.checked === true,
+      isMatched: false,
+      createdAt: new Date().toISOString()
+    };
+
+    state.availabilitySlots.unshift(slot);
+    state.availabilitySlots = deduplicateSlots(state.availabilitySlots);
+    state.saveLocal();
+    await saveSlotToFirestore(slot);
+    trackEvent("create_availability", {
+      beach: slot.preferredBeach,
+      tiers: slot.acceptedTiers ? slot.acceptedTiers.join(",") : ""
+    });
+    window.closeAddAvailabilityModal();
+    renderAvailabilityWindows();
+    showToast("Free window saved! Matchmaker is searching for partners.");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save Window";
+    }
+    setTimeout(() => {
+      isSavingAvailability = false;
+    }, 600);
   }
-
-  const checkedTiers = Array.from(document.querySelectorAll("input[name='avail-tier']:checked")).map(el => el.value);
-
-  const slot = {
-    id: (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : ("slot-" + Date.now()),
-    playerId: state.currentUser.id,
-    date,
-    startTime: start,
-    endTime: end,
-    preferredBeach: beach,
-    acceptedTiers: checkedTiers,
-    allowPlusMinusOneTier: document.getElementById("avail-plusminus")?.checked !== false,
-    isRecurringWeekly: document.getElementById("avail-recurring")?.checked === true,
-    isMatched: false,
-    createdAt: new Date().toISOString()
-  };
-
-  state.availabilitySlots.unshift(slot);
-  state.saveLocal();
-  saveSlotToFirestore(slot);
-  trackEvent("create_availability", {
-    beach: slot.preferredBeach,
-    tiers: slot.acceptedTiers ? slot.acceptedTiers.join(",") : ""
-  });
-  window.closeAddAvailabilityModal();
-  renderAvailabilityWindows();
-  showToast("Free window saved! Matchmaker is searching for partners.");
 };
 
 // INITIALIZATION & REAL-TIME FIRESTORE LISTENERS
@@ -4285,7 +4379,6 @@ function initApp() {
   document.getElementById("edit-profile-form")?.addEventListener("submit", window.handleSaveEditProfile);
   document.getElementById("profile-form")?.addEventListener("submit", window.handleSaveProfile);
   document.getElementById("score-form")?.addEventListener("submit", window.submitScoreForm);
-  document.getElementById("avail-form")?.addEventListener("submit", window.handleSaveAvailability);
 
 
   // Hook Real-time Cloud Listeners
@@ -4357,7 +4450,7 @@ function initApp() {
   });
 
   subscribeToSlots((remoteSlots) => {
-    state.availabilitySlots = Array.isArray(remoteSlots) ? remoteSlots : [];
+    state.availabilitySlots = deduplicateSlots(Array.isArray(remoteSlots) ? remoteSlots : []);
     state.saveLocal();
     renderAvailabilityWindows();
   });
