@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct ConfirmedGamesView: View {
     @ObservedObject var dataManager: DataManager
+    @ObservedObject private var weatherService = WeatherService.shared
     @State private var selectedFilter: GameFilter = .all
     @State private var showNotificationsSheet: Bool = false
     @State private var showCreateMatchSheet: Bool = false
@@ -552,6 +553,56 @@ public struct ConfirmedGamesView: View {
             }
             .lineLimit(1)
             .minimumScaleFactor(0.8)
+            
+            // Line 4: WEATHER FORECAST (Temperature, UV, Wind)
+            let forecast = weatherService.cachedForecast(for: game.courtLocation, on: game.scheduledDate)
+            HStack(spacing: 5) {
+                if let w = forecast {
+                    Text(w.conditionEmoji)
+                        .font(.system(size: 12))
+                    Text("WEATHER:")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(Color(.label))
+                    Text("\(w.tempF)°F")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(.secondaryLabel))
+                    Text("•")
+                        .foregroundColor(Color(.tertiaryLabel))
+                    HStack(spacing: 2) {
+                        Text("☀️ UV \(Int(w.uvIndex.rounded()))")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(w.uvColor)
+                        Text("(\(w.uvCategory))")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
+                    Text("•")
+                        .foregroundColor(Color(.tertiaryLabel))
+                    HStack(spacing: 2) {
+                        Text("💨 \(w.windMph) mph")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color(.label))
+                        Text("(\(w.windCategory))")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
+                } else {
+                    Text("🌤️")
+                        .font(.system(size: 12))
+                    Text("WEATHER:")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(Color(.label))
+                    Text("Loading forecast...")
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundColor(Color(.secondaryLabel))
+                }
+                Spacer(minLength: 0)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .onAppear {
+                weatherService.loadForecast(for: game.courtLocation, on: game.scheduledDate)
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture {

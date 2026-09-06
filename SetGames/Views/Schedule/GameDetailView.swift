@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct GameDetailView: View {
     @ObservedObject var dataManager: DataManager
+    @ObservedObject private var weatherService = WeatherService.shared
     let gameId: UUID
     
     @Environment(\.dismiss) private var dismiss
@@ -220,6 +221,9 @@ public struct GameDetailView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                             .padding(.horizontal)
                         }
+                        
+                        // Beach Volleyball Weather & Playing Conditions Card
+                        weatherForecastCard(game: game)
                         
                         // Unified Players Pool
                         VStack(alignment: .leading, spacing: 12) {
@@ -1293,6 +1297,148 @@ public struct GameDetailView: View {
         .padding(12)
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private func weatherForecastCard(game: SetGame) -> some View {
+        let forecast = weatherService.cachedForecast(for: game.courtLocation, on: game.scheduledDate)
+        
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "sun.max.fill")
+                        .foregroundColor(.orange)
+                        .font(.system(size: 15))
+                    Text("BEACH VOLLEYBALL CONDITIONS")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundColor(.primary)
+                }
+                
+                Spacer()
+                
+                if let w = forecast {
+                    Text("\(w.tempF)°F • \(w.conditionText)")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Checking forecast...")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            if let w = forecast {
+                HStack(spacing: 10) {
+                    // Temperature Column
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("TEMP")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            Text(w.conditionEmoji)
+                                .font(.system(size: 16))
+                            Text("\(w.tempF)°F")
+                                .font(.system(size: 17, weight: .heavy))
+                        }
+                        Text(w.conditionText)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color(UIColor.tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    
+                    // UV Index Column
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("UV INDEX")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 3) {
+                            Text("☀️")
+                                .font(.system(size: 14))
+                            Text("\(Int(w.uvIndex.rounded()))")
+                                .font(.system(size: 17, weight: .heavy))
+                                .foregroundColor(w.uvColor)
+                            Text("(\(w.uvCategory))")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(w.uvColor)
+                                .lineLimit(1)
+                        }
+                        Text(w.uvCategory == "Low" ? "Low risk" : "Sunscreen advised")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color(UIColor.tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    
+                    // Wind Column
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("WIND")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            Text("💨")
+                                .font(.system(size: 14))
+                            Text("\(w.windMph) mph")
+                                .font(.system(size: 16, weight: .heavy))
+                        }
+                        Text(w.windCategory)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.blue)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color(UIColor.tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                
+                // Playability Guidance Footer
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .top, spacing: 5) {
+                        Image(systemName: "wind")
+                            .font(.system(size: 10))
+                            .foregroundColor(.blue)
+                            .padding(.top, 2)
+                        Text(w.windAdvice)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    HStack(alignment: .top, spacing: 5) {
+                        Image(systemName: "sun.min.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                            .padding(.top, 2)
+                        Text(w.uvSunscreenAdvice)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.top, 2)
+            } else {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Fetching Open-Meteo forecast for \(game.courtLocation)...")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 6)
+            }
+        }
+        .padding(14)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+        .onAppear {
+            weatherService.loadForecast(for: game.courtLocation, on: game.scheduledDate)
+        }
     }
 }
 

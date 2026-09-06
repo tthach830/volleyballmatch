@@ -275,6 +275,315 @@ export function getPopularKidsTitle(connections) {
   return "🌱 New on Court";
 }
 
+// ==========================================
+// Beach Volleyball Weather Service (Open-Meteo)
+// ==========================================
+export const weatherService = {
+  cache: {},
+  inFlight: {},
+
+  getCoordinates(court) {
+    const clean = String(court || "").trim().toLowerCase();
+    if (clean.includes("harbor")) {
+      return { lat: 36.9631, lon: -122.0016 }; // Santa Cruz Harbor Beach
+    } else if (clean.includes("4th") || clean.includes("seabright")) {
+      return { lat: 36.9650, lon: -122.0100 }; // 4th Ave / Seabright Beach
+    } else if (clean.includes("manhattan")) {
+      return { lat: 33.8837, lon: -118.4116 }; // Manhattan Beach Pier
+    } else if (clean.includes("hermosa")) {
+      return { lat: 33.8617, lon: -118.4011 }; // Hermosa Beach
+    } else if (clean.includes("huntington")) {
+      return { lat: 33.6595, lon: -117.9988 }; // Huntington Beach
+    }
+    // Default: Main Beach, Santa Cruz
+    return { lat: 36.9638, lon: -122.0179 };
+  },
+
+  getCacheKey(court, rawDate) {
+    const d = parseGameDate(rawDate);
+    const dateStr = d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+    const hour = d.getHours();
+    const cleanCourt = String(court || "Main Beach").trim().toLowerCase().replace(/\s+/g, "-");
+    return `${cleanCourt}_${dateStr}_${hour}`;
+  },
+
+  getCached(court, rawDate) {
+    const key = this.getCacheKey(court, rawDate);
+    if (this.cache[key]) return this.cache[key];
+    try {
+      const stored = sessionStorage.getItem(`wb_weather_${key}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        this.cache[key] = parsed;
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  },
+
+  setCached(court, rawDate, forecast) {
+    const key = this.getCacheKey(court, rawDate);
+    this.cache[key] = forecast;
+    try {
+      sessionStorage.setItem(`wb_weather_${key}`, JSON.stringify(forecast));
+    } catch (e) {}
+  },
+
+  async getForecast(court, rawDate) {
+    const cached = this.getCached(court, rawDate);
+    if (cached) return cached;
+
+    const key = this.getCacheKey(court, rawDate);
+    if (this.inFlight[key]) return this.inFlight[key];
+
+    this.inFlight[key] = this.fetchForecast(court, rawDate)
+      .then(forecast => {
+        this.setCached(court, rawDate, forecast);
+        delete this.inFlight[key];
+        return forecast;
+      })
+      .catch(err => {
+        console.warn("Weather fetch notice:", err);
+        const fallback = this.getFallback(court, rawDate);
+        this.setCached(court, rawDate, fallback);
+        delete this.inFlight[key];
+        return fallback;
+      });
+
+    return this.inFlight[key];
+  },
+
+  async fetchForecast(court, rawDate) {
+    const coords = this.getCoordinates(court);
+    const targetDate = parseGameDate(rawDate);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&hourly=temperature_2m,uv_index,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&past_days=7&forecast_days=14`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Weather API error ${res.status}`);
+    const data = await res.json();
+    return this.parseClosestHour(data, court, targetDate);
+  },
+
+  parseClosestHour(data, court, targetDate) {
+    const times = data.hourly?.time || [];
+    if (times.length === 0) return this.getFallback(court, targetDate);
+
+    let bestIdx = 0;
+    let minDiff = Infinity;
+    const targetTs = targetDate.getTime();
+
+    for (let i = 0; i < times.length; i++) {
+      const d = new Date(times[i]);
+      const diff = Math.abs(d.getTime() - targetTs);
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestIdx = i;
+      }
+    }
+
+    const tempF = Math.round(data.hourly.temperature_2m[bestIdx] ?? 72);
+    const uvIndex = Math.round((data.hourly.uv_index[bestIdx] ?? 5) * 10) / 10;
+    const windMph = Math.round(data.hourly.wind_speed_10m[bestIdx] ?? 8);
+    const code = data.hourly.weather_code[bestIdx] ?? 0;
+
+    const { emoji, text } = this.interpretWeatherCode(code);
+    const uvCategory = this.getUvCategory(uvIndex);
+    const windCategory = this.getWindCategory(windMph);
+    const windAdvice = this.getWindAdvice(windMph);
+    const uvAdvice = this.getUvAdvice(uvIndex);
+
+    return {
+      courtLocation: court,
+      dateSlot: times[bestIdx],
+      tempF,
+      uvIndex,
+      uvCategory,
+      uvColor: this.getUvColor(uvIndex),
+      windMph,
+      windCategory,
+      windAdvice,
+      uvAdvice,
+      conditionEmoji: emoji,
+      conditionText: text,
+      compactSummary: `${tempF}°F • UV ${Math.round(uvIndex)} (${uvCategory}) • 💨 ${windMph} mph (${windCategory})`
+    };
+  },
+
+  getFallback(court, targetDate) {
+    const hour = parseGameDate(targetDate).getHours();
+    let tempF = 72;
+    let uvIndex = 5.0;
+    let windMph = 8;
+    if (hour < 11) {
+      tempF = 65;
+      uvIndex = 3.5;
+      windMph = 5;
+    } else if (hour < 16) {
+      tempF = 74;
+      uvIndex = 7.0;
+      windMph = 9;
+    } else {
+      tempF = 68;
+      uvIndex = 2.0;
+      windMph = 8;
+    }
+    const uvCategory = this.getUvCategory(uvIndex);
+    const windCategory = this.getWindCategory(windMph);
+    return {
+      courtLocation: court,
+      dateSlot: "avg",
+      tempF,
+      uvIndex,
+      uvCategory,
+      uvColor: this.getUvColor(uvIndex),
+      windMph,
+      windCategory,
+      windAdvice: this.getWindAdvice(windMph),
+      uvAdvice: this.getUvAdvice(uvIndex),
+      conditionEmoji: "☀️",
+      conditionText: "Seasonal Average",
+      compactSummary: `${tempF}°F • UV ${Math.round(uvIndex)} (${uvCategory}) • 💨 ${windMph} mph (${windCategory})`
+    };
+  },
+
+  interpretWeatherCode(code) {
+    if (code === 0) return { emoji: "☀️", text: "Sunny" };
+    if (code === 1 || code === 2) return { emoji: "🌤️", text: "Mostly Sunny" };
+    if (code === 3) return { emoji: "☁️", text: "Overcast" };
+    if (code === 45 || code === 48) return { emoji: "🌫️", text: "Foggy" };
+    if (code >= 51 && code <= 55) return { emoji: "🌦️", text: "Light Drizzle" };
+    if (code >= 61 && code <= 65) return { emoji: "🌧️", text: "Rain" };
+    if (code >= 80 && code <= 82) return { emoji: "🌧️", text: "Rain Showers" };
+    if (code >= 95 && code <= 99) return { emoji: "⛈️", text: "Thunderstorm" };
+    return { emoji: "☀️", text: "Clear" };
+  },
+
+  getUvCategory(uv) {
+    if (uv < 3) return "Low";
+    if (uv < 6) return "Moderate";
+    if (uv < 8) return "High";
+    if (uv < 11) return "Very High";
+    return "Extreme";
+  },
+
+  getUvColor(uv) {
+    if (uv < 3) return "#16a34a"; // green
+    if (uv < 6) return "#d97706"; // amber
+    if (uv < 8) return "#ea580c"; // orange
+    if (uv < 11) return "#dc2626"; // red
+    return "#9333ea"; // purple
+  },
+
+  getUvAdvice(uv) {
+    if (uv < 3) return "Minimal sun protection needed.";
+    if (uv < 6) return "Apply SPF 30+ sunscreen and wear sunglasses.";
+    if (uv < 8) return "Generous SPF 50+, hat & sunglasses strongly recommended.";
+    return "Extreme exposure: seek shade between sets and reapply SPF often.";
+  },
+
+  getWindCategory(wind) {
+    if (wind < 6) return "Calm";
+    if (wind < 12) return "Breezy";
+    if (wind < 18) return "Windy";
+    return "High Wind";
+  },
+
+  getWindAdvice(wind) {
+    if (wind < 6) return "Ideal beach conditions • Crisp sets and consistent float serves.";
+    if (wind < 12) return "Gentle ocean breeze • Mild ball drift; favor tighter setting.";
+    if (wind < 18) return "Noticeable wind • Ball floats quickly; adjust approach and deep passes.";
+    return "High coastal gusts • Tough passing; keep sets low and aggressive.";
+  }
+};
+window.weatherService = weatherService;
+
+export function renderWeatherLine(game) {
+  const cached = weatherService.getCached(game.courtLocation, game.scheduledDate);
+  if (cached) {
+    return buildWeatherLineHtml(game.id, cached);
+  }
+
+  // Trigger background fetch and update element
+  weatherService.getForecast(game.courtLocation, game.scheduledDate).then(w => {
+    const el = document.getElementById(`weather-line-${game.id}`);
+    if (el && w) {
+      el.innerHTML = buildWeatherLineHtml(game.id, w);
+    }
+    const cardEl = document.getElementById(`weather-details-${game.id}`);
+    if (cardEl && w) {
+      cardEl.innerHTML = renderWeatherDetailsCard(game, w);
+    }
+  }).catch(() => {});
+
+  return `
+    <span style="display:inline-flex; align-items:center; gap:4px;">
+      <span>🌤️</span>
+      <strong>WEATHER:</strong>
+      <span style="color:var(--text-muted); font-size:11px;">Checking Open-Meteo forecast...</span>
+    </span>
+  `;
+}
+
+function buildWeatherLineHtml(gameId, w) {
+  return `
+    <span style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; width:100%;" onclick="window.toggleWeatherDetails('${gameId}')" title="Click for beach volleyball playing conditions">
+      <span>${w.conditionEmoji}</span>
+      <strong>WEATHER:</strong>
+      <span style="font-weight:700; color:var(--text);">${w.tempF}°F</span>
+      <span>•</span>
+      <span>☀️ UV ${Math.round(w.uvIndex)} <span style="font-size:10px; font-weight:800; color:${w.uvColor};">(${w.uvCategory})</span></span>
+      <span>•</span>
+      <span>💨 ${w.windMph} mph <span style="font-size:10px; font-weight:700; color:#0284c7;">(${w.windCategory})</span></span>
+      <span style="font-size:10px; color:var(--text-muted); margin-left:auto;">ℹ️ Volleyball Conditions ▾</span>
+    </span>
+  `;
+}
+window.renderWeatherLine = renderWeatherLine;
+
+export function renderWeatherDetailsCard(game, forcedWeather) {
+  const w = forcedWeather || weatherService.getCached(game.courtLocation, game.scheduledDate) || weatherService.getFallback(game.courtLocation, game.scheduledDate);
+  return `
+    <div class="weather-details-inner">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 11px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">
+          🏖️ Beach Volleyball Conditions • ${game.courtLocation}
+        </span>
+        <button type="button" onclick="window.toggleWeatherDetails('${game.id}')" style="background:none; border:none; color:var(--text-muted); font-size:14px; cursor:pointer;" title="Close">✕</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px;">
+        <div class="weather-col">
+          <div class="weather-col-label">TEMP</div>
+          <div class="weather-col-value">${w.conditionEmoji} ${w.tempF}°F</div>
+          <div class="weather-col-sub">${w.conditionText}</div>
+        </div>
+        <div class="weather-col">
+          <div class="weather-col-label">UV INDEX</div>
+          <div class="weather-col-value" style="color: ${w.uvColor};">☀️ ${Math.round(w.uvIndex)} <span style="font-size:10px;">(${w.uvCategory})</span></div>
+          <div class="weather-col-sub">${w.uvCategory === 'Low' ? 'Low risk' : 'Sunscreen advised'}</div>
+        </div>
+        <div class="weather-col">
+          <div class="weather-col-label">WIND</div>
+          <div class="weather-col-value" style="color: #0284c7;">💨 ${w.windMph} mph</div>
+          <div class="weather-col-sub">${w.windCategory}</div>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--border, #e2e8f0); padding-top: 6px;">
+        <div>💨 <strong>Volleyball Setting/Passing Impact:</strong> ${w.windAdvice}</div>
+        <div>☀️ <strong>Sun Exposure Guidelines:</strong> ${w.uvAdvice}</div>
+      </div>
+    </div>
+  `;
+}
+window.renderWeatherDetailsCard = renderWeatherDetailsCard;
+
+window.toggleWeatherDetails = function(gameId) {
+  const card = document.getElementById(`weather-details-${gameId}`);
+  if (card) {
+    const isHidden = card.style.display === "none" || !card.style.display;
+    card.style.display = isHidden ? "block" : "none";
+  }
+};
+
 // App State
 class AppState {
   constructor() {
@@ -1036,12 +1345,22 @@ function renderMatches() {
         </div>
 
         <!-- Metadata Line 3: HOST, RATING & LEVEL LOCKED -->
-        <div class="card-metadata-line" style="margin-bottom: 12px;">
+        <div class="card-metadata-line">
           <span>👑 <strong>HOST:</strong> ${hostDisplayName}</span>
           <span>•</span>
           <span>⭐ ${hostStarVal}</span>
           ${game.isPrivate ? `<span class="badge-private-lock">🔒 Private Game</span>` : ''}
           ${game.isLevelLocked ? `<span class="badge-level-lock">🔒 Level Locked</span>` : ''}
+        </div>
+
+        <!-- Metadata Line 4: WEATHER FORECAST (Temperature, UV, Wind) -->
+        <div class="card-metadata-line weather-forecast-line" id="weather-line-${game.id}" style="margin-bottom: 12px;">
+          ${renderWeatherLine(game)}
+        </div>
+
+        <!-- Collapsible Beach Volleyball Conditions Card -->
+        <div id="weather-details-${game.id}" class="weather-conditions-card" style="display: none;">
+          ${renderWeatherDetailsCard(game)}
         </div>
 
         <!-- Players Pool Box -->
