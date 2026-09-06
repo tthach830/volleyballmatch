@@ -351,6 +351,8 @@ public class DataManager: ObservableObject {
                     FirestoreService.shared.saveAvailabilitySlot(availabilitySlots[i])
                 }
             }
+        }
+        
         if addedCount > 0 {
             syncMatchReminders()
         }
