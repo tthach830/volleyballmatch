@@ -241,7 +241,6 @@ public struct ConfirmedGamesView: View {
         
         // Only include upcoming matches (scheduled or in-progress)
         let upcoming = dataManager.games.filter { $0.status == .scheduled || $0.status == .inProgress }
-        let completed = dataManager.games.filter { $0.status == .completed }
         
         // Filter by user selection and sort by date and time
         switch selectedFilter {
