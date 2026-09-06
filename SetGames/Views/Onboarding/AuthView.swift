@@ -96,7 +96,7 @@ public struct AuthView: View {
                     }
                 }
             }
-            .onChange(of: dataManager.currentUser) { newUser in
+            .onChange(of: dataManager.currentUser) { _, newUser in
                 if newUser != nil {
                     dismiss()
                 }

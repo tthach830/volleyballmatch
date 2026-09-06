@@ -70,7 +70,7 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         content.title = title
         content.body = body
         content.sound = .default
-        content.badge = NSNumber(value: UIApplication.shared.applicationIconBadgeNumber + 1)
+        content.badge = 1
         
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(0.1, timeInterval), repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
@@ -251,7 +251,7 @@ public class NotificationService: NSObject, ObservableObject, UNUserNotification
         request.setValue("10", forHTTPHeaderField: "apns-priority")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        var aps: [String: Any] = [
+        let aps: [String: Any] = [
             "alert": [
                 "title": title,
                 "body": body

@@ -79,10 +79,10 @@ public struct RootView: View {
                 }
                 logTabScreen(selectedTab)
             }
-            .onChange(of: selectedTab) { newTab in
+            .onChange(of: selectedTab) { _, newTab in
                 logTabScreen(newTab)
             }
-            .onChange(of: dataManager.currentUser) { newUser in
+            .onChange(of: dataManager.currentUser) { _, newUser in
                 if newUser != nil {
                     selectedTab = 0
                 } else {
