@@ -13,7 +13,7 @@ public struct EditProfileSheet: View {
     @State private var bio: String = ""
     
     private let availableAvatars: [String] = [
-        "slug", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
+        "slug", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
     ]
     
     private let availableBeaches: [String] = [
@@ -22,6 +22,17 @@ public struct EditProfileSheet: View {
     
     public init(dataManager: DataManager) {
         self.dataManager = dataManager
+    }
+    
+    private func isAvatarSelected(_ avatar: String) -> Bool {
+        if avatarEmoji == avatar { return true }
+        if (avatar == "slug" || avatar == "🍌") && (avatarEmoji == "slug" || avatarEmoji == "🍌" || avatarEmoji.lowercased().contains("slug")) {
+            return true
+        }
+        if (avatar == "🐎" || avatar == "mustang") && (avatarEmoji == "🐎" || avatarEmoji == "mustang") {
+            return true
+        }
+        return false
     }
     
     public var body: some View {
@@ -38,22 +49,7 @@ public struct EditProfileSheet: View {
                                     .fill(Color.orange.opacity(0.12))
                                     .frame(width: 84, height: 84)
                                 
-                                if avatarEmoji == "slug" {
-                                    if let uiImage = UIImage(contentsOfFile: "/Users/peterthach/Desktop/App_development/Set_Games/SetGames/Resources/slug.png") ??
-                                        UIImage(named: "slug") {
-                                        Image(uiImage: uiImage)
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: 76, height: 76)
-                                            .clipShape(Circle())
-                                    } else {
-                                        Text("🐌")
-                                            .font(.system(size: 42))
-                                    }
-                                } else {
-                                    Text(avatarEmoji)
-                                        .font(.system(size: 44))
-                                }
+                                CourtAvatarIconView(avatarKey: avatarEmoji, size: 68)
                             }
                             .overlay(
                                 Circle()
@@ -71,34 +67,20 @@ public struct EditProfileSheet: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
                                 ForEach(availableAvatars, id: \.self) { avatar in
+                                    let isSelected = isAvatarSelected(avatar)
                                     Button {
                                         avatarEmoji = avatar
                                     } label: {
                                         ZStack {
                                             Circle()
-                                                .fill(avatarEmoji == avatar ? Color.orange.opacity(0.2) : Color(UIColor.systemGray6))
+                                                .fill(isSelected ? Color.orange.opacity(0.2) : Color(UIColor.systemGray6))
                                                 .frame(width: 48, height: 48)
                                                 .overlay(
                                                     Circle()
-                                                        .stroke(avatarEmoji == avatar ? Color.orange : Color.clear, lineWidth: 2)
+                                                        .stroke(isSelected ? Color.orange : Color.clear, lineWidth: 2)
                                                 )
                                             
-                                            if avatar == "slug" {
-                                                if let uiImage = UIImage(contentsOfFile: "/Users/peterthach/Desktop/App_development/Set_Games/SetGames/Resources/slug.png") ??
-                                                    UIImage(named: "slug") {
-                                                    Image(uiImage: uiImage)
-                                                        .resizable()
-                                                        .scaledToFill()
-                                                        .frame(width: 40, height: 40)
-                                                        .clipShape(Circle())
-                                                } else {
-                                                    Text("🐌")
-                                                        .font(.system(size: 24))
-                                                }
-                                            } else {
-                                                Text(avatar)
-                                                    .font(.system(size: 24))
-                                            }
+                                            CourtAvatarIconView(avatarKey: avatar, size: 36)
                                         }
                                     }
                                     .buttonStyle(.plain)

@@ -362,9 +362,18 @@ export function isSlugAvatar(avatarKey) {
   return s === "slug" || s === "🍌" || s.includes("slug");
 }
 
+export function isMustangAvatar(avatarKey) {
+  if (!avatarKey) return false;
+  const s = String(avatarKey).trim().toLowerCase();
+  return s === "mustang" || s === "horse" || s === "🐎";
+}
+
 export function renderAvatarContent(avatarKey) {
   if (isSlugAvatar(avatarKey)) {
     return `<img src="assets/slug.png" alt="Banana Slug" class="avatar-slug-img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;">`;
+  }
+  if (isMustangAvatar(avatarKey)) {
+    return "🐎";
   }
   return `${avatarKey || "🏐"}`;
 }
@@ -1454,25 +1463,44 @@ window.openEditProfileModal = () => {
   document.getElementById("edit-profile-nickname").value = user.nickname || "";
   document.getElementById("edit-profile-phone").value = user.phoneNumber || "";
   document.getElementById("edit-profile-rating").value = user.rating || "B";
-  document.getElementById("edit-profile-beach").value = user.homeBeach || "Main Beach";
+
+  const beachSelect = document.getElementById("edit-profile-beach");
+  if (beachSelect) {
+    const beachVal = user.homeBeach || "Main Beach";
+    const optionExists = Array.from(beachSelect.options).some(o => o.value === beachVal);
+    if (!optionExists && beachVal) {
+      const opt = document.createElement("option");
+      opt.value = beachVal;
+      opt.textContent = beachVal;
+      beachSelect.appendChild(opt);
+    }
+    beachSelect.value = beachVal;
+  }
+
   document.getElementById("edit-profile-bio").value = user.bio || "";
 
-  window.selectedEditProfileAvatar = user.avatarEmoji || "slug";
+  const currentAvatar = user.avatarEmoji || "slug";
+  window.selectedEditProfileAvatar = currentAvatar;
   document.querySelectorAll("#edit-profile-avatars .avatar-btn").forEach(btn => {
-    btn.classList.toggle("selected", btn.dataset.avatar === window.selectedEditProfileAvatar);
-    btn.onclick = () => {
+    const btnAvatar = btn.dataset.avatar;
+    const isSelected = (btnAvatar === currentAvatar) ||
+                       (isSlugAvatar(btnAvatar) && isSlugAvatar(currentAvatar)) ||
+                       (isMustangAvatar(btnAvatar) && isMustangAvatar(currentAvatar));
+    btn.classList.toggle("selected", isSelected);
+    btn.onclick = (e) => {
+      e.stopPropagation();
       document.querySelectorAll("#edit-profile-avatars .avatar-btn").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
       window.selectedEditProfileAvatar = btn.dataset.avatar;
     };
   });
 
-  modal.classList.add("show");
+  modal.classList.add("active");
 };
 
 window.closeEditProfileModal = () => {
   const modal = document.getElementById("edit-profile-modal");
-  if (modal) modal.classList.remove("show");
+  if (modal) modal.classList.remove("active");
 };
 
 window.handleSaveEditProfile = (e) => {

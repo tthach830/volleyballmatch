@@ -429,14 +429,15 @@
           </div>
           <div class="form-group">
             <label class="form-label">Select Avatar</label>
-            <div class="avatar-selector">
-              <div class="avatar-btn selected" data-signup-avatar="slug" onclick="window.selectSignupAvatar(this, 'slug')">
-                <img src="assets/slug.png" alt="Banana Slug" style="width: 100%; height: 100%; border-radius: 50%;">
+            <div class="avatar-selector" id="signup-avatar-selector">
+              <div class="avatar-btn selected" data-signup-avatar="slug" onclick="window.selectSignupAvatar(this, 'slug')" title="Banana Slug">
+                <img src="assets/slug.png" alt="Banana Slug" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
               </div>
-              <div class="avatar-btn" data-signup-avatar="🦈" onclick="window.selectSignupAvatar(this, '🦈')">🦈</div>
-              <div class="avatar-btn" data-signup-avatar="🦦" onclick="window.selectSignupAvatar(this, '🦦')">🦦</div>
-              <div class="avatar-btn" data-signup-avatar="🐋" onclick="window.selectSignupAvatar(this, '🐋')">🐋</div>
-              <div class="avatar-btn" data-signup-avatar="🏐" onclick="window.selectSignupAvatar(this, '🏐')">🏐</div>
+              <div class="avatar-btn" data-signup-avatar="🐎" onclick="window.selectSignupAvatar(this, '🐎')" title="Wild Horse (Mustang)">🐎</div>
+              <div class="avatar-btn" data-signup-avatar="🦈" onclick="window.selectSignupAvatar(this, '🦈')" title="Shark">🦈</div>
+              <div class="avatar-btn" data-signup-avatar="🦦" onclick="window.selectSignupAvatar(this, '🦦')" title="Otter">🦦</div>
+              <div class="avatar-btn" data-signup-avatar="🐋" onclick="window.selectSignupAvatar(this, '🐋')" title="Orca">🐋</div>
+              <div class="avatar-btn" data-signup-avatar="🏐" onclick="window.selectSignupAvatar(this, '🏐')" title="Volleyball">🏐</div>
             </div>
           </div>
           <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Create Player & Play</button>
@@ -857,20 +858,21 @@
     </div>
 
     <!-- Edit Profile Modal (matches iOS EditProfileSheet.swift) -->
-    <div id="edit-profile-modal" class="modal-backdrop">
+    <div id="edit-profile-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeEditProfileModal()">
       <div class="modal-card" style="max-width: 460px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <h2 style="font-size: 18px; font-weight: 800; margin: 0;">Edit Profile</h2>
-          <button class="btn btn-outline btn-sm" onclick="window.closeEditProfileModal()">✕</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="window.closeEditProfileModal()">✕</button>
         </div>
 
-        <form id="edit-profile-form">
+        <form id="edit-profile-form" onsubmit="window.handleSaveEditProfile(event)">
           <div class="form-group">
             <label class="form-label">Select Mascot Avatar</label>
             <div class="avatar-selector" id="edit-profile-avatars" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px 0;">
               <div class="avatar-btn" data-avatar="slug" title="Banana Slug">
                 <img src="assets/slug.png" alt="Banana Slug" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
               </div>
+              <div class="avatar-btn" data-avatar="🐎" title="Wild Horse (Mustang)">🐎</div>
               <div class="avatar-btn" data-avatar="🦈" title="Shark">🦈</div>
               <div class="avatar-btn" data-avatar="🏐" title="Volleyball">🏐</div>
               <div class="avatar-btn" data-avatar="⚡️" title="Lightning">⚡️</div>
@@ -902,6 +904,7 @@
           <div class="form-group">
             <label class="form-label" for="edit-profile-rating">Rating Tier</label>
             <select id="edit-profile-rating" class="form-select">
+              <option value="Open">Open — Semi-Pro / Pro</option>
               <option value="AA">AA — Advanced Tournament</option>
               <option value="A">A — Competitive Beach Doubles</option>
               <option value="B">B — Solid Foundation</option>

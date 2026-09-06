@@ -13,6 +13,10 @@ public struct CourtAvatarIconView: View {
         avatarKey == "slug" || avatarKey == "🍌" || avatarKey == "BananaSlugAvatar" || avatarKey.lowercased().contains("slug")
     }
     
+    public var isMustang: Bool {
+        avatarKey == "mustang" || avatarKey == "horse" || avatarKey == "🐎"
+    }
+    
     public var body: some View {
         if isBananaSlug {
             Image("BananaSlugAvatar")
@@ -20,6 +24,9 @@ public struct CourtAvatarIconView: View {
                 .scaledToFit()
                 .frame(width: size, height: size)
                 .clipShape(Circle())
+        } else if isMustang {
+            Text("🐎")
+                .font(.system(size: size * 0.82))
         } else {
             Text(avatarKey)
                 .font(.system(size: size * 0.82))
