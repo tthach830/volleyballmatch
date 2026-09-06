@@ -1362,6 +1362,7 @@ function renderMatches() {
     const waitlistPos = isWaitlisted ? (waitlistIds.indexOf(currentUserId) + 1) : null;
 
     const isMatchesCollapsed = !(state.expandedMatches && state.expandedMatches[game.id]);
+    const isPoolCollapsed = !!(state.collapsedPools && state.collapsedPools[game.id]);
     const msgCount = game.messages ? game.messages.length : 0;
 
     return `
@@ -1428,60 +1429,65 @@ function renderMatches() {
         <!-- Player Pool: List with Count (if > 4 players) OR 2x2 Grid (if <= 4 players) -->
         ${allPlayerIds.length > 4 ? `
           <div class="player-pool-list-container">
-            <div class="player-pool-list-header">
+            <div class="player-pool-list-header" style="cursor: pointer; user-select: none;" onclick="window.togglePlayerPoolCollapse('${game.id}', event)">
               <span class="player-pool-list-title">
                 <span>👥</span> PLAYER POOL (${allPlayerIds.length} PLAYERS)
               </span>
-              <span class="player-pool-list-badge" style="color: ${spotsLeft > 0 ? '#fb923c' : '#4ade80'};">
-                ${spotsLeft > 0 ? `${spotsLeft} Spot${spotsLeft > 1 ? 's' : ''} Open` : 'Pool Full ✓'}
-              </span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="player-pool-list-badge" style="color: ${spotsLeft > 0 ? '#fb923c' : '#4ade80'};">
+                  ${spotsLeft > 0 ? `${spotsLeft} Spot${spotsLeft > 1 ? 's' : ''} Open` : 'Pool Full ✓'}
+                </span>
+                <span style="font-size: 11px; color: rgba(255, 255, 255, 0.7); font-weight: bold;">${isPoolCollapsed ? '⌵' : '⌃'}</span>
+              </div>
             </div>
 
-            <div class="player-pool-list-items">
-              ${allPlayerIds.map((pid, idx) => {
-                const p = state.getPlayer(pid);
-                const isHidden = !isMember && !isRoot;
-                const displayName = isHidden ? 'Player' : (p ? (p.nickname || p.name) : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player"));
-                const avatarDisplay = isHidden ? renderAvatarContent('🏐') : renderAvatarContent(p ? p.avatarEmoji : '🏐');
-                const tierVal = (p?.rating || 'B');
-                const tierClass = tierVal.toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${tierVal.toLowerCase()}`;
-                const starVal = p ? formatStarRating(p) : "5.0";
-                const isGameHost = pid === game.hostPlayerId;
-                const canRemove = isHost && !isGameHost;
+            ${!isPoolCollapsed ? `
+              <div class="player-pool-list-items">
+                ${allPlayerIds.map((pid, idx) => {
+                  const p = state.getPlayer(pid);
+                  const isHidden = !isMember && !isRoot;
+                  const displayName = isHidden ? 'Player' : (p ? (p.nickname || p.name) : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player"));
+                  const avatarDisplay = isHidden ? renderAvatarContent('🏐') : renderAvatarContent(p ? p.avatarEmoji : '🏐');
+                  const tierVal = (p?.rating || 'B');
+                  const tierClass = tierVal.toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${tierVal.toLowerCase()}`;
+                  const starVal = p ? formatStarRating(p) : "5.0";
+                  const isGameHost = pid === game.hostPlayerId;
+                  const canRemove = isHost && !isGameHost;
 
-                return `
-                  <div class="player-pool-list-row">
-                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                      <span style="font-size: 10px; font-weight: 800; background: rgba(56, 189, 248, 0.18); color: #38bdf8; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        #${idx + 1}
-                      </span>
-                      <div style="width: 28px; height: 28px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">
-                        ${avatarDisplay}
-                      </div>
-                      <div style="min-width: 0;">
-                        <div style="font-size: 12px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
-                          <span>${displayName}</span>
-                          ${isGameHost ? `<span style="font-size: 8px; font-weight: 800; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 1px 4px; border-radius: 3px;">HOST</span>` : ''}
+                  return `
+                    <div class="player-pool-list-row">
+                      <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                        <span style="font-size: 10px; font-weight: 800; background: rgba(56, 189, 248, 0.18); color: #38bdf8; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                          #${idx + 1}
+                        </span>
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">
+                          ${avatarDisplay}
                         </div>
-                        <div style="display: flex; align-items: center; gap: 5px; margin-top: 1px;">
-                          <span class="badge-tier-pill ${tierClass}" style="font-size: 9px; padding: 1px 5px;">${tierVal}</span>
-                          <span style="font-size: 10px; font-weight: 700; color: #fbbf24;">⭐ ${starVal}</span>
+                        <div style="min-width: 0;">
+                          <div style="font-size: 12px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
+                            <span>${displayName}</span>
+                            ${isGameHost ? `<span style="font-size: 8px; font-weight: 800; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 1px 4px; border-radius: 3px;">HOST</span>` : ''}
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 5px; margin-top: 1px;">
+                            <span class="badge-tier-pill ${tierClass}" style="font-size: 9px; padding: 1px 5px;">${tierVal}</span>
+                            <span style="font-size: 10px; font-weight: 700; color: #fbbf24;">⭐ ${starVal}</span>
+                          </div>
                         </div>
                       </div>
+                      ${canRemove ? `
+                        <button type="button" class="player-tile-trash" title="Remove player from match" style="margin-left: 8px; flex-shrink: 0;" onclick="event.stopPropagation(); window.removePlayerFromPool('${game.id}', '${pid}')">🗑️</button>
+                      ` : ''}
                     </div>
-                    ${canRemove ? `
-                      <button type="button" class="player-tile-trash" title="Remove player from match" style="margin-left: 8px; flex-shrink: 0;" onclick="event.stopPropagation(); window.removePlayerFromPool('${game.id}', '${pid}')">🗑️</button>
-                    ` : ''}
-                  </div>
-                `;
-              }).join("")}
+                  `;
+                }).join("")}
 
-              ${spotsLeft > 0 ? `
-                <div class="player-tile-dark player-tile-empty-t1" style="min-height: 38px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="${needsPlayers && !isMember && !game.isPrivate ? `window.joinGamePool('${game.id}')` : ''}">
-                  <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">+ Open Spot (${spotsLeft} remaining)</span>
-                </div>
-              ` : ''}
-            </div>
+                ${spotsLeft > 0 ? `
+                  <div class="player-tile-dark player-tile-empty-t1" style="min-height: 38px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="${needsPlayers && !isMember && !game.isPrivate ? `window.joinGamePool('${game.id}')` : ''}">
+                    <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">+ Open Spot (${spotsLeft} remaining)</span>
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
           </div>
         ` : `
           <!-- 2x2 Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
@@ -1739,6 +1745,13 @@ function renderMatches() {
 }
 
 window.renderMatches = renderMatches;
+
+window.togglePlayerPoolCollapse = (gameId, event) => {
+  if (event) event.stopPropagation();
+  state.collapsedPools = state.collapsedPools || {};
+  state.collapsedPools[gameId] = !state.collapsedPools[gameId];
+  renderMatches();
+};
 
 window.toggleCardActionsMenu = (gameId, event) => {
   if (event) event.stopPropagation();
