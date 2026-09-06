@@ -81,8 +81,15 @@ public struct ConfirmedGamesView: View {
                         }
                         .padding(50)
                     } else {
-                        LazyVStack(spacing: 12) {
-                            ForEach(displayGames) { game in
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(displayGames.enumerated()), id: \.element.id) { index, game in
+                                if index > 0 {
+                                    Rectangle()
+                                        .fill(Color.white)
+                                        .frame(height: 10)
+                                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                                        .padding(.vertical, 8)
+                                }
                                 gameRow(game)
                             }
                         }

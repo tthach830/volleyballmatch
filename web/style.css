@@ -377,6 +377,13 @@ header {
   flex-shrink: 0;
 }
 
+.games-white-gap {
+  height: 10px;
+  background: #ffffff;
+  margin: 0 16px 16px;
+  border-radius: 5px;
+}
+
 .game-details-card {
   background: #181c26;
   border: 1px solid #283042;

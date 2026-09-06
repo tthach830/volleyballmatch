@@ -1244,7 +1244,7 @@ function renderMatches() {
     return;
   }
 
-  const cardsHtml = displayGames.map(game => {
+  const cardsHtml = displayGames.map((game, index) => {
     try {
     const allPlayerIds = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
     const maxPlayers = game.maxPlayers || 4;
@@ -1343,6 +1343,7 @@ function renderMatches() {
     const msgCount = game.messages ? game.messages.length : 0;
 
     return `
+      ${index > 0 ? '<div class="games-white-gap"></div>' : ''}
       <div class="game-details-card" id="match-card-${game.id}">
         <!-- Header Row: Date/Time + Dropdown Ellipsis -->
         <div class="card-header-row">
