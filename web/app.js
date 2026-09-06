@@ -1196,11 +1196,13 @@ function renderMatches() {
                 <span style="font-size: 10px; font-weight: 700; color: #0f172a; margin-top: 2px; line-height: 1.1; text-align: center;">QR<br>Code</span>
               </button>
 
-              <button type="button" class="footer-action-btn-stacked footer-action-btn-chat" onclick="window.openMatchChatModal('${game.id}')" title="Match Chat">
-                <span style="font-size: 16px;">💬</span>
-                <span style="font-size: 10px; font-weight: 700; color: #0369a1; margin-top: 2px; line-height: 1.1; text-align: center;">Chat<br>(${msgCount})</span>
-                ${msgCount > 0 ? `<span class="footer-unread-badge">${msgCount}</span>` : ''}
-              </button>
+              ${isMember ? `
+                <button type="button" class="footer-action-btn-stacked footer-action-btn-chat" onclick="window.openMatchChatModal('${game.id}')" title="Match Chat">
+                  <span style="font-size: 16px;">💬</span>
+                  <span style="font-size: 10px; font-weight: 700; color: #0369a1; margin-top: 2px; line-height: 1.1; text-align: center;">Chat<br>(${msgCount})</span>
+                  ${msgCount > 0 ? `<span class="footer-unread-badge">${msgCount}</span>` : ''}
+                </button>
+              ` : ''}
 
               ${isMember ? `
                 <button type="button" class="footer-action-btn-stacked footer-action-btn-danger" onclick="window.leaveGame('${game.id}')" title="Leave Match" style="min-height: 48px; padding: 6px 12px;">
@@ -2157,6 +2159,11 @@ window.toggleCardAdminMenu = (gameId) => {
     game.hostPlayerId === currentUserId ||
     (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId)
   );
+  const isMember = currentUserId && (
+    (game.team1PlayerIds && game.team1PlayerIds.includes(currentUserId)) ||
+    (game.team2PlayerIds && game.team2PlayerIds.includes(currentUserId)) ||
+    (game.hostPlayerId === currentUserId)
+  );
   const isRoot = state.currentUser && state.currentUser.isRoot;
 
   const container = document.getElementById("admin-actions-body");
@@ -2173,10 +2180,12 @@ window.toggleCardAdminMenu = (gameId) => {
       <span>QR Code & Share Link</span>
     </button>
 
-    <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #0284c7; border-color: #bae6fd; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.openMatchChatModal('${game.id}')">
-      <span style="font-size: 16px;">💬</span>
-      <span>Match Chat (${(game.messages || []).length})</span>
-    </button>
+    ${isMember ? `
+      <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #0284c7; border-color: #bae6fd; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.openMatchChatModal('${game.id}')">
+        <span style="font-size: 16px;">💬</span>
+        <span>Match Chat (${(game.messages || []).length})</span>
+      </button>
+    ` : ''}
 
     <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.openEditMatchModal('${game.id}')">
       <span style="font-size: 16px;">✏️</span>
@@ -2515,6 +2524,18 @@ window.activeChatGameId = null;
 window.openMatchChatModal = (gameId) => {
   const game = state.games.find(g => g.id === gameId);
   if (!game) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isMember = currentUserId && (
+    (game.team1PlayerIds && game.team1PlayerIds.includes(currentUserId)) ||
+    (game.team2PlayerIds && game.team2PlayerIds.includes(currentUserId)) ||
+    (game.hostPlayerId === currentUserId)
+  );
+
+  if (!isMember) {
+    showToast("Match Chat is only available to confirmed players in this game.");
+    return;
+  }
 
   window.activeChatGameId = gameId;
   const titleEl = document.getElementById("chat-match-title");

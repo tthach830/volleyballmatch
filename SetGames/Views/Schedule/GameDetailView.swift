@@ -40,7 +40,7 @@ public struct GameDetailView: View {
     
     private var isUserInMatch: Bool {
         guard let g = game, let user = dataManager.currentUser else { return false }
-        return g.allPlayerIds.contains(user.id)
+        return g.allPlayerIds.contains(user.id) || g.hostPlayerId == user.id
     }
     
     private func hostPlayer(for g: SetGame) -> Player? {
@@ -419,8 +419,10 @@ public struct GameDetailView: View {
                             }
                         }
                         
-                        // Match Chat & Quick ETA Statuses
-                        matchChatSection(game: game)
+                        // Match Chat & Quick ETA Statuses (only shown if user is in the game)
+                        if isUserInMatch {
+                            matchChatSection(game: game)
+                        }
                         
                         // Back Out / Leave Match Button (if user is registered in upcoming game)
                         if isUserInMatch && game.status != .completed {
@@ -1292,6 +1294,11 @@ public struct MatchChatSheet: View {
         dataManager.games.first(where: { $0.id == game.id }) ?? game
     }
     
+    private var isUserInMatch: Bool {
+        guard let user = dataManager.currentUser else { return false }
+        return currentGame.allPlayerIds.contains(user.id) || currentGame.hostPlayerId == user.id
+    }
+    
     public init(dataManager: DataManager, game: SetGame) {
         self.dataManager = dataManager
         self.game = game
@@ -1327,21 +1334,39 @@ public struct MatchChatSheet: View {
                 
                 Divider()
                 
-                // Quick Status / ETA Chips
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        quickChip(title: "🏃‍♂️ omw", text: "omw")
-                        quickChip(title: "⏳ 5 min late", text: "5 min late")
-                        quickChip(title: "⏰ 10 min late", text: "10 min late")
-                        quickChip(title: "🏐 Got a court", text: "Got a court")
-                        quickChip(title: "👋 Ready to play!", text: "Ready to play!")
+                if !isUserInMatch {
+                    VStack(spacing: 12) {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 44))
+                            .foregroundColor(.secondary.opacity(0.7))
+                            .padding(.top, 40)
+                        Text("Chat Restricted")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(.primary)
+                        Text("Only confirmed players in this match can view and send chat messages.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        Spacer()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                }
-                .background(Color(UIColor.systemBackground))
-                
-                Divider()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    // Quick Status / ETA Chips
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            quickChip(title: "🏃‍♂️ omw", text: "omw")
+                            quickChip(title: "⏳ 5 min late", text: "5 min late")
+                            quickChip(title: "⏰ 10 min late", text: "10 min late")
+                            quickChip(title: "🏐 Got a court", text: "Got a court")
+                            quickChip(title: "👋 Ready to play!", text: "Ready to play!")
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                    }
+                    .background(Color(UIColor.systemBackground))
+                    
+                    Divider()
                 
                 // Messages Scroll List
                 ScrollViewReader { proxy in
@@ -1452,6 +1477,7 @@ public struct MatchChatSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(Color(UIColor.systemBackground))
+                }
             }
             .navigationTitle("Match Chat")
             .navigationBarTitleDisplayMode(.inline)

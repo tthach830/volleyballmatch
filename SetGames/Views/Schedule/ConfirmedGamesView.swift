@@ -341,10 +341,12 @@ public struct ConfirmedGamesView: View {
                     Label("QR Code / Share", systemImage: "qrcode")
                 }
                 
-                Button {
-                    chatGameForSheet = game
-                } label: {
-                    Label("Match Chat (\(game.messages.count))", systemImage: "message")
+                if isMyGame {
+                    Button {
+                        chatGameForSheet = game
+                    } label: {
+                        Label("Match Chat (\(game.messages.count))", systemImage: "message")
+                    }
                 }
                 
                 if canUserJoin(game) {
@@ -943,10 +945,12 @@ public struct ConfirmedGamesView: View {
                     } label: {
                         Label("QR Code / Share", systemImage: "qrcode")
                     }
-                    Button {
-                        chatGameForSheet = game
-                    } label: {
-                        Label("Match Chat (\(game.messages.count))", systemImage: "message")
+                    if isMyGame {
+                        Button {
+                            chatGameForSheet = game
+                        } label: {
+                            Label("Match Chat (\(game.messages.count))", systemImage: "message")
+                        }
                     }
                     Button {
                         editGameForSheet = game
@@ -998,40 +1002,42 @@ public struct ConfirmedGamesView: View {
                 }
                 .buttonStyle(.borderless)
                 
-                Button {
-                    chatGameForSheet = game
-                } label: {
-                    ZStack(alignment: .topTrailing) {
-                        VStack(spacing: 2) {
-                            Image(systemName: "message.fill")
-                                .font(.system(size: 14, weight: .bold))
-                            Text("Chat\n(\(game.messages.count))")
-                                .font(.system(size: 9, weight: .bold))
-                                .multilineTextAlignment(.center)
-                                .lineSpacing(-2)
-                        }
-                        .frame(width: 48, height: 46)
-                        .background(Color(red: 0.94, green: 0.97, blue: 1.0))
-                        .foregroundColor(Color(red: 0.01, green: 0.41, blue: 0.63))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color(red: 0.73, green: 0.87, blue: 0.98), lineWidth: 0.8)
-                        )
-                        
-                        if game.messages.count > 0 {
-                            Text("\(game.messages.count)")
-                                .font(.system(size: 8, weight: .black))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color.red)
-                                .clipShape(Capsule())
-                                .offset(x: 4, y: -4)
+                if isMyGame {
+                    Button {
+                        chatGameForSheet = game
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            VStack(spacing: 2) {
+                                Image(systemName: "message.fill")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text("Chat\n(\(game.messages.count))")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .multilineTextAlignment(.center)
+                                    .lineSpacing(-2)
+                            }
+                            .frame(width: 48, height: 46)
+                            .background(Color(red: 0.94, green: 0.97, blue: 1.0))
+                            .foregroundColor(Color(red: 0.01, green: 0.41, blue: 0.63))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color(red: 0.73, green: 0.87, blue: 0.98), lineWidth: 0.8)
+                            )
+                            
+                            if game.messages.count > 0 {
+                                Text("\(game.messages.count)")
+                                    .font(.system(size: 8, weight: .black))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color.red)
+                                    .clipShape(Capsule())
+                                    .offset(x: 4, y: -4)
+                            }
                         }
                     }
+                    .buttonStyle(.borderless)
                 }
-                .buttonStyle(.borderless)
                 
                 if isMyGame {
                     Button {
