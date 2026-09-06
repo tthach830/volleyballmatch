@@ -418,6 +418,16 @@ public struct ConfirmedGamesView: View {
                     Label("Edit Details", systemImage: "pencil")
                 }
                 
+                if (isHost || dataManager.currentUser?.isRoot == true) && game.spotsRemaining == 0 {
+                    Button {
+                        let res = dataManager.addSpotToGame(gameId: game.id)
+                        alertMessage = res.message
+                        showAlert = true
+                    } label: {
+                        Label("+ Add Spot to Full Game", systemImage: "plus.circle")
+                    }
+                }
+                
                 if isHost || dataManager.currentUser?.isRoot == true {
                     Button(role: .destructive) {
                         gameToDelete = game
