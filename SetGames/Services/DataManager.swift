@@ -18,6 +18,10 @@ public class DataManager: ObservableObject {
         if !loadFromDisk() {
             loadMockCommunityData()
         }
+        if currentUser?.isRoot != true {
+            self.isDemoModeEnabled = false
+            UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
+        }
         setupFirestoreSync()
         
         if currentUser != nil {
@@ -91,6 +95,10 @@ public class DataManager: ObservableObject {
                 return (false, "Incorrect password. Please try again.")
             }
             currentUser = player
+            if !player.isRoot {
+                isDemoModeEnabled = false
+                UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
+            }
             saveToDisk()
             NotificationService.shared.requestPermission()
             if let token = NotificationService.shared.apnsDeviceToken {
@@ -144,6 +152,8 @@ public class DataManager: ObservableObject {
         
         players.append(newPlayer)
         currentUser = newPlayer
+        isDemoModeEnabled = false
+        UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
         saveToDisk()
         FirestoreService.shared.savePlayer(newPlayer)
         NotificationService.shared.requestPermission()
@@ -185,6 +195,8 @@ public class DataManager: ObservableObject {
     
     public func logOut() {
         currentUser = nil
+        isDemoModeEnabled = false
+        UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
         saveToDisk()
     }
     
@@ -254,6 +266,8 @@ public class DataManager: ObservableObject {
         
         // 6. Clear session and save disk
         currentUser = nil
+        isDemoModeEnabled = false
+        UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
         saveToDisk()
         
         return true
@@ -1570,6 +1584,11 @@ public class DataManager: ObservableObject {
             self.currentUser = self.players.first(where: { $0.id == savedUUID })
         } else {
             self.currentUser = nil
+        }
+        
+        if self.currentUser?.isRoot != true {
+            self.isDemoModeEnabled = false
+            UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
         }
         
         return true

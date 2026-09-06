@@ -298,6 +298,12 @@ class AppState {
     
     // Active user session
     this.currentUser = this.players.find(p => p.id === savedUserId) || null;
+    if (!isRootUser(this.currentUser)) {
+      this.isDemoModeEnabled = false;
+      try {
+        localStorage.removeItem("setgames_demo_mode");
+      } catch (e) {}
+    }
   }
 
   saveLocal() {
@@ -305,7 +311,11 @@ class AppState {
       localStorage.setItem("setgames_players", JSON.stringify(this.players));
       localStorage.setItem("setgames_games", JSON.stringify(this.games));
       localStorage.setItem("setgames_slots", JSON.stringify(this.availabilitySlots));
-      localStorage.setItem("setgames_demo_mode", this.isDemoModeEnabled ? "true" : "false");
+      if (this.isDemoModeEnabled) {
+        localStorage.setItem("setgames_demo_mode", "true");
+      } else {
+        localStorage.removeItem("setgames_demo_mode");
+      }
       if (this.currentUser) {
         localStorage.setItem("setgames_current_user_id", this.currentUser.id);
       } else {
@@ -1410,6 +1420,8 @@ function renderProfile() {
       if (switchBox) switchBox.style.display = "flex";
     } else {
       demoCard.style.display = "none";
+      const toggleContainer = document.getElementById("demo-mode-toggle-container");
+      if (toggleContainer) toggleContainer.style.display = "none";
     }
   }
 
@@ -1722,6 +1734,12 @@ window.handlePhoneLogin = (e) => {
       return;
     }
     state.currentUser = player;
+    if (!isRootUser(player)) {
+      state.isDemoModeEnabled = false;
+      try {
+        localStorage.removeItem("setgames_demo_mode");
+      } catch (e) {}
+    }
     state.saveLocal();
     if (errEl) errEl.style.display = "none";
     window.closeAuthModal();
@@ -1778,6 +1796,10 @@ window.handlePhoneSignUp = (e) => {
 
   state.players.push(newPlayer);
   state.currentUser = newPlayer;
+  state.isDemoModeEnabled = false;
+  try {
+    localStorage.removeItem("setgames_demo_mode");
+  } catch (e) {}
   state.saveLocal();
   savePlayerToFirestore(newPlayer);
 
@@ -1791,7 +1813,11 @@ window.handlePhoneSignUp = (e) => {
 
 window.handleLogout = () => {
   state.currentUser = null;
-  localStorage.removeItem("setgames_current_user_id");
+  state.isDemoModeEnabled = false;
+  try {
+    localStorage.removeItem("setgames_demo_mode");
+    localStorage.removeItem("setgames_current_user_id");
+  } catch (e) {}
   state.saveLocal();
   renderHeader();
   renderLadder();
@@ -1855,7 +1881,11 @@ window.handleDeleteProfile = () => {
 
   // 4. Clear current user & storage
   state.currentUser = null;
-  localStorage.removeItem("setgames_current_user_id");
+  state.isDemoModeEnabled = false;
+  try {
+    localStorage.removeItem("setgames_demo_mode");
+    localStorage.removeItem("setgames_current_user_id");
+  } catch (e) {}
   state.saveLocal();
 
   // 5. Update UI & show login
