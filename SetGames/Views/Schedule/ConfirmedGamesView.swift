@@ -1308,7 +1308,7 @@ public struct ConfirmedGamesView: View {
                         )
                     }
                     .buttonStyle(.borderless)
-                } else if let uid = currentUserId, game.waitlistPlayerIds.contains(uid) {
+                } else if let uid = dataManager.currentUser?.id, game.waitlistPlayerIds.contains(uid) {
                     let pos = (game.waitlistPlayerIds.firstIndex(of: uid) ?? 0) + 1
                     Button {
                         let res = dataManager.leaveWaitlist(gameId: game.id)
