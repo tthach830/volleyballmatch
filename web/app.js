@@ -259,6 +259,40 @@ export function parseGameDate(rawDate) {
 window.isUpcomingGame = isUpcomingGame;
 window.parseGameDate = parseGameDate;
 
+// Matches iOS SetGame.parseUUID deterministic hash for cross-platform player IDs
+export function deterministicUUID(str) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
+    return s.toUpperCase();
+  }
+  const bytes = new TextEncoder().encode(s);
+  const hash = new Uint8Array(16);
+  for (let i = 0; i < bytes.length; i++) {
+    hash[i % 16] ^= bytes[i];
+  }
+  hash[6] = (hash[6] & 0x0F) | 0x40;
+  hash[8] = (hash[8] & 0x3F) | 0x80;
+  const hex = Array.from(hash).map(b => b.toString(16).padStart(2, "0").toUpperCase()).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
+}
+window.deterministicUUID = deterministicUUID;
+
+export function isSamePlayer(id1, id2) {
+  if (!id1 || !id2) return false;
+  const s1 = String(id1).trim().toLowerCase();
+  const s2 = String(id2).trim().toLowerCase();
+  if (s1 === s2) return true;
+  return deterministicUUID(id1).toUpperCase() === deterministicUUID(id2).toUpperCase();
+}
+window.isSamePlayer = isSamePlayer;
+
+export function isPlayerInList(list, playerId) {
+  if (!Array.isArray(list) || !playerId) return false;
+  return list.some(id => isSamePlayer(id, playerId));
+}
+window.isPlayerInList = isPlayerInList;
+
 export function getUniqueConnectionsCount(player) {
   if (!player) return 0;
   const partners = player.uniquePartnerIds || [];
@@ -662,13 +696,45 @@ class AppState {
 
   getPlayer(id) {
     if (!id) return { id: "", name: "Beach Player", nickname: "Player", avatarEmoji: "🏐", rating: "B", eloRating: 1500, homeBeach: "Main Beach" };
-    const found = this.players.find(p => p.id === id);
-    if (found) return found;
-    if (typeof id === "string" && id.startsWith("guest_")) {
-      const clean = id.replace("guest_", "").replace(/([0-9]+)/, " $1").replace(/^./, str => str.toUpperCase());
-      return { id, name: clean, nickname: clean, avatarEmoji: "🏐", rating: "B", eloRating: 1500, homeBeach: "Main Beach" };
+    const targetId = String(id).trim();
+    const targetUUID = deterministicUUID(targetId).toUpperCase();
+
+    // 1. Check for valid named player matching direct id or deterministic UUID
+    let found = this.players.find(p => p && (p.name || p.nickname) && (
+      String(p.id).toLowerCase() === targetId.toLowerCase() ||
+      deterministicUUID(p.id).toUpperCase() === targetUUID ||
+      (p.uuid && String(p.uuid).toUpperCase() === targetUUID)
+    ));
+    if (found) {
+      return {
+        ...found,
+        name: found.name || found.nickname || "Beach Player",
+        nickname: found.nickname || found.name || "Player",
+        avatarEmoji: found.avatarEmoji || "🏐",
+        rating: found.rating || "B"
+      };
     }
-    return { id, name: "Beach Player", nickname: "Player", avatarEmoji: "🏐", rating: "B", eloRating: 1500, homeBeach: "Main Beach" };
+
+    // 2. Fallback check on any player matching id
+    found = this.players.find(p => p && (
+      String(p.id).toLowerCase() === targetId.toLowerCase() ||
+      deterministicUUID(p.id).toUpperCase() === targetUUID
+    ));
+    if (found && (found.name || found.nickname)) {
+      return {
+        ...found,
+        name: found.name || found.nickname || "Beach Player",
+        nickname: found.nickname || found.name || "Player",
+        avatarEmoji: found.avatarEmoji || "🏐",
+        rating: found.rating || "B"
+      };
+    }
+
+    if (typeof targetId === "string" && targetId.startsWith("guest_")) {
+      const clean = targetId.replace("guest_", "").replace(/([0-9]+)/, " $1").replace(/^./, str => str.toUpperCase());
+      return { id: targetId, name: clean, nickname: clean, avatarEmoji: "🏐", rating: "B", eloRating: 1500, homeBeach: "Main Beach" };
+    }
+    return { id: targetId, name: "Beach Player", nickname: "Player", avatarEmoji: "🏐", rating: "B", eloRating: 1500, homeBeach: "Main Beach" };
   }
 }
 
@@ -1273,13 +1339,13 @@ function renderMatches() {
     const spotsLeft = Math.max(0, maxPlayers - allPlayerIds.length);
     const needsPlayers = spotsLeft > 0;
     const isMember = currentUserId && (
-      allPlayerIds.includes(currentUserId) ||
-      game.hostPlayerId === currentUserId
+      isPlayerInList(allPlayerIds, currentUserId) ||
+      isSamePlayer(game.hostPlayerId, currentUserId)
     );
     const isRoot = isRootUser(state.currentUser);
     const isHost = currentUserId && (
-      (game.hostPlayerId && game.hostPlayerId === currentUserId) ||
-      (game.team1PlayerIds?.[0] === currentUserId) ||
+      isSamePlayer(game.hostPlayerId, currentUserId) ||
+      isSamePlayer(game.team1PlayerIds?.[0], currentUserId) ||
       isRoot
     );
     const hostPlayer = game.hostPlayerId ? state.getPlayer(game.hostPlayerId) : (game.team1PlayerIds?.[0] ? state.getPlayer(game.team1PlayerIds[0]) : null);
@@ -1310,7 +1376,7 @@ function renderMatches() {
     const allowedList = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
     const skillStr = allowedList.length >= 6 ? "All Levels" : allowedList.join("/");
 
-    const hostDisplayName = hostPlayer ? (hostPlayer.nickname || hostPlayer.name) : "Host";
+    const hostDisplayName = hostPlayer ? (hostPlayer.nickname || hostPlayer.name || "Host") : "Host";
     const hostStarVal = hostPlayer ? formatStarRating(hostPlayer) : "5.0";
 
     const t1Ids = (game.team1PlayerIds && game.team1PlayerIds.length > 0) ? game.team1PlayerIds : allPlayerIds.slice(0, 2);
@@ -1320,14 +1386,15 @@ function renderMatches() {
       if (pid) {
         const p = state.getPlayer(pid);
         const isHidden = !isMember && !isRoot;
-        const displayName = isHidden ? 'Player' : (p ? (p.nickname || p.name) : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player"));
+        const validName = p ? (p.nickname || p.name || 'Player') : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player");
+        const displayName = isHidden ? 'Player' : validName;
         const avatarDisplay = isHidden ? renderAvatarContent('🏐') : renderAvatarContent(p ? p.avatarEmoji : '🏐');
         const tierVal = (p?.rating || 'B');
-        const tierClass = tierVal.toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${tierVal.toLowerCase()}`;
+        const tierClass = String(tierVal).toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${String(tierVal).toLowerCase()}`;
         const starVal = p ? formatStarRating(p) : "5.0";
         const teamClass = isTeam1 ? 'player-tile-team1' : 'player-tile-team2';
 
-        const canRemove = isHost && pid !== game.hostPlayerId;
+        const canRemove = isHost && !isSamePlayer(pid, game.hostPlayerId);
         const removeBtnHtml = canRemove ? `
           <button type="button" class="player-tile-trash" title="Remove player from match" onclick="event.stopPropagation(); window.removePlayerFromPool('${game.id}', '${pid}')">🗑️</button>
         ` : '';
@@ -1358,8 +1425,8 @@ function renderMatches() {
     };
 
     const waitlistIds = game.waitlistPlayerIds || [];
-    const isWaitlisted = currentUserId && waitlistIds.includes(currentUserId);
-    const waitlistPos = isWaitlisted ? (waitlistIds.indexOf(currentUserId) + 1) : null;
+    const isWaitlisted = currentUserId && isPlayerInList(waitlistIds, currentUserId);
+    const waitlistPos = isWaitlisted ? (waitlistIds.findIndex(id => isSamePlayer(id, currentUserId)) + 1) : null;
 
     const isMatchesCollapsed = !(state.expandedMatches && state.expandedMatches[game.id]);
     const isPoolCollapsed = !!(state.collapsedPools && state.collapsedPools[game.id]);
@@ -1446,12 +1513,13 @@ function renderMatches() {
                 ${allPlayerIds.map((pid, idx) => {
                   const p = state.getPlayer(pid);
                   const isHidden = !isMember && !isRoot;
-                  const displayName = isHidden ? 'Player' : (p ? (p.nickname || p.name) : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player"));
+                  const validName = p ? (p.nickname || p.name || 'Player') : (typeof pid === 'string' && pid.startsWith("guest_") ? pid.replace("guest_", "") : "Player");
+                  const displayName = isHidden ? 'Player' : validName;
                   const avatarDisplay = isHidden ? renderAvatarContent('🏐') : renderAvatarContent(p ? p.avatarEmoji : '🏐');
                   const tierVal = (p?.rating || 'B');
-                  const tierClass = tierVal.toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${tierVal.toLowerCase()}`;
+                  const tierClass = String(tierVal).toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${String(tierVal).toLowerCase()}`;
                   const starVal = p ? formatStarRating(p) : "5.0";
-                  const isGameHost = pid === game.hostPlayerId;
+                  const isGameHost = isSamePlayer(pid, game.hostPlayerId);
                   const canRemove = isHost && !isGameHost;
 
                   return `
@@ -1539,10 +1607,11 @@ function renderMatches() {
             ` : `
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 ${waitlistIds.map((pid, idx) => {
-                  const p = state.players.find(x => x.id === pid) || { id: pid, name: "Player", nickname: "", rating: "B" };
+                  const p = state.getPlayer(pid);
                   const isHidden = !isMember && !isRoot;
-                  const pName = isHidden ? `Player ${idx + 1}` : (p.nickname ? `${p.name} (${p.nickname})` : p.name);
-                  const isMe = currentUserId === pid;
+                  const validName = p ? (p.nickname || p.name || `Player ${idx + 1}`) : `Player ${idx + 1}`;
+                  const pName = isHidden ? `Player ${idx + 1}` : validName;
+                  const isMe = isSamePlayer(currentUserId, pid);
                   return `
                     <div style="display: flex; align-items: center; justify-content: space-between; background: #12151f; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 6px 10px;">
                       <div style="display: flex; align-items: center; gap: 8px;">
@@ -2365,8 +2434,11 @@ window.handlePhoneSignUp = (e) => {
   }
 
   const baseElo = rating === "AA" ? 2100 : rating === "A" ? 1800 : rating === "B" ? 1550 : 1350;
+  const newPlayerId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') 
+    ? crypto.randomUUID().toUpperCase() 
+    : deterministicUUID("player-" + Date.now());
   const newPlayer = {
-    id: "player-" + Date.now(),
+    id: newPlayerId,
     name,
     nickname: name.split(" ")[0],
     phoneNumber: phone,

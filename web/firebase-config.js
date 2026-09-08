@@ -134,18 +134,55 @@ export async function deleteSlotFromFirestore(slotId) {
   }
 }
 
+// Deterministic UUID matching iOS SetGame.parseUUID
+function getDeterministicUUID(str) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
+    return s.toUpperCase();
+  }
+  const bytes = new TextEncoder().encode(s);
+  const hash = new Uint8Array(16);
+  for (let i = 0; i < bytes.length; i++) hash[i % 16] ^= bytes[i];
+  hash[6] = (hash[6] & 0x0F) | 0x40;
+  hash[8] = (hash[8] & 0x3F) | 0x80;
+  const hex = Array.from(hash).map(b => b.toString(16).padStart(2, "0").toUpperCase()).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
+}
+
 // Real-time listener for players collection
 export function subscribeToPlayers(onUpdate) {
   return onSnapshot(collection(db, "players"), (snapshot) => {
-    const players = [];
+    const rawDocs = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
-      // Prefer the id stored inside the document data (preserves original UUID format),
-      // fall back to the Firestore document ID if no id field is present.
       const id = (data.id != null && String(data.id).trim() !== "") ? data.id : doc.id;
-      players.push({ ...data, id });
+      rawDocs.push({ ...data, id, _docId: doc.id });
     });
-    onUpdate(players);
+
+    const fullPlayers = [];
+    const stubs = [];
+    for (const p of rawDocs) {
+      if (!p.name && !p.nickname && p.deviceToken) {
+        stubs.push(p);
+      } else {
+        fullPlayers.push(p);
+      }
+    }
+
+    // Attach deviceToken from any standalone stubs to their corresponding full player
+    for (const stub of stubs) {
+      const stubUUID = stub._docId.toUpperCase();
+      const target = fullPlayers.find(p => 
+        String(p.id).toUpperCase() === stubUUID || 
+        getDeterministicUUID(p.id) === stubUUID
+      );
+      if (target && !target.deviceToken) {
+        target.deviceToken = stub.deviceToken;
+      }
+    }
+
+    onUpdate(fullPlayers);
   }, (error) => {
     console.warn("Firestore players listener warning:", error);
   });
