@@ -139,7 +139,11 @@ export function subscribeToPlayers(onUpdate) {
   return onSnapshot(collection(db, "players"), (snapshot) => {
     const players = [];
     snapshot.forEach((doc) => {
-      players.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      // Prefer the id stored inside the document data (preserves original UUID format),
+      // fall back to the Firestore document ID if no id field is present.
+      const id = (data.id != null && String(data.id).trim() !== "") ? data.id : doc.id;
+      players.push({ ...data, id });
     });
     onUpdate(players);
   }, (error) => {
