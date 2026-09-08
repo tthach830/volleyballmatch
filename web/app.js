@@ -730,8 +730,8 @@ function renderHeader() {
     headerChip.innerHTML = `
       <div class="user-chip" id="user-chip-btn">
         ${renderAvatar(state.currentUser.avatarEmoji, "", isFlaker)}
-        <span>${state.currentUser.name.split(" ")[0]}</span>
-        <span class="badge badge-tier-${state.currentUser.rating.toLowerCase()}">${state.currentUser.rating}</span>
+        <span>${(state.currentUser.name || "Player").split(" ")[0]}</span>
+        <span class="badge badge-tier-${String(state.currentUser.rating || 'b').toLowerCase()}">${state.currentUser.rating || 'B'}</span>
       </div>
     `;
     document.getElementById("user-chip-btn").onclick = () => switchTab("profile");
@@ -1800,12 +1800,12 @@ function renderLadder() {
         <div class="rank-num">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#' + rank}</div>
         ${renderAvatar(player.avatarEmoji, "lg", (player.consecutiveBackouts || 0) >= 3)}
         <div class="rank-info">
-          <div class="rank-name">${player.name} ${player.nickname ? `"${player.nickname}"` : ""}</div>
-          <div class="rank-sub">📍 ${player.homeBeach} • <span class="badge badge-tier-${player.rating.toLowerCase()}">${player.rating}</span></div>
+          <div class="rank-name">${player.name || "Beach Player"} ${player.nickname ? `"${player.nickname}"` : ""}</div>
+          <div class="rank-sub">📍 ${player.homeBeach || "Main Beach"} • <span class="badge badge-tier-${String(player.rating || 'b').toLowerCase()}">${player.rating || "B"}</span></div>
         </div>
         <div class="rank-stats">
-          <div class="rank-elo">${player.eloRating} ELO</div>
-          <div class="rank-record">${player.wins}W - ${player.losses}L (${pct}%)</div>
+          <div class="rank-elo">${player.eloRating ?? 1500} ELO</div>
+          <div class="rank-record">${player.wins || 0}W - ${player.losses || 0}L (${pct}%)</div>
         </div>
       </div>
     `;
@@ -2165,7 +2165,9 @@ export function switchTab(tabId) {
 
   // If player isn't logged in, they cannot access Set games, Auto-Match, or Profile. Only Ladders is visible.
   if (!state.currentUser && normalizedId !== "ladders") {
-    window.showAuthModal();
+    if (typeof window.showAuthModal === "function") {
+      window.showAuthModal();
+    }
     const activeTab = document.querySelector(".tab-content.active");
     if (!activeTab || activeTab.id !== "tab-ladders") {
       switchTab("ladders");
@@ -2183,17 +2185,25 @@ export function switchTab(tabId) {
   if (targetNav) targetNav.classList.add("active");
 
   // Track screen view in Firebase Analytics & Microsoft Clarity
-  trackEvent("screen_view", {
-    screen_name: normalizedId,
-    page_title: normalizedId
-  });
-
-  if (normalizedId === "matches") renderMatches();
-  if (normalizedId === "ladders") {
-    renderLadder();
-    renderPopularKids();
+  try {
+    trackEvent("screen_view", {
+      screen_name: normalizedId,
+      page_title: normalizedId
+    });
+  } catch (e) {
+    console.warn("trackEvent screen_view warning:", e);
   }
-  if (normalizedId === "profile") renderProfile();
+
+  try {
+    if (normalizedId === "matches") renderMatches();
+    if (normalizedId === "ladders") {
+      renderLadder();
+      renderPopularKids();
+    }
+    if (normalizedId === "profile") renderProfile();
+  } catch (e) {
+    console.error(`Error rendering tab ${normalizedId}:`, e);
+  }
 }
 
 window.switchTab = switchTab;
@@ -5147,17 +5157,35 @@ window.saveGeneratedMatchesToSchedule = () => {
   showToast(`Saved ${window.currentGeneratedMatches.length} sets to schedule!`);
 };
 
-function initApp() {
-  renderHeader();
-  renderLadder();
-  renderPopularKids();
+function setupBottomNav() {
+  document.querySelectorAll(".nav-item").forEach(item => {
+    item.onclick = (e) => {
+      const tab = item.dataset.tab;
+      if (tab) switchTab(tab);
+    };
+  });
+}
 
-  if (state.currentUser) {
-    renderMatches();
-    renderProfile();
-    switchTab("matches");
-  } else {
-    switchTab("ladders");
+function initApp() {
+  // 1. Hook navigation listeners first so tabs are ALWAYS clickable
+  setupBottomNav();
+
+  // 2. Safely render each component so an issue in one cannot block others
+  try { renderHeader(); } catch (e) { console.error("renderHeader error:", e); }
+  try { renderLadder(); } catch (e) { console.error("renderLadder error:", e); }
+  try { renderPopularKids(); } catch (e) { console.error("renderPopularKids error:", e); }
+
+  try {
+    if (state.currentUser) {
+      renderMatches();
+      renderProfile();
+      switchTab("matches");
+    } else {
+      switchTab("ladders");
+    }
+  } catch (e) {
+    console.error("Initial tab switch error:", e);
+    try { switchTab("ladders"); } catch (_) {}
   }
 
   // Backdrop click to close auth modal for guest browsing
@@ -5167,12 +5195,8 @@ function initApp() {
     }
   });
 
-  // Bottom navigation tab click
-  document.querySelectorAll(".nav-item").forEach(item => {
-    item.addEventListener("click", () => {
-      switchTab(item.dataset.tab);
-    });
-  });
+  // Re-verify bottom navigation click handlers
+  setupBottomNav();
 
   // Ladder filter pills
   document.querySelectorAll(".ladder-filter .filter-chip").forEach(chip => {

@@ -1003,6 +1003,8 @@ header {
 nav#bottom-nav {
   position: fixed;
   bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
   max-width: 500px;
   height: 60px;
@@ -1014,7 +1016,8 @@ nav#bottom-nav {
   justify-content: space-around;
   align-items: center;
   padding: 4px 0 env(safe-area-inset-bottom, 0px);
-  z-index: 100;
+  z-index: 999;
+  pointer-events: auto;
 }
 
 .nav-item {
@@ -1031,7 +1034,12 @@ nav#bottom-nav {
   background: none;
   border: none;
   flex: 1;
+  height: 100%;
   transition: color 0.15s ease;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item.active {
@@ -1041,12 +1049,14 @@ nav#bottom-nav {
 .nav-icon {
   font-size: 20px;
   line-height: 1;
+  pointer-events: none;
 }
 
 .nav-label {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: -0.2px;
+  pointer-events: none;
 }
 
 /* Modal Sheets (Replicating iOS Modal Sheet Presentation) */
