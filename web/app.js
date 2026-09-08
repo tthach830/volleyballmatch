@@ -1618,7 +1618,7 @@ function renderMatches() {
                         <span style="font-size: 11px; font-weight: 800; background: #a855f7; color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">#${idx + 1}</span>
                         <div>
                           <div style="font-size: 12px; font-weight: 700; color: #ffffff;">${pName}</div>
-                          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6);">${p.rating}</div>
+                          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6);">Level: ${(p && p.rating) ? p.rating : 'Unrated'}</div>
                         </div>
                       </div>
                       <div style="display: flex; align-items: center; gap: 6px;">
