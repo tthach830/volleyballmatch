@@ -401,9 +401,16 @@ export const weatherService = {
   async fetchForecast(court, rawDate) {
     const coords = this.getCoordinates(court);
     const targetDate = parseGameDate(rawDate);
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&hourly=temperature_2m,uv_index,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&past_days=7&forecast_days=14`;
+    // Use NOAA National Blend of Models (NBM) — more accurate for US coastal locations
+    const baseParams = `latitude=${coords.lat}&longitude=${coords.lon}&hourly=temperature_2m,uv_index,wind_speed_10m,wind_gusts_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&past_days=7&forecast_days=14`;
+    const nbmUrl = `https://api.open-meteo.com/v1/forecast?${baseParams}&models=ncep_nbm_conus`;
+    const defaultUrl = `https://api.open-meteo.com/v1/forecast?${baseParams}`;
 
-    const res = await fetch(url);
+    let res = await fetch(nbmUrl);
+    // Fall back to default model if NBM fails or errors
+    if (!res.ok || (await res.clone().json().then(d => d.error).catch(() => false))) {
+      res = await fetch(defaultUrl);
+    }
     if (!res.ok) throw new Error(`Weather API error ${res.status}`);
     const data = await res.json();
     return this.parseClosestHour(data, court, targetDate);

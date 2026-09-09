@@ -162,23 +162,23 @@ public class WeatherService: ObservableObject {
     
     public func fetchForecast(for court: String, on date: Date) async -> BeachWeatherForecast? {
         let coords = Self.coordinates(for: court)
-        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(coords.lat)&longitude=\(coords.lon)&hourly=temperature_2m,uv_index,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&past_days=7&forecast_days=14"
+        let baseParams = "latitude=\(coords.lat)&longitude=\(coords.lon)&hourly=temperature_2m,uv_index,wind_speed_10m,wind_gusts_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&past_days=7&forecast_days=14"
+        // Use NOAA National Blend of Models (NBM) — more accurate for US coastal locations
+        let nbmURLString = "https://api.open-meteo.com/v1/forecast?\(baseParams)&models=ncep_nbm_conus"
+        let defaultURLString = "https://api.open-meteo.com/v1/forecast?\(baseParams)"
         
-        guard let url = URL(string: urlString) else {
-            return fallbackForecast(for: court, on: date)
-        }
-        
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                return fallbackForecast(for: court, on: date)
+        for urlString in [nbmURLString, defaultURLString] {
+            guard let url = URL(string: urlString) else { continue }
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { continue }
+                let decoded = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
+                return parseClosestHour(from: decoded, court: court, targetDate: date)
+            } catch {
+                continue
             }
-            
-            let decoded = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
-            return parseClosestHour(from: decoded, court: court, targetDate: date)
-        } catch {
-            return fallbackForecast(for: court, on: date)
         }
+        return fallbackForecast(for: court, on: date)
     }
     
     private func parseClosestHour(from response: OpenMeteoResponse, court: String, targetDate: Date) -> BeachWeatherForecast {
