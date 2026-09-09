@@ -352,6 +352,12 @@ export const weatherService = {
       const stored = sessionStorage.getItem(`wb_weather_${key}`);
       if (stored) {
         const parsed = JSON.parse(stored);
+        // Expire cache entries older than 30 minutes
+        const age = Date.now() - (parsed._fetchedAt || 0);
+        if (age > 30 * 60 * 1000) {
+          sessionStorage.removeItem(`wb_weather_${key}`);
+          return null;
+        }
         this.cache[key] = parsed;
         return parsed;
       }
@@ -361,9 +367,10 @@ export const weatherService = {
 
   setCached(court, rawDate, forecast) {
     const key = this.getCacheKey(court, rawDate);
-    this.cache[key] = forecast;
+    const entry = { ...forecast, _fetchedAt: Date.now() };
+    this.cache[key] = entry;
     try {
-      sessionStorage.setItem(`wb_weather_${key}`, JSON.stringify(forecast));
+      sessionStorage.setItem(`wb_weather_${key}`, JSON.stringify(entry));
     } catch (e) {}
   },
 
