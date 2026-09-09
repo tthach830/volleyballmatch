@@ -494,13 +494,45 @@ public struct ConfirmedGamesView: View {
         let formatStr = game.maxPlayers == 2 ? "1v1" : (game.maxPlayers == 6 ? "3v3" : "2v2")
         
         return VStack(alignment: .leading, spacing: 6) {
-            // Line 1: Location & Court
+            // Line 1: Location & Court + inline weather chip
             HStack(spacing: 6) {
                 Text("📍")
                     .font(.system(size: 14))
                 Text("\(game.courtLocation) - \(formatCourt(game.courtNumber))")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white)
+                
+                // Inline compact weather chip
+                let forecast = weatherService.cachedForecast(for: game.courtLocation, on: game.scheduledDate)
+                if let w = forecast {
+                    HStack(spacing: 4) {
+                        Text(w.conditionEmoji.isEmpty ? "☀️" : w.conditionEmoji)
+                            .font(.system(size: 11))
+                        Text("\(w.tempF)°F")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("•")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.4))
+                        Text("UV \(Int(w.uvIndex.rounded()))")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(w.uvColor)
+                        Text("•")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.4))
+                        Text("💨 \(w.windMph) mph")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                }
+            }
+            .onAppear {
+                weatherService.loadForecast(for: game.courtLocation, on: game.scheduledDate)
             }
             
             // Line 2: Format & Skill
@@ -545,9 +577,6 @@ public struct ConfirmedGamesView: View {
                     .foregroundColor(Color.white.opacity(0.85))
                 }
             }
-            
-            // Weather Forecast Capsule
-            weatherCapsuleView(game: game)
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -1210,7 +1239,7 @@ public struct ConfirmedGamesView: View {
                 .buttonStyle(.borderless)
             }
             
-            // Bottom Row: Action Buttons
+            // Bottom Row: Action Buttons (left-aligned)
             HStack(spacing: 8) {
                 // Button 1: QR Code
                 Button {
@@ -1339,6 +1368,8 @@ public struct ConfirmedGamesView: View {
                     }
                     .buttonStyle(.borderless)
                 }
+                
+                Spacer() // Push all buttons to the left
             }
         }
     }
