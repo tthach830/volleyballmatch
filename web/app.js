@@ -223,6 +223,10 @@ const initialCommunityGames = [
 // App State
 export function isUpcomingGame(game) {
   if (!game) return false;
+  // Auto-expire games that are more than 2 hours past their scheduled time
+  const gameDate = parseGameDate(game.scheduledDate);
+  const twoHoursAfter = new Date(gameDate.getTime() + 2 * 60 * 60 * 1000);
+  if (new Date() > twoHoursAfter) return false;
   if (!game.status) return true;
   const s = String(game.status).trim().toLowerCase();
   return s === "scheduled" || s === "in progress" || s === "inprogress" || s === "open" || s === "upcoming";
@@ -550,47 +554,21 @@ export function renderWeatherLine(game) {
   }).catch(() => {});
 
   return `
-    <div class="weather-capsule-dark">
-      <div style="display:flex; align-items:center; gap:6px;">
-        <span style="font-size:18px;">☀️</span>
-        <span style="font-size:13px; color:rgba(255,255,255,0.7);">Checking forecast...</span>
-      </div>
-    </div>
+    <span style="display:inline-flex; align-items:center; gap:4px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:2px 8px; font-size:11px; color:rgba(255,255,255,0.5);">
+      ☀️ Loading...
+    </span>
   `;
 }
 
 function buildWeatherLineHtml(gameId, w) {
-  const uvCat = w.uvCategory || (w.uvIndex >= 6 ? "High" : w.uvIndex >= 3 ? "Moderate" : "Low");
-  const uvColor = w.uvColor || (w.uvIndex >= 6 ? "#ef4444" : w.uvIndex >= 3 ? "#f59e0b" : "#10b981");
-  const windCat = w.windCategory || (w.windMph >= 12 ? "Windy" : w.windMph >= 6 ? "Breezy" : "Calm");
   const windDir = w.windDirection || "NW";
-
   return `
-    <div class="weather-capsule-dark" onclick="window.toggleWeatherDetails('${gameId}')" title="Click for beach volleyball playing conditions">
-      <!-- Temp -->
-      <div style="display:flex; align-items:center; gap:6px;">
-        <span style="font-size:18px;">${w.conditionEmoji || '☀️'}</span>
-        <span style="font-size:16px; font-weight:800; color:#ffffff;">${w.tempF}°F</span>
-      </div>
-
-      <!-- UV -->
-      <div class="weather-capsule-sec">
-        <div style="display:flex; align-items:center; gap:4px; font-size:13px; font-weight:800; color:#ffffff;">
-          <span>☀️</span>
-          <span>UV ${Math.round(w.uvIndex)}</span>
-        </div>
-        <div style="font-size:11px; font-weight:700; color:${uvColor};">(${uvCat})</div>
-      </div>
-
-      <!-- Wind -->
-      <div class="weather-capsule-sec">
-        <div style="display:flex; align-items:center; gap:4px; font-size:13px; font-weight:800; color:#ffffff;">
-          <span>💨</span>
-          <span>${w.windMph} mph ${windDir}</span>
-        </div>
-        <div style="font-size:11px; font-weight:700; color:#38bdf8;">(${windCat})</div>
-      </div>
-    </div>
+    <span onclick="event.stopPropagation(); window.toggleWeatherDetails('${gameId}')" title="Click for beach conditions" style="display:inline-flex; align-items:center; gap:4px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:2px 8px; font-size:11px; font-weight:700; color:#ffffff; cursor:pointer; white-space:nowrap;">
+      <span>${w.conditionEmoji || '☀️'}</span>
+      <span>${w.tempF}°F</span>
+      <span style="color:rgba(255,255,255,0.5);">•</span>
+      <span>💨 ${w.windMph} mph ${windDir}</span>
+    </span>
   `;
 }
 window.renderWeatherLine = renderWeatherLine;
@@ -1468,9 +1446,10 @@ function renderMatches() {
 
         <!-- Metadata Lines -->
         <div class="card-metadata-lines" onclick="window.showGameDetailsModal('${game.id}')">
-          <div class="card-metadata-line-item">
+          <div class="card-metadata-line-item" style="flex-wrap: wrap; gap: 4px 8px;">
             <span>📍</span>
             <span>${game.courtLocation} - ${courtDisplay}</span>
+            <span id="weather-line-${game.id}" style="margin-left: 4px;">${renderWeatherLine(game)}</span>
           </div>
           <div class="card-metadata-line-item">
             <span>${formatLabel} Skill: ${skillStr}</span>
@@ -1481,11 +1460,6 @@ function renderMatches() {
             <span style="color:#fbbf24; font-size:13px; font-weight:700;">⭐ ${hostStarVal}</span>
             ${game.isPrivate ? `<span style="color: rgba(255, 255, 255, 0.85); display: inline-flex; align-items: center; gap: 4px;">🔒 Private Games</span>` : ''}
           </div>
-        </div>
-
-        <!-- Weather Forecast Capsule (3-column pill) -->
-        <div id="weather-line-${game.id}">
-          ${renderWeatherLine(game)}
         </div>
 
         <!-- Collapsible Beach Volleyball Conditions Card -->
@@ -1747,56 +1721,6 @@ function renderMatches() {
                   <span style="font-size: 16px;">💬</span>
                   <span style="font-size: 10px; font-weight: 700; margin-top: 2px; line-height: 1.1; text-align: center;">Chat<br>(${msgCount})</span>
                   ${msgCount > 0 ? `<span class="card-unread-badge">${msgCount}</span>` : ''}
-                </button>
-              ` : ''}
-
-              <!-- Button 3: Leave / Join / Waiting -->
-              ${isMember ? `
-                <button type="button" class="card-btn-danger" onclick="window.leaveGame('${game.id}')" title="Leave Match">
-                  <span style="font-size: 11px; font-weight: 800; line-height: 1.1; text-align: center;">Leave<br>Game</span>
-                </button>
-              ` : (
-                isWaitlisted ? `
-                  <button type="button" class="card-btn-white" style="background: #f3e8ff; border: 1.5px solid #d8b4fe; color: #7e22ce;" onclick="window.leaveWaitlist('${game.id}')" title="Leave Waiting List">
-                    <span style="font-size: 14px;">⏳</span>
-                    <span style="font-size: 10px; font-weight: 800; line-height: 1.1; text-align: center;">Waiting<br>#${waitlistPos}</span>
-                  </button>
-                ` : (
-                  game.isPrivate ? `
-                    <div style="background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 12px; min-width: 54px; height: 54px; padding: 0 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: rgba(255,255,255,0.5);" title="Private Game • Invite Only">
-                      <span style="font-size: 14px;">🔒</span>
-                      <span style="font-size: 9px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Private<br>Game</span>
-                    </div>
-                  ` : (
-                    needsPlayers ? `
-                      <button type="button" class="card-btn-white" style="background: #dcfce7; border: 1.5px solid #86efac; color: #166534;" onclick="window.joinGamePool('${game.id}')" title="Join Match">
-                        <span style="font-size: 16px;">🏐</span>
-                        <span style="font-size: 10px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Join<br>Game</span>
-                      </button>
-                    ` : `
-                      <button type="button" class="card-btn-white" style="background: #f3e8ff; border: 1.5px solid #d8b4fe; color: #7e22ce;" onclick="window.joinWaitlist('${game.id}')" title="Join Waiting List">
-                        <span style="font-size: 14px;">⏳</span>
-                        <span style="font-size: 11px; font-weight: 800; margin-top: 2px; line-height: 1.1; text-align: center;">Waiting</span>
-                      </button>
-                    `
-                  )
-                )
-              )}
-            </div>
-
-            <!-- Right Group -->
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <!-- Button 4: Edit -->
-              <button type="button" class="card-btn-white" onclick="window.openEditMatchModal('${game.id}')" title="Edit Game">
-                <span style="font-size: 16px;">✏️</span>
-                <span style="font-size: 10px; font-weight: 700; margin-top: 2px;">Edit</span>
-              </button>
-
-              <!-- Button 5: Cancel Game (Host / Root) -->
-              ${(isHost || isRoot) ? `
-                <button type="button" class="card-btn-danger" onclick="window.deleteGame('${game.id}')" title="Cancel Game">
-                  <span style="font-size: 14px;">❌</span>
-                  <span style="font-size: 9px; font-weight: 800; line-height: 1.1; margin-top: 2px; text-align: center;">Cancel<br>Game</span>
                 </button>
               ` : ''}
             </div>

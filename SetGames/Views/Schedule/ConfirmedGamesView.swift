@@ -246,8 +246,11 @@ public struct ConfirmedGamesView: View {
     private var filteredGames: [SetGame] {
         let currentUserId = dataManager.currentUser?.id
         
-        // Only include upcoming matches (scheduled or in-progress)
-        let upcoming = dataManager.games.filter { $0.status == .scheduled || $0.status == .inProgress }
+        // Auto-expire: games more than 2 hours past their scheduled time move to past
+        let twoHoursAgo = Date().addingTimeInterval(-2 * 60 * 60)
+        let upcoming = dataManager.games.filter {
+            ($0.status == .scheduled || $0.status == .inProgress) && $0.scheduledDate > twoHoursAgo
+        }
         
         // Filter by user selection and sort by date and time
         switch selectedFilter {
@@ -256,10 +259,10 @@ public struct ConfirmedGamesView: View {
         case .myGames:
             guard let currentUserId = currentUserId else { return [] }
             return dataManager.games
-                .filter { $0.status != .canceled && ($0.allPlayerIds.contains(currentUserId) || $0.hostPlayerId == currentUserId) }
+                .filter { $0.status != .canceled && $0.scheduledDate > twoHoursAgo && ($0.allPlayerIds.contains(currentUserId) || $0.hostPlayerId == currentUserId) }
                 .sorted { $0.scheduledDate < $1.scheduledDate }
         case .pastGames:
-            let past = dataManager.games.filter { $0.status == .completed || $0.scheduledDate < Date() }
+            let past = dataManager.games.filter { $0.status == .completed || $0.scheduledDate <= twoHoursAgo }
             return past.sorted { $0.scheduledDate > $1.scheduledDate }
         }
     }
@@ -1263,30 +1266,8 @@ public struct ConfirmedGamesView: View {
                 }
                 .buttonStyle(.borderless)
                 
-                // Button 3: Leave Game (or Join / Waiting)
-                if isMyGame {
-                    Button {
-                        let res = dataManager.leaveGame(gameId: game.id)
-                        alertMessage = res.message
-                        showAlert = true
-                    } label: {
-                        VStack(spacing: 2) {
-                            Text("Leave\nGame")
-                                .font(.system(size: 11, weight: .heavy))
-                                .multilineTextAlignment(.center)
-                                .lineSpacing(-2)
-                        }
-                        .frame(width: 58, height: 54)
-                        .background(Color(red: 1.0, green: 0.89, blue: 0.90))
-                        .foregroundColor(Color(red: 0.60, green: 0.11, blue: 0.11))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color(red: 0.99, green: 0.80, blue: 0.83), lineWidth: 1.5)
-                        )
-                    }
-                    .buttonStyle(.borderless)
-                } else if canUserJoin(game) {
+                // Button 3: Join / Waiting (no Leave Game)
+                if canUserJoin(game) {
                     Button {
                         let res = dataManager.joinGamePool(gameId: game.id)
                         alertMessage = res.message
@@ -1354,53 +1335,6 @@ public struct ConfirmedGamesView: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.purple.opacity(0.4), lineWidth: 1.5)
-                        )
-                    }
-                    .buttonStyle(.borderless)
-                } else {
-                    Spacer(minLength: 0)
-                }
-                
-                Spacer()
-                
-                // Button 4: Edit
-                Button {
-                    editGameForSheet = game
-                } label: {
-                    VStack(spacing: 2) {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 16, weight: .bold))
-                        Text("Edit")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .frame(width: 54, height: 54)
-                    .background(Color.white)
-                    .foregroundColor(Color(red: 0.08, green: 0.09, blue: 0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.borderless)
-                
-                // Button 5: Cancel Game
-                if isHost || dataManager.currentUser?.isRoot == true {
-                    Button {
-                        gameToDelete = game
-                        showDeleteAlert = true
-                    } label: {
-                        VStack(spacing: 2) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 14, weight: .heavy))
-                            Text("Cancel\nGame")
-                                .font(.system(size: 9, weight: .heavy))
-                                .multilineTextAlignment(.center)
-                                .lineSpacing(-2)
-                        }
-                        .frame(width: 54, height: 54)
-                        .background(Color(red: 1.0, green: 0.89, blue: 0.90))
-                        .foregroundColor(Color(red: 0.70, green: 0.11, blue: 0.11))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color(red: 0.99, green: 0.80, blue: 0.83), lineWidth: 1.5)
                         )
                     }
                     .buttonStyle(.borderless)
