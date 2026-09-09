@@ -562,10 +562,14 @@ export function renderWeatherLine(game) {
 
 function buildWeatherLineHtml(gameId, w) {
   const windDir = w.windDirection || "NW";
+  const uvIndex = Math.round(w.uvIndex ?? 0);
+  const uvColor = (w.uvIndex ?? 0) >= 8 ? "#ef4444" : (w.uvIndex ?? 0) >= 6 ? "#f97316" : (w.uvIndex ?? 0) >= 3 ? "#f59e0b" : "#4ade80";
   return `
     <span onclick="event.stopPropagation(); window.toggleWeatherDetails('${gameId}')" title="Click for beach conditions" style="display:inline-flex; align-items:center; gap:4px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:2px 8px; font-size:11px; font-weight:700; color:#ffffff; cursor:pointer; white-space:nowrap;">
       <span>${w.conditionEmoji || '☀️'}</span>
       <span>${w.tempF}°F</span>
+      <span style="color:rgba(255,255,255,0.5);">•</span>
+      <span style="color:${uvColor};">UV ${uvIndex}</span>
       <span style="color:rgba(255,255,255,0.5);">•</span>
       <span>💨 ${w.windMph} mph ${windDir}</span>
     </span>
@@ -1427,6 +1431,11 @@ function renderMatches() {
               <button type="button" class="card-dropdown-item" onclick="window.openEditMatchModal('${game.id}')">
                 <span>✏️</span> Edit Details
               </button>
+              ${isMember ? `
+                <button type="button" class="card-dropdown-item" style="color: #f87171;" onclick="window.toggleCardActionsMenu('${game.id}'); window.leaveGame('${game.id}')">
+                  <span>🚪</span> Leave Game
+                </button>
+              ` : ''}
               ${(isHost || isRoot) && spotsLeft === 0 ? `
                 <button type="button" class="card-dropdown-item" style="color: #38bdf8;" onclick="window.addSpotToGame('${game.id}')">
                   <span>➕</span> + Add Spot to Full Game
