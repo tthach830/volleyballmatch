@@ -1092,68 +1092,39 @@ public struct ConfirmedGamesView: View {
                 } else {
                     VStack(spacing: 6) {
                         ForEach(Array(game.subMatches.enumerated()), id: \.element.id) { mIdx, sm in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("MATCH \(sm.matchNumber) • \(sm.courtNumber)")
-                                        .font(.system(size: 10, weight: .black))
-                                        .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
-                                    Spacer()
-                                    if sm.isCompleted {
-                                        Text("SCORED ✓")
-                                            .font(.system(size: 9, weight: .black))
-                                            .foregroundColor(.green)
-                                    } else {
-                                        Text("Scheduled")
-                                            .font(.system(size: 9, weight: .medium))
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                
-                                HStack {
-                                    Text(resolveNames(sm.team1PlayerIds))
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Text("VS")
-                                        .font(.system(size: 10, weight: .black))
-                                        .foregroundColor(.secondary)
-                                        .padding(.horizontal, 6)
-                                    Spacer()
-                                    Text(resolveNames(sm.team2PlayerIds))
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .lineLimit(1)
-                                }
-                                
-                                if !sm.restingPlayerIds.isEmpty {
-                                    Text("⏸ Resting: \(resolveNames(sm.restingPlayerIds))")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                if let s1 = sm.team1Score, let s2 = sm.team2Score {
-                                    HStack {
-                                        Text("Score: \(s1) – \(s2)")
-                                            .font(.system(size: 11, weight: .bold))
-                                            .foregroundColor(.white)
-                                        if sm.isCompleted, let win = sm.winningTeam {
-                                            Text("(Team \(win) Won)")
-                                                .font(.system(size: 10, weight: .bold))
-                                                .foregroundColor(.green)
-                                        }
-                                    }
-                                    .padding(.top, 2)
-                                }
-                            }
-                            .padding(8)
-                            .background(Color(red: 0.08, green: 0.10, blue: 0.14))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.white.opacity(0.1), lineWidth: 0.8)
+                            SubMatchScoreRowView(
+                                dataManager: dataManager,
+                                game: game,
+                                sm: sm,
+                                mIdx: mIdx,
+                                resolveNames: resolveNames
                             )
                         }
+                        
+                        HStack {
+                            Spacer()
+                            Button {
+                                gameForRandomTeams = game
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text("🎲")
+                                        .font(.system(size: 11))
+                                    Text("Regenerate / Adjust Matches")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                .foregroundColor(Color(red: 0.95, green: 0.45, blue: 0.15))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color(red: 0.95, green: 0.45, blue: 0.15).opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(red: 0.95, green: 0.45, blue: 0.15).opacity(0.5), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        .padding(.top, 4)
                     }
                 }
             }
@@ -1404,3 +1375,157 @@ public struct ConfirmedGamesView: View {
         .shadow(color: Color.black.opacity(0.3), radius: 10, y: 4)
     }
 }
+
+private struct SubMatchScoreRowView: View {
+    @ObservedObject var dataManager: DataManager
+    let game: SetGame
+    let sm: SubMatch
+    let mIdx: Int
+    let resolveNames: ([UUID]) -> String
+    
+    @State private var team1ScoreText: String = ""
+    @State private var team2ScoreText: String = ""
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Header Row
+            HStack {
+                Text("MATCH \(sm.matchNumber) • \(sm.courtNumber)")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
+                Spacer()
+                if sm.isCompleted {
+                    Text("SCORED ✓")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.green)
+                } else {
+                    Text("Scheduled")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // Teams Row
+            HStack {
+                Text(resolveNames(sm.team1PlayerIds))
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                Spacer()
+                Text("VS")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                Spacer()
+                Text(resolveNames(sm.team2PlayerIds))
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+            }
+            
+            if !sm.restingPlayerIds.isEmpty {
+                Text("⏸ Resting: \(resolveNames(sm.restingPlayerIds))")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+            
+            // Score Input & Save Row (matching Web app)
+            HStack(spacing: 6) {
+                Text("Score:")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(Color.white.opacity(0.6))
+                
+                TextField("T1", text: $team1ScoreText)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 48, height: 28)
+                    .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    )
+                
+                Text("–")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white.opacity(0.6))
+                
+                TextField("T2", text: $team2ScoreText)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 48, height: 28)
+                    .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    )
+                
+                Button {
+                    let t1 = team1ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let t2 = team2ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let s1 = Int(t1), let s2 = Int(t2) {
+                        _ = dataManager.updateSubMatchScore(gameId: game.id, matchId: sm.id, team1Score: s1, team2Score: s2)
+                    }
+                } label: {
+                    Text("Save")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.5), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.borderless)
+                
+                if sm.isCompleted, let win = sm.winningTeam {
+                    Text("(Team \(win) Won)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.green)
+                        .padding(.leading, 2)
+                }
+                
+                Spacer()
+            }
+            .padding(.top, 4)
+        }
+        .padding(8)
+        .background(Color(red: 0.08, green: 0.10, blue: 0.14))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.white.opacity(0.1), lineWidth: 0.8)
+        )
+        .onAppear {
+            syncScores()
+        }
+        .onChange(of: sm.team1Score) {
+            syncScores()
+        }
+        .onChange(of: sm.team2Score) {
+            syncScores()
+        }
+    }
+    
+    private func syncScores() {
+        if let s1 = sm.team1Score {
+            team1ScoreText = "\(s1)"
+        } else {
+            team1ScoreText = ""
+        }
+        if let s2 = sm.team2Score {
+            team2ScoreText = "\(s2)"
+        } else {
+            team2ScoreText = ""
+        }
+    }
+}
+
