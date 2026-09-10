@@ -1680,36 +1680,29 @@ function renderMatches() {
                         <span style="font-size: 11px; font-weight: 800; color: #38bdf8;">MATCH ${m.matchNumber || mIdx + 1} • ${m.courtNumber || "Court #1"}</span>
                         ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: rgba(255,255,255,0.5);">Scheduled</span>'}
                       </div>
-                      <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #ffffff;">
-                        <div style="flex: 1; text-align: left;">${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}</div>
-                        ${(m.team1Score !== undefined && m.team1Score !== null && m.team2Score !== undefined && m.team2Score !== null && m.team1Score !== "" && m.team2Score !== "") ? `
-                          <div style="display: flex; align-items: center; gap: 8px; padding: 0 10px;">
-                            <span style="font-size: 15px; font-weight: 900; color: ${m.winningTeam === 1 ? '#4ade80' : '#ffffff'};">${m.team1Score}</span>
-                            <span style="color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 900;">VS</span>
-                            <span style="font-size: 15px; font-weight: 900; color: ${m.winningTeam === 2 ? '#4ade80' : '#ffffff'};">${m.team2Score}</span>
-                          </div>
-                        ` : `
-                          <span style="color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 900; padding: 0 8px;">VS</span>
-                        `}
-                        <div style="flex: 1; text-align: right;">${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot)}</div>
+                      <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #ffffff; gap: 8px;">
+                        <div style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                          ${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+                          <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input" style="width: 44px; padding: 3px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 1 ? '#4ade80' : '#fff'}; border-color:rgba(255,255,255,0.2); border-radius: 6px;" placeholder="T1" value="${s1Val}">
+                          <span style="color: rgba(255,255,255,0.4); font-size: 10px; font-weight: 900;">VS</span>
+                          <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input" style="width: 44px; padding: 3px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 2 ? '#4ade80' : '#fff'}; border-color:rgba(255,255,255,0.2); border-radius: 6px;" placeholder="T2" value="${s2Val}">
+                          <button type="button" class="btn btn-sm" style="font-size: 11px; font-weight: 800; padding: 3px 8px; color:#38bdf8; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; cursor: pointer;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
+                            Save
+                          </button>
+                        </div>
+
+                        <div style="flex: 1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                          ${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot)}
+                        </div>
                       </div>
                       ${m.restingPlayerIds && m.restingPlayerIds.length > 0 ? `
-                        <div style="font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 6px;">
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px;">
                           ⏸ Resting: ${resolvePlayerNames(m.restingPlayerIds, game, !isMember && !isRoot)}
                         </div>
                       ` : ''}
-                      <div style="display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);">
-                        <span style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6);">Score:</span>
-                        <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center; background:#1e2433; color:#fff; border-color:rgba(255,255,255,0.15);" placeholder="T1" value="${s1Val}">
-                        <span>–</span>
-                        <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input" style="width: 52px; padding: 3px 6px; font-size: 12px; font-weight: 700; text-align: center; background:#1e2433; color:#fff; border-color:rgba(255,255,255,0.15);" placeholder="T2" value="${s2Val}">
-                        <button type="button" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 2px 8px; margin-left: 6px; color:#38bdf8; border-color:#38bdf8;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
-                          Save
-                        </button>
-                        <span style="font-size: 11px; color: #22c55e; font-weight: 700; margin-left: auto;">
-                          ${m.isCompleted && m.winningTeam ? '(Team ' + m.winningTeam + ' Won)' : ''}
-                        </span>
-                      </div>
                     </div>
                   `;
                 }).join("")}

@@ -1405,34 +1405,66 @@ private struct SubMatchScoreRowView: View {
                 }
             }
             
-            // Teams Row with Center Scores
-            HStack {
+            // Teams Row with Center Score Inputs & Save
+            HStack(spacing: 6) {
                 Text(resolveNames(sm.team1PlayerIds))
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
-                if let s1 = sm.team1Score, let s2 = sm.team2Score {
-                    HStack(spacing: 6) {
-                        Text("\(s1)")
-                            .font(.system(size: 14, weight: .black))
-                            .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : .white)
-                        
-                        Text("VS")
-                            .font(.system(size: 10, weight: .black))
-                            .foregroundColor(Color.white.opacity(0.4))
-                        
-                        Text("\(s2)")
-                            .font(.system(size: 14, weight: .black))
-                            .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : .white)
-                    }
-                    .padding(.horizontal, 6)
-                } else {
+                // Center Score Inputs + VS + Save
+                HStack(spacing: 4) {
+                    TextField("T1", text: $team1ScoreText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : .white)
+                        .frame(width: 40, height: 28)
+                        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+                    
                     Text("VS")
-                        .font(.system(size: 10, weight: .black))
+                        .font(.system(size: 9, weight: .black))
                         .foregroundColor(Color.white.opacity(0.4))
-                        .padding(.horizontal, 6)
+                    
+                    TextField("T2", text: $team2ScoreText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : .white)
+                        .frame(width: 40, height: 28)
+                        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+                    
+                    Button {
+                        let t1 = team1ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let t2 = team2ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if let s1 = Int(t1), let s2 = Int(t2) {
+                            _ = dataManager.updateSubMatchScore(gameId: game.id, matchId: sm.id, team1Score: s1, team2Score: s2)
+                        }
+                    } label: {
+                        Text("Save")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 5)
+                            .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.5), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.borderless)
                 }
                 
                 Text(resolveNames(sm.team2PlayerIds))
@@ -1447,74 +1479,6 @@ private struct SubMatchScoreRowView: View {
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
-            
-            // Score Input & Save Row (matching Web app)
-            HStack(spacing: 6) {
-                Text("Score:")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color.white.opacity(0.6))
-                
-                TextField("T1", text: $team1ScoreText)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.center)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 48, height: 28)
-                    .background(Color(red: 0.12, green: 0.14, blue: 0.20))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                    )
-                
-                Text("–")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white.opacity(0.6))
-                
-                TextField("T2", text: $team2ScoreText)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.center)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 48, height: 28)
-                    .background(Color(red: 0.12, green: 0.14, blue: 0.20))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                    )
-                
-                Button {
-                    let t1 = team1ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    let t2 = team2ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if let s1 = Int(t1), let s2 = Int(t2) {
-                        _ = dataManager.updateSubMatchScore(gameId: game.id, matchId: sm.id, team1Score: s1, team2Score: s2)
-                    }
-                } label: {
-                    Text("Save")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.5), lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.borderless)
-                
-                if sm.isCompleted, let win = sm.winningTeam {
-                    Text("(Team \(win) Won)")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.green)
-                        .padding(.leading, 2)
-                }
-                
-                Spacer()
-            }
-            .padding(.top, 4)
         }
         .padding(8)
         .background(Color(red: 0.08, green: 0.10, blue: 0.14))
