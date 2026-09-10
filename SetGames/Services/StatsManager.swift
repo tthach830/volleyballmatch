@@ -71,7 +71,7 @@ public class StatsManager {
             
             for g in games {
                 let isGameCompleted = g.status == .completed
-                let subMatches = !g.subMatches.isEmpty ? g.subMatches : [SubMatch(courtNumber: g.courtNumber, team1PlayerIds: g.team1PlayerIds, team2PlayerIds: g.team2PlayerIds, isCompleted: isGameCompleted)]
+                let subMatches = !g.subMatches.isEmpty ? g.subMatches : [SubMatch(matchNumber: 1, courtNumber: g.courtNumber, team1PlayerIds: g.team1PlayerIds, team2PlayerIds: g.team2PlayerIds, isCompleted: isGameCompleted)]
                 for m in subMatches {
                     let hasScores = (m.team1Score != nil && m.team2Score != nil && (m.team1Score! > 0 || m.team2Score! > 0))
                     guard m.isCompleted || isGameCompleted || hasScores else { continue }

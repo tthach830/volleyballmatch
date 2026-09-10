@@ -58,7 +58,7 @@ public struct SubMatch: Identifiable, Codable, Hashable {
     
     public init(
         id: UUID = UUID(),
-        matchNumber: Int,
+        matchNumber: Int = 1,
         courtNumber: String = "Court #1",
         setNumber: Int = 1,
         team1PlayerIds: [UUID] = [],
