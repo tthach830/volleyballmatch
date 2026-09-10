@@ -428,7 +428,7 @@ public struct AuthView: View {
                 let finalName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Beach Player" : name.trimmingCharacters(in: .whitespacesAndNewlines)
                 let finalNickname = nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? finalName : nickname.trimmingCharacters(in: .whitespacesAndNewlines)
                 
-                dataManager.signUp(
+                let result = dataManager.signUp(
                     phoneNumber: signUpPhone,
                     password: signUpPassword,
                     name: finalName,
@@ -437,6 +437,11 @@ public struct AuthView: View {
                     homeBeach: effectiveBeach,
                     avatarEmoji: selectedEmoji
                 )
+                
+                if !result.success {
+                    signUpErrorMessage = result.message
+                    return
+                }
             } label: {
                 HStack {
                     Image(systemName: "figure.volleyball")

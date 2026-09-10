@@ -2574,10 +2574,37 @@ window.handlePhoneSignUp = (e) => {
   const rating = document.getElementById("signup-rating")?.value || "Intermediate";
   const homeBeach = document.getElementById("signup-beach")?.value || "Main Beach";
   const avatar = window.selectedSignupAvatarEmoji || "slug";
+  const errEl = document.getElementById("signup-error");
 
   if (!phone) {
     showToast("Please enter your mobile phone number.");
     return;
+  }
+
+  const cleanPhone = phone.replace(/\D/g, "");
+  if (!cleanPhone) {
+    showToast("Please enter a valid phone number.");
+    return;
+  }
+
+  // Enforce single account per phone number
+  const existingPlayer = state.players.find(p => {
+    const pClean = String(p.phoneNumber || "").replace(/\D/g, "");
+    return (pClean && cleanPhone && pClean === cleanPhone) || (p.phoneNumber && p.phoneNumber.trim() === phone);
+  });
+
+  if (existingPlayer) {
+    const msg = `This phone number (${phone}) is already registered to ${existingPlayer.name}. Only one account per phone number is allowed.`;
+    if (errEl) {
+      errEl.innerHTML = `${msg} <a href="#" style="color: var(--accent); text-decoration: underline; font-weight: bold; margin-left: 4px;" onclick="window.switchAuthMode('login')">Log In Here &raquo;</a>`;
+      errEl.style.display = "block";
+    }
+    showToast(`Phone number already registered. Please log in.`);
+    return;
+  }
+
+  if (errEl) {
+    errEl.style.display = "none";
   }
 
   if (!password) {

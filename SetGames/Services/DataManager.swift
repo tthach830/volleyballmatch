@@ -147,6 +147,7 @@ public class DataManager: ObservableObject {
         }
     }
     
+    @discardableResult
     public func signUp(
         phoneNumber: String = "",
         password: String = "",
@@ -155,7 +156,17 @@ public class DataManager: ObservableObject {
         rating: RatingTier,
         homeBeach: String,
         avatarEmoji: String
-    ) {
+    ) -> (success: Bool, message: String) {
+        let cleaned = DataManager.normalizePhoneNumber(phoneNumber)
+        if !cleaned.isEmpty {
+            if let existing = players.first(where: {
+                let pCleaned = DataManager.normalizePhoneNumber($0.phoneNumber)
+                return !pCleaned.isEmpty && pCleaned == cleaned
+            }) {
+                return (false, "This phone number is already registered to \(existing.name). Only one account per phone number is allowed. Please log in instead.")
+            }
+        }
+        
         let baseElo: Int
         switch rating {
         case .novice: baseElo = 1100
@@ -216,6 +227,8 @@ public class DataManager: ObservableObject {
         saveToDisk()
         FirestoreService.shared.savePlayer(newPlayer)
         FirestoreService.shared.saveAvailabilitySlot(initialSlot)
+        
+        return (true, "Welcome to Volleyball Match, \(newPlayer.name)!")
     }
     
     public func setDemoModeEnabled(_ enabled: Bool) {
