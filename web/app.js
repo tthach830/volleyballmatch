@@ -1681,20 +1681,20 @@ function renderMatches() {
                         ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: rgba(255,255,255,0.5);">Scheduled</span>'}
                       </div>
                       <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #ffffff; gap: 8px;">
-                        <div style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <div style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f87171;">
                           ${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}
                         </div>
 
                         <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
-                          <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input" style="width: 44px; padding: 3px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 1 ? '#4ade80' : '#fff'}; border-color:rgba(255,255,255,0.2); border-radius: 6px;" placeholder="T1" value="${s1Val}">
+                          <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input" style="width: 44px; padding: 3px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 1 ? '#4ade80' : '#f87171'}; border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 6px;" placeholder="T1" value="${s1Val}">
                           <span style="color: rgba(255,255,255,0.4); font-size: 10px; font-weight: 900;">VS</span>
-                          <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input" style="width: 44px; padding: 3px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 2 ? '#4ade80' : '#fff'}; border-color:rgba(255,255,255,0.2); border-radius: 6px;" placeholder="T2" value="${s2Val}">
-                          <button type="button" class="btn btn-sm" style="font-size: 11px; font-weight: 800; padding: 3px 8px; color:#38bdf8; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; cursor: pointer;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
+                          <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input" style="width: 44px; padding: 3px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 2 ? '#4ade80' : '#38bdf8'}; border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 6px;" placeholder="T2" value="${s2Val}">
+                          <button type="button" class="btn btn-sm" style="font-size: 11px; font-weight: 800; padding: 3px 8px; color:#ffffff; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 6px; cursor: pointer;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
                             Save
                           </button>
                         </div>
 
-                        <div style="flex: 1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <div style="flex: 1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #38bdf8;">
                           ${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot)}
                         </div>
                       </div>

@@ -298,7 +298,7 @@ public struct ConfirmedGamesView: View {
         let displayName = isMyGame ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player"
         let ratingTier = p.rating
         let starStr = String(format: "%.1f", p.averageStarRating)
-        let borderColor = isTeam1 ? Color(red: 0.22, green: 0.74, blue: 0.97) : Color(red: 0.94, green: 0.27, blue: 0.27)
+        let borderColor = isTeam1 ? Color(red: 0.94, green: 0.27, blue: 0.27) : Color(red: 0.22, green: 0.74, blue: 0.97)
         
         return HStack(spacing: 8) {
             if isMyGame {
@@ -369,7 +369,7 @@ public struct ConfirmedGamesView: View {
     }
 
     private func emptyPlayerSpotTile(game: SetGame, isTeam1: Bool) -> some View {
-        let borderColor = isTeam1 ? Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6) : Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.6)
+        let borderColor = isTeam1 ? Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.6) : Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6)
         
         return Button {
             if canUserJoin(game) {
@@ -1409,7 +1409,7 @@ private struct SubMatchScoreRowView: View {
             HStack(spacing: 6) {
                 Text(resolveNames(sm.team1PlayerIds))
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
@@ -1419,13 +1419,13 @@ private struct SubMatchScoreRowView: View {
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.center)
                         .font(.system(size: 12, weight: .black))
-                        .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : .white)
+                        .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
                         .frame(width: 40, height: 28)
                         .background(Color(red: 0.12, green: 0.14, blue: 0.20))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                .stroke(Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.6), lineWidth: 1.5)
                         )
                     
                     Text("VS")
@@ -1436,13 +1436,13 @@ private struct SubMatchScoreRowView: View {
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.center)
                         .font(.system(size: 12, weight: .black))
-                        .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : .white)
+                        .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))
                         .frame(width: 40, height: 28)
                         .background(Color(red: 0.12, green: 0.14, blue: 0.20))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                .stroke(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6), lineWidth: 1.5)
                         )
                     
                     Button {
@@ -1454,14 +1454,14 @@ private struct SubMatchScoreRowView: View {
                     } label: {
                         Text("Save")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
+                            .foregroundColor(.white)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 5)
-                            .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.12))
+                            .background(Color.white.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.5), lineWidth: 1)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
                             )
                     }
                     .buttonStyle(.borderless)
@@ -1469,7 +1469,7 @@ private struct SubMatchScoreRowView: View {
                 
                 Text(resolveNames(sm.team2PlayerIds))
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }

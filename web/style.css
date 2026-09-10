@@ -556,25 +556,25 @@ header {
   position: relative;
 }
 .player-tile-team1 {
-  border: 1.5px solid #38bdf8;
-}
-.player-tile-team2 {
   border: 1.5px solid #ef4444;
 }
+.player-tile-team2 {
+  border: 1.5px solid #38bdf8;
+}
 .player-tile-empty-t1 {
-  border: 1.5px dashed rgba(56, 189, 248, 0.6);
+  border: 1.5px dashed rgba(239, 68, 68, 0.6);
   background: rgba(18, 21, 31, 0.6);
   justify-content: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: #f87171;
   cursor: pointer;
   font-weight: 700;
   font-size: 12px;
 }
 .player-tile-empty-t2 {
-  border: 1.5px dashed rgba(239, 68, 68, 0.6);
+  border: 1.5px dashed rgba(56, 189, 248, 0.6);
   background: rgba(18, 21, 31, 0.6);
   justify-content: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: #38bdf8;
   cursor: pointer;
   font-weight: 700;
   font-size: 12px;
