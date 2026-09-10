@@ -60,9 +60,39 @@ public class StatsManager {
         }
     }
     
+    /// Recalculates and merges unique partner and opponent IDs dynamically from all scheduled and past matches
+    public func recalculateConnections(players: [Player], games: [SetGame]) -> [Player] {
+        guard !games.isEmpty else { return players }
+        var updated = players
+        for i in 0..<updated.count {
+            let pid = updated[i].id
+            var partners = Set(updated[i].uniquePartnerIds)
+            var opponents = Set(updated[i].uniqueOpponentIds)
+            
+            for g in games {
+                let subMatches = !g.subMatches.isEmpty ? g.subMatches : [SubMatch(courtNumber: g.courtNumber, team1PlayerIds: g.team1PlayerIds, team2PlayerIds: g.team2PlayerIds)]
+                for m in subMatches {
+                    let t1 = Set(m.team1PlayerIds)
+                    let t2 = Set(m.team2PlayerIds)
+                    if t1.contains(pid) {
+                        for p in t1 where p != pid { partners.insert(p) }
+                        for o in t2 { opponents.insert(o) }
+                    } else if t2.contains(pid) {
+                        for p in t2 where p != pid { partners.insert(p) }
+                        for o in t1 { opponents.insert(o) }
+                    }
+                }
+            }
+            updated[i].uniquePartnerIds = Array(partners)
+            updated[i].uniqueOpponentIds = Array(opponents)
+        }
+        return updated
+    }
+    
     /// Generates "The Popular Kids" ladder ranked by unique players played with
-    public func popularKidsLadder(from players: [Player]) -> [Player] {
-        let deduped = deduplicatePlayers(players)
+    public func popularKidsLadder(from players: [Player], games: [SetGame] = []) -> [Player] {
+        let connectedPlayers = games.isEmpty ? players : recalculateConnections(players: players, games: games)
+        let deduped = deduplicatePlayers(connectedPlayers)
         let visiblePlayers = deduped.filter { !$0.isStatsHidden }
         return visiblePlayers.sorted { p1, p2 in
             let c1 = p1.uniqueConnectionsCount

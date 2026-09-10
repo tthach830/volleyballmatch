@@ -34,7 +34,7 @@ public struct PopularKidsLadderView: View {
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .padding(.horizontal)
             
-            let popularKids = StatsManager.shared.popularKidsLadder(from: dataManager.players)
+            let popularKids = StatsManager.shared.popularKidsLadder(from: dataManager.players, games: dataManager.games)
             
             LazyVStack(spacing: 10) {
                 ForEach(Array(popularKids.enumerated()), id: \.element.id) { index, player in

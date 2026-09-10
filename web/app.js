@@ -297,12 +297,73 @@ export function isPlayerInList(list, playerId) {
 }
 window.isPlayerInList = isPlayerInList;
 
+export function getPlayerConnections(player) {
+  if (!player) return { partners: new Set(), opponents: new Set(), partnersCount: 0, opponentsCount: 0, total: 0 };
+  const partners = new Set();
+  const opponents = new Set();
+  const pid = String(player.id || "").toLowerCase();
+  const pName = String(player.name || "").trim().toLowerCase();
+
+  // Helper to test if another ID/name matches this player
+  const isMe = (otherId) => {
+    if (!otherId) return false;
+    const str = String(otherId).toLowerCase();
+    if (str === pid) return true;
+    if (isSamePlayer(otherId, player.id)) return true;
+    const otherP = state.players.find(x => String(x.id).toLowerCase() === str);
+    if (otherP && pName && String(otherP.name || "").trim().toLowerCase() === pName) return true;
+    return false;
+  };
+
+  // 1. Include explicit stored IDs
+  if (Array.isArray(player.uniquePartnerIds)) {
+    player.uniquePartnerIds.forEach(id => {
+      if (id && !isMe(id)) partners.add(String(id));
+    });
+  }
+  if (Array.isArray(player.uniqueOpponentIds)) {
+    player.uniqueOpponentIds.forEach(id => {
+      if (id && !isMe(id)) opponents.add(String(id));
+    });
+  }
+
+  // 2. Scan all games and sub-matches in state.games
+  if (Array.isArray(state.games)) {
+    for (const g of state.games) {
+      const subMatches = (Array.isArray(g.subMatches) && g.subMatches.length > 0) 
+        ? g.subMatches 
+        : (g.team1PlayerIds ? [g] : []);
+      
+      for (const m of subMatches) {
+        const t1 = Array.isArray(m.team1PlayerIds) ? m.team1PlayerIds : [];
+        const t2 = Array.isArray(m.team2PlayerIds) ? m.team2PlayerIds : [];
+
+        const isT1 = t1.some(id => isMe(id));
+        const isT2 = t2.some(id => isMe(id));
+
+        if (isT1) {
+          t1.forEach(id => { if (!isMe(id)) partners.add(String(id)); });
+          t2.forEach(id => { if (!isMe(id)) opponents.add(String(id)); });
+        } else if (isT2) {
+          t2.forEach(id => { if (!isMe(id)) partners.add(String(id)); });
+          t1.forEach(id => { if (!isMe(id)) opponents.add(String(id)); });
+        }
+      }
+    }
+  }
+
+  const allConnections = new Set([...partners, ...opponents]);
+  return {
+    partners,
+    opponents,
+    partnersCount: partners.size,
+    opponentsCount: opponents.size,
+    total: allConnections.size
+  };
+}
+
 export function getUniqueConnectionsCount(player) {
-  if (!player) return 0;
-  const partners = player.uniquePartnerIds || [];
-  const opponents = player.uniqueOpponentIds || [];
-  const all = new Set([...partners, ...opponents]);
-  return all.size;
+  return getPlayerConnections(player).total;
 }
 
 export function getPopularKidsTitle(connections) {
@@ -1198,6 +1259,29 @@ function applySubMatchStatsWeb(match) {
     }
   });
 
+  // Track teammates & opponents for Popular Kids ladder
+  [...team1Ids, ...team2Ids].forEach(pid => {
+    const p = state.players.find(x => x.id === pid);
+    if (!p) return;
+    p.uniquePartnerIds = p.uniquePartnerIds || [];
+    p.uniqueOpponentIds = p.uniqueOpponentIds || [];
+    const isT1 = team1Ids.includes(pid);
+    const myTeam = isT1 ? team1Ids : team2Ids;
+    const oppTeam = isT1 ? team2Ids : team1Ids;
+
+    myTeam.forEach(partnerId => {
+      if (partnerId !== pid && !p.uniquePartnerIds.includes(partnerId)) {
+        p.uniquePartnerIds.push(partnerId);
+      }
+    });
+    oppTeam.forEach(oppId => {
+      if (!p.uniqueOpponentIds.includes(oppId)) {
+        p.uniqueOpponentIds.push(oppId);
+      }
+    });
+    savePlayerToFirestore(p);
+  });
+
   match.appliedStatsWinner = winningTeam;
 
   if (state.currentUser && (winners.includes(state.currentUser.id) || losers.includes(state.currentUser.id))) {
@@ -2010,7 +2094,8 @@ function renderPopularKids() {
 
   container.innerHTML = sorted.map((player, idx) => {
     const rank = idx + 1;
-    const connections = getUniqueConnectionsCount(player);
+    const net = getPlayerConnections(player);
+    const connections = net.total;
     const isCurrent = player.id === state.currentUser?.id;
     const badgeTitle = getPopularKidsTitle(connections);
 
@@ -2020,7 +2105,7 @@ function renderPopularKids() {
         ${renderAvatar(player.avatarEmoji, "lg", (player.consecutiveBackouts || 0) >= 3)}
         <div class="rank-info">
           <div class="rank-name">${player.name}</div>
-          <div class="rank-sub">${player.uniquePartnerIds?.length || 0} Partners • ${player.uniqueOpponentIds?.length || 0} Opponents</div>
+          <div class="rank-sub">${net.partnersCount} Partners • ${net.opponentsCount} Opponents</div>
         </div>
         <div class="rank-stats">
           <div style="font-size:16px; font-weight:800; color:var(--accent);">${connections} Connections</div>
