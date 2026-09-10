@@ -5,9 +5,46 @@ public class StatsManager {
     
     public init() {}
     
+    /// Deduplicates players sharing the same phone number or normalized name, retaining the most active profile
+    public func deduplicatePlayers(_ players: [Player]) -> [Player] {
+        var grouped: [String: Player] = [:]
+        
+        for player in players {
+            let phoneDigits = player.phoneNumber.filter { $0.isNumber }
+            let key: String
+            if phoneDigits.count >= 7 {
+                key = "phone:\(phoneDigits)"
+            } else {
+                let trimmedName = player.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if !trimmedName.isEmpty {
+                    key = "name:\(trimmedName)"
+                } else {
+                    key = "id:\(player.id.uuidString.lowercased())"
+                }
+            }
+            
+            if let existing = grouped[key] {
+                let existingMatches = existing.totalMatches
+                let newMatches = player.totalMatches
+                if newMatches > existingMatches {
+                    grouped[key] = player
+                } else if newMatches == existingMatches && player.eloRating > existing.eloRating {
+                    grouped[key] = player
+                } else if newMatches == existingMatches && !player.phoneNumber.isEmpty && existing.phoneNumber.isEmpty {
+                    grouped[key] = player
+                }
+            } else {
+                grouped[key] = player
+            }
+        }
+        
+        return Array(grouped.values)
+    }
+    
     /// Generates top competitive ladder ranked by Elo rating, then Win Rate and Wins
     public func topPlayersLadder(from players: [Player], filterTier: RatingTier? = nil) -> [Player] {
-        var filtered = players.filter { !$0.isStatsHidden }
+        let deduped = deduplicatePlayers(players)
+        var filtered = deduped.filter { !$0.isStatsHidden }
         if let tier = filterTier {
             filtered = filtered.filter { $0.rating == tier }
         }
@@ -25,7 +62,8 @@ public class StatsManager {
     
     /// Generates "The Popular Kids" ladder ranked by unique players played with
     public func popularKidsLadder(from players: [Player]) -> [Player] {
-        let visiblePlayers = players.filter { !$0.isStatsHidden }
+        let deduped = deduplicatePlayers(players)
+        let visiblePlayers = deduped.filter { !$0.isStatsHidden }
         return visiblePlayers.sorted { p1, p2 in
             let c1 = p1.uniqueConnectionsCount
             let c2 = p2.uniqueConnectionsCount

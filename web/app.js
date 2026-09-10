@@ -1892,12 +1892,51 @@ document.addEventListener("click", () => {
   document.querySelectorAll(".card-dropdown-menu").forEach(m => m.style.display = "none");
 });
 
+export function deduplicatePlayers(players) {
+  if (!Array.isArray(players)) return [];
+  const grouped = new Map();
+
+  for (const player of players) {
+    if (!player) continue;
+    const phoneDigits = String(player.phoneNumber || "").replace(/\D/g, "");
+    let key;
+    if (phoneDigits.length >= 7) {
+      key = `phone:${phoneDigits}`;
+    } else {
+      const trimmedName = String(player.name || "").trim().toLowerCase();
+      if (trimmedName) {
+        key = `name:${trimmedName}`;
+      } else {
+        key = `id:${String(player.id || "").toLowerCase()}`;
+      }
+    }
+
+    if (grouped.has(key)) {
+      const existing = grouped.get(key);
+      const existingMatches = (existing.wins || 0) + (existing.losses || 0);
+      const newMatches = (player.wins || 0) + (player.losses || 0);
+      if (newMatches > existingMatches) {
+        grouped.set(key, player);
+      } else if (newMatches === existingMatches && (player.eloRating || 1500) > (existing.eloRating || 1500)) {
+        grouped.set(key, player);
+      } else if (newMatches === existingMatches && player.phoneNumber && !existing.phoneNumber) {
+        grouped.set(key, player);
+      }
+    } else {
+      grouped.set(key, player);
+    }
+  }
+
+  return Array.from(grouped.values());
+}
+
 function renderLadder() {
   const container = document.getElementById("ladder-list");
   if (!container) return;
 
   const tier = state.selectedLadderTier;
-  let filtered = state.players.filter(p => !p.isStatsHidden);
+  const deduped = deduplicatePlayers(state.players);
+  let filtered = deduped.filter(p => !p.isStatsHidden);
   if (tier !== "All") {
     filtered = filtered.filter(p => p.rating === tier);
   }
@@ -1949,7 +1988,8 @@ function renderPopularKids() {
   const container = document.getElementById("popular-list");
   if (!container) return;
 
-  const visiblePlayers = state.players.filter(p => !p.isStatsHidden);
+  const deduped = deduplicatePlayers(state.players);
+  const visiblePlayers = deduped.filter(p => !p.isStatsHidden);
   const sorted = [...visiblePlayers].sort((a, b) => {
     const connA = getUniqueConnectionsCount(a);
     const connB = getUniqueConnectionsCount(b);
