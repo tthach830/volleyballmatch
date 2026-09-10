@@ -327,14 +327,21 @@ export function getPlayerConnections(player) {
     });
   }
 
-  // 2. Scan all games and sub-matches in state.games
+  // 2. Scan completed games and sub-matches in state.games (only completed / played matches)
   if (Array.isArray(state.games)) {
     for (const g of state.games) {
+      const isGameCompleted = g.status === "completed";
       const subMatches = (Array.isArray(g.subMatches) && g.subMatches.length > 0) 
         ? g.subMatches 
         : (g.team1PlayerIds ? [g] : []);
       
       for (const m of subMatches) {
+        const hasScores = (m.team1Score != null && m.team2Score != null && (Number(m.team1Score) > 0 || Number(m.team2Score) > 0));
+        const isMatchCompleted = Boolean(m.isCompleted || isGameCompleted || hasScores);
+
+        // Do not count unplayed/scheduled matches
+        if (!isMatchCompleted) continue;
+
         const t1 = Array.isArray(m.team1PlayerIds) ? m.team1PlayerIds : [];
         const t2 = Array.isArray(m.team2PlayerIds) ? m.team2PlayerIds : [];
 
