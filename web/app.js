@@ -2594,7 +2594,7 @@ window.handlePhoneSignUp = (e) => {
   });
 
   if (existingPlayer) {
-    const msg = `This phone number (${phone}) is already registered to ${existingPlayer.name}. Only one account per phone number is allowed.`;
+    const msg = `This phone number (${phone}) is already registered. Only one account per phone number is allowed.`;
     if (errEl) {
       errEl.innerHTML = `${msg} <a href="#" style="color: var(--accent); text-decoration: underline; font-weight: bold; margin-left: 4px;" onclick="window.switchAuthMode('login')">Log In Here &raquo;</a>`;
       errEl.style.display = "block";

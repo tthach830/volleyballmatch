@@ -159,11 +159,11 @@ public class DataManager: ObservableObject {
     ) -> (success: Bool, message: String) {
         let cleaned = DataManager.normalizePhoneNumber(phoneNumber)
         if !cleaned.isEmpty {
-            if let existing = players.first(where: {
+            if let _ = players.first(where: {
                 let pCleaned = DataManager.normalizePhoneNumber($0.phoneNumber)
                 return !pCleaned.isEmpty && pCleaned == cleaned
             }) {
-                return (false, "This phone number is already registered to \(existing.name). Only one account per phone number is allowed. Please log in instead.")
+                return (false, "This phone number is already registered. Only one account per phone number is allowed. Please log in instead.")
             }
         }
         
