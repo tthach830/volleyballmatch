@@ -1102,14 +1102,36 @@ public struct ConfirmedGamesView: View {
                         }
                         
                         HStack {
+                            Button {
+                                _ = dataManager.addSubMatch(gameId: game.id)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 10, weight: .bold))
+                                    Text("Add Match")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.4), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.borderless)
+                            
                             Spacer()
+                            
                             Button {
                                 gameForRandomTeams = game
                             } label: {
                                 HStack(spacing: 4) {
                                     Text("🎲")
                                         .font(.system(size: 11))
-                                    Text("Regenerate / Adjust Matches")
+                                    Text("Regenerate Matches")
                                         .font(.system(size: 11, weight: .bold))
                                 }
                                 .foregroundColor(Color(red: 0.95, green: 0.45, blue: 0.15))
@@ -1394,14 +1416,29 @@ private struct SubMatchScoreRowView: View {
                     .font(.system(size: 10, weight: .black))
                     .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
                 Spacer()
-                if sm.isCompleted {
-                    Text("SCORED ✓")
-                        .font(.system(size: 9, weight: .black))
-                        .foregroundColor(.green)
-                } else {
-                    Text("Scheduled")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    if sm.isCompleted {
+                        Text("SCORED ✓")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.green)
+                    } else {
+                        Text("Scheduled")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Button {
+                        _ = dataManager.deleteSubMatch(gameId: game.id, matchId: sm.id)
+                    } label: {
+                        Text("✕")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.98, green: 0.45, blue: 0.45).opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.borderless)
                 }
             }
             

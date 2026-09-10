@@ -1239,6 +1239,107 @@ window.updateSubMatchScoreWeb = (gameId, matchId) => {
   }
 };
 
+window.addSubMatchToGame = (gameId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game) return;
+  const pids = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+  if (pids.length < 4) {
+    showToast("Need at least 4 players in the game to add a match.");
+    return;
+  }
+  
+  const playCounts = {};
+  const partnerHistory = {};
+  pids.forEach(p => {
+    playCounts[p] = 0;
+    partnerHistory[p] = new Set();
+  });
+  
+  (game.subMatches || []).forEach(m => {
+    (m.team1PlayerIds || []).forEach(p => playCounts[p] = (playCounts[p] || 0) + 1);
+    (m.team2PlayerIds || []).forEach(p => playCounts[p] = (playCounts[p] || 0) + 1);
+    if (m.team1PlayerIds?.length >= 2) {
+      partnerHistory[m.team1PlayerIds[0]]?.add(m.team1PlayerIds[1]);
+      partnerHistory[m.team1PlayerIds[1]]?.add(m.team1PlayerIds[0]);
+    }
+    if (m.team2PlayerIds?.length >= 2) {
+      partnerHistory[m.team2PlayerIds[0]]?.add(m.team2PlayerIds[1]);
+      partnerHistory[m.team2PlayerIds[1]]?.add(m.team2PlayerIds[0]);
+    }
+  });
+  
+  const sorted = [...pids]
+    .sort(() => Math.random() - 0.5)
+    .sort((a, b) => (playCounts[a] || 0) - (playCounts[b] || 0));
+  
+  const picked = sorted.slice(0, 4);
+  const byes = sorted.slice(4);
+  
+  const splits = [
+    { t1: [picked[0], picked[1]], t2: [picked[2], picked[3]] },
+    { t1: [picked[0], picked[2]], t2: [picked[1], picked[3]] },
+    { t1: [picked[0], picked[3]], t2: [picked[1], picked[2]] }
+  ];
+  
+  let bestSplit = splits[0];
+  let minRepeats = 999;
+  splits.forEach(s => {
+    const r1 = (partnerHistory[s.t1[0]]?.has(s.t1[1]) ? 1 : 0) +
+               (partnerHistory[s.t2[0]]?.has(s.t2[1]) ? 1 : 0);
+    if (r1 < minRepeats) {
+      minRepeats = r1;
+      bestSplit = s;
+    }
+  });
+  
+  let t1 = [...bestSplit.t1];
+  let t2 = [...bestSplit.t2];
+  if (Math.random() > 0.5) {
+    const temp = t1;
+    t1 = t2;
+    t2 = temp;
+  }
+  
+  if (!game.subMatches) game.subMatches = [];
+  const matchNum = game.subMatches.length + 1;
+  const newMatch = {
+    id: "sub_" + Date.now() + "_" + matchNum,
+    matchNumber: matchNum,
+    courtNumber: game.courtNumber || "Court #1",
+    setNumber: matchNum,
+    team1PlayerIds: t1,
+    team2PlayerIds: t2,
+    restingPlayerIds: byes,
+    team1Score: null,
+    team2Score: null,
+    isCompleted: false,
+    winningTeam: null
+  };
+  
+  game.subMatches.push(newMatch);
+  saveGameToFirestore(game);
+  state.saveLocal();
+  renderMatches();
+  showToast(`Added Match #${matchNum}!`);
+};
+
+window.removeSubMatchFromGame = (gameId, matchId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game || !game.subMatches) return;
+  const idx = game.subMatches.findIndex(m => m.id === matchId || String(game.subMatches.indexOf(m)) === String(matchId));
+  if (idx === -1) return;
+  
+  game.subMatches.splice(idx, 1);
+  game.subMatches.forEach((m, i) => {
+    m.matchNumber = i + 1;
+    m.setNumber = i + 1;
+  });
+  saveGameToFirestore(game);
+  state.saveLocal();
+  renderMatches();
+  showToast("Removed match.");
+};
+
 let currentMatchFilter = "all"; // 'all', 'myGames', 'openSpots'
 window.setMatchFilter = (filter) => {
   currentMatchFilter = filter;
@@ -1678,7 +1779,10 @@ function renderMatches() {
                     <div style="background: #11151f; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px;">
                       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <span style="font-size: 11px; font-weight: 800; color: #38bdf8;">MATCH ${m.matchNumber || mIdx + 1} • ${m.courtNumber || "Court #1"}</span>
-                        ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: rgba(255,255,255,0.5);">Scheduled</span>'}
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                          ${m.isCompleted ? '<span style="font-size: 10px; color: #22c55e; font-weight: 800;">SCORED ✓</span>' : '<span style="font-size: 10px; color: rgba(255,255,255,0.5);">Scheduled</span>'}
+                          <button type="button" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #f87171; border-radius: 4px; padding: 1px 5px; font-size: 10px; font-weight: 800; cursor: pointer; line-height: 1.2;" title="Remove this match" onclick="event.stopPropagation(); window.removeSubMatchFromGame('${game.id}', '${mKey}')">✕</button>
+                        </div>
                       </div>
                       <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #ffffff; gap: 8px;">
                         <div style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f87171;">
@@ -1706,9 +1810,12 @@ function renderMatches() {
                     </div>
                   `;
                 }).join("")}
-                <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
-                  <button type="button" class="btn btn-outline btn-sm" style="font-size: 11px; color: #ea580c; border-color: #fdba74;" onclick="window.openRandomTeamsModalForGame('${game.id}')">
-                    🎲 Regenerate / Adjust Matches
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                  <button type="button" class="btn btn-outline btn-sm" style="font-size: 11px; font-weight: 700; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); padding: 4px 10px; border-radius: 6px;" onclick="window.addSubMatchToGame('${game.id}')">
+                    ➕ Add Match
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" style="font-size: 11px; font-weight: 700; color: #ea580c; border-color: #fdba74; padding: 4px 10px; border-radius: 6px;" onclick="window.openRandomTeamsModalForGame('${game.id}')">
+                    🎲 Regenerate Matches
                   </button>
                 </div>
               </div>
@@ -4935,10 +5042,15 @@ window.handleGenerateRandomTeams = (e) => {
     const matches = [];
     let globalIdx = 1;
 
+    const shuffledCourtGroups = [];
+    for (let c = 0; c < courtCount; c++) {
+      shuffledCourtGroups.push([...players.slice(c * 4, (c + 1) * 4)].sort(() => Math.random() - 0.5));
+    }
+
     // 3 rounds interleaved across courts: all courts play Set 1 simultaneously, then Set 2, then Set 3
     for (let round = 1; round <= 3; round++) {
       for (let c = 0; c < courtCount; c++) {
-        const courtPlayers = players.slice(c * 4, (c + 1) * 4);
+        const courtPlayers = shuffledCourtGroups[c];
         const assignedCourtNum = window.courtForIndex(c);
         const courtName = `Court #${assignedCourtNum}`;
 

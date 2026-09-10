@@ -953,6 +953,97 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    public func addSubMatch(gameId: UUID) -> (success: Bool, message: String) {
+        guard let gIdx = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Game not found.")
+        }
+        let allPids = games[gIdx].allPlayerIds
+        guard allPids.count >= 4 else {
+            return (false, "Need at least 4 players in the game to add a match.")
+        }
+        
+        var playCounts: [UUID: Int] = [:]
+        var partnerHistory: [UUID: Set<UUID>] = [:]
+        for pid in allPids {
+            playCounts[pid] = 0
+            partnerHistory[pid] = []
+        }
+        for m in games[gIdx].subMatches {
+            for pid in (m.team1PlayerIds + m.team2PlayerIds) {
+                playCounts[pid, default: 0] += 1
+            }
+            if m.team1PlayerIds.count >= 2 {
+                partnerHistory[m.team1PlayerIds[0]]?.insert(m.team1PlayerIds[1])
+                partnerHistory[m.team1PlayerIds[1]]?.insert(m.team1PlayerIds[0])
+            }
+            if m.team2PlayerIds.count >= 2 {
+                partnerHistory[m.team2PlayerIds[0]]?.insert(m.team2PlayerIds[1])
+                partnerHistory[m.team2PlayerIds[1]]?.insert(m.team2PlayerIds[0])
+            }
+        }
+        
+        let sorted = allPids.shuffled().sorted { (playCounts[$0] ?? 0) < (playCounts[$1] ?? 0) }
+        let picked = Array(sorted.prefix(4))
+        let resting = Array(sorted.dropFirst(4))
+        
+        let splits: [(([UUID], [UUID]))] = [
+            ([picked[0], picked[1]], [picked[2], picked[3]]),
+            ([picked[0], picked[2]], [picked[1], picked[3]]),
+            ([picked[0], picked[3]], [picked[1], picked[2]])
+        ]
+        
+        let bestSplit = splits.min { s1, s2 in
+            let r1 = (partnerHistory[s1.0[0]]?.contains(s1.0[1]) == true ? 1 : 0) +
+                     (partnerHistory[s1.1[0]]?.contains(s1.1[1]) == true ? 1 : 0)
+            let r2 = (partnerHistory[s2.0[0]]?.contains(s2.0[1]) == true ? 1 : 0) +
+                     (partnerHistory[s2.1[0]]?.contains(s2.1[1]) == true ? 1 : 0)
+            return r1 < r2
+        } ?? splits[0]
+        
+        var t1 = bestSplit.0
+        var t2 = bestSplit.1
+        if Bool.random() {
+            let temp = t1
+            t1 = t2
+            t2 = temp
+        }
+        
+        let matchNum = games[gIdx].subMatches.count + 1
+        let newMatch = SubMatch(
+            id: UUID(),
+            matchNumber: matchNum,
+            courtNumber: games[gIdx].courtNumber.isEmpty ? "Court #1" : games[gIdx].courtNumber,
+            setNumber: matchNum,
+            team1PlayerIds: t1,
+            team2PlayerIds: t2,
+            restingPlayerIds: resting
+        )
+        
+        games[gIdx].subMatches.append(newMatch)
+        saveToDisk()
+        FirestoreService.shared.saveGame(games[gIdx])
+        return (true, "Added Match #\(matchNum)")
+    }
+
+    @discardableResult
+    public func deleteSubMatch(gameId: UUID, matchId: UUID) -> (success: Bool, message: String) {
+        guard let gIdx = games.firstIndex(where: { $0.id == gameId }) else {
+            return (false, "Game not found.")
+        }
+        guard let mIdx = games[gIdx].subMatches.firstIndex(where: { $0.id == matchId }) else {
+            return (false, "Match not found.")
+        }
+        games[gIdx].subMatches.remove(at: mIdx)
+        for i in 0..<games[gIdx].subMatches.count {
+            games[gIdx].subMatches[i].matchNumber = i + 1
+            games[gIdx].subMatches[i].setNumber = i + 1
+        }
+        saveToDisk()
+        FirestoreService.shared.saveGame(games[gIdx])
+        return (true, "Removed match.")
+    }
+    
+    @discardableResult
     public func updateSubMatchScore(gameId: UUID, matchId: UUID, team1Score: Int, team2Score: Int) -> Bool {
         guard let gIdx = games.firstIndex(where: { $0.id == gameId }) else { return false }
         guard let mIdx = games[gIdx].subMatches.firstIndex(where: { $0.id == matchId }) else { return false }

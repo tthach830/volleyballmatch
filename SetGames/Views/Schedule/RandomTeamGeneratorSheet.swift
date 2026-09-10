@@ -720,10 +720,16 @@ public struct RandomTeamGeneratorSheet: View {
         var allMatches: [GeneratedMatch] = []
         var globalMatchIdx = 1
         
+        // Group and shuffle players per court so re-generating creates a fresh permutation
+        var shuffledCourtGroups: [[PoolPlayer]] = []
+        for c in 0..<courtCount {
+            shuffledCourtGroups.append(Array(cleanPlayers[c*4 ..< (c+1)*4]).shuffled())
+        }
+        
         // 3 rotating sets per court, interleaved across courts so all courts play Round 1 simultaneously, then Round 2, then Round 3
         for round in 1...3 {
             for c in 0..<courtCount {
-                let courtPlayers = Array(cleanPlayers[c*4 ..< (c+1)*4])
+                let courtPlayers = shuffledCourtGroups[c]
                 let assignedCourt = "Court #\(courtForIndex(c))"
                 
                 let t1: (PoolPlayer, PoolPlayer)
