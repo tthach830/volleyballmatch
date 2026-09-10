@@ -905,15 +905,18 @@ public struct RandomTeamGeneratorSheet: View {
     
     private func saveAllMatchesToSchedule() {
         if let gId = initialGameId {
-            let subMatches: [SubMatch] = generatedMatches.map { m in
+            let existingMatches = dataManager.games.first(where: { $0.id == gId })?.subMatches ?? []
+            let offset = existingMatches.count
+            let newSubMatches: [SubMatch] = generatedMatches.enumerated().map { idx, m in
                 let s1 = Int(m.team1Score)
                 let s2 = Int(m.team2Score)
                 let isComp = (s1 != nil && s2 != nil)
                 let win = isComp ? ((s1! > s2!) ? 1 : 2) : nil
+                let matchNum = offset + idx + 1
                 return SubMatch(
-                    matchNumber: m.matchNumber,
+                    matchNumber: matchNum,
                     courtNumber: m.courtNumber,
-                    setNumber: m.setNumber,
+                    setNumber: matchNum,
                     team1PlayerIds: [m.team1Player1.id, m.team1Player2.id],
                     team2PlayerIds: [m.team2Player1.id, m.team2Player2.id],
                     restingPlayerIds: m.restingPlayers.map { $0.id },
@@ -923,8 +926,9 @@ public struct RandomTeamGeneratorSheet: View {
                     winningTeam: win
                 )
             }
-            dataManager.saveSubMatches(gameId: gId, matches: subMatches)
-            alertMessage = "Successfully saved \(subMatches.count) matches to this game!"
+            let combined = existingMatches + newSubMatches
+            dataManager.saveSubMatches(gameId: gId, matches: combined)
+            alertMessage = "Successfully appended \(newSubMatches.count) matches! Total: \(combined.count) matches."
             showAlert = true
             return
         }

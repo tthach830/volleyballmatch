@@ -5213,16 +5213,19 @@ window.saveGeneratedMatchesToSchedule = () => {
   if (window.currentEditingGameId) {
     const parentGame = state.games.find(g => g.id === window.currentEditingGameId);
     if (parentGame) {
-      const subMatches = window.currentGeneratedMatches.map((m, idx) => {
+      const existingMatches = parentGame.subMatches || [];
+      const offset = existingMatches.length;
+      const newSubMatches = window.currentGeneratedMatches.map((m, idx) => {
         const s1 = (m.s1 !== undefined && m.s1 !== "" && m.s1 !== null) ? parseInt(m.s1) : null;
         const s2 = (m.s2 !== undefined && m.s2 !== "" && m.s2 !== null) ? parseInt(m.s2) : null;
         const isComp = Boolean(s1 !== null && s2 !== null && !isNaN(s1) && !isNaN(s2));
         const winner = isComp ? (s1 > s2 ? 1 : 2) : null;
+        const matchNum = offset + idx + 1;
         return {
-          id: "sub_" + Date.now() + "_" + idx,
-          matchNumber: m.matchNumber || idx + 1,
+          id: "sub_" + Date.now() + "_" + (offset + idx),
+          matchNumber: matchNum,
           courtNumber: m.courtNumber || "Court #1",
-          setNumber: m.setNumber || idx + 1,
+          setNumber: matchNum,
           team1PlayerIds: [resolvePlayerId(m.team1[0]), resolvePlayerId(m.team1[1])],
           team2PlayerIds: [resolvePlayerId(m.team2[0]), resolvePlayerId(m.team2[1])],
           restingPlayerIds: (m.resting || []).map(resolvePlayerId),
@@ -5233,13 +5236,13 @@ window.saveGeneratedMatchesToSchedule = () => {
         };
       });
 
-      parentGame.subMatches = subMatches;
+      parentGame.subMatches = [...existingMatches, ...newSubMatches];
       saveGameToFirestore(parentGame);
       state.saveLocal();
       window.closeRandomTeamsModal();
       window.currentEditingGameId = null;
       renderMatches();
-      showToast(`Saved ${subMatches.length} matches to ${parentGame.title}!`);
+      showToast(`Appended ${newSubMatches.length} matches to ${parentGame.title}! Total: ${parentGame.subMatches.length} matches.`);
       return;
     }
   }
