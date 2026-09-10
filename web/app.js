@@ -1682,7 +1682,15 @@ function renderMatches() {
                       </div>
                       <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #ffffff;">
                         <div style="flex: 1; text-align: left;">${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}</div>
-                        <span style="color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 900; padding: 0 8px;">VS</span>
+                        ${(m.team1Score !== undefined && m.team1Score !== null && m.team2Score !== undefined && m.team2Score !== null && m.team1Score !== "" && m.team2Score !== "") ? `
+                          <div style="display: flex; align-items: center; gap: 8px; padding: 0 10px;">
+                            <span style="font-size: 15px; font-weight: 900; color: ${m.winningTeam === 1 ? '#4ade80' : '#ffffff'};">${m.team1Score}</span>
+                            <span style="color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 900;">VS</span>
+                            <span style="font-size: 15px; font-weight: 900; color: ${m.winningTeam === 2 ? '#4ade80' : '#ffffff'};">${m.team2Score}</span>
+                          </div>
+                        ` : `
+                          <span style="color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 900; padding: 0 8px;">VS</span>
+                        `}
                         <div style="flex: 1; text-align: right;">${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot)}</div>
                       </div>
                       ${m.restingPlayerIds && m.restingPlayerIds.length > 0 ? `

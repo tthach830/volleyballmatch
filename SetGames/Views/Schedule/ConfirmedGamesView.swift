@@ -1405,22 +1405,41 @@ private struct SubMatchScoreRowView: View {
                 }
             }
             
-            // Teams Row
+            // Teams Row with Center Scores
             HStack {
                 Text(resolveNames(sm.team1PlayerIds))
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(1)
-                Spacer()
-                Text("VS")
-                    .font(.system(size: 10, weight: .black))
-                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                if let s1 = sm.team1Score, let s2 = sm.team2Score {
+                    HStack(spacing: 6) {
+                        Text("\(s1)")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : .white)
+                        
+                        Text("VS")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(Color.white.opacity(0.4))
+                        
+                        Text("\(s2)")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : .white)
+                    }
                     .padding(.horizontal, 6)
-                Spacer()
+                } else {
+                    Text("VS")
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundColor(Color.white.opacity(0.4))
+                        .padding(.horizontal, 6)
+                }
+                
                 Text(resolveNames(sm.team2PlayerIds))
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
             
             if !sm.restingPlayerIds.isEmpty {
