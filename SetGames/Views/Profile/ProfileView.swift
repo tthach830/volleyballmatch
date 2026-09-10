@@ -88,6 +88,20 @@ public struct ProfileView: View {
                                 .clipShape(Capsule())
                             }
                             
+                            if user.isStatsHidden {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 11))
+                                    Text("Stats Hidden from Ladders & Public")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                .foregroundColor(.purple)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.purple.opacity(0.12))
+                                .clipShape(Capsule())
+                            }
+                            
                             Text("\"\(user.bio)\"")
                                 .font(.system(size: 13, weight: .regular))
                                 .italic()
@@ -165,10 +179,18 @@ public struct ProfileView: View {
                         
                         // Performance & Record Grid
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("RECORD & PERFORMANCE")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal)
+                            HStack {
+                                Text("RECORD & PERFORMANCE")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                if user.isStatsHidden {
+                                    Text("🔒 PRIVATE TO OTHERS")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.purple)
+                                }
+                            }
+                            .padding(.horizontal)
                             
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                                 StatCard(
@@ -205,6 +227,34 @@ public struct ProfileView: View {
                             }
                             .padding(.horizontal)
                         }
+                        
+                        // Privacy & Visibility Settings Card
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Image(systemName: "lock.shield.fill")
+                                    .foregroundColor(.blue)
+                                Text("PRIVACY SETTINGS")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Toggle(isOn: Binding(
+                                get: { user.isStatsHidden },
+                                set: { dataManager.setStatsHidden($0) }
+                            )) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Hide Stats from Ladders & Public")
+                                        .font(.system(size: 14, weight: .semibold))
+                                    Text(user.isStatsHidden ? "Your record and rankings are hidden from leaderboards and other players" : "Your stats and rankings are visible on public ladders")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .padding(14)
+                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal)
                         
                         // Account & Demo Actions
                         VStack(spacing: 12) {

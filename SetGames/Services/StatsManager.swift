@@ -7,9 +7,9 @@ public class StatsManager {
     
     /// Generates top competitive ladder ranked by Elo rating, then Win Rate and Wins
     public func topPlayersLadder(from players: [Player], filterTier: RatingTier? = nil) -> [Player] {
-        var filtered = players
+        var filtered = players.filter { !$0.isStatsHidden }
         if let tier = filterTier {
-            filtered = players.filter { $0.rating == tier }
+            filtered = filtered.filter { $0.rating == tier }
         }
         
         return filtered.sorted { p1, p2 in
@@ -25,7 +25,8 @@ public class StatsManager {
     
     /// Generates "The Popular Kids" ladder ranked by unique players played with
     public func popularKidsLadder(from players: [Player]) -> [Player] {
-        return players.sorted { p1, p2 in
+        let visiblePlayers = players.filter { !$0.isStatsHidden }
+        return visiblePlayers.sorted { p1, p2 in
             let c1 = p1.uniqueConnectionsCount
             let c2 = p2.uniqueConnectionsCount
             if c1 != c2 {

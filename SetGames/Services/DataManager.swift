@@ -1296,7 +1296,8 @@ public class DataManager: ObservableObject {
         rating: RatingTier,
         homeBeach: String,
         phoneNumber: String,
-        bio: String
+        bio: String,
+        isStatsHidden: Bool? = nil
     ) {
         guard var user = currentUser else { return }
         user.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1306,12 +1307,26 @@ public class DataManager: ObservableObject {
         user.homeBeach = homeBeach.trimmingCharacters(in: .whitespacesAndNewlines)
         user.phoneNumber = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         user.bio = bio.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let hidden = isStatsHidden {
+            user.isStatsHidden = hidden
+        }
         
         currentUser = user
         if let idx = players.firstIndex(where: { $0.id == user.id }) {
             players[idx] = user
         } else {
             players.append(user)
+        }
+        saveToDisk()
+        FirestoreService.shared.savePlayer(user)
+    }
+    
+    public func setStatsHidden(_ hidden: Bool) {
+        guard var user = currentUser else { return }
+        user.isStatsHidden = hidden
+        currentUser = user
+        if let idx = players.firstIndex(where: { $0.id == user.id }) {
+            players[idx] = user
         }
         saveToDisk()
         FirestoreService.shared.savePlayer(user)

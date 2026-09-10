@@ -1897,7 +1897,7 @@ function renderLadder() {
   if (!container) return;
 
   const tier = state.selectedLadderTier;
-  let filtered = [...state.players];
+  let filtered = state.players.filter(p => !p.isStatsHidden);
   if (tier !== "All") {
     filtered = filtered.filter(p => p.rating === tier);
   }
@@ -1912,6 +1912,15 @@ function renderLadder() {
     if (rateB !== rateA) return rateB - rateA;
     return b.wins - a.wins;
   });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 13px;">
+        No public player rankings available in this tier.
+      </div>
+    `;
+    return;
+  }
 
   container.innerHTML = filtered.map((player, idx) => {
     const rank = idx + 1;
@@ -1940,7 +1949,8 @@ function renderPopularKids() {
   const container = document.getElementById("popular-list");
   if (!container) return;
 
-  const sorted = [...state.players].sort((a, b) => {
+  const visiblePlayers = state.players.filter(p => !p.isStatsHidden);
+  const sorted = [...visiblePlayers].sort((a, b) => {
     const connA = getUniqueConnectionsCount(a);
     const connB = getUniqueConnectionsCount(b);
     if (connB !== connA) return connB - connA;
@@ -1948,6 +1958,15 @@ function renderPopularKids() {
     const matchesB = (b.wins || 0) + (b.losses || 0);
     return matchesB - matchesA;
   });
+
+  if (sorted.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 13px;">
+        No public player network rankings available yet.
+      </div>
+    `;
+    return;
+  }
 
   container.innerHTML = sorted.map((player, idx) => {
     const rank = idx + 1;
@@ -2008,6 +2027,12 @@ function renderProfile() {
     flakerBadge.style.display = ((user.consecutiveBackouts || 0) >= 3) ? "block" : "none";
   }
 
+  // Privacy header badge
+  const privHeaderBadge = document.getElementById("profile-header-privacy-badge");
+  if (privHeaderBadge) {
+    privHeaderBadge.style.display = user.isStatsHidden ? "block" : "none";
+  }
+
   // Bio
   const bioEl = document.getElementById("profile-bio-display");
   if (bioEl) {
@@ -2039,6 +2064,13 @@ function renderProfile() {
 
   const beachEl = document.getElementById("profile-beach-display");
   if (beachEl) beachEl.textContent = user.homeBeach || "Main Beach";
+
+  // Privacy Toggle & Badge in Profile Card
+  const hideToggle = document.getElementById("profile-hide-stats-toggle");
+  if (hideToggle) hideToggle.checked = !!user.isStatsHidden;
+
+  const privBadge = document.getElementById("profile-privacy-badge");
+  if (privBadge) privBadge.style.display = user.isStatsHidden ? "inline-block" : "none";
 
   updatePushStatusBadge();
 
@@ -2077,6 +2109,24 @@ function renderProfile() {
   }
 }
 
+window.toggleHideStats = (val) => {
+  const user = state.currentUser;
+  if (!user) return;
+  user.isStatsHidden = !!val;
+
+  const idx = state.players.findIndex(p => p.id === user.id);
+  if (idx !== -1) {
+    state.players[idx] = user;
+  }
+
+  state.saveLocal();
+  savePlayerToFirestore(user);
+  renderProfile();
+  renderLadder();
+  renderPopularKids();
+  showToast(user.isStatsHidden ? "🔒 Stats hidden from public ladders & profiles" : "🌍 Stats visible on public ladders");
+};
+
 window.openEditProfileModal = () => {
   const user = state.currentUser;
   if (!user) return;
@@ -2102,6 +2152,9 @@ window.openEditProfileModal = () => {
   }
 
   document.getElementById("edit-profile-bio").value = user.bio || "";
+
+  const editHideToggle = document.getElementById("edit-profile-hide-stats");
+  if (editHideToggle) editHideToggle.checked = !!user.isStatsHidden;
 
   const currentAvatar = user.avatarEmoji || "slug";
   window.selectedEditProfileAvatar = currentAvatar;
@@ -2139,6 +2192,8 @@ window.handleSaveEditProfile = (e) => {
   const homeBeach = document.getElementById("edit-profile-beach").value;
   const bio = document.getElementById("edit-profile-bio").value.trim();
   const avatarEmoji = window.selectedEditProfileAvatar || user.avatarEmoji || "slug";
+  const hideStatsEl = document.getElementById("edit-profile-hide-stats");
+  const isStatsHidden = hideStatsEl ? hideStatsEl.checked : !!user.isStatsHidden;
 
   if (!name) {
     showToast("Please enter your name.");
@@ -2152,6 +2207,7 @@ window.handleSaveEditProfile = (e) => {
   user.homeBeach = homeBeach;
   user.bio = bio;
   user.avatarEmoji = avatarEmoji;
+  user.isStatsHidden = isStatsHidden;
 
   const idx = state.players.findIndex(p => p.id === user.id);
   if (idx !== -1) {
@@ -2164,6 +2220,7 @@ window.handleSaveEditProfile = (e) => {
   renderHeader();
   renderProfile();
   renderLadder();
+  renderPopularKids();
   renderMatches();
   showToast("Profile updated & synced successfully!");
 };

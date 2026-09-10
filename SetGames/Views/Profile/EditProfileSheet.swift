@@ -11,6 +11,7 @@ public struct EditProfileSheet: View {
     @State private var homeBeach: String = "Main Beach"
     @State private var phoneNumber: String = ""
     @State private var bio: String = ""
+    @State private var isStatsHidden: Bool = false
     
     private let availableAvatars: [String] = [
         "slug", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
@@ -152,6 +153,21 @@ public struct EditProfileSheet: View {
                 } header: {
                     Text("BIO & PLAY STYLE")
                 }
+                
+                // Section 5: Privacy & Leaderboard Visibility
+                Section {
+                    Toggle(isOn: $isStatsHidden) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Hide Stats from Ladders & Public")
+                                .font(.system(size: 15, weight: .medium))
+                            Text("Excludes your profile and win records from the competitive ladder and public view.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("PRIVACY SETTINGS")
+                }
             }
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
@@ -185,6 +201,7 @@ public struct EditProfileSheet: View {
         homeBeach = user.homeBeach
         phoneNumber = user.phoneNumber
         bio = user.bio
+        isStatsHidden = user.isStatsHidden
     }
     
     private func saveProfile() {
@@ -195,7 +212,8 @@ public struct EditProfileSheet: View {
             rating: rating,
             homeBeach: homeBeach,
             phoneNumber: phoneNumber,
-            bio: bio
+            bio: bio,
+            isStatsHidden: isStatsHidden
         )
         dismiss()
     }

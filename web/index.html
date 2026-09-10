@@ -148,6 +148,10 @@
           ⚠️ Flaker: -1.0 Rating Penalty (Backed out 3x in a row)
         </div>
 
+        <div id="profile-header-privacy-badge" style="display: none; background: #f3e8ff; color: #7e22ce; font-size: 12px; font-weight: 800; padding: 4px 12px; border-radius: 20px; margin: 10px auto 0; width: fit-content;">
+          🔒 Stats Hidden from Ladders & Public
+        </div>
+
         <div id="profile-bio-display" style="font-size: 13px; color: var(--text-muted); font-style: italic; margin-top: 14px; padding: 0 10px;">
           "Ready for some fun beach doubles on the sand!"
         </div>
@@ -192,6 +196,21 @@
         <div class="match-card" style="text-align: center; padding: 14px;">
           <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">HOME BEACH</div>
           <div id="profile-beach-display" style="font-size: 14px; font-weight: 800; color: var(--text); margin-top: 4px;">Main Beach</div>
+        </div>
+      </div>
+
+      <!-- Privacy & Leaderboard Visibility Card -->
+      <div class="match-card" style="margin-top: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <div style="font-weight: 800; font-size: 15px;">🔒 Privacy & Stats Visibility</div>
+          <span id="profile-privacy-badge" class="badge" style="background:#f3e8ff; color:#7e22ce; display:none;">Stats Hidden</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;">
+          <div style="padding-right: 12px;">
+            <div style="font-size: 13px; font-weight: 700;">Hide Stats from Ladders & Public</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Excludes your profile, ELO, and win records from public ladders and leaderboards</div>
+          </div>
+          <input type="checkbox" id="profile-hide-stats-toggle" onchange="window.toggleHideStats(this.checked)" style="cursor: pointer; width: 22px; height: 22px; accent-color: var(--accent); flex-shrink: 0;">
         </div>
       </div>
 
@@ -897,6 +916,14 @@
             <textarea id="edit-profile-bio" class="form-input" rows="3" placeholder="Tell other players about your style (e.g. setter, blocker, cut-shots)..."></textarea>
           </div>
 
+          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg); padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;">
+            <div style="padding-right: 12px;">
+              <label class="form-label" for="edit-profile-hide-stats" style="margin-bottom: 2px; cursor: pointer; font-size: 13px; font-weight: 700;">Hide Stats from Ladders & Public</label>
+              <div style="font-size: 11px; color: var(--text-muted);">Exclude your profile, ELO, and records from public ladders</div>
+            </div>
+            <input type="checkbox" id="edit-profile-hide-stats" style="cursor: pointer; width: 22px; height: 22px; accent-color: var(--accent); flex-shrink: 0;">
+          </div>
+
           <div style="display: flex; gap: 10px; margin-top: 18px;">
             <button type="button" class="btn btn-outline" style="flex: 1;" onclick="window.closeEditProfileModal()">Cancel</button>
             <button type="submit" class="btn btn-primary" style="flex: 2;">Save Changes</button>
@@ -984,6 +1011,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=6.8"></script>
+  <script type="module" src="app.js?v=7.0"></script>
 </body>
 </html>

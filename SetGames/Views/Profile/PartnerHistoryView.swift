@@ -107,9 +107,19 @@ public struct PartnerHistoryView: View {
             
             Spacer()
             
-            Text(p.formattedRecord)
-                .font(.system(size: 13, weight: .semibold))
+            if p.isStatsHidden {
+                HStack(spacing: 4) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10))
+                    Text("Private")
+                        .font(.system(size: 12, weight: .medium))
+                }
                 .foregroundColor(.secondary)
+            } else {
+                Text(p.formattedRecord)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(12)
         .background(Color(UIColor.secondarySystemGroupedBackground))
