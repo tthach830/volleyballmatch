@@ -2,10 +2,12 @@ import SwiftUI
 
 public struct TopPlayersLadderView: View {
     @ObservedObject var dataManager: DataManager
+    var timeframe: StatsManager.LadderTimeframe = .allTime
     @State private var selectedTierFilter: RatingTier? = nil
     
-    public init(dataManager: DataManager) {
+    public init(dataManager: DataManager, timeframe: StatsManager.LadderTimeframe = .allTime) {
         self.dataManager = dataManager
+        self.timeframe = timeframe
     }
     
     public var body: some View {
@@ -47,7 +49,12 @@ public struct TopPlayersLadderView: View {
             }
             
             // Ladder List
-            let rankedPlayers = StatsManager.shared.topPlayersLadder(from: dataManager.players, filterTier: selectedTierFilter)
+            let rankedPlayers = StatsManager.shared.topPlayersLadder(
+                from: dataManager.players,
+                games: dataManager.games,
+                filterTier: selectedTierFilter,
+                timeframe: timeframe
+            )
             
             if rankedPlayers.isEmpty {
                 VStack(spacing: 8) {

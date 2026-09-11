@@ -41,33 +41,122 @@ public class StatsManager {
         return Array(grouped.values)
     }
     
+    public enum LadderTimeframe: String, CaseIterable {
+        case month = "Month"
+        case year = "Year"
+        case allTime = "All Time"
+    }
+    
+    /// Filters games by timeframe (e.g. last 30 days for month, 365 days for year, or all)
+    public func filterGamesByTimeframe(_ games: [SetGame], timeframe: LadderTimeframe) -> [SetGame] {
+        switch timeframe {
+        case .allTime:
+            return games
+        case .month:
+            let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date().addingTimeInterval(-30 * 86400)
+            return games.filter { $0.scheduledDate >= cutoff }
+        case .year:
+            let cutoff = Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date().addingTimeInterval(-365 * 86400)
+            return games.filter { $0.scheduledDate >= cutoff }
+        }
+    }
+
     /// Generates top competitive ladder ranked by Elo rating, then Win Rate and Wins
-    public func topPlayersLadder(from players: [Player], filterTier: RatingTier? = nil) -> [Player] {
+    public func topPlayersLadder(
+        from players: [Player],
+        games: [SetGame] = [],
+        filterTier: RatingTier? = nil,
+        timeframe: LadderTimeframe = .allTime
+    ) -> [Player] {
         let deduped = deduplicatePlayers(players)
         var filtered = deduped.filter { !$0.isStatsHidden }
         if let tier = filterTier {
             filtered = filtered.filter { $0.rating == tier }
         }
         
-        return filtered.sorted { p1, p2 in
-            if p1.eloRating != p2.eloRating {
-                return p1.eloRating > p2.eloRating
+        if timeframe == .allTime || games.isEmpty {
+            return filtered.sorted { p1, p2 in
+                if p1.eloRating != p2.eloRating {
+                    return p1.eloRating > p2.eloRating
+                }
+                if p1.winRate != p2.winRate {
+                    return p1.winRate > p2.winRate
+                }
+                return p1.wins > p2.wins
+            }
+        }
+        
+        let filteredGames = filterGamesByTimeframe(games, timeframe: timeframe)
+        
+        var periodStats: [UUID: (wins: Int, losses: Int, elo: Int, matchesCount: Int)] = [:]
+        for p in filtered {
+            periodStats[p.id] = (0, 0, p.eloRating, 0)
+        }
+        
+        for g in filteredGames {
+            let isGameCompleted = g.status == .completed
+            let subMatches = !g.subMatches.isEmpty ? g.subMatches : [SubMatch(matchNumber: 1, courtNumber: g.courtNumber, team1PlayerIds: g.team1PlayerIds, team2PlayerIds: g.team2PlayerIds, isCompleted: isGameCompleted)]
+            for m in subMatches {
+                guard let s1 = m.team1Score, let s2 = m.team2Score, (m.isCompleted || isGameCompleted || s1 > 0 || s2 > 0) else { continue }
+                let winningTeam = s1 > s2 ? 1 : (s2 > s1 ? 2 : 0)
+                guard winningTeam > 0 else { continue }
+                
+                let t1 = m.team1PlayerIds
+                let t2 = m.team2PlayerIds
+                
+                for pid in t1 {
+                    if var st = periodStats[pid] {
+                        if winningTeam == 1 { st.wins += 1; st.elo += 24 }
+                        else { st.losses += 1; st.elo = max(800, st.elo - 20) }
+                        st.matchesCount += 1
+                        periodStats[pid] = st
+                    }
+                }
+                for pid in t2 {
+                    if var st = periodStats[pid] {
+                        if winningTeam == 2 { st.wins += 1; st.elo += 24 }
+                        else { st.losses += 1; st.elo = max(800, st.elo - 20) }
+                        st.matchesCount += 1
+                        periodStats[pid] = st
+                    }
+                }
+            }
+        }
+        
+        var periodPlayers: [Player] = []
+        for p in filtered {
+            var clone = p
+            if let st = periodStats[p.id] {
+                clone.wins = st.wins
+                clone.losses = st.losses
+                clone.eloRating = st.elo
+            }
+            periodPlayers.append(clone)
+        }
+        
+        return periodPlayers.sorted { p1, p2 in
+            let count1 = (periodStats[p1.id]?.matchesCount ?? 0)
+            let count2 = (periodStats[p2.id]?.matchesCount ?? 0)
+            if (count1 > 0) != (count2 > 0) {
+                return count1 > 0
+            }
+            if p1.wins != p2.wins {
+                return p1.wins > p2.wins
             }
             if p1.winRate != p2.winRate {
                 return p1.winRate > p2.winRate
             }
-            return p1.wins > p2.wins
+            return p1.eloRating > p2.eloRating
         }
     }
     
     /// Recalculates and merges unique partner and opponent IDs dynamically from all scheduled and past matches
-    public func recalculateConnections(players: [Player], games: [SetGame]) -> [Player] {
-        guard !games.isEmpty else { return players }
+    public func recalculateConnections(players: [Player], games: [SetGame], reset: Bool = false) -> [Player] {
         var updated = players
         for i in 0..<updated.count {
             let pid = updated[i].id
-            var partners = Set(updated[i].uniquePartnerIds)
-            var opponents = Set(updated[i].uniqueOpponentIds)
+            var partners = reset ? Set<UUID>() : Set(updated[i].uniquePartnerIds)
+            var opponents = reset ? Set<UUID>() : Set(updated[i].uniqueOpponentIds)
             
             for g in games {
                 let isGameCompleted = g.status == .completed
@@ -94,8 +183,10 @@ public class StatsManager {
     }
     
     /// Generates "The Popular Kids" ladder ranked by unique players played with
-    public func popularKidsLadder(from players: [Player], games: [SetGame] = []) -> [Player] {
-        let connectedPlayers = games.isEmpty ? players : recalculateConnections(players: players, games: games)
+    public func popularKidsLadder(from players: [Player], games: [SetGame] = [], timeframe: LadderTimeframe = .allTime) -> [Player] {
+        let isTimeframeFiltered = timeframe != .allTime
+        let filteredGames = isTimeframeFiltered ? filterGamesByTimeframe(games, timeframe: timeframe) : games
+        let connectedPlayers = recalculateConnections(players: players, games: filteredGames, reset: isTimeframeFiltered)
         let deduped = deduplicatePlayers(connectedPlayers)
         let visiblePlayers = deduped.filter { !$0.isStatsHidden }
         return visiblePlayers.sorted { p1, p2 in

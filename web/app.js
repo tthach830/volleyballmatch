@@ -297,7 +297,7 @@ export function isPlayerInList(list, playerId) {
 }
 window.isPlayerInList = isPlayerInList;
 
-export function getPlayerConnections(player) {
+export function getPlayerConnections(player, timeframe = "allTime") {
   if (!player) return { partners: new Set(), opponents: new Set(), partnersCount: 0, opponentsCount: 0, total: 0 };
   const partners = new Set();
   const opponents = new Set();
@@ -315,21 +315,32 @@ export function getPlayerConnections(player) {
     return false;
   };
 
-  // 1. Include explicit stored IDs
-  if (Array.isArray(player.uniquePartnerIds)) {
-    player.uniquePartnerIds.forEach(id => {
-      if (id && !isMe(id)) partners.add(String(id));
-    });
-  }
-  if (Array.isArray(player.uniqueOpponentIds)) {
-    player.uniqueOpponentIds.forEach(id => {
-      if (id && !isMe(id)) opponents.add(String(id));
-    });
+  const isTimeframeFiltered = timeframe === "month" || timeframe === "year";
+  const cutoffDays = timeframe === "month" ? 30 : 365;
+  const cutoffTime = Date.now() - cutoffDays * 24 * 60 * 60 * 1000;
+
+  // 1. Include explicit stored IDs ONLY if all-time
+  if (!isTimeframeFiltered) {
+    if (Array.isArray(player.uniquePartnerIds)) {
+      player.uniquePartnerIds.forEach(id => {
+        if (id && !isMe(id)) partners.add(String(id));
+      });
+    }
+    if (Array.isArray(player.uniqueOpponentIds)) {
+      player.uniqueOpponentIds.forEach(id => {
+        if (id && !isMe(id)) opponents.add(String(id));
+      });
+    }
   }
 
   // 2. Scan completed games and sub-matches in state.games (only completed / played matches)
   if (Array.isArray(state.games)) {
     for (const g of state.games) {
+      if (isTimeframeFiltered) {
+        const gTime = parseGameDate(g.scheduledDate).getTime();
+        if (gTime < cutoffTime) continue;
+      }
+
       const isGameCompleted = g.status === "completed";
       const subMatches = (Array.isArray(g.subMatches) && g.subMatches.length > 0) 
         ? g.subMatches 
@@ -724,6 +735,7 @@ class AppState {
     this.availabilitySlots = deduplicateSlots(savedSlots || []);
     this.pickupQueue = [];
     this.selectedLadderTier = "All";
+    this.selectedLadderTimeframe = "month";
     this.collapsedMatches = {};
     this.collapsedPools = {};
     this.isDemoModeEnabled = localStorage.getItem("setgames_demo_mode") === "true";
@@ -2049,18 +2061,72 @@ function renderLadder() {
     filtered = filtered.filter(p => p.rating === tier);
   }
 
-  // Sort by ELO, then Win Rate %, then Wins (matching iOS StatsManager.topPlayersLadder)
-  filtered.sort((a, b) => {
-    if (b.eloRating !== a.eloRating) return b.eloRating - a.eloRating;
+  const tf = state.selectedLadderTimeframe || "month";
+  const isTimeframeFiltered = tf === "month" || tf === "year";
+  const cutoffDays = tf === "month" ? 30 : 365;
+  const cutoffTime = Date.now() - cutoffDays * 24 * 60 * 60 * 1000;
+
+  const timeframeGames = isTimeframeFiltered 
+    ? (state.games || []).filter(g => parseGameDate(g.scheduledDate).getTime() >= cutoffTime)
+    : (state.games || []);
+
+  let playerList = filtered.map(p => {
+    if (!isTimeframeFiltered) {
+      return { ...p, periodPlayed: (p.wins + p.losses) > 0 };
+    }
+    let pWins = 0;
+    let pLosses = 0;
+    let pElo = p.eloRating || 1500;
+    let matchesCount = 0;
+
+    for (const g of timeframeGames) {
+      const isGameCompleted = g.status === "completed";
+      const subMatches = (Array.isArray(g.subMatches) && g.subMatches.length > 0) ? g.subMatches : [g];
+      for (const m of subMatches) {
+        if (m.team1Score == null || m.team2Score == null) continue;
+        const s1 = Number(m.team1Score);
+        const s2 = Number(m.team2Score);
+        if (s1 === 0 && s2 === 0 && !m.isCompleted && !isGameCompleted) continue;
+        const winner = s1 > s2 ? 1 : (s2 > s1 ? 2 : 0);
+        if (winner === 0) continue;
+        const inT1 = (m.team1PlayerIds || []).some(id => isSamePlayer(id, p.id));
+        const inT2 = (m.team2PlayerIds || []).some(id => isSamePlayer(id, p.id));
+        if (inT1) {
+          matchesCount++;
+          if (winner === 1) { pWins++; pElo += 24; }
+          else { pLosses++; pElo = Math.max(800, pElo - 20); }
+        } else if (inT2) {
+          matchesCount++;
+          if (winner === 2) { pWins++; pElo += 24; }
+          else { pLosses++; pElo = Math.max(800, pElo - 20); }
+        }
+      }
+    }
+    return {
+      ...p,
+      wins: pWins,
+      losses: pLosses,
+      eloRating: pElo,
+      periodPlayed: matchesCount > 0
+    };
+  });
+
+  playerList.sort((a, b) => {
+    if (isTimeframeFiltered) {
+      const playedA = a.periodPlayed ? 1 : 0;
+      const playedB = b.periodPlayed ? 1 : 0;
+      if (playedB !== playedA) return playedB - playedA;
+    }
+    if (b.wins !== a.wins) return b.wins - a.wins;
     const totalA = a.wins + a.losses;
     const totalB = b.wins + b.losses;
     const rateA = totalA > 0 ? (a.wins / totalA) : 0;
     const rateB = totalB > 0 ? (b.wins / totalB) : 0;
     if (rateB !== rateA) return rateB - rateA;
-    return b.wins - a.wins;
+    return (b.eloRating || 1500) - (a.eloRating || 1500);
   });
 
-  if (filtered.length === 0) {
+  if (playerList.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 13px;">
         No public player rankings available in this tier.
@@ -2069,7 +2135,7 @@ function renderLadder() {
     return;
   }
 
-  container.innerHTML = filtered.map((player, idx) => {
+  container.innerHTML = playerList.map((player, idx) => {
     const rank = idx + 1;
     const total = player.wins + player.losses;
     const pct = total > 0 ? Math.round((player.wins / total) * 100) : 0;
@@ -2096,11 +2162,12 @@ function renderPopularKids() {
   const container = document.getElementById("popular-list");
   if (!container) return;
 
+  const tf = state.selectedLadderTimeframe || "month";
   const deduped = deduplicatePlayers(state.players);
   const visiblePlayers = deduped.filter(p => !p.isStatsHidden);
   const sorted = [...visiblePlayers].sort((a, b) => {
-    const connA = getUniqueConnectionsCount(a);
-    const connB = getUniqueConnectionsCount(b);
+    const connA = getPlayerConnections(a, tf).total;
+    const connB = getPlayerConnections(b, tf).total;
     if (connB !== connA) return connB - connA;
     const matchesA = (a.wins || 0) + (a.losses || 0);
     const matchesB = (b.wins || 0) + (b.losses || 0);
@@ -2118,7 +2185,7 @@ function renderPopularKids() {
 
   container.innerHTML = sorted.map((player, idx) => {
     const rank = idx + 1;
-    const net = getPlayerConnections(player);
+    const net = getPlayerConnections(player, tf);
     const connections = net.total;
     const isCurrent = player.id === state.currentUser?.id;
     const badgeTitle = getPopularKidsTitle(connections);
@@ -2139,6 +2206,41 @@ function renderPopularKids() {
     `;
   }).join("");
 }
+
+window.toggleLadderTimeframe = function(type) {
+  const monthBox = document.getElementById("ladder-filter-month");
+  const yearBox = document.getElementById("ladder-filter-year");
+  const subtitleEl = document.getElementById("ladder-timeframe-subtitle");
+
+  if (type === "month") {
+    if (monthBox && monthBox.checked) {
+      if (yearBox) yearBox.checked = false;
+      state.selectedLadderTimeframe = "month";
+    } else {
+      state.selectedLadderTimeframe = "allTime";
+    }
+  } else if (type === "year") {
+    if (yearBox && yearBox.checked) {
+      if (monthBox) monthBox.checked = false;
+      state.selectedLadderTimeframe = "year";
+    } else {
+      state.selectedLadderTimeframe = "allTime";
+    }
+  }
+
+  if (subtitleEl) {
+    if (state.selectedLadderTimeframe === "month") {
+      subtitleEl.textContent = "Last 30 days rankings and social catalysts on the sand";
+    } else if (state.selectedLadderTimeframe === "year") {
+      subtitleEl.textContent = "Past year rankings and social catalysts on the sand";
+    } else {
+      subtitleEl.textContent = "All-time rankings and social catalysts on the sand";
+    }
+  }
+
+  renderLadder();
+  renderPopularKids();
+};
 
 function renderProfile() {
   const user = state.currentUser;

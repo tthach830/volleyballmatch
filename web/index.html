@@ -88,8 +88,21 @@
     <main id="tab-ladders" class="tab-content active">
       <div class="ios-view-header">
         <div>
-          <h1 class="ios-large-title">Beach Ladders</h1>
-          <div class="ios-subtitle">Rankings and social catalysts on the sand</div>
+          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <h1 class="ios-large-title" style="margin-bottom: 0;">Beach Ladders</h1>
+            <!-- Month, Year Checkboxes -->
+            <div class="ladder-timeframe-checkboxes" style="display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+              <label class="ladder-checkbox-label" style="display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--text-main, #ffffff); user-select: none;">
+                <input type="checkbox" id="ladder-filter-month" checked onchange="window.toggleLadderTimeframe('month')" style="accent-color: #f97316; cursor: pointer; width: 16px; height: 16px;">
+                Month
+              </label>
+              <label class="ladder-checkbox-label" style="display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--text-main, #ffffff); user-select: none;">
+                <input type="checkbox" id="ladder-filter-year" onchange="window.toggleLadderTimeframe('year')" style="accent-color: #f97316; cursor: pointer; width: 16px; height: 16px;">
+                Year
+              </label>
+            </div>
+          </div>
+          <div class="ios-subtitle" id="ladder-timeframe-subtitle">Last 30 days rankings and social catalysts on the sand</div>
         </div>
       </div>
 
@@ -1014,6 +1027,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=8.4"></script>
+  <script type="module" src="app.js?v=8.5"></script>
 </body>
 </html>

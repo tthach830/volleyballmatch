@@ -2,9 +2,11 @@ import SwiftUI
 
 public struct PopularKidsLadderView: View {
     @ObservedObject var dataManager: DataManager
+    var timeframe: StatsManager.LadderTimeframe = .allTime
     
-    public init(dataManager: DataManager) {
+    public init(dataManager: DataManager, timeframe: StatsManager.LadderTimeframe = .allTime) {
         self.dataManager = dataManager
+        self.timeframe = timeframe
     }
     
     public var body: some View {
@@ -34,7 +36,11 @@ public struct PopularKidsLadderView: View {
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .padding(.horizontal)
             
-            let popularKids = StatsManager.shared.popularKidsLadder(from: dataManager.players, games: dataManager.games)
+            let popularKids = StatsManager.shared.popularKidsLadder(
+                from: dataManager.players,
+                games: dataManager.games,
+                timeframe: timeframe
+            )
             
             LazyVStack(spacing: 10) {
                 ForEach(Array(popularKids.enumerated()), id: \.element.id) { index, player in
