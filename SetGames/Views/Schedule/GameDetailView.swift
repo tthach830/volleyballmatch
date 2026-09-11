@@ -1354,7 +1354,7 @@ public struct GameDetailView: View {
                         }
                     }
                 } else {
-                    Text("Scheduled • Unplayed")
+                    Text("Unplayed")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
