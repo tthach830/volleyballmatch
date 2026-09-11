@@ -1444,11 +1444,17 @@ private struct SubMatchScoreRowView: View {
             
             // Teams Row with Center Score Inputs (Auto-saves on input)
             HStack(spacing: 6) {
-                Text(resolveNames(sm.team1PlayerIds))
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 3) {
+                    if sm.winningTeam == 1 {
+                        Text("🏅")
+                            .font(.system(size: 10))
+                    }
+                    Text(resolveNames(sm.team1PlayerIds))
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 // Center Score Inputs + VS
                 HStack(spacing: 6) {
@@ -1490,11 +1496,17 @@ private struct SubMatchScoreRowView: View {
                 }
                 .fixedSize()
                 
-                Text(resolveNames(sm.team2PlayerIds))
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                HStack(spacing: 3) {
+                    Text(resolveNames(sm.team2PlayerIds))
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))
+                        .lineLimit(1)
+                    if sm.winningTeam == 2 {
+                        Text("🏅")
+                            .font(.system(size: 10))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             
             if !sm.restingPlayerIds.isEmpty {
