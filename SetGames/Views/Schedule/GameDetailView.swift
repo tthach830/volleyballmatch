@@ -1294,21 +1294,16 @@ public struct GameDetailView: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 Spacer()
-                if match.isCompleted {
-                    Text("SCORED ✓")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.green)
-                }
             }
             
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Team 1")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(match.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45).opacity(0.8))
+                        .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45).opacity(0.8))
                     Text(t1Names.isEmpty ? "Team 1" : t1Names)
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(match.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
+                        .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
@@ -1320,10 +1315,10 @@ public struct GameDetailView: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Team 2")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(match.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98).opacity(0.8))
+                        .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98).opacity(0.8))
                     Text(t2Names.isEmpty ? "Team 2" : t2Names)
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(match.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))
+                        .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98))
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }

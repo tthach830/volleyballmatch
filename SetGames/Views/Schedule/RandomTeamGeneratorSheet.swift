@@ -67,11 +67,6 @@ public struct GeneratedMatchRow: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                if match.isCompleted {
-                    Text("SCORED ✓")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.green)
-                }
             }
             
             HStack(spacing: 8) {

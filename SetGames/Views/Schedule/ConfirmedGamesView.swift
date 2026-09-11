@@ -1414,16 +1414,6 @@ private struct SubMatchScoreRowView: View {
                     .foregroundColor(Color(red: 0.49, green: 0.23, blue: 0.93))
                 Spacer()
                 HStack(spacing: 6) {
-                    if sm.isCompleted {
-                        Text("SCORED ✓")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundColor(.green)
-                    } else {
-                        Text("Scheduled")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    
                     Button {
                         _ = dataManager.deleteSubMatch(gameId: game.id, matchId: sm.id)
                     } label: {
@@ -1443,7 +1433,7 @@ private struct SubMatchScoreRowView: View {
             HStack(spacing: 6) {
                 Text(resolveNames(sm.team1PlayerIds, sm.winningTeam == 1))
                     .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
+                    .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
@@ -1453,7 +1443,7 @@ private struct SubMatchScoreRowView: View {
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.center)
                         .font(.system(size: 13, weight: .black))
-                        .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
+                        .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45))
                         .frame(width: 44, height: 32)
                         .background(Color(red: 0.12, green: 0.14, blue: 0.20))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -1473,7 +1463,7 @@ private struct SubMatchScoreRowView: View {
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.center)
                         .font(.system(size: 13, weight: .black))
-                        .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))
+                        .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98))
                         .frame(width: 44, height: 32)
                         .background(Color(red: 0.12, green: 0.14, blue: 0.20))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -1489,7 +1479,7 @@ private struct SubMatchScoreRowView: View {
                 
                 Text(resolveNames(sm.team2PlayerIds, sm.winningTeam == 2))
                     .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))
+                    .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
