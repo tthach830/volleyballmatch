@@ -1445,7 +1445,7 @@ private struct SubMatchScoreRowView: View {
             // Teams Row with Center Score Inputs & Save
             HStack(spacing: 6) {
                 Text(resolveNames(sm.team1PlayerIds))
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 8, weight: .bold))
                     .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1505,7 +1505,7 @@ private struct SubMatchScoreRowView: View {
                 }
                 
                 Text(resolveNames(sm.team2PlayerIds))
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 8, weight: .bold))
                     .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .trailing)
