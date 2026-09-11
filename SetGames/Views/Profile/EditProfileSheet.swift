@@ -14,7 +14,7 @@ public struct EditProfileSheet: View {
     @State private var isStatsHidden: Bool = false
     
     private let availableAvatars: [String] = [
-        "slug", "seagull-fry", "sunburned-tourist", "dramatic-sand-crab", "✝️", "ichthys", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
+        "slug", "derp_ball", "lobster", "sunburn", "net_stuck", "seagull", "sand_face", "wilson", "✝️", "ichthys", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
     ]
     
     private let availableBeaches: [String] = [
@@ -37,15 +37,6 @@ public struct EditProfileSheet: View {
             return true
         }
         if (avatar == "cross" || avatar == "✝️" || avatar == "✝") && (avatarEmoji == "cross" || avatarEmoji == "✝️" || avatarEmoji == "✝") {
-            return true
-        }
-        if avatar == "seagull-fry" && (avatarEmoji == "seagull-fry" || avatarEmoji.contains("seagull")) {
-            return true
-        }
-        if avatar == "sunburned-tourist" && (avatarEmoji == "sunburned-tourist" || avatarEmoji.contains("sunburned")) {
-            return true
-        }
-        if avatar == "dramatic-sand-crab" && (avatarEmoji == "dramatic-sand-crab" || avatarEmoji.contains("sand-crab") || avatarEmoji.contains("sand_crab")) {
             return true
         }
         return false

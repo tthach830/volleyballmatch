@@ -30,226 +30,6 @@ public struct IchthysFishShape: Shape {
     }
 }
 
-// MARK: - Seagull Fry Avatar View
-public struct SeagullFryAvatarView: View {
-    public var size: CGFloat
-    public init(size: CGFloat) { self.size = size }
-    
-    public var body: some View {
-        ZStack {
-            Circle()
-                .fill(Color(red: 0.88, green: 0.95, blue: 1.0))
-                .frame(width: size, height: size)
-            
-            // Seagull Body & Head
-            Circle()
-                .fill(Color.white)
-                .frame(width: size * 0.62, height: size * 0.62)
-                .overlay(Circle().stroke(Color(white: 0.85), lineWidth: 1))
-                .offset(x: -size * 0.08, y: size * 0.08)
-            
-            // French Fry in Beak
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color(red: 0.99, green: 0.78, blue: 0.15))
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color(red: 0.85, green: 0.55, blue: 0.05), lineWidth: 0.8))
-                .frame(width: size * 0.48, height: size * 0.12)
-                .rotationEffect(.degrees(-8))
-                .offset(x: size * 0.16, y: size * 0.04)
-            
-            // Beak
-            Path { path in
-                path.move(to: CGPoint(x: size * 0.45, y: size * 0.42))
-                path.addLine(to: CGPoint(x: size * 0.92, y: size * 0.52))
-                path.addLine(to: CGPoint(x: size * 0.45, y: size * 0.64))
-                path.closeSubpath()
-            }
-            .fill(Color(red: 0.98, green: 0.75, blue: 0.10))
-            
-            // Red dot on beak
-            Circle()
-                .fill(Color.red)
-                .frame(width: size * 0.08, height: size * 0.08)
-                .offset(x: size * 0.32, y: size * 0.06)
-            
-            // Wide Eye
-            ZStack {
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: size * 0.32, height: size * 0.32)
-                    .overlay(Circle().stroke(Color.black, lineWidth: 1.5))
-                Circle()
-                    .fill(Color.black)
-                    .frame(width: size * 0.16, height: size * 0.16)
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: size * 0.06, height: size * 0.06)
-                    .offset(x: -size * 0.03, y: -size * 0.03)
-            }
-            .offset(x: -size * 0.10, y: -size * 0.10)
-        }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-    }
-}
-
-// MARK: - Sunburned Tourist Avatar View
-public struct SunburnedTouristAvatarView: View {
-    public var size: CGFloat
-    public init(size: CGFloat) { self.size = size }
-    
-    public var body: some View {
-        ZStack {
-            // Yellow background
-            Circle()
-                .fill(Color(red: 1.0, green: 0.94, blue: 0.55))
-                .frame(width: size, height: size)
-            
-            // Lobster red face
-            Circle()
-                .fill(Color(red: 0.94, green: 0.27, blue: 0.27))
-                .frame(width: size * 0.82, height: size * 0.82)
-            
-            // Neon Green Sunglasses Frame
-            RoundedRectangle(cornerRadius: size * 0.08)
-                .fill(Color(red: 0.13, green: 0.77, blue: 0.37))
-                .frame(width: size * 0.70, height: size * 0.24)
-                .offset(y: -size * 0.12)
-            
-            // Lenses
-            HStack(spacing: size * 0.08) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.black)
-                    .frame(width: size * 0.24, height: size * 0.16)
-                    .overlay(
-                        Capsule()
-                            .fill(Color.cyan)
-                            .frame(width: size * 0.12, height: 1.5)
-                            .rotationEffect(.degrees(-35))
-                    )
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.black)
-                    .frame(width: size * 0.24, height: size * 0.16)
-                    .overlay(
-                        Capsule()
-                            .fill(Color.cyan)
-                            .frame(width: size * 0.12, height: 1.5)
-                            .rotationEffect(.degrees(-35))
-                    )
-            }
-            .offset(y: -size * 0.12)
-            
-            // White Zinc Cream on Nose
-            Path { path in
-                path.move(to: CGPoint(x: size * 0.5, y: size * 0.44))
-                path.addLine(to: CGPoint(x: size * 0.42, y: size * 0.65))
-                path.addLine(to: CGPoint(x: size * 0.58, y: size * 0.65))
-                path.closeSubpath()
-            }
-            .fill(Color.white)
-            
-            // Wide goofy smile
-            Path { path in
-                path.addArc(center: CGPoint(x: size * 0.5, y: size * 0.70), radius: size * 0.16, startAngle: .degrees(0), endAngle: .degrees(180), clockwise: false)
-            }
-            .fill(Color(red: 0.45, green: 0.05, blue: 0.05))
-            
-            // Teeth
-            Capsule()
-                .fill(Color.white)
-                .frame(width: size * 0.22, height: size * 0.06)
-                .offset(y: size * 0.21)
-        }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-    }
-}
-
-// MARK: - Dramatic Sand Crab Avatar View
-public struct DramaticSandCrabAvatarView: View {
-    public var size: CGFloat
-    public init(size: CGFloat) { self.size = size }
-    
-    public var body: some View {
-        ZStack {
-            // Sand background
-            Circle()
-                .fill(Color(red: 1.0, green: 0.84, blue: 0.67))
-                .frame(width: size, height: size)
-            
-            // Volleyball overhead
-            ZStack {
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: size * 0.38, height: size * 0.38)
-                    .overlay(Circle().stroke(Color.black, lineWidth: 1))
-                
-                Circle()
-                    .stroke(Color.blue, lineWidth: 1.2)
-                    .frame(width: size * 0.24, height: size * 0.36)
-                
-                Circle()
-                    .stroke(Color.yellow, lineWidth: 1.2)
-                    .frame(width: size * 0.36, height: size * 0.24)
-            }
-            .offset(y: -size * 0.25)
-            
-            // Raised Pincers
-            HStack(spacing: size * 0.34) {
-                Text("🦀")
-                    .font(.system(size: size * 0.30))
-                    .rotationEffect(.degrees(45))
-                Text("🦀")
-                    .font(.system(size: size * 0.30))
-                    .rotationEffect(.degrees(-45))
-                    .scaleEffect(x: -1, y: 1)
-            }
-            .offset(y: -size * 0.08)
-            
-            // Crab Body
-            Ellipse()
-                .fill(Color.orange)
-                .frame(width: size * 0.56, height: size * 0.36)
-                .overlay(Ellipse().stroke(Color(red: 0.78, green: 0.28, blue: 0.05), lineWidth: 1.5))
-                .offset(y: size * 0.20)
-            
-            // Fierce Eyestalks
-            HStack(spacing: size * 0.18) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: size * 0.15, height: size * 0.15)
-                        .overlay(Circle().stroke(Color.black, lineWidth: 1))
-                    Circle()
-                        .fill(Color.black)
-                        .frame(width: size * 0.07, height: size * 0.07)
-                    Rectangle()
-                        .fill(Color.black)
-                        .frame(width: size * 0.16, height: 1.8)
-                        .rotationEffect(.degrees(25))
-                        .offset(y: -size * 0.06)
-                }
-                ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: size * 0.15, height: size * 0.15)
-                        .overlay(Circle().stroke(Color.black, lineWidth: 1))
-                    Circle()
-                        .fill(Color.black)
-                        .frame(width: size * 0.07, height: size * 0.07)
-                    Rectangle()
-                        .fill(Color.black)
-                        .frame(width: size * 0.16, height: 1.8)
-                        .rotationEffect(.degrees(-25))
-                        .offset(y: -size * 0.06)
-                }
-            }
-            .offset(y: -size * 0.02)
-        }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-    }
-}
-
 public struct CourtAvatarIconView: View {
     public let avatarKey: String
     public var size: CGFloat
@@ -259,8 +39,32 @@ public struct CourtAvatarIconView: View {
         self.size = size
     }
     
-    public var isBananaSlug: Bool {
-        avatarKey == "slug" || avatarKey == "🍌" || avatarKey == "BananaSlugAvatar" || avatarKey.lowercased().contains("slug")
+    public var customImageName: String? {
+        if avatarKey == "slug" || avatarKey == "🍌" || avatarKey == "BananaSlugAvatar" || avatarKey.lowercased().contains("slug") {
+            return "BananaSlugAvatar"
+        }
+        if avatarKey == "derp_ball" || avatarKey == "avatar_derp_ball" {
+            return "AvatarDerpBall"
+        }
+        if avatarKey == "lobster" || avatarKey == "avatar_lobster" {
+            return "AvatarLobster"
+        }
+        if avatarKey == "sunburn" || avatarKey == "avatar_sunburn" {
+            return "AvatarSunburn"
+        }
+        if avatarKey == "net_stuck" || avatarKey == "avatar_net_stuck" {
+            return "AvatarNetStuck"
+        }
+        if avatarKey == "seagull" || avatarKey == "avatar_seagull" {
+            return "AvatarSeagull"
+        }
+        if avatarKey == "sand_face" || avatarKey == "avatar_sand_face" {
+            return "AvatarSandFace"
+        }
+        if avatarKey == "wilson" || avatarKey == "avatar_wilson" {
+            return "AvatarWilson"
+        }
+        return nil
     }
     
     public var isMustang: Bool {
@@ -275,21 +79,9 @@ public struct CourtAvatarIconView: View {
         avatarKey == "cross" || avatarKey == "✝️" || avatarKey == "✝"
     }
     
-    public var isSeagullFry: Bool {
-        avatarKey == "seagull-fry" || avatarKey == "seagull_fry" || avatarKey.contains("seagull")
-    }
-    
-    public var isSunburnedTourist: Bool {
-        avatarKey == "sunburned-tourist" || avatarKey == "sunburned_tourist" || avatarKey.contains("sunburned")
-    }
-    
-    public var isDramaticSandCrab: Bool {
-        avatarKey == "dramatic-sand-crab" || avatarKey == "dramatic_sand_crab" || avatarKey.contains("sand-crab") || avatarKey.contains("sand_crab")
-    }
-    
     public var body: some View {
-        if isBananaSlug {
-            Image("BananaSlugAvatar")
+        if let imageName = customImageName {
+            Image(imageName)
                 .resizable()
                 .scaledToFit()
                 .frame(width: size, height: size)
@@ -304,12 +96,6 @@ public struct CourtAvatarIconView: View {
         } else if isCross {
             Text("✝️")
                 .font(.system(size: size * 0.82))
-        } else if isSeagullFry {
-            SeagullFryAvatarView(size: size)
-        } else if isSunburnedTourist {
-            SunburnedTouristAvatarView(size: size)
-        } else if isDramaticSandCrab {
-            DramaticSandCrabAvatarView(size: size)
         } else {
             Text(avatarKey)
                 .font(.system(size: size * 0.82))
