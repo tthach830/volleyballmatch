@@ -841,6 +841,9 @@ export function getCustomAvatarImage(avatarKey) {
   if (s === "seagull" || s === "avatar_seagull") return "avatar_seagull.png";
   if (s === "sand_face" || s === "avatar_sand_face") return "avatar_sand_face.png";
   if (s === "wilson" || s === "avatar_wilson") return "avatar_wilson.png";
+  if (s === "otter" || s === "avatar_otter" || s === "🦦") return "avatar_otter.png";
+  if (s === "eagle" || s === "avatar_eagle" || s === "🦅") return "avatar_eagle.png";
+  if (s === "lion" || s === "avatar_lion" || s === "🦁") return "avatar_lion.png";
   return null;
 }
 

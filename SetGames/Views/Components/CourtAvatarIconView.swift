@@ -64,6 +64,15 @@ public struct CourtAvatarIconView: View {
         if avatarKey == "wilson" || avatarKey == "avatar_wilson" {
             return "AvatarWilson"
         }
+        if avatarKey == "otter" || avatarKey == "avatar_otter" || avatarKey == "🦦" {
+            return "AvatarOtter"
+        }
+        if avatarKey == "eagle" || avatarKey == "avatar_eagle" || avatarKey == "🦅" {
+            return "AvatarEagle"
+        }
+        if avatarKey == "lion" || avatarKey == "avatar_lion" || avatarKey == "🦁" {
+            return "AvatarLion"
+        }
         return nil
     }
     
