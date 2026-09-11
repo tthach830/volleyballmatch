@@ -1442,7 +1442,7 @@ private struct SubMatchScoreRowView: View {
                 }
             }
             
-            // Teams Row with Center Score Inputs & Save
+            // Teams Row with Center Score Inputs (Auto-saves on input)
             HStack(spacing: 6) {
                 Text(resolveNames(sm.team1PlayerIds))
                     .font(.system(size: 8, weight: .bold))
@@ -1450,20 +1450,23 @@ private struct SubMatchScoreRowView: View {
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
-                // Center Score Inputs + VS + Save
-                HStack(spacing: 4) {
+                // Center Score Inputs + VS
+                HStack(spacing: 6) {
                     TextField("T1", text: $team1ScoreText)
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.center)
-                        .font(.system(size: 12, weight: .black))
+                        .font(.system(size: 13, weight: .black))
                         .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
-                        .frame(width: 40, height: 28)
+                        .frame(width: 44, height: 32)
                         .background(Color(red: 0.12, green: 0.14, blue: 0.20))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)
                                 .stroke(Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.6), lineWidth: 1.5)
                         )
+                        .onChange(of: team1ScoreText) {
+                            autoSaveScore()
+                        }
                     
                     Text("VS")
                         .font(.system(size: 9, weight: .black))
@@ -1472,37 +1475,20 @@ private struct SubMatchScoreRowView: View {
                     TextField("T2", text: $team2ScoreText)
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.center)
-                        .font(.system(size: 12, weight: .black))
+                        .font(.system(size: 13, weight: .black))
                         .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))
-                        .frame(width: 40, height: 28)
+                        .frame(width: 44, height: 32)
                         .background(Color(red: 0.12, green: 0.14, blue: 0.20))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)
                                 .stroke(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6), lineWidth: 1.5)
                         )
-                    
-                    Button {
-                        let t1 = team1ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
-                        let t2 = team2ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if let s1 = Int(t1), let s2 = Int(t2) {
-                            _ = dataManager.updateSubMatchScore(gameId: game.id, matchId: sm.id, team1Score: s1, team2Score: s2)
+                        .onChange(of: team2ScoreText) {
+                            autoSaveScore()
                         }
-                    } label: {
-                        Text("Save")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 5)
-                            .background(Color.white.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.borderless)
                 }
+                .fixedSize()
                 
                 Text(resolveNames(sm.team2PlayerIds))
                     .font(.system(size: 8, weight: .bold))
@@ -1532,6 +1518,16 @@ private struct SubMatchScoreRowView: View {
         }
         .onChange(of: sm.team2Score) {
             syncScores()
+        }
+    }
+    
+    private func autoSaveScore() {
+        let t1 = team1ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let t2 = team2ScoreText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let s1 = Int(t1), let s2 = Int(t2) {
+            if sm.team1Score != s1 || sm.team2Score != s2 {
+                _ = dataManager.updateSubMatchScore(gameId: game.id, matchId: sm.id, team1Score: s1, team2Score: s2)
+            }
         }
     }
     

@@ -1297,14 +1297,19 @@ function applySubMatchStatsWeb(match) {
   }
 }
 
-window.updateSubMatchScoreWeb = (gameId, matchId) => {
+let _scoreDebounceTimers = {};
+
+window.autoSaveSubMatchScore = (gameId, matchId) => {
+  const s1El = document.getElementById(`sub-s1-${gameId}-${matchId}`);
+  const s2El = document.getElementById(`sub-s2-${gameId}-${matchId}`);
+  const s1Val = s1El?.value.trim();
+  const s2Val = s2El?.value.trim();
+
   const game = state.games.find(g => g.id === gameId);
   if (!game || !game.subMatches) return;
   const match = game.subMatches.find(m => (m.id === matchId || String(game.subMatches.indexOf(m)) === String(matchId)));
   if (!match) return;
 
-  const s1Val = document.getElementById(`sub-s1-${gameId}-${matchId}`)?.value.trim();
-  const s2Val = document.getElementById(`sub-s2-${gameId}-${matchId}`)?.value.trim();
   if (s1Val !== "" && s2Val !== "" && s1Val !== undefined && s2Val !== undefined) {
     const s1 = parseInt(s1Val);
     const s2 = parseInt(s2Val);
@@ -1314,19 +1319,35 @@ window.updateSubMatchScoreWeb = (gameId, matchId) => {
       match.isCompleted = true;
       match.winningTeam = s1 > s2 ? 1 : 2;
 
-      applySubMatchStatsWeb(match);
+      if (s1El) s1El.style.color = match.winningTeam === 1 ? '#4ade80' : '#f87171';
+      if (s2El) s2El.style.color = match.winningTeam === 2 ? '#4ade80' : '#38bdf8';
 
-      if (game.subMatches.every(m => m.isCompleted)) {
-        game.status = "completed";
-      }
-      saveGameToFirestore(game);
-      state.saveLocal();
-      renderMatches();
-      renderLadder();
-      renderHeader();
-      renderProfile();
-      showToast(`Saved score for Match ${match.matchNumber}! Stats updated.`);
+      clearTimeout(_scoreDebounceTimers[`${gameId}-${matchId}`]);
+      _scoreDebounceTimers[`${gameId}-${matchId}`] = setTimeout(() => {
+        applySubMatchStatsWeb(match);
+        if (game.subMatches.every(m => m.isCompleted)) {
+          game.status = "completed";
+        }
+        saveGameToFirestore(game);
+        state.saveLocal();
+        renderLadder();
+        renderProfile();
+      }, 400);
     }
+  }
+};
+
+window.updateSubMatchScoreWeb = (gameId, matchId) => {
+  window.autoSaveSubMatchScore(gameId, matchId);
+  const game = state.games.find(g => g.id === gameId);
+  if (!game || !game.subMatches) return;
+  const match = game.subMatches.find(m => (m.id === matchId || String(game.subMatches.indexOf(m)) === String(matchId)));
+  if (!match) return;
+
+  const s1Val = document.getElementById(`sub-s1-${gameId}-${matchId}`)?.value.trim();
+  const s2Val = document.getElementById(`sub-s2-${gameId}-${matchId}`)?.value.trim();
+  if (s1Val !== "" && s2Val !== "" && !isNaN(parseInt(s1Val)) && !isNaN(parseInt(s2Val))) {
+    showToast(`Saved score for Match ${match.matchNumber}!`);
   }
 };
 
@@ -1880,13 +1901,10 @@ function renderMatches() {
                           ${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}
                         </div>
 
-                        <div class="submatch-score-center" style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                          <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input submatch-score-input" inputmode="numeric" pattern="[0-9]*" style="width: 40px; height: 32px; padding: 2px 2px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 1 ? '#4ade80' : '#f87171'}; border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 6px;" placeholder="T1" value="${s1Val}">
+                        <div class="submatch-score-center" style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+                          <input type="number" id="sub-s1-${game.id}-${mKey}" class="form-input submatch-score-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 32px; padding: 2px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 1 ? '#4ade80' : '#f87171'}; border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 6px;" placeholder="T1" value="${s1Val}" oninput="window.autoSaveSubMatchScore('${game.id}', '${mKey}')" onchange="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
                           <span style="color: rgba(255,255,255,0.4); font-size: 10px; font-weight: 900;">VS</span>
-                          <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input submatch-score-input" inputmode="numeric" pattern="[0-9]*" style="width: 40px; height: 32px; padding: 2px 2px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 2 ? '#4ade80' : '#38bdf8'}; border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 6px;" placeholder="T2" value="${s2Val}">
-                          <button type="button" class="btn btn-sm submatch-save-btn" style="font-size: 11px; font-weight: 800; padding: 4px 8px; height: 32px; color:#ffffff; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 6px; cursor: pointer;" onclick="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
-                            Save
-                          </button>
+                          <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input submatch-score-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 32px; padding: 2px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 2 ? '#4ade80' : '#38bdf8'}; border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 6px;" placeholder="T2" value="${s2Val}" oninput="window.autoSaveSubMatchScore('${game.id}', '${mKey}')" onchange="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
                         </div>
 
                         <div class="submatch-team submatch-team-2" style="flex: 1 1 0; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #38bdf8; font-size: 6pt;">

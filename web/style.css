@@ -1753,15 +1753,6 @@ nav#bottom-nav {
   margin: 0;
 }
 
-.submatch-save-btn {
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  padding: 4px 8px !important;
-  height: 32px !important;
-  border-radius: 6px !important;
-  touch-action: manipulation;
-}
-
 /* Horizontal scrolling with no ugly scrollbars on mobile */
 .ladder-filter,
 .segmented-control-dark,
@@ -1841,13 +1832,8 @@ nav#bottom-nav {
 /* Very Small Mobile Screens (iPhone SE, small screens <= 375px) */
 @media (max-width: 375px) {
   .submatch-score-input {
-    width: 36px !important;
+    width: 38px !important;
     font-size: 12px !important;
-  }
-
-  .submatch-save-btn {
-    padding: 3px 6px !important;
-    font-size: 10px !important;
   }
 
   .submatch-team {
