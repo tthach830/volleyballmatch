@@ -1265,18 +1265,25 @@ public struct GameDetailView: View {
         let resting = match.restingPlayerIds.map { dataManager.player(for: $0) }
         
         let t1Names = t1Players.map { p in
+            let name: String
             if !isUserInMatch {
                 let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
-                return "Player \(idx)"
+                name = "Player \(idx)"
+            } else {
+                name = p.nickname.isEmpty ? p.name : p.nickname
             }
-            return p.nickname.isEmpty ? p.name : p.nickname
+            return match.winningTeam == 1 ? "\(name) 🏅" : name
         }.joined(separator: " & ")
+        
         let t2Names = t2Players.map { p in
+            let name: String
             if !isUserInMatch {
                 let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
-                return "Player \(idx)"
+                name = "Player \(idx)"
+            } else {
+                name = p.nickname.isEmpty ? p.name : p.nickname
             }
-            return p.nickname.isEmpty ? p.name : p.nickname
+            return match.winningTeam == 2 ? "\(name) 🏅" : name
         }.joined(separator: " & ")
         
         return VStack(alignment: .leading, spacing: 8) {
@@ -1300,15 +1307,9 @@ public struct GameDetailView: View {
             
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 3) {
-                        if match.winningTeam == 1 {
-                            Text("🏅")
-                                .font(.system(size: 10))
-                        }
-                        Text("Team 1")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(match.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45).opacity(0.8))
-                    }
+                    Text("Team 1")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(match.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45).opacity(0.8))
                     Text(t1Names.isEmpty ? "Team 1" : t1Names)
                         .font(.system(size: 8, weight: .bold))
                         .foregroundColor(match.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
@@ -1321,15 +1322,9 @@ public struct GameDetailView: View {
                     .padding(.horizontal, 4)
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    HStack(spacing: 3) {
-                        Text("Team 2")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(match.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98).opacity(0.8))
-                        if match.winningTeam == 2 {
-                            Text("🏅")
-                                .font(.system(size: 10))
-                        }
-                    }
+                    Text("Team 2")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(match.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98).opacity(0.8))
                     Text(t2Names.isEmpty ? "Team 2" : t2Names)
                         .font(.system(size: 8, weight: .bold))
                         .foregroundColor(match.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))

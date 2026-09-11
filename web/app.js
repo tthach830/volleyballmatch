@@ -883,16 +883,19 @@ export function isRootUser(user) {
   return cleaned === "4087869405" || user.id === "47519EF2-207D-4C20-B9A6-BFEDA40FE581" || user.isRoot === true;
 }
 
-function resolvePlayerNames(pids, game, isHidden) {
+function resolvePlayerNames(pids, game, isHidden, isWinner = false) {
   if (!pids || pids.length === 0) return "TBD";
   return pids.map(id => {
+    let name;
     if (isHidden && game) {
       const allP = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
       const idx = allP.indexOf(id);
-      return `Player ${idx >= 0 ? idx + 1 : 1}`;
+      name = `Player ${idx >= 0 ? idx + 1 : 1}`;
+    } else {
+      const p = state.getPlayer(id);
+      name = p ? (p.nickname || p.name) : (typeof id === 'string' && id.startsWith("guest_") ? id.replace("guest_", "") : "Player");
     }
-    const p = state.getPlayer(id);
-    return p ? (p.nickname || p.name) : (typeof id === 'string' && id.startsWith("guest_") ? id.replace("guest_", "") : "Player");
+    return isWinner ? `${name} 🏅` : name;
   }).join(" & ");
 }
 
@@ -1897,9 +1900,8 @@ function renderMatches() {
                         </div>
                       </div>
                       <div class="submatch-score-row" style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #ffffff; gap: 6px;">
-                        <div class="submatch-team submatch-team-1" style="flex: 1 1 0; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${m.winningTeam === 1 ? '#4ade80' : '#f87171'}; font-size: 6pt; display: flex; align-items: center; gap: 2px;">
-                          ${m.winningTeam === 1 ? '<span style="font-size: 10px; line-height: 1; flex-shrink: 0;">🏅</span>' : ''}
-                          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}</span>
+                        <div class="submatch-team submatch-team-1" style="flex: 1 1 0; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${m.winningTeam === 1 ? '#4ade80' : '#f87171'}; font-size: 6pt;">
+                          ${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot, m.winningTeam === 1)}
                         </div>
 
                         <div class="submatch-score-center" style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
@@ -1908,9 +1910,8 @@ function renderMatches() {
                           <input type="number" id="sub-s2-${game.id}-${mKey}" class="form-input submatch-score-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 32px; padding: 2px 4px; font-size: 13px; font-weight: 800; text-align: center; background:#1e2433; color:${m.winningTeam === 2 ? '#4ade80' : '#38bdf8'}; border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 6px;" placeholder="T2" value="${s2Val}" oninput="window.autoSaveSubMatchScore('${game.id}', '${mKey}')" onchange="window.updateSubMatchScoreWeb('${game.id}', '${mKey}')">
                         </div>
 
-                        <div class="submatch-team submatch-team-2" style="flex: 1 1 0; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${m.winningTeam === 2 ? '#4ade80' : '#38bdf8'}; font-size: 6pt; display: flex; align-items: center; justify-content: flex-end; gap: 2px;">
-                          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot)}</span>
-                          ${m.winningTeam === 2 ? '<span style="font-size: 10px; line-height: 1; flex-shrink: 0;">🏅</span>' : ''}
+                        <div class="submatch-team submatch-team-2" style="flex: 1 1 0; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${m.winningTeam === 2 ? '#4ade80' : '#38bdf8'}; font-size: 6pt;">
+                          ${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot, m.winningTeam === 2)}
                         </div>
                       </div>
                       ${m.restingPlayerIds && m.restingPlayerIds.length > 0 ? `

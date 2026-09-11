@@ -285,11 +285,12 @@ public struct ConfirmedGamesView: View {
         return numbers.isEmpty ? trimmed : "#\(numbers)"
     }
     
-    private func resolveNames(_ pids: [UUID]) -> String {
+    private func resolveNames(_ pids: [UUID], isWinner: Bool = false) -> String {
         if pids.isEmpty { return "TBD" }
         return pids.map { pid in
             let p = dataManager.player(for: pid)
-            return p.nickname.isEmpty ? p.name : p.nickname
+            let name = p.nickname.isEmpty ? p.name : p.nickname
+            return isWinner ? "\(name) 🏅" : name
         }.joined(separator: " & ")
     }
 
@@ -1403,7 +1404,7 @@ private struct SubMatchScoreRowView: View {
     let game: SetGame
     let sm: SubMatch
     let mIdx: Int
-    let resolveNames: ([UUID]) -> String
+    let resolveNames: ([UUID], Bool) -> String
     
     @State private var team1ScoreText: String = ""
     @State private var team2ScoreText: String = ""
@@ -1444,17 +1445,11 @@ private struct SubMatchScoreRowView: View {
             
             // Teams Row with Center Score Inputs (Auto-saves on input)
             HStack(spacing: 6) {
-                HStack(spacing: 3) {
-                    if sm.winningTeam == 1 {
-                        Text("🏅")
-                            .font(.system(size: 10))
-                    }
-                    Text(resolveNames(sm.team1PlayerIds))
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(resolveNames(sm.team1PlayerIds, sm.winningTeam == 1))
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(sm.winningTeam == 1 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.98, green: 0.45, blue: 0.45))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 
                 // Center Score Inputs + VS
                 HStack(spacing: 6) {
@@ -1496,21 +1491,15 @@ private struct SubMatchScoreRowView: View {
                 }
                 .fixedSize()
                 
-                HStack(spacing: 3) {
-                    Text(resolveNames(sm.team2PlayerIds))
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))
-                        .lineLimit(1)
-                    if sm.winningTeam == 2 {
-                        Text("🏅")
-                            .font(.system(size: 10))
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                Text(resolveNames(sm.team2PlayerIds, sm.winningTeam == 2))
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(sm.winningTeam == 2 ? Color(red: 0.29, green: 0.87, blue: 0.50) : Color(red: 0.38, green: 0.75, blue: 0.98))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
             
             if !sm.restingPlayerIds.isEmpty {
-                Text("⏸ Resting: \(resolveNames(sm.restingPlayerIds))")
+                Text("⏸ Resting: \(resolveNames(sm.restingPlayerIds, false))")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
