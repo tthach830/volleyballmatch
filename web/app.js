@@ -1876,7 +1876,7 @@ function renderMatches() {
                         </div>
                       </div>
                       <div class="submatch-score-row" style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #ffffff; gap: 6px;">
-                        <div class="submatch-team submatch-team-1" style="flex: 1 1 0; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f87171; font-size: 12px;">
+                        <div class="submatch-team submatch-team-1" style="flex: 1 1 0; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f87171; font-size: 6pt;">
                           ${resolvePlayerNames(m.team1PlayerIds, game, !isMember && !isRoot)}
                         </div>
 
@@ -1889,7 +1889,7 @@ function renderMatches() {
                           </button>
                         </div>
 
-                        <div class="submatch-team submatch-team-2" style="flex: 1 1 0; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #38bdf8; font-size: 12px;">
+                        <div class="submatch-team submatch-team-2" style="flex: 1 1 0; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #38bdf8; font-size: 6pt;">
                           ${resolvePlayerNames(m.team2PlayerIds, game, !isMember && !isRoot)}
                         </div>
                       </div>
