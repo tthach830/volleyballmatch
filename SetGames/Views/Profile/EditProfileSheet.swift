@@ -14,7 +14,7 @@ public struct EditProfileSheet: View {
     @State private var isStatsHidden: Bool = false
     
     private let availableAvatars: [String] = [
-        "slug", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
+        "slug", "✝️", "ichthys", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
     ]
     
     private let availableBeaches: [String] = [
@@ -31,6 +31,12 @@ public struct EditProfileSheet: View {
             return true
         }
         if (avatar == "🐎" || avatar == "mustang") && (avatarEmoji == "🐎" || avatarEmoji == "mustang") {
+            return true
+        }
+        if (avatar == "ichthys" || avatar == "christian_fish") && (avatarEmoji == "ichthys" || avatarEmoji == "christian_fish") {
+            return true
+        }
+        if (avatar == "cross" || avatar == "✝️" || avatar == "✝") && (avatarEmoji == "cross" || avatarEmoji == "✝️" || avatarEmoji == "✝") {
             return true
         }
         return false

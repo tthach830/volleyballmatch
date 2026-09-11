@@ -13,6 +13,8 @@ public struct CourtAvatar: Identifiable, Hashable {
     
     public static let availableAvatars: [CourtAvatar] = [
         CourtAvatar(id: "slug", name: "Banana Slug", emoji: "slug"),
+        CourtAvatar(id: "cross", name: "Cross", emoji: "✝️"),
+        CourtAvatar(id: "ichthys", name: "Christian Fish", emoji: "ichthys"),
         CourtAvatar(id: "mustang", name: "Wild Horse", emoji: "🐎"),
         CourtAvatar(id: "shark", name: "Shark", emoji: "🦈"),
         CourtAvatar(id: "otter", name: "Otter", emoji: "🦦"),
