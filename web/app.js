@@ -852,6 +852,15 @@ export function renderAvatarContent(avatarKey) {
   if (avatarKey === "ichthys" || avatarKey === "christian_fish" || avatarKey === "fish_symbol") {
     return `<svg viewBox="0 0 24 24" width="76%" height="76%" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><path d="M 2 12 C 7 4, 16 6, 22 17 M 2 12 C 7 20, 16 18, 22 7"/><circle cx="6.5" cy="11" r="1" fill="currentColor"/></svg>`;
   }
+  if (avatarKey === "seagull-fry" || avatarKey === "seagull" || avatarKey === "seagull_fry") {
+    return `<svg viewBox="0 0 36 36" width="100%" height="100%" style="display:inline-block; vertical-align:middle; border-radius:50%; background:#e0f2fe; overflow:hidden;"><path d="M 6 36 C 6 24 14 10 24 10 C 29 10 33 13 33 18 C 33 24 28 32 20 36 Z" fill="#ffffff"/><polygon points="23,17 35,21 24,24" fill="#f59e0b"/><rect x="25" y="14" width="5" height="15" rx="1.5" transform="rotate(32 27.5 21.5)" fill="#fbbf24" stroke="#d97706" stroke-width="0.8"/><circle cx="19" cy="16" r="4.5" fill="#ffffff" stroke="#334155" stroke-width="1.2"/><circle cx="19.5" cy="16" r="2.2" fill="#0f172a"/><circle cx="20.5" cy="15" r="0.9" fill="#ffffff"/></svg>`;
+  }
+  if (avatarKey === "sunburned-tourist" || avatarKey === "sunburned" || avatarKey === "sunburn" || avatarKey === "sunburned_tourist") {
+    return `<svg viewBox="0 0 36 36" width="100%" height="100%" style="display:inline-block; vertical-align:middle; border-radius:50%; background:#fef08a; overflow:hidden;"><circle cx="18" cy="18" r="14.5" fill="#ef4444"/><circle cx="26" cy="10" r="1.5" fill="#fee2e2" opacity="0.6"/><path d="M 7 13 C 7 13 11 11 18 11 C 25 11 29 13 29 13 L 28 19 C 27 21 23 21 21 19 L 18 16 L 15 19 C 13 21 9 21 8 19 Z" fill="#22c55e" stroke="#15803d" stroke-width="0.8"/><rect x="8.5" y="13.5" width="8" height="5.5" rx="2" fill="#06b6d4"/><line x1="9.5" y1="14.5" x2="11.5" y2="18" stroke="#ffffff" stroke-width="0.9" stroke-linecap="round" opacity="0.8"/><rect x="19.5" y="13.5" width="8" height="5.5" rx="2" fill="#06b6d4"/><line x1="20.5" y1="14.5" x2="22.5" y2="18" stroke="#ffffff" stroke-width="0.9" stroke-linecap="round" opacity="0.8"/><polygon points="18,17 15.5,23.5 20.5,23.5" fill="#ffffff"/><path d="M 12 26 Q 18 31 24 26" fill="none" stroke="#7f1d1d" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  }
+  if (avatarKey === "dramatic-sand-crab" || avatarKey === "sand-crab" || avatarKey === "sand_crab" || avatarKey === "dramatic_sand_crab") {
+    return `<svg viewBox="0 0 36 36" width="100%" height="100%" style="display:inline-block; vertical-align:middle; border-radius:50%; background:#ffedd5; overflow:hidden;"><circle cx="18" cy="8" r="5.5" fill="#ffffff" stroke="#f59e0b" stroke-width="1"/><path d="M 18 2.5 C 15 5 15 11 18 13.5" fill="none" stroke="#0284c7" stroke-width="0.9"/><path d="M 14 6 C 18 7.5 21 5.5 23 7" fill="none" stroke="#f59e0b" stroke-width="0.9"/><path d="M 11 23 C 8 18 9 12 13 9" fill="none" stroke="#ea580c" stroke-width="2.2" stroke-linecap="round"/><path d="M 25 23 C 28 18 27 12 23 9" fill="none" stroke="#ea580c" stroke-width="2.2" stroke-linecap="round"/><circle cx="13.5" cy="8.5" r="2" fill="#ea580c"/><circle cx="22.5" cy="8.5" r="2" fill="#ea580c"/><ellipse cx="18" cy="25" rx="10" ry="7" fill="#f97316"/><path d="M 9 27 Q 5 29 4 33 M 10 29 Q 7 32 7 35 M 27 27 Q 31 29 32 33 M 26 29 Q 29 32 29 35" fill="none" stroke="#ea580c" stroke-width="1.6" stroke-linecap="round"/><line x1="14" y1="20" x2="14" y2="16" stroke="#ea580c" stroke-width="1.8"/><line x1="22" y1="20" x2="22" y2="16" stroke="#ea580c" stroke-width="1.8"/><circle cx="14" cy="15.5" r="2.2" fill="#ffffff"/><circle cx="14.5" cy="15.5" r="1.1" fill="#000000"/><circle cx="22" cy="15.5" r="2.2" fill="#ffffff"/><circle cx="21.5" cy="15.5" r="1.1" fill="#000000"/><line x1="11.5" y1="13.5" x2="16" y2="15.5" stroke="#7c2d12" stroke-width="1.3" stroke-linecap="round"/><line x1="24.5" y1="13.5" x2="20" y2="15.5" stroke="#7c2d12" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+  }
   return `${avatarKey || "🏐"}`;
 }
 
@@ -2418,7 +2427,10 @@ window.openEditProfileModal = () => {
                        (isSlugAvatar(btnAvatar) && isSlugAvatar(currentAvatar)) ||
                        (isMustangAvatar(btnAvatar) && isMustangAvatar(currentAvatar)) ||
                        (btnAvatar === "✝️" && (currentAvatar === "✝️" || currentAvatar === "cross")) ||
-                       (btnAvatar === "ichthys" && (currentAvatar === "ichthys" || currentAvatar === "christian_fish"));
+                       (btnAvatar === "ichthys" && (currentAvatar === "ichthys" || currentAvatar === "christian_fish")) ||
+                       (btnAvatar === "seagull-fry" && (currentAvatar === "seagull-fry" || currentAvatar === "seagull" || currentAvatar === "seagull_fry")) ||
+                       (btnAvatar === "sunburned-tourist" && (currentAvatar === "sunburned-tourist" || currentAvatar === "sunburned" || currentAvatar === "sunburned_tourist")) ||
+                       (btnAvatar === "dramatic-sand-crab" && (currentAvatar === "dramatic-sand-crab" || currentAvatar === "sand-crab" || currentAvatar === "dramatic_sand_crab"));
     btn.classList.toggle("selected", isSelected);
     btn.onclick = (e) => {
       e.stopPropagation();
