@@ -885,18 +885,16 @@ export function isRootUser(user) {
 
 function resolvePlayerNames(pids, game, isHidden, isWinner = false) {
   if (!pids || pids.length === 0) return "TBD";
-  return pids.map(id => {
-    let name;
+  const names = pids.map(id => {
     if (isHidden && game) {
       const allP = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
       const idx = allP.indexOf(id);
-      name = `Player ${idx >= 0 ? idx + 1 : 1}`;
-    } else {
-      const p = state.getPlayer(id);
-      name = p ? (p.nickname || p.name) : (typeof id === 'string' && id.startsWith("guest_") ? id.replace("guest_", "") : "Player");
+      return `Player ${idx >= 0 ? idx + 1 : 1}`;
     }
-    return isWinner ? `${name} 🏅` : name;
+    const p = state.getPlayer(id);
+    return p ? (p.nickname || p.name) : (typeof id === 'string' && id.startsWith("guest_") ? id.replace("guest_", "") : "Player");
   }).join(" & ");
+  return isWinner ? `${names} <span style="font-size: 8px; line-height: 1;">🏅🏅</span>` : names;
 }
 
 window.joinGamePool = (gameId) => {

@@ -1264,27 +1264,23 @@ public struct GameDetailView: View {
         let t2Players = match.team2PlayerIds.map { dataManager.player(for: $0) }
         let resting = match.restingPlayerIds.map { dataManager.player(for: $0) }
         
-        let t1Names = t1Players.map { p in
-            let name: String
+        let t1Base = t1Players.map { p in
             if !isUserInMatch {
                 let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
-                name = "Player \(idx)"
-            } else {
-                name = p.nickname.isEmpty ? p.name : p.nickname
+                return "Player \(idx)"
             }
-            return match.winningTeam == 1 ? "\(name) 🏅" : name
+            return p.nickname.isEmpty ? p.name : p.nickname
         }.joined(separator: " & ")
+        let t1Names = match.winningTeam == 1 ? "\(t1Base) 🏅🏅" : t1Base
         
-        let t2Names = t2Players.map { p in
-            let name: String
+        let t2Base = t2Players.map { p in
             if !isUserInMatch {
                 let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
-                name = "Player \(idx)"
-            } else {
-                name = p.nickname.isEmpty ? p.name : p.nickname
+                return "Player \(idx)"
             }
-            return match.winningTeam == 2 ? "\(name) 🏅" : name
+            return p.nickname.isEmpty ? p.name : p.nickname
         }.joined(separator: " & ")
+        let t2Names = match.winningTeam == 2 ? "\(t2Base) 🏅🏅" : t2Base
         
         return VStack(alignment: .leading, spacing: 8) {
             HStack {

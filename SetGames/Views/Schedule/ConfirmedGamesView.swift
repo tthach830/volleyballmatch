@@ -287,11 +287,11 @@ public struct ConfirmedGamesView: View {
     
     private func resolveNames(_ pids: [UUID], isWinner: Bool = false) -> String {
         if pids.isEmpty { return "TBD" }
-        return pids.map { pid in
+        let names = pids.map { pid in
             let p = dataManager.player(for: pid)
-            let name = p.nickname.isEmpty ? p.name : p.nickname
-            return isWinner ? "\(name) 🏅" : name
+            return p.nickname.isEmpty ? p.name : p.nickname
         }.joined(separator: " & ")
+        return isWinner ? "\(names) 🏅🏅" : names
     }
 
     private func playerCardTile(pid: UUID, game: SetGame, isHost: Bool, isMyGame: Bool, isTeam1: Bool) -> some View {
