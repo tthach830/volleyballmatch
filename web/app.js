@@ -1645,11 +1645,10 @@ function renderMatches() {
     return `
       ${index > 0 ? '<div class="games-white-gap"></div>' : ''}
       <div class="game-details-card" id="match-card-${game.id}">
-        <!-- Header Row: Date/Time + Dropdown Ellipsis -->
+        <!-- Header Row: Match Title + Dropdown Ellipsis -->
         <div class="card-header-row">
           <div class="card-date-title" onclick="window.showGameDetailsModal('${game.id}')">
-            <span>🗓️</span>
-            <span>${scheduleFormatted}</span>
+            <span>${game.title || 'Match'}</span>
           </div>
           <div style="position: relative;">
             <button type="button" class="card-more-btn" onclick="event.stopPropagation(); window.toggleCardActionsMenu('${game.id}', event)" title="More options">

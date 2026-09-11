@@ -403,13 +403,9 @@ public struct ConfirmedGamesView: View {
             Button {
                 navigationPath.append(game.id)
             } label: {
-                HStack(spacing: 6) {
-                    Text("🗓️")
-                        .font(.system(size: 16))
-                    Text(game.formattedDate)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.white)
-                }
+                Text(game.title.isEmpty ? "Match" : game.title)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.white)
             }
             .buttonStyle(.plain)
             
