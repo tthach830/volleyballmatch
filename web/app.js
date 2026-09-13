@@ -840,10 +840,9 @@ export function getCustomAvatarImage(avatarKey) {
   if (s === "net_stuck" || s === "avatar_net_stuck") return "avatar_net_stuck.png";
   if (s === "seagull" || s === "avatar_seagull") return "avatar_seagull.png";
   if (s === "sand_face" || s === "avatar_sand_face") return "avatar_sand_face.png";
+  if (s === "sand_dive" || s === "avatar_sand_dive" || s === "sand_wipeout") return "avatar_sand_dive.png";
   if (s === "wilson" || s === "avatar_wilson") return "avatar_wilson.png";
-  if (s === "otter" || s === "avatar_otter" || s === "🦦") return "avatar_otter.png";
-  if (s === "eagle" || s === "avatar_eagle" || s === "🦅") return "avatar_eagle.png";
-  if (s === "lion" || s === "avatar_lion" || s === "🦁") return "avatar_lion.png";
+  if (s === "blue_whale" || s === "avatar_blue_whale" || s === "whale") return "avatar_blue_whale.png";
   return null;
 }
 

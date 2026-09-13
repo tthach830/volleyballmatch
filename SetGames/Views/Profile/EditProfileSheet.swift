@@ -14,7 +14,7 @@ public struct EditProfileSheet: View {
     @State private var isStatsHidden: Bool = false
     
     private let availableAvatars: [String] = [
-        "slug", "derp_ball", "lobster", "sunburn", "net_stuck", "seagull", "sand_face", "wilson", "otter", "eagle", "lion", "✝️", "ichthys", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥"
+        "slug", "derp_ball", "lobster", "sunburn", "net_stuck", "seagull", "sand_face", "sand_dive", "wilson", "blue_whale", "✝️", "ichthys", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
     ]
     
     private let availableBeaches: [String] = [
