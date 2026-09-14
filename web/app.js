@@ -924,7 +924,7 @@ export function getLadderDisplayName(player) {
   if (nickname && 
       nickname.toLowerCase() !== firstName.toLowerCase() && 
       nickname.toLowerCase() !== name.toLowerCase()) {
-    return nickname;
+    return `${firstName} (${nickname})`;
   }
 
   // Display only Firstname and last initial

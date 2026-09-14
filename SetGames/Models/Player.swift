@@ -39,13 +39,13 @@ public struct Player: Identifiable, Codable, Hashable {
         let trimmedNick = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         
         let parts = trimmedName.split(separator: " ").map(String.init)
-        let firstName = parts.first ?? trimmedName
+        let firstName = parts.first ?? (trimmedName.isEmpty ? "Player" : trimmedName)
         
         // If they have a Nickname that is different from their FirstName (and not equal to full name)
         if !trimmedNick.isEmpty &&
            trimmedNick.caseInsensitiveCompare(firstName) != .orderedSame &&
            trimmedNick.caseInsensitiveCompare(trimmedName) != .orderedSame {
-            return trimmedNick
+            return "\(firstName) (\(trimmedNick))"
         }
         
         // Display only Firstname and last initial
