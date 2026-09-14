@@ -73,6 +73,10 @@ public struct CourtAvatarIconView: View {
         return nil
     }
     
+    public var isIchthys: Bool {
+        avatarKey == "ichthys" || avatarKey == "fish_symbol" || avatarKey == "christian_fish" || avatarKey.lowercased().contains("ichthys")
+    }
+    
     public var mappedEmojiText: String {
         switch avatarKey.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) {
         case "mustang", "horse", "🐎": return "🐎"
