@@ -26,7 +26,7 @@ public struct CreateMatchSheet: View {
         return cal.date(from: comps) ?? tomorrow
     }
     
-    public static func defaultGameTitle(for date: Date) -> String {
+    public static func defaultGameTitle(for date: Date, genderCategory: GameGenderCategory = .coed) -> String {
         let dayOfWeekFormatter = DateFormatter()
         dayOfWeekFormatter.dateFormat = "EEEE"
         dayOfWeekFormatter.locale = Locale(identifier: "en_US")
@@ -43,7 +43,15 @@ public struct CreateMatchSheet: View {
         let ampm = hour24 < 12 ? "AM" : "PM"
         let timeStr = minute == 0 ? "\(hour12)\(ampm)" : String(format: "%d:%02d%@", hour12, minute, ampm)
         
-        return "\(dayOfWeek) \(month)/\(day)/\(year) \(timeStr)"
+        let divStr: String
+        switch genderCategory {
+        case .coed: divStr = "COED "
+        case .female: divStr = "F "
+        case .male: divStr = "M "
+        case .open: divStr = "Open "
+        }
+        
+        return "\(dayOfWeek) \(divStr)\(month)/\(day)/\(year) \(timeStr)"
     }
     
     public init(dataManager: DataManager) {
@@ -178,17 +186,36 @@ public struct CreateMatchSheet: View {
                     }
                     .padding(.vertical, 4)
                     
-                    HStack {
-                        Text("Division")
-                        Spacer()
-                        Picker("Division", selection: $genderCategory) {
-                            ForEach(GameGenderCategory.allCases, id: \.self) { cat in
-                                Text(cat.rawValue).tag(cat)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Division")
+                                .font(.system(size: 15, weight: .semibold))
+                            Spacer()
+                            if genderCategory == .open {
+                                Text("Open (Anyone can join)")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.teal)
+                            } else {
+                                Text(genderCategory.displayName)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.orange)
                             }
                         }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 200)
+                        
+                        HStack(spacing: 16) {
+                            divisionCheckbox(title: "COED", category: .coed)
+                            divisionCheckbox(title: "Women's (F)", category: .female)
+                            divisionCheckbox(title: "Men's (M)", category: .male)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        if genderCategory == .open {
+                            Text("No division checked — anyone can join.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .padding(.vertical, 2)
                     
                     HStack {
                         Text("Max. Players")
@@ -268,7 +295,7 @@ public struct CreateMatchSheet: View {
                     Button("Host Game") {
                         let chosenRatings = RatingTier.allCases.filter { selectedRatings.contains($0) }
                         let primaryRating = chosenRatings.first ?? .b
-                        let finalTitle = Self.defaultGameTitle(for: scheduledDate)
+                        let finalTitle = Self.defaultGameTitle(for: scheduledDate, genderCategory: genderCategory)
                         
                         dataManager.createMatch(
                             title: finalTitle,
@@ -323,6 +350,28 @@ public struct CreateMatchSheet: View {
                     .foregroundColor(.secondary)
             }
             .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    @ViewBuilder
+    private func divisionCheckbox(title: String, category: GameGenderCategory) -> some View {
+        let isChecked = genderCategory == category
+        Button {
+            if isChecked {
+                genderCategory = .open
+            } else {
+                genderCategory = category
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+                    .foregroundColor(isChecked ? .orange : .secondary)
+                    .font(.system(size: 16))
+                Text(title)
+                    .font(.system(size: 13, weight: isChecked ? .bold : .medium))
+                    .foregroundColor(.primary)
+            }
         }
         .buttonStyle(.plain)
     }

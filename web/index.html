@@ -527,13 +527,24 @@
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label" for="create-gender-category">Division / Gender</label>
-            <select id="create-gender-category" class="form-select">
-              <option value="COED" selected>COED</option>
-              <option value="F">Women's (F)</option>
-              <option value="M">Men's (M)</option>
-              <option value="OPEN">Open (No Gender Restriction)</option>
-            </select>
+            <label class="form-label">Division</label>
+            <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; align-items: center;">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" name="create-division-cb" value="COED" checked onchange="window.handleDivisionCheckboxChange('create', this)" style="accent-color: #f97316; width: 16px; height: 16px;">
+                COED
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" name="create-division-cb" value="F" onchange="window.handleDivisionCheckboxChange('create', this)" style="accent-color: #f97316; width: 16px; height: 16px;">
+                Women's (F)
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" name="create-division-cb" value="M" onchange="window.handleDivisionCheckboxChange('create', this)" style="accent-color: #f97316; width: 16px; height: 16px;">
+                Men's (M)
+              </label>
+            </div>
+            <div id="create-division-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+              If no division is checked, anyone can join.
+            </div>
           </div>
           <div class="form-group" style="display: flex; align-items: center; gap: 12px;">
             <label class="form-label" for="create-max-players" style="margin: 0; white-space: nowrap;">Max. Players</label>
@@ -653,13 +664,24 @@
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label" for="edit-gender-category">Division / Gender</label>
-            <select id="edit-gender-category" class="form-select">
-              <option value="COED">COED</option>
-              <option value="F">Women's (F)</option>
-              <option value="M">Men's (M)</option>
-              <option value="OPEN">Open (No Gender Restriction)</option>
-            </select>
+            <label class="form-label">Division</label>
+            <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; align-items: center;">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" name="edit-division-cb" value="COED" onchange="window.handleDivisionCheckboxChange('edit', this)" style="accent-color: #f97316; width: 16px; height: 16px;">
+                COED
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" name="edit-division-cb" value="F" onchange="window.handleDivisionCheckboxChange('edit', this)" style="accent-color: #f97316; width: 16px; height: 16px;">
+                Women's (F)
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" name="edit-division-cb" value="M" onchange="window.handleDivisionCheckboxChange('edit', this)" style="accent-color: #f97316; width: 16px; height: 16px;">
+                Men's (M)
+              </label>
+            </div>
+            <div id="edit-division-hint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+              If no division is checked, anyone can join.
+            </div>
           </div>
           <div class="form-group" style="display: flex; align-items: center; gap: 12px;">
             <label class="form-label" for="edit-max-players" style="margin: 0; white-space: nowrap;">Max. Players</label>
@@ -1135,6 +1157,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=10.1"></script>
+  <script type="module" src="app.js?v=10.2"></script>
 </body>
 </html>

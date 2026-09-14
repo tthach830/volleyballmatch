@@ -161,17 +161,36 @@ public struct EditMatchSheet: View {
                     }
                     .padding(.vertical, 4)
                     
-                    HStack {
-                        Text("Division")
-                        Spacer()
-                        Picker("Division", selection: $genderCategory) {
-                            ForEach(GameGenderCategory.allCases, id: \.self) { cat in
-                                Text(cat.rawValue).tag(cat)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Division")
+                                .font(.system(size: 15, weight: .semibold))
+                            Spacer()
+                            if genderCategory == .open {
+                                Text("Open (Anyone can join)")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.teal)
+                            } else {
+                                Text(genderCategory.displayName)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.orange)
                             }
                         }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 200)
+                        
+                        HStack(spacing: 16) {
+                            divisionCheckbox(title: "COED", category: .coed)
+                            divisionCheckbox(title: "Women's (F)", category: .female)
+                            divisionCheckbox(title: "Men's (M)", category: .male)
+                        }
+                        .padding(.vertical, 2)
+                        
+                        if genderCategory == .open {
+                            Text("No division checked — anyone can join.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .padding(.vertical, 2)
                     
                     HStack {
                         Text("Max. Players")
@@ -315,6 +334,28 @@ public struct EditMatchSheet: View {
                     .foregroundColor(.secondary)
             }
             .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    @ViewBuilder
+    private func divisionCheckbox(title: String, category: GameGenderCategory) -> some View {
+        let isChecked = genderCategory == category
+        Button {
+            if isChecked {
+                genderCategory = .open
+            } else {
+                genderCategory = category
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+                    .foregroundColor(isChecked ? .orange : .secondary)
+                    .font(.system(size: 16))
+                Text(title)
+                    .font(.system(size: 13, weight: isChecked ? .bold : .medium))
+                    .foregroundColor(.primary)
+            }
         }
         .buttonStyle(.plain)
     }

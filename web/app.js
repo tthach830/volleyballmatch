@@ -3217,8 +3217,8 @@ window.leaveGame = (gameId) => {
   }
 };
 
-// Format Default Game Title: e.g. "Saturday 9/5/26 5PM"
-export function formatDefaultGameTitle(dateObj) {
+// Format Default Game Title: e.g. "Wednesday COED 9/16/26 3PM"
+export function formatDefaultGameTitle(dateObj, genderCategory = "COED") {
   const d = dateObj instanceof Date ? dateObj : new Date(dateObj);
   if (isNaN(d.getTime())) return "Beach Game";
   
@@ -3235,7 +3235,42 @@ export function formatDefaultGameTitle(dateObj) {
   hours = hours ? hours : 12;
   
   const timeStr = minutes === 0 ? `${hours}${ampm}` : `${hours}:${String(minutes).padStart(2, "0")}${ampm}`;
-  return `${dayName} ${month}/${day}/${year} ${timeStr}`;
+  
+  let divStr = "";
+  const cat = (genderCategory || "").toUpperCase();
+  if (cat === "COED") {
+    divStr = "COED ";
+  } else if (cat === "F" || cat === "FEMALE") {
+    divStr = "F ";
+  } else if (cat === "M" || cat === "MALE") {
+    divStr = "M ";
+  } else if (cat === "OPEN") {
+    divStr = "Open ";
+  }
+  
+  return `${dayName} ${divStr}${month}/${day}/${year} ${timeStr}`;
+}
+
+window.handleDivisionCheckboxChange = (prefix, changedCb) => {
+  const checkboxes = document.querySelectorAll(`input[name='${prefix}-division-cb']`);
+  if (changedCb.checked) {
+    checkboxes.forEach(cb => {
+      if (cb !== changedCb) cb.checked = false;
+    });
+  }
+};
+
+export function getSelectedDivision(prefix) {
+  const checked = document.querySelector(`input[name='${prefix}-division-cb']:checked`);
+  return checked ? checked.value : "OPEN";
+}
+
+export function setSelectedDivision(prefix, value) {
+  const val = (value || "OPEN").toUpperCase();
+  const checkboxes = document.querySelectorAll(`input[name='${prefix}-division-cb']`);
+  checkboxes.forEach(cb => {
+    cb.checked = (cb.value.toUpperCase() === val);
+  });
 }
 
 // Tier Dropdown Multi-Select
@@ -3333,7 +3368,7 @@ window.handleCreateMatch = (e) => {
   const targetRating = allowedRatings[0] || (state.currentUser?.rating || "B");
   const isLevelLocked = document.getElementById("create-level-locked").checked;
   const isPrivate = document.getElementById("create-is-private") ? document.getElementById("create-is-private").checked : false;
-  const genderCategory = document.getElementById("create-gender-category")?.value || "COED";
+  const genderCategory = getSelectedDivision("create");
   const maxPlayers = parseInt(document.getElementById("create-max-players")?.value) || 4;
   const format = document.getElementById("create-format").value;
   const courtLocation = document.getElementById("create-beach").value;
@@ -3342,7 +3377,7 @@ window.handleCreateMatch = (e) => {
   const scheduledDate = new Date(scheduledDateInput).toISOString();
   const notes = document.getElementById("create-notes").value.trim();
 
-  const defaultTitle = formatDefaultGameTitle(new Date(scheduledDateInput));
+  const defaultTitle = formatDefaultGameTitle(new Date(scheduledDateInput), genderCategory);
   const newGame = {
     id: "game-" + Date.now(),
     title: defaultTitle,
@@ -3489,9 +3524,7 @@ window.openEditMatchModal = (gameId) => {
   if (document.getElementById("edit-is-private")) {
     document.getElementById("edit-is-private").checked = !!game.isPrivate;
   }
-  if (document.getElementById("edit-gender-category")) {
-    document.getElementById("edit-gender-category").value = game.genderCategory || "COED";
-  }
+  setSelectedDivision("edit", game.genderCategory || "OPEN");
   if (document.getElementById("edit-max-players")) {
     document.getElementById("edit-max-players").value = game.maxPlayers || 4;
   }
@@ -3527,7 +3560,7 @@ window.handleSaveMatchEdit = (e) => {
   game.targetRating = game.allowedRatings[0] || "B";
 
   game.title = document.getElementById("edit-title").value.trim();
-  game.genderCategory = document.getElementById("edit-gender-category")?.value || "COED";
+  game.genderCategory = getSelectedDivision("edit");
   game.isLevelLocked = document.getElementById("edit-level-locked").checked;
   if (document.getElementById("edit-is-private")) {
     game.isPrivate = document.getElementById("edit-is-private").checked;
