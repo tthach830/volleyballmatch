@@ -108,10 +108,10 @@ public struct CourtAvatarIconView: View {
         } else if isIchthys {
             IchthysFishShape()
                 .stroke(Color.primary, style: StrokeStyle(lineWidth: max(1.5, size * 0.07), lineCap: .round, lineJoin: .round))
-                .frame(width: size * 0.82, height: size * 0.82)
+                .frame(width: size * 0.95, height: size * 0.95)
         } else {
             Text(mappedEmojiText)
-                .font(.system(size: size * 0.82))
+                .font(.system(size: size * 0.95))
         }
     }
 }

@@ -303,19 +303,9 @@ public struct ConfirmedGamesView: View {
         
         return HStack(spacing: 8) {
             if isMyGame {
-                ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 34, height: 34)
-                    CourtAvatarIconView(avatarKey: p.avatarEmoji, size: 24)
-                }
+                CourtAvatarIconView(avatarKey: p.avatarEmoji, size: 34)
             } else {
-                ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 34, height: 34)
-                    CourtAvatarIconView(avatarKey: "🏐", size: 22)
-                }
+                CourtAvatarIconView(avatarKey: "🏐", size: 34)
             }
             
             VStack(alignment: .leading, spacing: 3) {
@@ -755,12 +745,7 @@ public struct ConfirmedGamesView: View {
                                 .clipShape(Circle())
                             
                             // Avatar
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 28, height: 28)
-                                CourtAvatarIconView(avatarKey: isMyGame ? p.avatarEmoji : "🏐", size: 20)
-                            }
+                            CourtAvatarIconView(avatarKey: isMyGame ? p.avatarEmoji : "🏐", size: 28)
                             
                             // Name & Badges
                             VStack(alignment: .leading, spacing: 2) {

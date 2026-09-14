@@ -1768,7 +1768,7 @@ function renderMatches() {
                         <span style="font-size: 10px; font-weight: 800; background: rgba(56, 189, 248, 0.18); color: #38bdf8; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                           #${idx + 1}
                         </span>
-                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background: transparent; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
                           ${avatarDisplay}
                         </div>
                         <div style="min-width: 0;">
