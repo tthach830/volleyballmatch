@@ -154,8 +154,9 @@
         <div id="profile-nickname-display" style="font-size: 14px; font-weight: 600; color: var(--accent); margin-top: 2px;">@Player</div>
         <div id="profile-phone-display" style="font-size: 13px; font-weight: 500; color: var(--text-muted); margin-top: 4px;">📱 831-555-0101</div>
 
-        <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px;">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
           <span id="profile-rating-badge" class="badge" style="background: var(--accent-light); color: var(--accent); font-weight: 800; font-size: 13px;">B TIER</span>
+          <span id="profile-gender-badge" class="badge" style="background: rgba(59, 130, 246, 0.15); color: #2563eb; font-weight: 800; font-size: 13px;">♂ Male</span>
           <span id="profile-stars" style="font-size: 13px; font-weight: 700; color: #b45309;">⭐ 5.0 (0 reviews)</span>
         </div>
 
@@ -328,6 +329,13 @@
           <div class="form-group">
             <label class="form-label" for="signup-name">Full Name</label>
             <input type="text" id="signup-name" class="form-input" placeholder="Alex Morgan" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup-gender">Gender</label>
+            <select id="signup-gender" class="form-select">
+              <option value="Male" selected>Male</option>
+              <option value="Female">Female</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label" for="signup-rating">Skill Level</label>
@@ -518,6 +526,14 @@
               </div>
             </div>
           </div>
+          <div class="form-group">
+            <label class="form-label" for="create-gender-category">Division / Gender</label>
+            <select id="create-gender-category" class="form-select">
+              <option value="COED" selected>COED</option>
+              <option value="F">Women's (F)</option>
+              <option value="M">Men's (M)</option>
+            </select>
+          </div>
           <div class="form-group" style="display: flex; align-items: center; gap: 12px;">
             <label class="form-label" for="create-max-players" style="margin: 0; white-space: nowrap;">Max. Players</label>
             <input type="number" id="create-max-players" class="form-input" min="2" max="16" step="1" value="4" placeholder="4" style="width: 80px; text-align: center; padding: 6px 10px;">
@@ -634,6 +650,14 @@
                 </div>
               </div>
             </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-gender-category">Division / Gender</label>
+            <select id="edit-gender-category" class="form-select">
+              <option value="COED">COED</option>
+              <option value="F">Women's (F)</option>
+              <option value="M">Men's (M)</option>
+            </select>
           </div>
           <div class="form-group" style="display: flex; align-items: center; gap: 12px;">
             <label class="form-label" for="edit-max-players" style="margin: 0; white-space: nowrap;">Max. Players</label>
@@ -975,6 +999,14 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label" for="edit-profile-gender">Gender</label>
+            <select id="edit-profile-gender" class="form-select">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label class="form-label" for="edit-profile-phone">Phone Number</label>
             <input type="tel" id="edit-profile-phone" class="form-input" placeholder="831-555-0101">
           </div>
@@ -1101,6 +1133,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=9.7"></script>
+  <script type="module" src="app.js?v=9.8"></script>
 </body>
 </html>

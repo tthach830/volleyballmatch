@@ -5,6 +5,7 @@ public struct SignUpView: View {
     
     @State private var name: String = ""
     @State private var nickname: String = ""
+    @State private var selectedGender: String = "Male"
     @State private var selectedRating: RatingTier = .intermediate
     @State private var selectedBeach: String = "Main Beach"
     @State private var customBeachName: String = ""
@@ -82,6 +83,19 @@ public struct SignUpView: View {
                                     .background(Color(UIColor.secondarySystemGroupedBackground))
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
+                        }
+                        
+                        // Gender
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("GENDER")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.secondary)
+                            
+                            Picker("Gender", selection: $selectedGender) {
+                                Text("Male").tag("Male")
+                                Text("Female").tag("Female")
+                            }
+                            .pickerStyle(.segmented)
                         }
                         
                         // Avatar Picker (Banana Slug, Shark, Otter, Orca, etc.)
@@ -237,6 +251,7 @@ public struct SignUpView: View {
                             dataManager.signUp(
                                 name: finalName,
                                 nickname: finalNickname,
+                                gender: selectedGender,
                                 rating: selectedRating,
                                 homeBeach: effectiveBeach,
                                 avatarEmoji: selectedEmoji

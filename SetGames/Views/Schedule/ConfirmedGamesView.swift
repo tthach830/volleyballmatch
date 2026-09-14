@@ -522,9 +522,9 @@ public struct ConfirmedGamesView: View {
                 weatherService.loadForecast(for: game.courtLocation, on: game.scheduledDate)
             }
             
-            // Line 2: Format & Skill
+            // Line 2: Format & Division & Skill
             HStack(spacing: 6) {
-                Text("\(formatStr) Skill: \(skillStr)")
+                Text("\(formatStr) • \(game.genderCategory.rawValue) • Skill: \(skillStr)")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(Color.white.opacity(0.9))
                 if game.isLevelLocked {

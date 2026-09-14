@@ -90,6 +90,14 @@ public struct GameDetailView: View {
                                     RatingBadge(rating: game.targetRating, size: .regular)
                                 }
                                 
+                                Text(game.genderCategory.rawValue)
+                                    .font(.system(size: 11, weight: .bold))
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
+                                    .background(game.genderCategory == .female ? Color.pink.opacity(0.18) : (game.genderCategory == .male ? Color.blue.opacity(0.18) : Color.teal.opacity(0.18)))
+                                    .foregroundColor(game.genderCategory == .female ? .pink : (game.genderCategory == .male ? .blue : .teal))
+                                    .clipShape(Capsule())
+                                
                                 Spacer()
                                 
                                 Text(game.status.rawValue.uppercased())

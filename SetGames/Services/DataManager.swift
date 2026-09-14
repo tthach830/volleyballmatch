@@ -153,6 +153,7 @@ public class DataManager: ObservableObject {
         password: String = "",
         name: String,
         nickname: String,
+        gender: String = "Male",
         rating: RatingTier,
         homeBeach: String,
         avatarEmoji: String
@@ -180,6 +181,7 @@ public class DataManager: ObservableObject {
         let newPlayer = Player(
             name: name,
             nickname: nickname.isEmpty ? name : nickname,
+            gender: gender,
             avatarEmoji: avatarEmoji,
             rating: rating,
             eloRating: baseElo,
@@ -1186,6 +1188,7 @@ public class DataManager: ObservableObject {
         title: String,
         targetRating: RatingTier,
         allowedRatings: [RatingTier]? = nil,
+        genderCategory: GameGenderCategory? = nil,
         format: GameFormat,
         maxPlayers: Int = 4,
         scheduledDate: Date,
@@ -1213,6 +1216,9 @@ public class DataManager: ObservableObject {
         } else {
             game.targetRating = targetRating
             game.allowedRatings = [targetRating]
+        }
+        if let g = genderCategory {
+            game.genderCategory = g
         }
         game.format = format
         game.maxPlayers = max(2, maxPlayers)
@@ -1305,6 +1311,7 @@ public class DataManager: ObservableObject {
     public func updateCurrentUserProfile(
         name: String,
         nickname: String,
+        gender: String? = nil,
         avatarEmoji: String,
         rating: RatingTier,
         homeBeach: String,
@@ -1315,6 +1322,9 @@ public class DataManager: ObservableObject {
         guard var user = currentUser else { return }
         user.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         user.nickname = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let g = gender, !g.isEmpty {
+            user.gender = g
+        }
         user.avatarEmoji = avatarEmoji
         user.rating = rating
         user.homeBeach = homeBeach.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1438,6 +1448,7 @@ public class DataManager: ObservableObject {
         title: String,
         targetRating: RatingTier,
         allowedRatings: [RatingTier] = [],
+        genderCategory: GameGenderCategory = .coed,
         format: GameFormat = .bestOfThree,
         courtLocation: String = "Main Beach",
         courtNumber: String = "Court #1",
@@ -1455,6 +1466,7 @@ public class DataManager: ObservableObject {
             title: title.isEmpty ? defaultTitle : title,
             targetRating: primaryRating,
             allowedRatings: effectiveAllowed,
+            genderCategory: genderCategory,
             format: format,
             status: .scheduled,
             scheduledDate: scheduledDate,

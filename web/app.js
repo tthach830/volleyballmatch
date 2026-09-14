@@ -1743,7 +1743,7 @@ function renderMatches() {
             <span id="weather-line-${game.id}" style="margin-left: 4px;">${renderWeatherLine(game)}</span>
           </div>
           <div class="card-metadata-line-item">
-            <span>${formatLabel} Skill: ${skillStr}</span>
+            <span>${formatLabel} • ${game.genderCategory || 'COED'} • Skill: ${skillStr}</span>
             ${game.isLevelLocked ? `<span style="font-size:10px; font-weight:700; background:rgba(234,88,12,0.2); color:#fb923c; padding:2px 6px; border-radius:4px;">🔒 Locked</span>` : ''}
           </div>
           <div class="card-metadata-line-item">
@@ -2310,9 +2310,17 @@ function renderProfile() {
   const phoneEl = document.getElementById("profile-phone-display");
   if (phoneEl) phoneEl.textContent = user.phoneNumber ? `📱 ${user.phoneNumber}` : "";
 
-  // Rating badge
+  // Rating badge & Gender badge
   const ratingEl = document.getElementById("profile-rating-badge");
   if (ratingEl) ratingEl.textContent = `${user.rating || "B"} TIER`;
+
+  const genderEl = document.getElementById("profile-gender-badge");
+  if (genderEl) {
+    const isFem = String(user.gender || "").toLowerCase() === "female";
+    genderEl.textContent = isFem ? "♀ Female" : "♂ Male";
+    genderEl.style.background = isFem ? "rgba(236, 72, 153, 0.15)" : "rgba(59, 130, 246, 0.15)";
+    genderEl.style.color = isFem ? "#db2777" : "#2563eb";
+  }
 
   // Stars & Flaker
   const starsEl = document.getElementById("profile-stars");
@@ -2435,6 +2443,8 @@ window.openEditProfileModal = () => {
   document.getElementById("edit-profile-nickname").value = user.nickname || "";
   document.getElementById("edit-profile-phone").value = user.phoneNumber || "";
   document.getElementById("edit-profile-rating").value = user.rating || "B";
+  const editGenderEl = document.getElementById("edit-profile-gender");
+  if (editGenderEl) editGenderEl.value = user.gender || "Male";
 
   const beachSelect = document.getElementById("edit-profile-beach");
   if (beachSelect) {
@@ -2487,6 +2497,7 @@ window.handleSaveEditProfile = (e) => {
 
   const name = document.getElementById("edit-profile-name").value.trim();
   const nickname = document.getElementById("edit-profile-nickname").value.trim();
+  const gender = document.getElementById("edit-profile-gender")?.value || user.gender || "Male";
   const phoneNumber = document.getElementById("edit-profile-phone").value.trim();
   const rating = document.getElementById("edit-profile-rating").value;
   const homeBeach = document.getElementById("edit-profile-beach").value;
@@ -2502,6 +2513,7 @@ window.handleSaveEditProfile = (e) => {
 
   user.name = name;
   user.nickname = nickname;
+  user.gender = gender;
   user.phoneNumber = phoneNumber;
   user.rating = rating;
   user.homeBeach = homeBeach;
@@ -2831,6 +2843,7 @@ window.handlePhoneSignUp = (e) => {
   const phone = document.getElementById("signup-phone")?.value.trim() || "";
   const password = document.getElementById("signup-password")?.value.trim() || "";
   const name = document.getElementById("signup-name")?.value.trim() || "Beach Player";
+  const gender = document.getElementById("signup-gender")?.value || "Male";
   const rating = document.getElementById("signup-rating")?.value || "Intermediate";
   const homeBeach = document.getElementById("signup-beach")?.value || "Main Beach";
   const avatar = window.selectedSignupAvatarEmoji || "slug";
@@ -2849,17 +2862,16 @@ window.handlePhoneSignUp = (e) => {
 
   // Enforce single account per phone number
   const existingPlayer = state.players.find(p => {
-    const pClean = String(p.phoneNumber || "").replace(/\D/g, "");
-    return (pClean && cleanPhone && pClean === cleanPhone) || (p.phoneNumber && p.phoneNumber.trim() === phone);
+    const pCleaned = (p.phoneNumber || "").replace(/\D/g, "");
+    return (pCleaned && pCleaned === cleanPhone) || p.phoneNumber === phone;
   });
 
   if (existingPlayer) {
-    const msg = `This phone number (${phone}) is already registered. Only one account per phone number is allowed.`;
+    showToast("This phone number is already registered! Please log in.");
     if (errEl) {
-      errEl.innerHTML = `${msg} <a href="#" style="color: var(--accent); text-decoration: underline; font-weight: bold; margin-left: 4px;" onclick="window.switchAuthMode('login')">Log In Here &raquo;</a>`;
+      errEl.textContent = "This phone number is already registered. Please log in.";
       errEl.style.display = "block";
     }
-    showToast(`Phone number already registered. Please log in.`);
     return;
   }
 
@@ -2880,6 +2892,7 @@ window.handlePhoneSignUp = (e) => {
     id: newPlayerId,
     name,
     nickname: name.split(" ")[0],
+    gender,
     phoneNumber: phone,
     password,
     rating,
@@ -3182,6 +3195,7 @@ window.handleCreateMatch = (e) => {
   const targetRating = allowedRatings[0] || (state.currentUser?.rating || "B");
   const isLevelLocked = document.getElementById("create-level-locked").checked;
   const isPrivate = document.getElementById("create-is-private") ? document.getElementById("create-is-private").checked : false;
+  const genderCategory = document.getElementById("create-gender-category")?.value || "COED";
   const maxPlayers = parseInt(document.getElementById("create-max-players")?.value) || 4;
   const format = document.getElementById("create-format").value;
   const courtLocation = document.getElementById("create-beach").value;
@@ -3196,6 +3210,7 @@ window.handleCreateMatch = (e) => {
     title: defaultTitle,
     targetRating,
     allowedRatings: allowedRatings.length > 0 ? allowedRatings : [targetRating],
+    genderCategory,
     isLevelLocked,
     isPrivate,
     maxPlayers,
@@ -3336,6 +3351,9 @@ window.openEditMatchModal = (gameId) => {
   if (document.getElementById("edit-is-private")) {
     document.getElementById("edit-is-private").checked = !!game.isPrivate;
   }
+  if (document.getElementById("edit-gender-category")) {
+    document.getElementById("edit-gender-category").value = game.genderCategory || "COED";
+  }
   if (document.getElementById("edit-max-players")) {
     document.getElementById("edit-max-players").value = game.maxPlayers || 4;
   }
@@ -3371,6 +3389,7 @@ window.handleSaveMatchEdit = (e) => {
   game.targetRating = game.allowedRatings[0] || "B";
 
   game.title = document.getElementById("edit-title").value.trim();
+  game.genderCategory = document.getElementById("edit-gender-category")?.value || "COED";
   game.isLevelLocked = document.getElementById("edit-level-locked").checked;
   if (document.getElementById("edit-is-private")) {
     game.isPrivate = document.getElementById("edit-is-private").checked;

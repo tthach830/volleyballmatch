@@ -6,6 +6,7 @@ public struct CreateMatchSheet: View {
     
     @State private var selectedRatings: Set<RatingTier> = [.b]
     @State private var isTierDropdownOpen: Bool = false
+    @State private var genderCategory: GameGenderCategory = .coed
     @State private var format: GameFormat = .bestOfThree
     @State private var maxPlayers: Int = 4
     @State private var courtLocation: String = "Main Beach"
@@ -178,6 +179,18 @@ public struct CreateMatchSheet: View {
                     .padding(.vertical, 4)
                     
                     HStack {
+                        Text("Division")
+                        Spacer()
+                        Picker("Division", selection: $genderCategory) {
+                            ForEach(GameGenderCategory.allCases, id: \.self) { cat in
+                                Text(cat.rawValue).tag(cat)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 200)
+                    }
+                    
+                    HStack {
                         Text("Max. Players")
                         Spacer()
                         TextField("4", value: $maxPlayers, format: .number)
@@ -261,6 +274,7 @@ public struct CreateMatchSheet: View {
                             title: finalTitle,
                             targetRating: primaryRating,
                             allowedRatings: chosenRatings,
+                            genderCategory: genderCategory,
                             format: format,
                             courtLocation: effectiveCourt,
                             courtNumber: courtNumber.isEmpty ? "Court #1" : courtNumber,

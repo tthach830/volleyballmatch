@@ -4,6 +4,7 @@ public struct Player: Identifiable, Codable, Hashable {
     public var id: UUID
     public var name: String
     public var nickname: String
+    public var gender: String
     public var avatarEmoji: String
     public var rating: RatingTier
     public var eloRating: Int
@@ -62,6 +63,7 @@ public struct Player: Identifiable, Codable, Hashable {
         id: UUID = UUID(),
         name: String,
         nickname: String = "",
+        gender: String = "Male",
         avatarEmoji: String = "🍌",
         rating: RatingTier,
         eloRating: Int = 1500,
@@ -86,6 +88,7 @@ public struct Player: Identifiable, Codable, Hashable {
         self.id = id
         self.name = name
         self.nickname = nickname.isEmpty ? name.components(separatedBy: " ").first ?? name : nickname
+        self.gender = gender
         self.avatarEmoji = avatarEmoji
         self.rating = rating
         self.eloRating = eloRating
@@ -168,7 +171,7 @@ public struct Player: Identifiable, Codable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, name, nickname, avatarEmoji, rating, eloRating, homeBeach, phoneNumber, password
+        case id, name, nickname, gender, avatarEmoji, rating, eloRating, homeBeach, phoneNumber, password
         case wins, losses, streak, pointsScored, pointsAllowed, uniquePartnerIds, uniqueOpponentIds, recentForm, bio
         case starRatingSum, starRatingCount, consecutiveBackouts, deviceToken, isStatsHidden
     }
@@ -185,6 +188,7 @@ public struct Player: Identifiable, Codable, Hashable {
         
         name = (try? c.decode(String.self, forKey: .name)) ?? "Beach Player"
         nickname = (try? c.decode(String.self, forKey: .nickname)) ?? ""
+        gender = (try? c.decode(String.self, forKey: .gender)) ?? "Male"
         avatarEmoji = (try? c.decode(String.self, forKey: .avatarEmoji)) ?? "slug"
         
         if let r = try? c.decode(RatingTier.self, forKey: .rating) {

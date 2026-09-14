@@ -47,8 +47,18 @@ public struct ProfileView: View {
                                 }
                             }
                             
-                            HStack(spacing: 10) {
+                            HStack(spacing: 8) {
                                 RatingBadge(rating: user.rating, size: .regular)
+                                
+                                HStack(spacing: 4) {
+                                    Text(user.gender.lowercased() == "female" ? "♀ Female" : "♂ Male")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 4)
+                                .background(user.gender.lowercased() == "female" ? Color.pink.opacity(0.15) : Color.blue.opacity(0.15))
+                                .foregroundColor(user.gender.lowercased() == "female" ? .pink : .blue)
+                                .clipShape(Capsule())
                                 
                                 HStack(spacing: 4) {
                                     Image(systemName: "star.fill")

@@ -1,5 +1,23 @@
 import Foundation
 
+public enum GameGenderCategory: String, Codable, CaseIterable {
+    case coed = "COED"
+    case female = "F"
+    case male = "M"
+    
+    public var displayName: String {
+        switch self {
+        case .coed: return "COED"
+        case .female: return "Women's (F)"
+        case .male: return "Men's (M)"
+        }
+    }
+    
+    public var badgeText: String {
+        rawValue
+    }
+}
+
 public enum GameFormat: String, Codable, CaseIterable {
     case bestOfThree = "Best of 3 Sets (21-21-15)"
     case singleSet21 = "Single Set to 21"
@@ -237,6 +255,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
     public var id: UUID
     public var title: String
     public var targetRating: RatingTier
+    public var genderCategory: GameGenderCategory
     public var format: GameFormat
     public var status: GameStatus
     public var scheduledDate: Date
@@ -280,6 +299,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
         title: String = "Beach Doubles Set",
         targetRating: RatingTier,
         allowedRatings: [RatingTier] = [],
+        genderCategory: GameGenderCategory = .coed,
         format: GameFormat = .bestOfThree,
         status: GameStatus = .scheduled,
         scheduledDate: Date,
@@ -306,6 +326,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
         self.title = title
         self.targetRating = targetRating
         self.allowedRatings = allowedRatings.isEmpty ? [targetRating] : allowedRatings
+        self.genderCategory = genderCategory
         self.format = format
         self.status = status
         self.scheduledDate = scheduledDate
@@ -418,7 +439,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, title, targetRating, format, status, scheduledDate, courtLocation, courtNumber
+        case id, title, targetRating, genderCategory, format, status, scheduledDate, courtLocation, courtNumber
         case team1PlayerIds, team2PlayerIds, setScores, winningTeam, isAutoMatched, matchedOptionName, notes
         case hostPlayerId, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches, waitlistPlayerIds, allowedRatings, isPrivate
     }
@@ -456,6 +477,22 @@ public struct SetGame: Identifiable, Codable, Hashable {
             }
         } else {
             targetRating = .b
+        }
+        
+        // 3.1 Gender Category
+        if let g = try? c.decode(GameGenderCategory.self, forKey: .genderCategory) {
+            genderCategory = g
+        } else if let gStr = try? c.decode(String.self, forKey: .genderCategory) {
+            switch gStr.uppercased() {
+            case "F", "FEMALE", "WOMEN", "WOMENS", "WOMEN'S":
+                genderCategory = .female
+            case "M", "MALE", "MEN", "MENS", "MEN'S":
+                genderCategory = .male
+            default:
+                genderCategory = .coed
+            }
+        } else {
+            genderCategory = .coed
         }
         
         // 4. Format
@@ -589,6 +626,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
         try c.encode(rawId ?? id.uuidString, forKey: .id)
         try c.encode(title, forKey: .title)
         try c.encode(targetRating, forKey: .targetRating)
+        try c.encode(genderCategory.rawValue, forKey: .genderCategory)
         try c.encode(format, forKey: .format)
         try c.encode(status, forKey: .status)
         try c.encode(scheduledDate, forKey: .scheduledDate)

@@ -8,6 +8,7 @@ public struct EditMatchSheet: View {
     @State private var title: String
     @State private var selectedRatings: Set<RatingTier>
     @State private var isTierDropdownOpen: Bool = false
+    @State private var genderCategory: GameGenderCategory
     @State private var format: GameFormat
     @State private var maxPlayers: Int
     @State private var courtLocation: String
@@ -25,6 +26,7 @@ public struct EditMatchSheet: View {
         self.game = game
         _title = State(initialValue: game.title)
         _selectedRatings = State(initialValue: Set(game.effectiveAllowedRatings))
+        _genderCategory = State(initialValue: game.genderCategory)
         _format = State(initialValue: game.format)
         _maxPlayers = State(initialValue: game.maxPlayers)
         _courtLocation = State(initialValue: game.courtLocation)
@@ -160,6 +162,18 @@ public struct EditMatchSheet: View {
                     .padding(.vertical, 4)
                     
                     HStack {
+                        Text("Division")
+                        Spacer()
+                        Picker("Division", selection: $genderCategory) {
+                            ForEach(GameGenderCategory.allCases, id: \.self) { cat in
+                                Text(cat.rawValue).tag(cat)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 200)
+                    }
+                    
+                    HStack {
                         Text("Max. Players")
                         Spacer()
                         TextField("4", value: $maxPlayers, format: .number)
@@ -242,6 +256,7 @@ public struct EditMatchSheet: View {
                             title: title,
                             targetRating: primaryRating,
                             allowedRatings: chosenRatings,
+                            genderCategory: genderCategory,
                             format: format,
                             maxPlayers: maxPlayers,
                             scheduledDate: scheduledDate,

@@ -6,6 +6,7 @@ public struct EditProfileSheet: View {
     
     @State private var name: String = ""
     @State private var nickname: String = ""
+    @State private var gender: String = "Male"
     @State private var avatarEmoji: String = "slug"
     @State private var rating: RatingTier = .b
     @State private var homeBeach: String = "Main Beach"
@@ -125,6 +126,17 @@ public struct EditProfileSheet: View {
                     }
                     
                     HStack {
+                        Text("Gender")
+                            .frame(width: 90, alignment: .leading)
+                            .foregroundColor(.secondary)
+                        Picker("Gender", selection: $gender) {
+                            Text("Male").tag("Male")
+                            Text("Female").tag("Female")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    
+                    HStack {
                         Text("Phone")
                             .frame(width: 90, alignment: .leading)
                             .foregroundColor(.secondary)
@@ -208,6 +220,7 @@ public struct EditProfileSheet: View {
         guard let user = dataManager.currentUser else { return }
         name = user.name
         nickname = user.nickname
+        gender = user.gender
         avatarEmoji = user.avatarEmoji
         rating = user.rating
         homeBeach = user.homeBeach
@@ -220,6 +233,7 @@ public struct EditProfileSheet: View {
         dataManager.updateCurrentUserProfile(
             name: name,
             nickname: nickname,
+            gender: gender,
             avatarEmoji: avatarEmoji,
             rating: rating,
             homeBeach: homeBeach,
