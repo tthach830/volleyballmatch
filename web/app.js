@@ -1143,13 +1143,14 @@ window.removePlayerFromPool = (gameId, playerId) => {
   if (!game || !state.currentUser) return;
 
   const currentUserId = state.currentUser.id;
-  const isHost = game.hostPlayerId === currentUserId || (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId) || state.currentUser.isRoot;
+  const isRoot = isRootUser(state.currentUser);
+  const isHost = isSamePlayer(game.hostPlayerId, currentUserId) || (game.team1PlayerIds && isSamePlayer(game.team1PlayerIds[0], currentUserId)) || isRoot;
   if (!isHost) {
-    showToast("Only the match host can remove players from the pool.");
+    showToast("Only the match host or admin can remove players from the pool.");
     return;
   }
 
-  if (playerId === game.hostPlayerId) {
+  if (!isRoot && isSamePlayer(playerId, game.hostPlayerId)) {
     showToast("Hosts cannot remove themselves from the pool.");
     return;
   }
@@ -1163,10 +1164,20 @@ window.removePlayerFromPool = (gameId, playerId) => {
 
   const wasInTeam1 = game.team1PlayerIds && game.team1PlayerIds.includes(playerId);
   const wasInTeam2 = game.team2PlayerIds && game.team2PlayerIds.includes(playerId);
-  if (!wasInTeam1 && !wasInTeam2) return;
+  const wasInWaitlist = game.waitlistPlayerIds && game.waitlistPlayerIds.includes(playerId);
+  if (!wasInTeam1 && !wasInTeam2 && !wasInWaitlist) return;
 
-  game.team1PlayerIds = (game.team1PlayerIds || []).filter(id => id !== playerId);
-  game.team2PlayerIds = (game.team2PlayerIds || []).filter(id => id !== playerId);
+  if (wasInWaitlist) {
+    game.waitlistPlayerIds = (game.waitlistPlayerIds || []).filter(id => !isSamePlayer(id, playerId));
+    state.saveLocal();
+    saveGameToFirestore(game);
+    renderMatches();
+    showToast(`Removed ${pName} from the waiting list.`);
+    return;
+  }
+
+  game.team1PlayerIds = (game.team1PlayerIds || []).filter(id => !isSamePlayer(id, playerId));
+  game.team2PlayerIds = (game.team2PlayerIds || []).filter(id => !isSamePlayer(id, playerId));
 
   // Auto-promote first waitlisted player into the open spot
   let promotedPlayerName = null;
@@ -1659,7 +1670,7 @@ function renderMatches() {
         const starVal = p ? formatStarRating(p) : "5.0";
         const teamClass = isTeam1 ? 'player-tile-team1' : 'player-tile-team2';
 
-        const canRemove = isHost && !isSamePlayer(pid, game.hostPlayerId);
+        const canRemove = (isHost || isRoot) && (isRoot ? !isSamePlayer(pid, currentUserId) : !isSamePlayer(pid, game.hostPlayerId));
         const removeBtnHtml = canRemove ? `
           <button type="button" class="player-tile-trash" title="Remove player from match" onclick="event.stopPropagation(); window.removePlayerFromPool('${game.id}', '${pid}')">🗑️</button>
         ` : '';
@@ -1785,7 +1796,7 @@ function renderMatches() {
                   const tierClass = String(tierVal).toLowerCase() === 'intermediate' ? 'badge-tier-intermediate' : `badge-tier-${String(tierVal).toLowerCase()}`;
                   const starVal = p ? formatStarRating(p) : "5.0";
                   const isGameHost = isSamePlayer(pid, game.hostPlayerId);
-                  const canRemove = isHost && !isGameHost;
+                  const canRemove = (isHost || isRoot) && (isRoot ? !isSamePlayer(pid, currentUserId) : !isGameHost);
 
                   return `
                     <div class="player-pool-list-row">

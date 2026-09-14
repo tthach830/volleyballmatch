@@ -335,7 +335,9 @@ public struct ConfirmedGamesView: View {
             
             Spacer(minLength: 0)
             
-            if isHost && pid != game.hostPlayerId {
+            let isRoot = dataManager.currentUser?.isRoot == true
+            let canRemove = (isHost || isRoot) && (isRoot ? (pid != dataManager.currentUser?.id) : (pid != game.hostPlayerId))
+            if canRemove {
                 Button {
                     playerToRemove = (game.id, p)
                     showRemovePlayerAlert = true
@@ -733,7 +735,8 @@ public struct ConfirmedGamesView: View {
                         let ratingTier = p.rating
                         let starStr = String(format: "%.1f", p.averageStarRating)
                         let isGameHost = pid == game.hostPlayerId
-                        let canRemove = isHost && !isGameHost
+                        let isRoot = dataManager.currentUser?.isRoot == true
+                        let canRemove = (isHost || isRoot) && (isRoot ? (pid != dataManager.currentUser?.id) : !isGameHost)
                         
                         HStack(spacing: 8) {
                             // Number circle
@@ -1355,10 +1358,10 @@ public struct ConfirmedGamesView: View {
         let isMyGame: Bool
         let isHost: Bool
         if let uid = currentUserId {
-            isMyGame = game.allPlayerIds.contains(uid) || game.hostPlayerId == uid
+            isMyGame = game.allPlayerIds.contains(uid) || game.hostPlayerId == uid || isRoot
             isHost = (game.hostPlayerId != nil && game.hostPlayerId == uid) || (game.team1PlayerIds.first == uid) || isRoot
         } else {
-            isMyGame = false
+            isMyGame = isRoot
             isHost = isRoot
         }
         

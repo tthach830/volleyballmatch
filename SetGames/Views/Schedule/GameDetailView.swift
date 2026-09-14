@@ -41,7 +41,7 @@ public struct GameDetailView: View {
     
     private var isUserInMatch: Bool {
         guard let g = game, let user = dataManager.currentUser else { return false }
-        return g.allPlayerIds.contains(user.id) || g.hostPlayerId == user.id
+        return g.allPlayerIds.contains(user.id) || g.hostPlayerId == user.id || user.isRoot
     }
     
     private func hostPlayer(for g: SetGame) -> Player? {
@@ -963,7 +963,9 @@ public struct GameDetailView: View {
             }
             Spacer(minLength: 0)
             
-            if isMatchHost && p.id != game.hostPlayerId {
+            let isRoot = dataManager.currentUser?.isRoot == true
+            let canRemove = (isMatchHost || isRoot) && (isRoot ? (p.id != dataManager.currentUser?.id) : (p.id != game.hostPlayerId))
+            if canRemove {
                 Button {
                     playerToRemove = p
                     showRemovePlayerConfirmation = true
@@ -1619,7 +1621,7 @@ public struct MatchChatSheet: View {
     
     private var isUserInMatch: Bool {
         guard let user = dataManager.currentUser else { return false }
-        return currentGame.allPlayerIds.contains(user.id) || currentGame.hostPlayerId == user.id
+        return currentGame.allPlayerIds.contains(user.id) || currentGame.hostPlayerId == user.id || user.isRoot
     }
     
     public init(dataManager: DataManager, game: SetGame) {

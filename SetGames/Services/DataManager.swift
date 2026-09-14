@@ -864,15 +864,29 @@ public class DataManager: ObservableObject {
         var game = games[index]
         let isHost = (game.hostPlayerId == user.id) || user.isRoot
         guard isHost else {
-            return (false, "Only the match host can remove players from the pool.")
+            return (false, "Only the match host or admin can remove players from the pool.")
         }
         
-        guard playerId != game.hostPlayerId else {
+        guard user.isRoot ? (playerId != user.id) : (playerId != game.hostPlayerId) else {
             return (false, "Hosts cannot remove themselves from the pool.")
         }
         
-        guard game.allPlayerIds.contains(playerId) else {
+        let wasInTeam1 = game.team1PlayerIds.contains(playerId)
+        let wasInTeam2 = game.team2PlayerIds.contains(playerId)
+        let wasInWaitlist = game.waitlistPlayerIds.contains(playerId)
+        
+        guard wasInTeam1 || wasInTeam2 || wasInWaitlist else {
             return (false, "Player is not in this match.")
+        }
+        
+        if wasInWaitlist {
+            game.waitlistPlayerIds.removeAll(where: { $0 == playerId })
+            games[index] = game
+            saveToDisk()
+            FirestoreService.shared.saveGame(game)
+            let removed = player(for: playerId)
+            let removedName = removed.nickname.isEmpty ? removed.name : removed.nickname
+            return (true, "Removed \(removedName) from waitlist.")
         }
         
         game.team1PlayerIds.removeAll(where: { $0 == playerId })
