@@ -952,6 +952,72 @@ function resolvePlayerNames(pids, game, isHidden, isWinner = false) {
   return isWinner ? `${names} <span style="font-size: 8px; line-height: 1;">🏅🏅</span>` : names;
 }
 
+export function checkPlayerGenderJoinable(game, player) {
+  if (!player) return { allowed: false, message: "Please log in." };
+  const category = (game.genderCategory || "COED").toUpperCase();
+  const pGender = String(player.gender || "").trim().toLowerCase();
+
+  const allActive = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+  const currentMales = allActive.map(id => state.getPlayer(id)).filter(p => p && String(p.gender || "").trim().toLowerCase() === "male").length;
+  const currentFemales = allActive.map(id => state.getPlayer(id)).filter(p => p && String(p.gender || "").trim().toLowerCase() === "female").length;
+
+  if (category === "COED") {
+    if (pGender !== "male" && pGender !== "female") {
+      return { allowed: false, message: "Please set your gender (Male or Female) in Profile to join a COED match." };
+    }
+    if (pGender === "male" && currentMales >= 2) {
+      return { allowed: false, message: "COED format is limited to 2 male & 2 female players. Male spots are full (you can join the waitlist)." };
+    }
+    if (pGender === "female" && currentFemales >= 2) {
+      return { allowed: false, message: "COED format is limited to 2 male & 2 female players. Female spots are full (you can join the waitlist)." };
+    }
+    return { allowed: true };
+  } else if (category === "F" || category === "FEMALE") {
+    if (pGender !== "female") {
+      return { allowed: false, message: "This match is restricted to Female players only." };
+    }
+    return { allowed: true };
+  } else if (category === "M" || category === "MALE") {
+    if (pGender !== "male") {
+      return { allowed: false, message: "This match is restricted to Male players only." };
+    }
+    return { allowed: true };
+  }
+  return { allowed: true };
+}
+
+export function getEligibleWaitlistIndex(game) {
+  if (!game.waitlistPlayerIds || game.waitlistPlayerIds.length === 0) return -1;
+  const currentTotal = (game.team1PlayerIds?.length || 0) + (game.team2PlayerIds?.length || 0);
+  const maxP = game.maxPlayers || 4;
+  if (currentTotal >= maxP) return -1;
+
+  const allActive = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+  const currentMales = allActive.map(id => state.getPlayer(id)).filter(p => p && String(p.gender || "").trim().toLowerCase() === "male").length;
+  const currentFemales = allActive.map(id => state.getPlayer(id)).filter(p => p && String(p.gender || "").trim().toLowerCase() === "female").length;
+
+  const category = (game.genderCategory || "COED").toUpperCase();
+
+  for (let i = 0; i < game.waitlistPlayerIds.length; i++) {
+    const pid = game.waitlistPlayerIds[i];
+    const p = state.getPlayer(pid);
+    if (!p) continue;
+    const pGender = String(p.gender || "").trim().toLowerCase();
+
+    if (category === "COED") {
+      if (pGender === "male" && currentMales < 2) return i;
+      if (pGender === "female" && currentFemales < 2) return i;
+    } else if (category === "F" || category === "FEMALE") {
+      if (pGender === "female") return i;
+    } else if (category === "M" || category === "MALE") {
+      if (pGender === "male") return i;
+    } else {
+      return i;
+    }
+  }
+  return -1;
+}
+
 window.joinGamePool = (gameId) => {
   const game = state.games.find(g => g.id === gameId);
   if (!game) return;
@@ -981,6 +1047,13 @@ window.joinGamePool = (gameId) => {
   const allowed = (game.allowedRatings && game.allowedRatings.length > 0) ? game.allowedRatings : [game.targetRating || "B"];
   if (game.isLevelLocked && !allowed.includes(state.currentUser.rating)) {
     showToast(`Level Locked: This match is locked to ${allowed.join(", ")} players only (Your rating: ${state.currentUser.rating}).`);
+    return;
+  }
+
+  // Gender Category Check
+  const genderCheck = checkPlayerGenderJoinable(game, state.currentUser);
+  if (!genderCheck.allowed) {
+    showToast(genderCheck.message || "You cannot join this match due to division restrictions.");
     return;
   }
 
@@ -1071,6 +1144,13 @@ window.promoteWaitlistPlayer = (gameId, playerId) => {
 
   if (!game.waitlistPlayerIds || !game.waitlistPlayerIds.includes(playerId)) {
     showToast("Player is no longer on the waiting list.");
+    return;
+  }
+
+  const promotedPlayerObj = state.getPlayer(playerId);
+  const genderCheck = checkPlayerGenderJoinable(game, promotedPlayerObj);
+  if (!genderCheck.allowed) {
+    showToast(genderCheck.message || "Player cannot join due to division restrictions.");
     return;
   }
 
@@ -1179,14 +1259,13 @@ window.removePlayerFromPool = (gameId, playerId) => {
   game.team1PlayerIds = (game.team1PlayerIds || []).filter(id => !isSamePlayer(id, playerId));
   game.team2PlayerIds = (game.team2PlayerIds || []).filter(id => !isSamePlayer(id, playerId));
 
-  // Auto-promote first waitlisted player into the open spot
+  // Auto-promote first eligible waitlisted player into the open spot
   let promotedPlayerName = null;
   let promotedPlayer = null;
   if (!game.waitlistPlayerIds) game.waitlistPlayerIds = [];
-  const currentTotal = (game.team1PlayerIds?.length || 0) + (game.team2PlayerIds?.length || 0);
-  const maxP = game.maxPlayers || 4;
-  if (game.waitlistPlayerIds.length > 0 && currentTotal < maxP) {
-    const promotedId = game.waitlistPlayerIds.shift();
+  const eligibleIdx = getEligibleWaitlistIndex(game);
+  if (eligibleIdx >= 0) {
+    const promotedId = game.waitlistPlayerIds.splice(eligibleIdx, 1)[0];
     if ((game.team1PlayerIds?.length || 0) <= (game.team2PlayerIds?.length || 0)) {
       if (!game.team1PlayerIds) game.team1PlayerIds = [];
       game.team1PlayerIds.push(promotedId);
@@ -3046,13 +3125,12 @@ window.leaveGame = (gameId) => {
   game.team1PlayerIds = (game.team1PlayerIds || []).filter(id => id !== userId);
   game.team2PlayerIds = (game.team2PlayerIds || []).filter(id => id !== userId);
 
-  // Auto-promote first player from waitlist if spots opened
+  // Auto-promote first eligible player from waitlist if spots opened
   let promotedPlayerName = null;
   if (!game.waitlistPlayerIds) game.waitlistPlayerIds = [];
-  const currentTotal = (game.team1PlayerIds?.length || 0) + (game.team2PlayerIds?.length || 0);
-  const maxP = game.maxPlayers || 4;
-  if (game.waitlistPlayerIds.length > 0 && currentTotal < maxP) {
-    const promotedId = game.waitlistPlayerIds.shift();
+  const eligibleIdx = getEligibleWaitlistIndex(game);
+  if (eligibleIdx >= 0) {
+    const promotedId = game.waitlistPlayerIds.splice(eligibleIdx, 1)[0];
     if ((game.team1PlayerIds?.length || 0) <= (game.team2PlayerIds?.length || 0)) {
       if (!game.team1PlayerIds) game.team1PlayerIds = [];
       game.team1PlayerIds.push(promotedId);

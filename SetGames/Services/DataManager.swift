@@ -274,22 +274,9 @@ public class DataManager: ObservableObject {
                 g.team2PlayerIds.removeAll(where: { $0 == userId })
                 changed = true
                 
-                // Auto-promote first waitlisted player if available
+                // Auto-promote first eligible waitlisted player if available
                 if !g.waitlistPlayerIds.isEmpty && g.allPlayerIds.count < g.maxPlayers {
-                    let promotedId = g.waitlistPlayerIds.removeFirst()
-                    if g.team1PlayerIds.count <= g.team2PlayerIds.count {
-                        g.team1PlayerIds.append(promotedId)
-                    } else {
-                        g.team2PlayerIds.append(promotedId)
-                    }
-                    if let p = players.first(where: { $0.id == promotedId }), let token = p.deviceToken, !token.isEmpty {
-                        NotificationService.shared.sendDirectRemotePush(
-                            to: token,
-                            title: "🎉 You're in!",
-                            body: "A spot opened up in '\(g.title)' and you were promoted from the waitlist!",
-                            gameId: g.id
-                        )
-                    }
+                    _ = autoPromoteNextEligibleWaitlistedPlayer(for: &g)
                 }
             }
             
@@ -582,6 +569,79 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    private func autoPromoteNextEligibleWaitlistedPlayer(for game: inout SetGame) -> Player? {
+        guard !game.waitlistPlayerIds.isEmpty && game.allPlayerIds.count < game.maxPlayers else {
+            return nil
+        }
+        
+        let allActive = game.allPlayerIds.compactMap { pid in players.first(where: { $0.id == pid }) }
+        let currentMales = allActive.filter { $0.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "male" }.count
+        let currentFemales = allActive.filter { $0.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "female" }.count
+        
+        var foundIndex: Int? = nil
+        for (wIdx, wId) in game.waitlistPlayerIds.enumerated() {
+            guard let wp = players.first(where: { $0.id == wId }) else { continue }
+            let wGender = wp.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            
+            switch game.genderCategory {
+            case .coed:
+                if wGender == "male" && currentMales < 2 {
+                    foundIndex = wIdx
+                } else if wGender == "female" && currentFemales < 2 {
+                    foundIndex = wIdx
+                }
+            case .female:
+                if wGender == "female" {
+                    foundIndex = wIdx
+                }
+            case .male:
+                if wGender == "male" {
+                    foundIndex = wIdx
+                }
+            }
+            if foundIndex != nil { break }
+        }
+        
+        guard let idxToPromote = foundIndex else {
+            return nil
+        }
+        
+        let promotedId = game.waitlistPlayerIds.remove(at: idxToPromote)
+        if game.team1PlayerIds.count <= game.team2PlayerIds.count {
+            game.team1PlayerIds.append(promotedId)
+        } else {
+            game.team2PlayerIds.append(promotedId)
+        }
+        
+        let promotedPlayer = players.first(where: { $0.id == promotedId })
+        if let p = promotedPlayer {
+            let title = "🎉 You're in!"
+            let body = "A spot opened up in '\(game.title)' and you were promoted from the waitlist!"
+            if let token = p.deviceToken, !token.isEmpty {
+                NotificationService.shared.sendDirectRemotePush(
+                    to: token,
+                    title: title,
+                    body: body,
+                    gameId: game.id
+                )
+            } else {
+                FirestoreService.shared.fetchDeviceToken(for: promotedId) { token in
+                    if let token = token, !token.isEmpty {
+                        NotificationService.shared.sendDirectRemotePush(
+                            to: token,
+                            title: title,
+                            body: body,
+                            gameId: game.id
+                        )
+                    }
+                }
+            }
+        }
+        
+        return promotedPlayer
+    }
+    
+    @discardableResult
     public func joinOpenGame(gameId: UUID, teamNumber: Int) -> (success: Bool, message: String) {
         guard let user = currentUser,
               let index = games.firstIndex(where: { $0.id == gameId }) else {
@@ -605,6 +665,12 @@ public class DataManager: ObservableObject {
         // Level Lock Check
         if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
             return (false, "Level Locked: This match is locked to \(game.allowedRatingsDescription) players only. Your current rating is \(user.rating.rawValue).")
+        }
+        
+        // Gender Category Check
+        let genderCheck = game.canPlayerJoinGenderCategory(user, allPlayers: players)
+        if !genderCheck.allowed {
+            return (false, genderCheck.message ?? "You cannot join this match due to division restrictions.")
         }
         
         let maxTeamSize = (game.maxPlayers + 1) / 2
@@ -649,6 +715,12 @@ public class DataManager: ObservableObject {
         // Level Lock Check
         if game.isLevelLocked && !game.isPlayerTierAllowed(user.rating) {
             return (false, "Level Locked: This match is locked to \(game.allowedRatingsDescription) players only. Your current rating is \(user.rating.rawValue).")
+        }
+        
+        // Gender Category Check
+        let genderCheck = game.canPlayerJoinGenderCategory(user, allPlayers: players)
+        if !genderCheck.allowed {
+            return (false, genderCheck.message ?? "You cannot join this match due to division restrictions.")
         }
         
         if game.team1PlayerIds.count <= game.team2PlayerIds.count {
@@ -731,6 +803,12 @@ public class DataManager: ObservableObject {
         
         guard game.waitlistPlayerIds.contains(playerId) else {
             return (false, "Player is no longer waiting.")
+        }
+        
+        let wp = player(for: playerId)
+        let genderCheck = game.canPlayerJoinGenderCategory(wp, allPlayers: players)
+        if !genderCheck.allowed {
+            return (false, genderCheck.message ?? "Player cannot join due to division restrictions.")
         }
         
         // Remove from waitlist
@@ -823,6 +901,12 @@ public class DataManager: ObservableObject {
             return (false, "Player is already in this game.")
         }
         
+        let p = player(for: playerId)
+        let genderCheck = game.canPlayerJoinGenderCategory(p, allPlayers: players)
+        if !genderCheck.allowed {
+            return (false, genderCheck.message ?? "Player cannot join due to division restrictions.")
+        }
+        
         game.waitlistPlayerIds.removeAll(where: { $0 == playerId })
         
         if game.allPlayerIds.count >= game.maxPlayers {
@@ -892,37 +976,10 @@ public class DataManager: ObservableObject {
         game.team1PlayerIds.removeAll(where: { $0 == playerId })
         game.team2PlayerIds.removeAll(where: { $0 == playerId })
         
-        // Auto-promote first waitlisted player into the open spot
+        // Auto-promote first eligible waitlisted player into the open spot
         var promotedName: String? = nil
-        if !game.waitlistPlayerIds.isEmpty && game.allPlayerIds.count < game.maxPlayers {
-            let promotedId = game.waitlistPlayerIds.removeFirst()
-            if game.team1PlayerIds.count <= game.team2PlayerIds.count {
-                game.team1PlayerIds.append(promotedId)
-            } else {
-                game.team2PlayerIds.append(promotedId)
-            }
-            if let p = players.first(where: { $0.id == promotedId }) {
-                promotedName = p.nickname.isEmpty ? p.name : p.nickname
-                if let token = p.deviceToken, !token.isEmpty {
-                    NotificationService.shared.sendDirectRemotePush(
-                        to: token,
-                        title: "🎉 You're in!",
-                        body: "A spot opened up in '\(game.title)' and you were promoted from the waitlist!",
-                        gameId: game.id
-                    )
-                } else {
-                    FirestoreService.shared.fetchDeviceToken(for: promotedId) { token in
-                        if let token = token, !token.isEmpty {
-                            NotificationService.shared.sendDirectRemotePush(
-                                to: token,
-                                title: "🎉 You're in!",
-                                body: "A spot opened up in '\(game.title)' and you were promoted from the waitlist!",
-                                gameId: game.id
-                            )
-                        }
-                    }
-                }
-            }
+        if let promoted = autoPromoteNextEligibleWaitlistedPlayer(for: &game) {
+            promotedName = promoted.nickname.isEmpty ? promoted.name : promoted.nickname
         }
         
         games[index] = game
@@ -1128,26 +1185,10 @@ public class DataManager: ObservableObject {
         game.team1PlayerIds.removeAll(where: { $0 == user.id })
         game.team2PlayerIds.removeAll(where: { $0 == user.id })
         
-        // Auto-promote first waitlisted player into the open spot
+        // Auto-promote first eligible waitlisted player into the open spot
         var promotedName: String? = nil
-        if !game.waitlistPlayerIds.isEmpty && game.allPlayerIds.count < game.maxPlayers {
-            let promotedId = game.waitlistPlayerIds.removeFirst()
-            if game.team1PlayerIds.count <= game.team2PlayerIds.count {
-                game.team1PlayerIds.append(promotedId)
-            } else {
-                game.team2PlayerIds.append(promotedId)
-            }
-            if let p = players.first(where: { $0.id == promotedId }) {
-                promotedName = p.nickname.isEmpty ? p.name : p.nickname
-                if let token = p.deviceToken, !token.isEmpty {
-                    NotificationService.shared.sendDirectRemotePush(
-                        to: token,
-                        title: "🎉 You're in!",
-                        body: "A spot opened up in '\(game.title)' and you were promoted from the waitlist!",
-                        gameId: game.id
-                    )
-                }
-            }
+        if let promoted = autoPromoteNextEligibleWaitlistedPlayer(for: &game) {
+            promotedName = promoted.nickname.isEmpty ? promoted.name : promoted.nickname
         }
         
         // If host leaves, reassign to another player if any remain

@@ -384,6 +384,53 @@ public struct SetGame: Identifiable, Codable, Hashable {
         return nil
     }
     
+    public func maleCount(in players: [Player]) -> Int {
+        allPlayerIds.compactMap { pid in players.first(where: { $0.id == pid }) }
+            .filter { $0.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "male" }
+            .count
+    }
+    
+    public func femaleCount(in players: [Player]) -> Int {
+        allPlayerIds.compactMap { pid in players.first(where: { $0.id == pid }) }
+            .filter { $0.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "female" }
+            .count
+    }
+    
+    public func canPlayerJoinGenderCategory(_ player: Player, allPlayers: [Player]) -> (allowed: Bool, message: String?) {
+        let pGender = player.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        
+        switch genderCategory {
+        case .coed:
+            if pGender != "male" && pGender != "female" {
+                return (false, "Please set your gender (Male or Female) in Profile to join a COED match.")
+            }
+            if pGender == "male" {
+                let mCount = maleCount(in: allPlayers)
+                if mCount >= 2 {
+                    return (false, "COED format is limited to 2 male & 2 female players. Male spots are full (you can join the waitlist).")
+                }
+            } else if pGender == "female" {
+                let fCount = femaleCount(in: allPlayers)
+                if fCount >= 2 {
+                    return (false, "COED format is limited to 2 male & 2 female players. Female spots are full (you can join the waitlist).")
+                }
+            }
+            return (true, nil)
+            
+        case .female:
+            if pGender != "female" {
+                return (false, "This match is restricted to Female players only.")
+            }
+            return (true, nil)
+            
+        case .male:
+            if pGender != "male" {
+                return (false, "This match is restricted to Male players only.")
+            }
+            return (true, nil)
+        }
+    }
+    
     public var teamCapacity: Int {
         max(1, (maxPlayers + 1) / 2)
     }
