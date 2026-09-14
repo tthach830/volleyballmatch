@@ -91,7 +91,7 @@ public struct TopPlayersLadderView: View {
                             // Name & Beach
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack {
-                                    Text(player.name)
+                                    Text(player.ladderDisplayName)
                                         .font(.system(size: 15, weight: .bold))
                                         .foregroundColor(.primary)
                                     

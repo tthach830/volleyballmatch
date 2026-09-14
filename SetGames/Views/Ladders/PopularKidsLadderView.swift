@@ -69,7 +69,7 @@ public struct PopularKidsLadderView: View {
                         // Name & Community Title
                         VStack(alignment: .leading, spacing: 3) {
                             HStack {
-                                Text(player.name)
+                                Text(player.ladderDisplayName)
                                     .font(.system(size: 15, weight: .bold))
                                 
                                 if player.id == dataManager.currentUser?.id {

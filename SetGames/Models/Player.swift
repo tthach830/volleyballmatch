@@ -34,6 +34,30 @@ public struct Player: Identifiable, Codable, Hashable {
         return cleaned == "4087869405" || id.uuidString.uppercased() == "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
     }
     
+    public var ladderDisplayName: String {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNick = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        let parts = trimmedName.split(separator: " ").map(String.init)
+        let firstName = parts.first ?? trimmedName
+        
+        // If they have a Nickname that is different from their FirstName (and not equal to full name)
+        if !trimmedNick.isEmpty &&
+           trimmedNick.caseInsensitiveCompare(firstName) != .orderedSame &&
+           trimmedNick.caseInsensitiveCompare(trimmedName) != .orderedSame {
+            return trimmedNick
+        }
+        
+        // Display only Firstname and last initial
+        if parts.count > 1 {
+            let lastInitial = parts.last?.prefix(1).uppercased() ?? ""
+            if !lastInitial.isEmpty {
+                return "\(firstName) \(lastInitial)."
+            }
+        }
+        return firstName
+    }
+    
     public init(
         id: UUID = UUID(),
         name: String,

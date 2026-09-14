@@ -913,6 +913,31 @@ export function isRootUser(user) {
   return cleaned === "4087869405" || user.id === "47519EF2-207D-4C20-B9A6-BFEDA40FE581" || user.isRoot === true;
 }
 
+export function getLadderDisplayName(player) {
+  if (!player) return "Beach Player";
+  const name = String(player.name || "").trim();
+  const nickname = String(player.nickname || "").trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || name || "Player";
+
+  // If they have a nickname that is different from their firstName and different from fullName
+  if (nickname && 
+      nickname.toLowerCase() !== firstName.toLowerCase() && 
+      nickname.toLowerCase() !== name.toLowerCase()) {
+    return nickname;
+  }
+
+  // Display only Firstname and last initial
+  if (parts.length > 1) {
+    const lastPart = parts[parts.length - 1];
+    const initial = lastPart.charAt(0).toUpperCase();
+    if (initial) {
+      return `${firstName} ${initial}.`;
+    }
+  }
+  return firstName;
+}
+
 function resolvePlayerNames(pids, game, isHidden, isWinner = false) {
   if (!pids || pids.length === 0) return "TBD";
   const names = pids.map(id => {
@@ -2164,7 +2189,7 @@ function renderLadder() {
         <div class="rank-num">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#' + rank}</div>
         ${renderAvatar(player.avatarEmoji, "lg", (player.consecutiveBackouts || 0) >= 3)}
         <div class="rank-info">
-          <div class="rank-name">${player.name || "Beach Player"} ${player.nickname ? `"${player.nickname}"` : ""}</div>
+          <div class="rank-name">${getLadderDisplayName(player)}</div>
           <div class="rank-sub">📍 ${player.homeBeach || "Main Beach"} • <span class="badge badge-tier-${String(player.rating || 'b').toLowerCase()}">${player.rating || "B"}</span></div>
         </div>
         <div class="rank-stats">
@@ -2213,7 +2238,7 @@ function renderPopularKids() {
         <div class="rank-num">${rank === 1 ? '👑' : '#' + rank}</div>
         ${renderAvatar(player.avatarEmoji, "lg", (player.consecutiveBackouts || 0) >= 3)}
         <div class="rank-info">
-          <div class="rank-name">${player.name}</div>
+          <div class="rank-name">${getLadderDisplayName(player)}</div>
           <div class="rank-sub">${net.partnersCount} Partners • ${net.opponentsCount} Opponents</div>
         </div>
         <div class="rank-stats">
