@@ -2239,11 +2239,15 @@ function renderPopularKids() {
         ${renderAvatar(player.avatarEmoji, "lg", (player.consecutiveBackouts || 0) >= 3)}
         <div class="rank-info">
           <div class="rank-name">${getLadderDisplayName(player)}</div>
-          <div class="rank-sub">${net.partnersCount} Partners • ${net.opponentsCount} Opponents</div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
+            <span style="font-size: 11px; font-weight: 800; color: #a855f7; background: rgba(168, 85, 247, 0.12); padding: 2px 7px; border-radius: 6px; display: inline-flex; align-items: center; gap: 3px;">
+              ${badgeTitle}
+            </span>
+          </div>
+          <div class="rank-sub" style="margin-top: 3px;">${net.partnersCount} Partners • ${net.opponentsCount} Opponents</div>
         </div>
         <div class="rank-stats">
           <div style="font-size:16px; font-weight:800; color:var(--accent);">${connections} Connections</div>
-          <div style="font-size:11px; font-weight:700; color:var(--text-muted);">${badgeTitle}</div>
         </div>
       </div>
     `;

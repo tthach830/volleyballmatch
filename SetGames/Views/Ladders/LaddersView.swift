@@ -91,6 +91,7 @@ public struct LaddersView: View {
                 .padding(.bottom, 30)
             }
             .background(Color(UIColor.systemGroupedBackground))
+            .navigationTitle("Beach Ladders")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if dataManager.currentUser == nil {
