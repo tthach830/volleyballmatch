@@ -865,7 +865,7 @@ export function renderAvatarContent(avatarKey) {
     return "🐎";
   }
   if (avatarKey === "ichthys" || avatarKey === "christian_fish" || avatarKey === "fish_symbol") {
-    return `<svg viewBox="0 0 24 24" width="76%" height="76%" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><path d="M 2 12 C 7 4, 16 6, 22 17 M 2 12 C 7 20, 16 18, 22 7"/><circle cx="6.5" cy="11" r="1" fill="currentColor"/></svg>`;
+    return `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><path d="M 2 12 C 7 4, 16 6, 22 17 M 2 12 C 7 20, 16 18, 22 7"/><circle cx="6.5" cy="11" r="1" fill="currentColor"/></svg>`;
   }
   return `${avatarKey || "🏐"}`;
 }

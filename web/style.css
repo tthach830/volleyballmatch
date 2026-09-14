@@ -143,11 +143,12 @@ header {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #e2e8f0;
-  font-size: 15px;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
   overflow: hidden;
   flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.06);
+  border: none;
 }
 
 .avatar.sm,
@@ -155,19 +156,22 @@ header {
 .avatar-sm {
   width: 24px;
   height: 24px;
-  font-size: 13px;
+  font-size: 22px;
+  line-height: 1;
 }
 
 .avatar.lg {
   width: 50px;
   height: 50px;
-  font-size: 26px;
+  font-size: 46px;
+  line-height: 1;
 }
 
 .avatar.xl {
   width: 72px;
   height: 72px;
-  font-size: 38px;
+  font-size: 68px;
+  line-height: 1;
 }
 
 .avatar-slug-img {
@@ -614,7 +618,8 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 32px;
+  line-height: 1;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -1820,7 +1825,8 @@ nav#bottom-nav {
   .player-tile-dark .player-tile-avatar {
     width: 30px;
     height: 30px;
-    font-size: 18px;
+    font-size: 28px;
+    line-height: 1;
   }
 
   .modal-card {

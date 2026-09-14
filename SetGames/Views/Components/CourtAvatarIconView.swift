@@ -102,16 +102,19 @@ public struct CourtAvatarIconView: View {
         if let imageName = customImageName {
             Image(imageName)
                 .resizable()
-                .scaledToFit()
+                .scaledToFill()
                 .frame(width: size, height: size)
                 .clipShape(Circle())
         } else if isIchthys {
             IchthysFishShape()
-                .stroke(Color.primary, style: StrokeStyle(lineWidth: max(1.5, size * 0.07), lineCap: .round, lineJoin: .round))
-                .frame(width: size * 0.95, height: size * 0.95)
+                .stroke(Color.primary, style: StrokeStyle(lineWidth: max(1.5, size * 0.08), lineCap: .round, lineJoin: .round))
+                .frame(width: size, height: size)
         } else {
             Text(mappedEmojiText)
-                .font(.system(size: size * 0.95))
+                .font(.system(size: size * 1.05))
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+                .frame(width: size, height: size)
         }
     }
 }

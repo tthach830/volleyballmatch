@@ -844,12 +844,7 @@ public struct GameDetailView: View {
             if isUserInMatch {
                 PlayerAvatarView(player: p, dimension: 36)
             } else {
-                ZStack {
-                    Circle()
-                        .fill(Color(UIColor.systemGray5))
-                        .frame(width: 36, height: 36)
-                    CourtAvatarIconView(avatarKey: "🏐", size: 24)
-                }
+                CourtAvatarIconView(avatarKey: "🏐", size: 36)
             }
             
             VStack(alignment: .leading, spacing: 2) {
@@ -927,12 +922,7 @@ public struct GameDetailView: View {
             if isUserInMatch {
                 PlayerAvatarView(player: p, dimension: 36, showBadge: false)
             } else {
-                ZStack {
-                    Circle()
-                        .fill(Color(UIColor.systemGray5))
-                        .frame(width: 36, height: 36)
-                    CourtAvatarIconView(avatarKey: "🏐", size: 24)
-                }
+                CourtAvatarIconView(avatarKey: "🏐", size: 36)
             }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {

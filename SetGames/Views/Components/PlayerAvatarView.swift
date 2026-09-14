@@ -29,7 +29,7 @@ public struct PlayerAvatarView: View {
                                 .stroke(player.isFlaker ? Color.red : player.rating.badgeColor.opacity(0.6), lineWidth: player.isFlaker ? 2 : 1.5)
                         )
                     
-                    CourtAvatarIconView(avatarKey: player.avatarEmoji, size: dimension * 0.95)
+                    CourtAvatarIconView(avatarKey: player.avatarEmoji, size: dimension)
                 }
                 
                 if showBadge {
