@@ -1645,7 +1645,7 @@ function renderMatches() {
             <div class="player-tile-info">
               <div class="player-tile-name">${displayName}</div>
               <div style="display:flex; align-items:center; gap:5px;">
-                <span class="badge-tier-pill ${tierClass}">${tierVal}</span>
+                <span class="badge-tier-pill ${tierClass}">${String(tierVal).toLowerCase() === 'intermediate' ? 'Int' : tierVal}</span>
                 <span style="font-size:11px; font-weight:700; color:#fbbf24;">⭐ ${starVal}</span>
               </div>
             </div>
@@ -1777,7 +1777,7 @@ function renderMatches() {
                             ${isGameHost ? `<span style="font-size: 8px; font-weight: 800; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 1px 4px; border-radius: 3px;">HOST</span>` : ''}
                           </div>
                           <div style="display: flex; align-items: center; gap: 5px; margin-top: 1px;">
-                            <span class="badge-tier-pill ${tierClass}" style="font-size: 9px; padding: 1px 5px;">${tierVal}</span>
+                            <span class="badge-tier-pill ${tierClass}" style="font-size: 9px; padding: 1px 5px;">${String(tierVal).toLowerCase() === 'intermediate' ? 'Int' : tierVal}</span>
                             <span style="font-size: 10px; font-weight: 700; color: #fbbf24;">⭐ ${starVal}</span>
                           </div>
                         </div>

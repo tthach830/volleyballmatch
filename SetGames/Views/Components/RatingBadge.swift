@@ -41,7 +41,7 @@ public struct RatingBadge: View {
         HStack(spacing: 4) {
             Image(systemName: rating.iconName)
                 .font(size.font)
-            Text(rating.rawValue)
+            Text(rating.gameDisplay)
                 .font(size.font)
         }
         .padding(.vertical, size.paddingV)

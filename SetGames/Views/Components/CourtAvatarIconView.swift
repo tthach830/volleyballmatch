@@ -73,16 +73,25 @@ public struct CourtAvatarIconView: View {
         return nil
     }
     
-    public var isMustang: Bool {
-        avatarKey == "mustang" || avatarKey == "horse" || avatarKey == "🐎"
-    }
-    
-    public var isIchthys: Bool {
-        avatarKey == "ichthys" || avatarKey == "fish_symbol" || avatarKey == "christian_fish" || avatarKey.lowercased().contains("ichthys")
-    }
-    
-    public var isCross: Bool {
-        avatarKey == "cross" || avatarKey == "✝️" || avatarKey == "✝"
+    public var mappedEmojiText: String {
+        switch avatarKey.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "mustang", "horse", "🐎": return "🐎"
+        case "cross", "✝️", "✝": return "✝️"
+        case "shark", "🦈": return "🦈"
+        case "otter", "🦦": return "🦦"
+        case "orca", "🐋": return "🐋"
+        case "ball", "volleyball", "🏐": return "🏐"
+        case "lightning", "⚡️", "⚡": return "⚡️"
+        case "crown", "👑": return "👑"
+        case "wave", "🌊": return "🌊"
+        case "fire", "🔥": return "🔥"
+        case "eagle", "🦅": return "🦅"
+        case "lion", "🦁": return "🦁"
+        case "surfer", "🏄‍♂️", "🏄": return "🏄‍♂️"
+        case "beach", "🏖️", "🏖": return "🏖️"
+        case "palm", "🌴": return "🌴"
+        default: return avatarKey
+        }
     }
     
     public var body: some View {
@@ -92,18 +101,12 @@ public struct CourtAvatarIconView: View {
                 .scaledToFit()
                 .frame(width: size, height: size)
                 .clipShape(Circle())
-        } else if isMustang {
-            Text("🐎")
-                .font(.system(size: size * 0.82))
         } else if isIchthys {
             IchthysFishShape()
                 .stroke(Color.primary, style: StrokeStyle(lineWidth: max(1.5, size * 0.07), lineCap: .round, lineJoin: .round))
                 .frame(width: size * 0.82, height: size * 0.82)
-        } else if isCross {
-            Text("✝️")
-                .font(.system(size: size * 0.82))
         } else {
-            Text(avatarKey)
+            Text(mappedEmojiText)
                 .font(.system(size: size * 0.82))
         }
     }

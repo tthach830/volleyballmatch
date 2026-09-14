@@ -856,7 +856,7 @@ public struct GameDetailView: View {
                 Text(displayName)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.primary)
-                Text("Rating: \(p.rating.rawValue)")
+                Text("Rating: \(p.rating.gameDisplay)")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }

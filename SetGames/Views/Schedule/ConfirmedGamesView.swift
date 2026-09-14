@@ -325,7 +325,7 @@ public struct ConfirmedGamesView: View {
                     .lineLimit(1)
                 
                 HStack(spacing: 5) {
-                    Text(ratingTier.rawValue)
+                    Text(ratingTier.gameDisplay)
                         .font(.system(size: 10, weight: .black))
                         .foregroundColor(ratingTier == .intermediate ? Color(red: 0.02, green: 0.52, blue: 0.78) : .white)
                         .padding(.horizontal, 6)
@@ -782,7 +782,7 @@ public struct ConfirmedGamesView: View {
                                 }
                                 
                                 HStack(spacing: 5) {
-                                    Text(ratingTier.rawValue)
+                                    Text(ratingTier.gameDisplay)
                                         .font(.system(size: 9, weight: .black))
                                         .foregroundColor(ratingTier == .intermediate ? Color(red: 0.02, green: 0.52, blue: 0.78) : .white)
                                         .padding(.horizontal, 5)
@@ -961,7 +961,7 @@ public struct ConfirmedGamesView: View {
                             Text(wpName)
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(.white)
-                            Text(wp.rating.rawValue)
+                            Text(wp.rating.gameDisplay)
                                 .font(.system(size: 9))
                                 .foregroundColor(.white.opacity(0.7))
                         }

@@ -21,6 +21,13 @@ public enum RatingTier: String, CaseIterable, Codable, Identifiable {
         }
     }
     
+    public var gameDisplay: String {
+        switch self {
+        case .intermediate: return "Int"
+        default: return rawValue
+        }
+    }
+    
     public var levelScore: Int {
         switch self {
         case .novice: return 1

@@ -14,7 +14,7 @@ public struct EditProfileSheet: View {
     @State private var isStatsHidden: Bool = false
     
     private let availableAvatars: [String] = [
-        "slug", "derp_ball", "lobster", "sunburn", "net_stuck", "seagull", "sand_face", "sand_dive", "wilson", "blue_whale", "✝️", "ichthys", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁"
+        "slug", "derp_ball", "lobster", "sunburn", "net_stuck", "seagull", "sand_face", "sand_dive", "wilson", "blue_whale", "✝️", "ichthys", "🐎", "🦈", "🏐", "⚡️", "👑", "🌊", "🐋", "🔥", "🦦", "🦅", "🦁", "🏄‍♂️", "🏖️", "🌴"
     ]
     
     private let availableBeaches: [String] = [
@@ -37,6 +37,12 @@ public struct EditProfileSheet: View {
             return true
         }
         if (avatar == "cross" || avatar == "✝️" || avatar == "✝") && (avatarEmoji == "cross" || avatarEmoji == "✝️" || avatarEmoji == "✝") {
+            return true
+        }
+        if (avatar == "blue_whale" || avatar == "avatar_blue_whale" || avatar == "whale") && (avatarEmoji == "blue_whale" || avatarEmoji == "avatar_blue_whale" || avatarEmoji == "whale") {
+            return true
+        }
+        if (avatar == "sand_dive" || avatar == "avatar_sand_dive" || avatar == "sand_wipeout") && (avatarEmoji == "sand_dive" || avatarEmoji == "avatar_sand_dive" || avatarEmoji == "sand_wipeout") {
             return true
         }
         return false
