@@ -88,16 +88,6 @@ public struct PopularKidsLadderView: View {
                             .lineLimit(1)
                             
                             HStack(spacing: 6) {
-                                Text(player.popularKidsTitle)
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(.purple)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 2)
-                                    .background(Color.purple.opacity(0.12))
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                            }
-                            
-                            HStack(spacing: 6) {
                                 Text("\(player.uniquePartnerIds.count) Partners • \(player.uniqueOpponentIds.count) Opponents")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
