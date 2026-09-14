@@ -68,9 +68,11 @@ public struct PopularKidsLadderView: View {
                         
                         // Name & Community Title
                         VStack(alignment: .leading, spacing: 3) {
-                            HStack {
+                            HStack(spacing: 6) {
                                 Text(player.ladderDisplayName)
                                     .font(.system(size: 15, weight: .bold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.85)
                                 
                                 if player.id == dataManager.currentUser?.id {
                                     Text("YOU")
@@ -80,12 +82,15 @@ public struct PopularKidsLadderView: View {
                                         .background(Color.purple.opacity(0.2))
                                         .foregroundColor(.purple)
                                         .clipShape(Capsule())
+                                        .fixedSize()
                                 }
                             }
+                            .lineLimit(1)
                             
                             Text(player.popularKidsTitle)
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(.purple)
+                                .lineLimit(1)
                             
                             HStack(spacing: 6) {
                                 RatingBadge(rating: player.rating, size: .small)

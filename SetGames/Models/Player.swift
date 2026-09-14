@@ -135,9 +135,9 @@ public struct Player: Identifiable, Codable, Hashable {
     
     public var popularKidsTitle: String {
         switch uniqueConnectionsCount {
-        case 30...: return "👑 Beach Mayor"
+        case 30...: return "👑 Beach Legend"
         case 20..<30: return "🌟 Social Catalyst"
-        case 12..<20: return "🤝 Community Wingman"
+        case 12..<20: return "🤝 The Mayor"
         case 5..<12: return "🏖️ Active Regular"
         default: return "🌱 New on Court"
         }

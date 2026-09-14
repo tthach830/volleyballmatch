@@ -90,10 +90,12 @@ public struct TopPlayersLadderView: View {
                             
                             // Name & Beach
                             VStack(alignment: .leading, spacing: 3) {
-                                HStack {
+                                HStack(spacing: 6) {
                                     Text(player.ladderDisplayName)
                                         .font(.system(size: 15, weight: .bold))
                                         .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.85)
                                     
                                     if player.id == dataManager.currentUser?.id {
                                         Text("YOU")
@@ -103,8 +105,10 @@ public struct TopPlayersLadderView: View {
                                             .background(Color.orange.opacity(0.2))
                                             .foregroundColor(.orange)
                                             .clipShape(Capsule())
+                                            .fixedSize()
                                     }
                                 }
+                                .lineLimit(1)
                                 
                                 HStack(spacing: 6) {
                                     RatingBadge(rating: player.rating, size: .small)

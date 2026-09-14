@@ -385,9 +385,9 @@ export function getUniqueConnectionsCount(player) {
 }
 
 export function getPopularKidsTitle(connections) {
-  if (connections >= 30) return "👑 Beach Mayor";
+  if (connections >= 30) return "👑 Beach Legend";
   if (connections >= 20) return "🌟 Social Catalyst";
-  if (connections >= 12) return "🤝 Community Wingman";
+  if (connections >= 12) return "🤝 The Mayor";
   if (connections >= 5) return "🏖️ Active Regular";
   return "🌱 New on Court";
 }
