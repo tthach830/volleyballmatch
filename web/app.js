@@ -385,11 +385,11 @@ export function getUniqueConnectionsCount(player) {
 }
 
 export function getPopularKidsTitle(connections) {
-  if (connections >= 30) return "👑 Beach Legend";
-  if (connections >= 20) return "🌟 Social Catalyst";
-  if (connections >= 12) return "🤝 The Mayor";
-  if (connections >= 5) return "🏖️ Active Regular";
-  return "🌱 New on Court";
+  if (connections >= 30) return "👑 The Mayor";
+  if (connections >= 20) return "🌟 Beach Legend";
+  if (connections >= 12) return "🤝 Social Catalyst";
+  if (connections >= 5) return "☀️ Dune Cruiser";
+  return "🐚 Fresh Footprint";
 }
 
 // ==========================================
@@ -2231,6 +2231,7 @@ function renderPopularKids() {
     const net = getPlayerConnections(player, tf);
     const connections = net.total;
     const isCurrent = player.id === state.currentUser?.id;
+    const badgeTitle = getPopularKidsTitle(connections);
 
     return `
       <div class="rank-row ${isCurrent ? 'style="border-color: var(--accent); background: var(--accent-light);"' : ''}">
@@ -2238,7 +2239,12 @@ function renderPopularKids() {
         ${renderAvatar(player.avatarEmoji, "lg", (player.consecutiveBackouts || 0) >= 3)}
         <div class="rank-info">
           <div class="rank-name">${getLadderDisplayName(player)}</div>
-          <div class="rank-sub">${net.partnersCount} Partners • ${net.opponentsCount} Opponents</div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
+            <span style="font-size: 11px; font-weight: 800; color: #a855f7; background: rgba(168, 85, 247, 0.12); padding: 2px 7px; border-radius: 6px; display: inline-flex; align-items: center; gap: 3px;">
+              ${badgeTitle}
+            </span>
+          </div>
+          <div class="rank-sub" style="margin-top: 3px;">${net.partnersCount} Partners • ${net.opponentsCount} Opponents</div>
         </div>
         <div class="rank-stats">
           <div style="font-size:16px; font-weight:800; color:var(--accent);">${connections} Connections</div>
