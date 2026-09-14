@@ -955,6 +955,9 @@ function resolvePlayerNames(pids, game, isHidden, isWinner = false) {
 export function checkPlayerGenderJoinable(game, player) {
   if (!player) return { allowed: false, message: "Please log in." };
   const category = (game.genderCategory || "COED").toUpperCase();
+  if (category === "OPEN" || category === "NONE" || category === "ALL") {
+    return { allowed: true };
+  }
   const pGender = String(player.gender || "").trim().toLowerCase();
 
   const allActive = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
@@ -1016,6 +1019,51 @@ export function getEligibleWaitlistIndex(game) {
     }
   }
   return -1;
+}
+
+export function getOpenSpotGenderSuffix(game, isTeam1 = null, slotIndex = null) {
+  const category = (game.genderCategory || "COED").toUpperCase();
+  if (category === "OPEN" || category === "NONE" || category === "ALL") {
+    return "";
+  }
+  if (category === "M" || category === "MALE") {
+    return " (M)";
+  }
+  if (category === "F" || category === "FEMALE") {
+    return " (F)";
+  }
+
+  // COED
+  const allActive = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+  const mCount = allActive.map(id => state.getPlayer(id)).filter(p => p && String(p.gender || "").trim().toLowerCase() === "male").length;
+  const fCount = allActive.map(id => state.getPlayer(id)).filter(p => p && String(p.gender || "").trim().toLowerCase() === "female").length;
+
+  const neededM = Math.max(0, 2 - mCount);
+  const neededF = Math.max(0, 2 - fCount);
+
+  if (neededM > 0 && neededF === 0) return " (M)";
+  if (neededF > 0 && neededM === 0) return " (F)";
+
+  if (isTeam1 !== null) {
+    const teamIds = isTeam1 ? (game.team1PlayerIds || []) : (game.team2PlayerIds || []);
+    const teamPlayers = teamIds.map(id => state.getPlayer(id));
+    const teamM = teamPlayers.filter(p => p && String(p.gender || "").trim().toLowerCase() === "male").length;
+    const teamF = teamPlayers.filter(p => p && String(p.gender || "").trim().toLowerCase() === "female").length;
+
+    if (teamM > 0 && teamF === 0) return " (F)";
+    if (teamF > 0 && teamM === 0) return " (M)";
+
+    if (slotIndex !== null) {
+      return (slotIndex % 2 === 0) ? " (M)" : " (F)";
+    }
+  }
+
+  return " (M/F)";
+}
+
+export function getOpenSpotLabel(game, isTeam1 = null, slotIndex = null) {
+  const suffix = getOpenSpotGenderSuffix(game, isTeam1, slotIndex);
+  return `Open Spot${suffix}`;
 }
 
 window.joinGamePool = (gameId) => {
@@ -1737,7 +1785,7 @@ function renderMatches() {
     const t1Ids = (game.team1PlayerIds && game.team1PlayerIds.length > 0) ? game.team1PlayerIds : allPlayerIds.slice(0, 2);
     const t2Ids = (game.team2PlayerIds && game.team2PlayerIds.length > 0) ? game.team2PlayerIds : allPlayerIds.slice(2);
 
-    const renderSlot = (pid, isTeam1) => {
+    const renderSlot = (pid, isTeam1, slotIndex = 0) => {
       if (pid) {
         const p = state.getPlayer(pid);
         const isHidden = !isMember && !isRoot;
@@ -1771,9 +1819,10 @@ function renderMatches() {
         const emptyClass = isTeam1 ? 'player-tile-empty-t1' : 'player-tile-empty-t2';
         const canJoin = needsPlayers && !isMember && !game.isPrivate;
         const joinAttr = canJoin ? `onclick="window.joinGamePool('${game.id}')"` : '';
+        const spotLabel = getOpenSpotLabel(game, isTeam1, slotIndex);
         return `
           <div class="player-tile-dark ${emptyClass}" ${joinAttr}>
-            <span>+ Open Spot</span>
+            <span>+ ${spotLabel}</span>
           </div>
         `;
       }
@@ -1906,7 +1955,7 @@ function renderMatches() {
 
                 ${spotsLeft > 0 ? `
                   <div class="player-tile-dark player-tile-empty-t1" style="min-height: 38px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="${needsPlayers && !isMember && !game.isPrivate ? `window.joinGamePool('${game.id}')` : ''}">
-                    <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">+ Open Spot (${spotsLeft} remaining)</span>
+                    <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">+ Open Spot${getOpenSpotGenderSuffix(game)} (${spotsLeft} remaining)</span>
                   </div>
                 ` : ''}
               </div>
@@ -1915,10 +1964,10 @@ function renderMatches() {
         ` : `
           <!-- 2x2 Player Spot Grid: Team 1 (Row 1 Cyan) / Team 2 (Row 2 Coral) -->
           <div class="player-grid-2x2">
-            ${renderSlot(t1Ids[0], true)}
-            ${renderSlot(t1Ids[1], true)}
-            ${renderSlot(t2Ids[0], false)}
-            ${renderSlot(t2Ids[1], false)}
+            ${renderSlot(t1Ids[0], true, 0)}
+            ${renderSlot(t1Ids[1], true, 1)}
+            ${renderSlot(t2Ids[0], false, 0)}
+            ${renderSlot(t2Ids[1], false, 1)}
           </div>
         `}
 

@@ -598,6 +598,8 @@ public class DataManager: ObservableObject {
                 if wGender == "male" {
                     foundIndex = wIdx
                 }
+            case .open:
+                foundIndex = wIdx
             }
             if foundIndex != nil { break }
         }

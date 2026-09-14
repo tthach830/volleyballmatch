@@ -286,7 +286,8 @@ public struct GameDetailView: View {
                                                 } label: {
                                                     HStack(spacing: 6) {
                                                         Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
-                                                        Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "+ Join Player Pool")
+                                                        let suffix = game.openSpotGenderSuffix(allPlayers: dataManager.players)
+                                                        Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "+ Join Player Pool\(suffix)")
                                                     }
                                                     .font(.system(size: 13, weight: .bold))
                                                     .foregroundColor(.orange)
@@ -338,7 +339,8 @@ public struct GameDetailView: View {
                                                         Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
                                                             .font(.system(size: 18))
                                                             .foregroundColor(.orange)
-                                                        Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "+ Join Player Pool")
+                                                        let suffix = game.openSpotGenderSuffix(allPlayers: dataManager.players)
+                                                        Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "+ Join Player Pool\(suffix)")
                                                             .font(.system(size: 11, weight: .bold))
                                                             .foregroundColor(.orange)
                                                             .lineLimit(1)
@@ -1013,7 +1015,8 @@ public struct GameDetailView: View {
                     Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "plus.circle.dashed")
                         .font(.system(size: 18))
                         .foregroundColor(.orange)
-                    Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))" : "Open Spot")
+                    let suffix = game.openSpotGenderSuffix(isTeam1: teamNumber == 1, slotIndex: 0, allPlayers: dataManager.players)
+                    Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "Open Spot\(suffix)")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.orange)
                         .lineLimit(1)

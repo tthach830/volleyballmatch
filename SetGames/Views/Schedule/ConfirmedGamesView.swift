@@ -361,8 +361,9 @@ public struct ConfirmedGamesView: View {
         )
     }
 
-    private func emptyPlayerSpotTile(game: SetGame, isTeam1: Bool) -> some View {
+    private func emptyPlayerSpotTile(game: SetGame, isTeam1: Bool, slotIndex: Int = 0) -> some View {
         let borderColor = isTeam1 ? Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.6) : Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6)
+        let labelText = game.openSpotLabel(isTeam1: isTeam1, slotIndex: slotIndex, allPlayers: dataManager.players)
         
         return Button {
             if canUserJoin(game) {
@@ -374,8 +375,9 @@ public struct ConfirmedGamesView: View {
             HStack(spacing: 6) {
                 Image(systemName: "plus")
                     .font(.system(size: 15, weight: .bold))
-                Text("Open Spot")
+                Text(labelText)
                     .font(.system(size: 12, weight: .bold))
+                    .lineLimit(1)
             }
             .foregroundColor(.white.opacity(0.7))
             .frame(maxWidth: .infinity, minHeight: 52)
@@ -653,12 +655,12 @@ public struct ConfirmedGamesView: View {
                     if t1Ids.count > 0 {
                         playerCardTile(pid: t1Ids[0], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
                     } else {
-                        emptyPlayerSpotTile(game: game, isTeam1: true)
+                        emptyPlayerSpotTile(game: game, isTeam1: true, slotIndex: 0)
                     }
                     if t1Ids.count > 1 {
                         playerCardTile(pid: t1Ids[1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: true)
                     } else {
-                        emptyPlayerSpotTile(game: game, isTeam1: true)
+                        emptyPlayerSpotTile(game: game, isTeam1: true, slotIndex: 1)
                     }
                 }
                 
@@ -667,12 +669,12 @@ public struct ConfirmedGamesView: View {
                     if t2Ids.count > 0 {
                         playerCardTile(pid: t2Ids[0], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
                     } else {
-                        emptyPlayerSpotTile(game: game, isTeam1: false)
+                        emptyPlayerSpotTile(game: game, isTeam1: false, slotIndex: 0)
                     }
                     if t2Ids.count > 1 {
                         playerCardTile(pid: t2Ids[1], game: game, isHost: isHost, isMyGame: isMyGame, isTeam1: false)
                     } else {
-                        emptyPlayerSpotTile(game: game, isTeam1: false)
+                        emptyPlayerSpotTile(game: game, isTeam1: false, slotIndex: 1)
                     }
                 }
             }
@@ -824,7 +826,8 @@ public struct ConfirmedGamesView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "plus")
                                     .font(.system(size: 12, weight: .bold))
-                                Text("Open Spot (\(game.spotsRemaining) remaining)")
+                                let suffix = game.openSpotGenderSuffix(allPlayers: dataManager.players)
+                                Text("Open Spot\(suffix) (\(game.spotsRemaining) remaining)")
                                     .font(.system(size: 11, weight: .bold))
                             }
                             .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))

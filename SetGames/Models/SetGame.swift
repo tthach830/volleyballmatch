@@ -4,12 +4,14 @@ public enum GameGenderCategory: String, Codable, CaseIterable {
     case coed = "COED"
     case female = "F"
     case male = "M"
+    case open = "OPEN"
     
     public var displayName: String {
         switch self {
         case .coed: return "COED"
         case .female: return "Women's (F)"
         case .male: return "Men's (M)"
+        case .open: return "Open"
         }
     }
     
@@ -428,7 +430,59 @@ public struct SetGame: Identifiable, Codable, Hashable {
                 return (false, "This match is restricted to Male players only.")
             }
             return (true, nil)
+            
+        case .open:
+            return (true, nil)
         }
+    }
+    
+    public func openSpotGenderSuffix(isTeam1: Bool? = nil, slotIndex: Int? = nil, allPlayers: [Player]) -> String {
+        switch genderCategory {
+        case .open:
+            return ""
+        case .male:
+            return " (M)"
+        case .female:
+            return " (F)"
+        case .coed:
+            let allActive = allPlayerIds.compactMap { pid in allPlayers.first(where: { $0.id == pid }) }
+            let mCount = allActive.filter { $0.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "male" }.count
+            let fCount = allActive.filter { $0.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "female" }.count
+            
+            let neededM = max(0, 2 - mCount)
+            let neededF = max(0, 2 - fCount)
+            
+            if neededM > 0 && neededF == 0 {
+                return " (M)"
+            }
+            if neededF > 0 && neededM == 0 {
+                return " (F)"
+            }
+            
+            if let isTeam1 = isTeam1 {
+                let teamIds = isTeam1 ? team1PlayerIds : team2PlayerIds
+                let teamPlayers = teamIds.compactMap { pid in allPlayers.first(where: { $0.id == pid }) }
+                let teamM = teamPlayers.filter { $0.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "male" }.count
+                let teamF = teamPlayers.filter { $0.gender.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "female" }.count
+                
+                if teamM > 0 && teamF == 0 {
+                    return " (F)"
+                }
+                if teamF > 0 && teamM == 0 {
+                    return " (M)"
+                }
+                if let slotIndex = slotIndex {
+                    return slotIndex % 2 == 0 ? " (M)" : " (F)"
+                }
+            }
+            
+            return " (M/F)"
+        }
+    }
+    
+    public func openSpotLabel(isTeam1: Bool? = nil, slotIndex: Int? = nil, allPlayers: [Player]) -> String {
+        let suffix = openSpotGenderSuffix(isTeam1: isTeam1, slotIndex: slotIndex, allPlayers: allPlayers)
+        return "Open Spot\(suffix)"
     }
     
     public var teamCapacity: Int {
