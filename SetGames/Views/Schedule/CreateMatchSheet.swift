@@ -230,34 +230,7 @@ public struct CreateMatchSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     
-                    Picker("Match Format", selection: $format) {
-                        ForEach(GameFormat.allCases, id: \.self) { fmt in
-                            Text(fmt.rawValue).tag(fmt)
-                        }
-                    }
-                    
-                    if format == .kingOfTheBeach {
-                        VStack(alignment: .leading, spacing: 4) {
-                            let courts = max(1, maxPlayers / 4)
-                            HStack(spacing: 4) {
-                                Image(systemName: "crown.fill")
-                                    .foregroundColor(.orange)
-                                Text("King of the Court: \(courts) Court\(courts > 1 ? "s" : "") Needed (\(courts * 4) Players)")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.orange)
-                            }
-                            if maxPlayers % 4 != 0 {
-                                Text("⚠️ King of the Court requires 4 players per court (e.g. 8, 12, 16). \(maxPlayers % 4) player(s) will be on bye.")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.red)
-                            } else {
-                                Text("✓ Players 1–4 on Court 1, 5–8 on Court 2, etc. Each court plays 3 rotating sets with individual scoring.")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
+
                 }
                 
                 Section("LOCATION & COURT") {

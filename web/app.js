@@ -3370,7 +3370,7 @@ window.handleCreateMatch = (e) => {
   const isPrivate = document.getElementById("create-is-private") ? document.getElementById("create-is-private").checked : false;
   const genderCategory = getSelectedDivision("create");
   const maxPlayers = parseInt(document.getElementById("create-max-players")?.value) || 4;
-  const format = document.getElementById("create-format").value;
+  const format = document.getElementById("create-format")?.value || "Best of 3 Sets (21-21-15)";
   const courtLocation = document.getElementById("create-beach").value;
   const courtNumber = document.getElementById("create-court").value.trim() || "Court #1";
   const scheduledDateInput = document.getElementById("create-date").value;
