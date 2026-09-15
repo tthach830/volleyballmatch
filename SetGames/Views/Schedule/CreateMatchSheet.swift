@@ -233,7 +233,7 @@ public struct CreateMatchSheet: View {
 
                 }
                 
-                Section("LOCATION & COURT") {
+                Section("BEACH LOCATION") {
                     Picker("Beach Location", selection: $courtLocation) {
                         ForEach(CourtLocations.allOptions, id: \.self) { loc in
                             Text(loc).tag(loc)
@@ -243,8 +243,6 @@ public struct CreateMatchSheet: View {
                     if courtLocation == CourtLocations.customOption {
                         TextField("Enter custom court location", text: $customCourtLocation)
                     }
-                    
-                    TextField("Court # (e.g. Court #1)", text: $courtNumber)
                 }
                 
                 Section("SCHEDULED DATE & TIME") {
