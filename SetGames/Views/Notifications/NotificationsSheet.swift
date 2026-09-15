@@ -11,27 +11,29 @@ public struct NotificationsSheet: View {
     public var body: some View {
         NavigationStack {
             List {
-                Section {
-                    Button(action: {
-                        NotificationService.shared.sendTestPushToSelf()
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "bell.badge.fill")
-                                .foregroundColor(.orange)
-                                .font(.system(size: 20))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Send Test Remote Push")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(.primary)
-                                Text("Dispatches immediately to Apple. Lock screen or kill app to test.")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
+                if dataManager.currentUser?.isRoot == true {
+                    Section {
+                        Button(action: {
+                            NotificationService.shared.sendTestPushToSelf()
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "bell.badge.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.system(size: 20))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Send Test Remote Push")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.primary)
+                                    Text("Dispatches immediately to Apple. Lock screen or kill app to test.")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
                             }
+                            .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Admin Remote Notifications")
                     }
-                } header: {
-                    Text("Remote Notifications")
                 }
                 
                 if dataManager.notifications.isEmpty {

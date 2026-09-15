@@ -619,12 +619,13 @@ public class DataManager: ObservableObject {
         if let p = promotedPlayer {
             let title = "🎉 You're in!"
             let body = "A spot opened up in '\(game.title)' and you were promoted from the waitlist!"
+            let gameId = game.id
             if let token = p.deviceToken, !token.isEmpty {
                 NotificationService.shared.sendDirectRemotePush(
                     to: token,
                     title: title,
                     body: body,
-                    gameId: game.id
+                    gameId: gameId
                 )
             } else {
                 FirestoreService.shared.fetchDeviceToken(for: promotedId) { token in
@@ -633,7 +634,7 @@ public class DataManager: ObservableObject {
                             to: token,
                             title: title,
                             body: body,
-                            gameId: game.id
+                            gameId: gameId
                         )
                     }
                 }
@@ -924,8 +925,6 @@ public class DataManager: ObservableObject {
         games[index] = game
         saveToDisk()
         FirestoreService.shared.saveGame(game)
-        
-        let p = player(for: playerId)
         let pName = p.nickname.isEmpty ? p.name : p.nickname
         
         if let token = p.deviceToken, !token.isEmpty {

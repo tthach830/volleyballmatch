@@ -2517,7 +2517,11 @@ function renderProfile() {
   const privBadge = document.getElementById("profile-privacy-badge");
   if (privBadge) privBadge.style.display = user.isStatsHidden ? "inline-block" : "none";
 
-  updatePushStatusBadge();
+  // Test Push button - only visible to Root Admin
+  const testPushBtn = document.getElementById("btn-test-push");
+  if (testPushBtn) {
+    testPushBtn.style.display = isRoot ? "inline-flex" : "none";
+  }
 
   // Demo Mode Profile Switcher - strictly restricted to 4087869405
   const demoCard = document.getElementById("demo-mode-card");
