@@ -3654,6 +3654,22 @@ window.deleteAllGames = async () => {
 // ==========================================
 // GAME QR CODE & CROSS-PLATFORM JOIN
 // ==========================================
+export function formatGameShareTitle(game) {
+  if (!game) return "Join Volleyball Match";
+  const d = parseGameDate(game.scheduledDate || game.scheduledTime);
+  if (isNaN(d.getTime())) return "Join Volleyball Match";
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const shortDay = days[d.getDay()];
+  let hours = d.getHours();
+  const minutes = d.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const timeStr = minutes === 0 ? `${hours}${ampm}` : `${hours}:${String(minutes).padStart(2, "0")}${ampm}`;
+  return `Join vb ${shortDay} at ${timeStr}`;
+}
+window.formatGameShareTitle = formatGameShareTitle;
+
 export function getGameShareUrl(gameId) {
   if (window.location.origin && window.location.origin.startsWith("http")) {
     return `${window.location.origin}${window.location.pathname}?gameId=${gameId}`;
@@ -3675,7 +3691,8 @@ window.openGameQRCodeModal = (gameId) => {
   const fallbackImgEl = document.getElementById("qr-code-fallback-img");
   const modalEl = document.getElementById("modal-game-qr");
 
-  if (titleEl) titleEl.textContent = game.title;
+  const shareTitle = formatGameShareTitle(game);
+  if (titleEl) titleEl.textContent = shareTitle;
   if (detailsEl) {
     const d = parseGameDate(game.scheduledDate || game.scheduledTime);
     const formattedDate = d.toLocaleDateString("en-US", {
@@ -3740,8 +3757,12 @@ window.closeGameQRCodeModal = () => {
 
 window.copyGameQRLink = () => {
   if (!window.activeQRGameId) return;
+  const game = state.games.find(g => g.id === window.activeQRGameId);
+  const shareTitle = formatGameShareTitle(game);
   const shareUrl = getGameShareUrl(window.activeQRGameId);
-  navigator.clipboard.writeText(shareUrl).then(() => {
+  const textToCopy = `${shareTitle}\n${shareUrl}`;
+
+  navigator.clipboard.writeText(textToCopy).then(() => {
     const copyBtn = document.getElementById("btn-copy-qr-link");
     if (copyBtn) {
       copyBtn.innerHTML = "✓ Copied to Clipboard!";
@@ -3755,10 +3776,35 @@ window.copyGameQRLink = () => {
         }
       }, 2500);
     }
-    showToast("Share link copied to clipboard!");
+    showToast(`Copied: "${shareTitle}"`);
   }).catch(() => {
-    showToast("Unable to copy link to clipboard.");
+    navigator.clipboard.writeText(shareUrl).catch(() => {});
+    showToast("Share link copied to clipboard!");
   });
+};
+
+window.shareGameLink = async () => {
+  if (!window.activeQRGameId) return;
+  const game = state.games.find(g => g.id === window.activeQRGameId);
+  const shareTitle = formatGameShareTitle(game);
+  const shareUrl = getGameShareUrl(window.activeQRGameId);
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: `${shareTitle}\n`,
+        url: shareUrl
+      });
+      showToast("Game link shared!");
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        window.copyGameQRLink();
+      }
+    }
+  } else {
+    window.copyGameQRLink();
+  }
 };
 
 export function handleIncomingGameRoute() {
@@ -3784,6 +3830,9 @@ export function handleIncomingGameRoute() {
   const checkAndFocusGame = () => {
     const game = state.games.find(g => g.id === targetGameId || g.rawId === targetGameId);
     if (!game) return;
+
+    const shareTitle = formatGameShareTitle(game);
+    document.title = `${shareTitle} • Volleyball Match`;
 
     if (window.switchTab) {
       window.switchTab("matches");

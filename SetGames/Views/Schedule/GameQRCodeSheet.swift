@@ -8,6 +8,30 @@ public struct GameQRCodeSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var copiedToClipboard: Bool = false
     
+    public static func formatShareTitle(for game: SetGame) -> String {
+        formatShareTitle(for: game.scheduledDate)
+    }
+    
+    public static func formatShareTitle(for date: Date) -> String {
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "EEE"
+        dayFormatter.locale = Locale(identifier: "en_US")
+        let shortDay = dayFormatter.string(from: date)
+        
+        let cal = Calendar.current
+        let hour24 = cal.component(.hour, from: date)
+        let minute = cal.component(.minute, from: date)
+        let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
+        let ampm = hour24 < 12 ? "AM" : "PM"
+        let timeStr = minute == 0 ? "\(hour12)\(ampm)" : String(format: "%d:%02d%@", hour12, minute, ampm)
+        
+        return "Join vb \(shortDay) at \(timeStr)"
+    }
+    
+    private var shareTitle: String {
+        Self.formatShareTitle(for: game)
+    }
+    
     private var shareURLString: String {
         "https://runwildlovestronglivefree.org/volleyballmatch/?gameId=\(game.id.uuidString)"
     }
@@ -22,7 +46,7 @@ public struct GameQRCodeSheet: View {
                 VStack(spacing: 24) {
                     // Game summary card
                     VStack(spacing: 6) {
-                        Text(game.title)
+                        Text(shareTitle)
                             .font(.system(size: 20, weight: .bold))
                             .multilineTextAlignment(.center)
                         
@@ -80,7 +104,16 @@ public struct GameQRCodeSheet: View {
                     VStack(spacing: 10) {
                         // Copy Link Button
                         Button {
-                            UIPasteboard.general.string = shareURLString
+                            if let url = URL(string: shareURLString) {
+                                UIPasteboard.general.items = [
+                                    [
+                                        "public.plain-text": "\(shareTitle)\n\(shareURLString)",
+                                        "public.url": url
+                                    ]
+                                ]
+                            } else {
+                                UIPasteboard.general.string = "\(shareTitle)\n\(shareURLString)"
+                            }
                             let generator = UINotificationFeedbackGenerator()
                             generator.notificationOccurred(.success)
                             withAnimation {
@@ -108,8 +141,8 @@ public struct GameQRCodeSheet: View {
                         if let url = URL(string: shareURLString) {
                             ShareLink(
                                 item: url,
-                                subject: Text("Join my Volleyball Game: \(game.title)"),
-                                message: Text("Scan or tap the link to join our beach volleyball player pool on \(game.courtLocation)!")
+                                subject: Text(shareTitle),
+                                message: Text("\(shareTitle)\n\(shareURLString)")
                             ) {
                                 HStack {
                                     Image(systemName: "square.and.arrow.up")

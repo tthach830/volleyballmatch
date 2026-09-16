@@ -57,22 +57,6 @@ public struct ConfirmedGamesView: View {
                             }
                             
                             Button {
-                                showInstantPickupSheet = true
-                            } label: {
-                                HStack(spacing: 5) {
-                                    Text("🚀")
-                                        .font(.system(size: 13))
-                                    Text("Quick Play")
-                                        .font(.system(size: 13, weight: .bold))
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(Color(red: 0.17, green: 0.43, blue: 0.48)) // #2b6e7a
-                                .foregroundColor(.white)
-                                .clipShape(Capsule())
-                            }
-                            
-                            Button {
                                 showTournamentsSheet = true
                             } label: {
                                 HStack(spacing: 5) {
@@ -198,11 +182,6 @@ public struct ConfirmedGamesView: View {
             }
             .sheet(isPresented: $showRandomTeamsSheet) {
                 RandomTeamGeneratorSheet(dataManager: dataManager)
-            }
-            .sheet(isPresented: $showInstantPickupSheet) {
-                InstantPickupSheet(dataManager: dataManager) { gameId in
-                    navigationPath.append(gameId)
-                }
             }
             .sheet(item: $qrGameForSheet) { game in
                 GameQRCodeSheet(game: game)
