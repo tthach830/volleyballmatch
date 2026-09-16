@@ -50,6 +50,10 @@ public enum RatingTier: String, CaseIterable, Codable, Identifiable {
         }
     }
     
+    public var color: Color {
+        badgeColor
+    }
+    
     public var iconName: String {
         switch self {
         case .novice: return "leaf.fill"

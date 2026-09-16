@@ -754,83 +754,7 @@ public struct ConfirmedGamesView: View {
             if !isCollapsed {
                 VStack(spacing: 6) {
                     ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { idx, pid in
-                        let p = dataManager.player(for: pid)
-                        let displayName = isMyGame ? p.displayName : "Player"
-                        let ratingTier = p.rating
-                        let starStr = String(format: "%.1f", p.averageStarRating)
-                        let isGameHost = pid == game.hostPlayerId
-                        let isRoot = dataManager.currentUser?.isRoot == true
-                        let canRemove = (isHost || isRoot) && (isRoot ? (pid != dataManager.currentUser?.id) : !isGameHost)
-                        
-                        HStack(spacing: 8) {
-                            // Number circle
-                            Text("#\(idx + 1)")
-                                .font(.system(size: 10, weight: .black))
-                                .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
-                                .frame(width: 20, height: 20)
-                                .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.15))
-                                .clipShape(Circle())
-                            
-                            // Avatar icon
-                            CourtAvatarIconView(avatarKey: p.avatarEmoji, size: 28)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 6) {
-                                    Text(displayName)
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(.white)
-                                    
-                                    if isGameHost {
-                                        Text("HOST")
-                                            .font(.system(size: 8, weight: .bold))
-                                            .padding(.horizontal, 5)
-                                            .padding(.vertical, 1)
-                                            .background(Color.orange.opacity(0.2))
-                                            .foregroundColor(.orange)
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                                
-                                HStack(spacing: 4) {
-                                    Text(ratingTier.gameDisplay)
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(ratingTier.color)
-                                    
-                                    Text("•")
-                                        .font(.system(size: 8))
-                                        .foregroundColor(.gray)
-                                    
-                                    Text("★ \(starStr)")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.yellow)
-                                }
-                            }
-                            
-                            Spacer()
-                            
-                            if canRemove {
-                                Button {
-                                    playerToRemove = (player: p, gameId: game.id)
-                                    showRemoveAlert = true
-                                } label: {
-                                    Image(systemName: "trash")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.red.opacity(0.8))
-                                        .padding(6)
-                                        .background(Color.red.opacity(0.12))
-                                        .clipShape(Circle())
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                        .background(Color(white: 0.12).opacity(0.6))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
-                        )
+                        playerPoolRowView(game: game, idx: idx, pid: pid, isMyGame: isMyGame, isHost: isHost)
                     }
                     
                     // Open spots if available
@@ -1019,6 +943,87 @@ public struct ConfirmedGamesView: View {
             }
         }
         .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private func playerPoolRowView(game: SetGame, idx: Int, pid: UUID, isMyGame: Bool, isHost: Bool) -> some View {
+        let p = dataManager.player(for: pid)
+        let displayName = isMyGame ? p.displayName : "Player"
+        let ratingTier = p.rating
+        let starStr = String(format: "%.1f", p.averageStarRating)
+        let isGameHost = pid == game.hostPlayerId
+        let isRoot = dataManager.currentUser?.isRoot == true
+        let canRemove = (isHost || isRoot) && (isRoot ? (pid != dataManager.currentUser?.id) : !isGameHost)
+        
+        HStack(spacing: 8) {
+            // Number circle
+            Text("#\(idx + 1)")
+                .font(.system(size: 10, weight: .black))
+                .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
+                .frame(width: 20, height: 20)
+                .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.15))
+                .clipShape(Circle())
+            
+            // Avatar icon
+            CourtAvatarIconView(avatarKey: p.avatarEmoji, size: 28)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(displayName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    if isGameHost {
+                        Text("HOST")
+                            .font(.system(size: 8, weight: .bold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.orange.opacity(0.2))
+                            .foregroundColor(.orange)
+                            .clipShape(Capsule())
+                    }
+                }
+                
+                HStack(spacing: 4) {
+                    Text(ratingTier.gameDisplay)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(ratingTier.badgeColor)
+                    
+                    Text("•")
+                        .font(.system(size: 8))
+                        .foregroundColor(.gray)
+                    
+                    Text("★ \(starStr)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.yellow)
+                }
+            }
+            
+            Spacer()
+            
+            if canRemove {
+                Button {
+                    playerToRemove = (game.id, p)
+                    showRemovePlayerAlert = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11))
+                        .foregroundColor(.red.opacity(0.8))
+                        .padding(6)
+                        .background(Color.red.opacity(0.12))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(Color(white: 0.12).opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
+        )
     }
 
     private func matchesSection(game: SetGame) -> some View {
