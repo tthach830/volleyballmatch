@@ -253,7 +253,7 @@ public struct InstantPickupSheet: View {
                 }
                 .buttonStyle(.plain)
                 
-                Text(isMe ? "You" : player.nickname)
+                Text(isMe ? "You" : player.displayName)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
@@ -348,7 +348,7 @@ public struct InstantPickupSheet: View {
                             HStack(spacing: 12) {
                                 PlayerAvatarView(player: player, dimension: 36)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(player.name)
+                                    Text(player.displayName)
                                         .font(.system(size: 15, weight: .bold))
                                         .foregroundColor(.primary)
                                     Text("\(player.rating.rawValue) • \(player.homeBeach)")

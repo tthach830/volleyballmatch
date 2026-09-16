@@ -22,7 +22,7 @@ public struct UserSwitcherView: View {
                                 
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {
-                                        Text(player.name)
+                                        Text(player.displayName)
                                             .font(.system(size: 15, weight: .semibold))
                                             .foregroundColor(.primary)
                                         

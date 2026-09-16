@@ -226,7 +226,7 @@ public struct RandomTeamGeneratorSheet: View {
         if let players = initialPlayers, !players.isEmpty {
             var seenNamesCount: [String: Int] = [:]
             let pool = players.map { p -> PoolPlayer in
-                let baseName = p.nickname.isEmpty ? p.name : p.nickname
+                let baseName = p.displayName
                 seenNamesCount[baseName, default: 0] += 1
                 let displayName = (seenNamesCount[baseName]! > 1) ? "\(baseName) (\(seenNamesCount[baseName]!))" : baseName
                 return PoolPlayer(id: p.id, name: displayName)

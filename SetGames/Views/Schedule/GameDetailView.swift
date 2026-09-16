@@ -159,7 +159,7 @@ public struct GameDetailView: View {
                                     Image(systemName: "crown.fill")
                                         .font(.system(size: 11))
                                         .foregroundColor(.yellow)
-                                    Text("Host: \(host.nickname.isEmpty ? host.name : host.nickname)")
+                                    Text("Host: \(host.displayName)")
                                         .font(.system(size: 12, weight: .semibold))
                                         .foregroundColor(.secondary)
                                     
@@ -713,7 +713,7 @@ public struct GameDetailView: View {
             }
         } message: {
             if let target = playerToRemove {
-                Text("Are you sure you want to remove \(target.nickname.isEmpty ? target.name : target.nickname) from the player pool? If players are on the waitlist, the next player will be auto-promoted.")
+                Text("Are you sure you want to remove \(target.displayName) from the player pool? If players are on the waitlist, the next player will be auto-promoted.")
             }
         }
     }
@@ -842,7 +842,7 @@ public struct GameDetailView: View {
     private func waitlistRow(index: Int, playerId: UUID, gameId: UUID) -> some View {
         let p = dataManager.player(for: playerId)
         let isMe = dataManager.currentUser?.id == p.id
-        let displayName = isUserInMatch ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player \(index + 1)"
+        let displayName = isUserInMatch ? p.displayName : "Player \(index + 1)"
         return HStack(spacing: 12) {
             Text("#\(index + 1)")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -918,7 +918,7 @@ public struct GameDetailView: View {
     
     private func playerCard(_ p: Player, game: SetGame, playerIndex: Int) -> some View {
         let isMatchHost = (game.hostPlayerId == dataManager.currentUser?.id) || (dataManager.currentUser?.isRoot == true)
-        let displayName = isUserInMatch ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player \(playerIndex)"
+        let displayName = isUserInMatch ? p.displayName : "Player \(playerIndex)"
         return HStack(spacing: 8) {
             if game.allPlayerIds.count > 4 {
                 Text("#\(playerIndex)")
@@ -1053,7 +1053,7 @@ public struct GameDetailView: View {
                         PlayerAvatarView(player: peer, dimension: 32, showBadge: false)
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(peer.nickname.isEmpty ? peer.name : peer.nickname)
+                            Text(peer.displayName)
                                 .font(.system(size: 13, weight: .bold))
                             Text("Current: ⭐ \(peer.formattedStarRating)")
                                 .font(.system(size: 10))
@@ -1272,7 +1272,7 @@ public struct GameDetailView: View {
                 let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
                 return "Player \(idx)"
             }
-            return p.nickname.isEmpty ? p.name : p.nickname
+            return p.displayName
         }.joined(separator: " & ")
         let t1Names = match.winningTeam == 1 ? "\(t1Base) 🏅🏅" : t1Base
         
@@ -1281,7 +1281,7 @@ public struct GameDetailView: View {
                 let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
                 return "Player \(idx)"
             }
-            return p.nickname.isEmpty ? p.name : p.nickname
+            return p.displayName
         }.joined(separator: " & ")
         let t2Names = match.winningTeam == 2 ? "\(t2Base) 🏅🏅" : t2Base
         
@@ -1332,7 +1332,7 @@ public struct GameDetailView: View {
                         let idx = (game.allPlayerIds.firstIndex(of: p.id) ?? 0) + 1
                         return "Player \(idx)"
                     }
-                    return p.nickname.isEmpty ? p.name : p.nickname
+                    return p.displayName
                 }.joined(separator: ", ")
                 Text("⏸ Resting: \(restingNames)")
                     .font(.system(size: 10))

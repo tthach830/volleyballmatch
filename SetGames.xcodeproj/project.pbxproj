@@ -54,6 +54,11 @@
 		F27BE0A87D02F58CECF393C0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = "TEMP_153A5B7B-0752-4A28-8D04-F6A0D7001DC9" /* FirebaseCore */; };
 		F82DD176B88B88FEE36E6465 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0B182E0423AE699AF97AA801 /* FirebaseCore */; };
 		FF5856E9343485E5870B3186 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 441C4F649F23E135617F29C4 /* Assets.xcassets */; };
+		A001000128B47E2001AB0001 /* Tournament.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000128B47E2001AB0001 /* Tournament.swift */; };
+		A001000228B47E2001AB0002 /* TournamentSignUpSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000228B47E2001AB0002 /* TournamentSignUpSheet.swift */; };
+		A001000328B47E2001AB0003 /* TournamentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000328B47E2001AB0003 /* TournamentDetailView.swift */; };
+		A001000428B47E2001AB0004 /* CreateTournamentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000428B47E2001AB0004 /* CreateTournamentSheet.swift */; };
+		A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000528B47E2001AB0005 /* TournamentHubView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -103,6 +108,11 @@
 		DE2DA16A2B877595B04FAAB1 /* LaddersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaddersView.swift; sourceTree = "<group>"; };
 		E1ACEC153DA835530CE13CAD /* PlayerAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAvatarView.swift; sourceTree = "<group>"; };
 		E510849A6B785C698215EF7C /* NotificationToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationToastView.swift; sourceTree = "<group>"; };
+		B001000128B47E2001AB0001 /* Tournament.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tournament.swift; sourceTree = "<group>"; };
+		B001000228B47E2001AB0002 /* TournamentSignUpSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentSignUpSheet.swift; sourceTree = "<group>"; };
+		B001000328B47E2001AB0003 /* TournamentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentDetailView.swift; sourceTree = "<group>"; };
+		B001000428B47E2001AB0004 /* CreateTournamentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateTournamentSheet.swift; sourceTree = "<group>"; };
+		B001000528B47E2001AB0005 /* TournamentHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentHubView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -239,6 +249,10 @@
 				1EF576A89F7142B9E47BA9A2 /* RandomTeamGeneratorSheet.swift */,
 				E291F0A128B47E2001AB01A1 /* InstantPickupSheet.swift */,
 				ADB93F8BECD09C731B26AF4D /* RecordScoreSheet.swift */,
+				B001000228B47E2001AB0002 /* TournamentSignUpSheet.swift */,
+				B001000328B47E2001AB0003 /* TournamentDetailView.swift */,
+				B001000428B47E2001AB0004 /* CreateTournamentSheet.swift */,
+				B001000528B47E2001AB0005 /* TournamentHubView.swift */,
 			);
 			path = Schedule;
 			sourceTree = "<group>";
@@ -254,6 +268,7 @@
 				97D121892386DB4F69E5A578 /* Player.swift */,
 				B5878100F124CFB44EA3427E /* RatingTier.swift */,
 				76AE8C82861D215C73ED20BD /* SetGame.swift */,
+				B001000128B47E2001AB0001 /* Tournament.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -399,6 +414,11 @@
 				C3EA583C87BD1403C266FD55 /* RandomTeamGeneratorSheet.swift in Sources */,
 				E291F0A228B47E2001AB01A2 /* InstantPickupSheet.swift in Sources */,
 				3C5CE4A04110ADD05D4E7E97 /* RecordScoreSheet.swift in Sources */,
+				A001000128B47E2001AB0001 /* Tournament.swift in Sources */,
+				A001000228B47E2001AB0002 /* TournamentSignUpSheet.swift in Sources */,
+				A001000328B47E2001AB0003 /* TournamentDetailView.swift in Sources */,
+				A001000428B47E2001AB0004 /* CreateTournamentSheet.swift in Sources */,
+				A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

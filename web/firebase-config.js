@@ -213,3 +213,47 @@ export function subscribeToSlots(onUpdate) {
     console.warn("Firestore slots listener warning:", error);
   });
 }
+
+// Save or update tournament in Firestore
+export async function saveTournamentToFirestore(tournament) {
+  try {
+    const docId = tournament.id || tournament.rawId;
+    if (!docId) return;
+    const tournRef = doc(db, "tournaments", docId);
+    await setDoc(tournRef, tournament, { merge: true });
+    // If rawId exists and differs from docId, keep it in sync or clean up
+    if (tournament.rawId && tournament.rawId !== docId) {
+      const altRef = doc(db, "tournaments", tournament.rawId);
+      await deleteDoc(altRef).catch(() => {});
+    }
+  } catch (error) {
+    console.error("Error saving tournament to Firestore:", error);
+  }
+}
+
+// Delete tournament from Firestore
+export async function deleteTournamentFromFirestore(tournamentId) {
+  try {
+    if (!tournamentId) return;
+    const tournRef = doc(db, "tournaments", tournamentId);
+    await deleteDoc(tournRef);
+  } catch (error) {
+    console.error("Error deleting tournament from Firestore:", error);
+  }
+}
+
+// Real-time listener for tournaments collection
+export function subscribeToTournaments(onUpdate) {
+  return onSnapshot(collection(db, "tournaments"), (snapshot) => {
+    const tournaments = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const id = (data.id != null && String(data.id).trim() !== "") ? data.id : doc.id;
+      tournaments.push({ ...data, id, _docId: doc.id });
+    });
+    onUpdate(tournaments);
+  }, (error) => {
+    console.warn("Firestore tournaments listener warning:", error);
+  });
+}
+

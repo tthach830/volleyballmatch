@@ -8,6 +8,7 @@ public enum NotificationType: String, Codable {
     case queueUpdate = "Queue Update"
     case ladderRankChange = "Ladder Update"
     case communityBadge = "Popular Kids Badge"
+    case tournament = "Tournament"
     
     public var icon: String {
         switch self {
@@ -18,6 +19,7 @@ public enum NotificationType: String, Codable {
         case .queueUpdate: return "bolt.fill"
         case .ladderRankChange: return "chart.line.uptrend.xyaxis"
         case .communityBadge: return "crown.fill"
+        case .tournament: return "trophy.fill"
         }
     }
 }

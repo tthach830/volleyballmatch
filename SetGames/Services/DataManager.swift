@@ -14,6 +14,7 @@ public class DataManager: ObservableObject {
     }
     @Published public var players: [Player] = []
     @Published public var games: [SetGame] = []
+    @Published public var tournaments: [Tournament] = []
     @Published public var availabilitySlots: [AvailabilitySlot] = []
     @Published public var pickupQueue: [Player] = []
     @Published public var beachPickupQueues: [String: [Player]] = ["Main Beach": [], "Harbor Beach": []]
@@ -141,7 +142,7 @@ public class DataManager: ObservableObject {
             if let token = NotificationService.shared.apnsDeviceToken {
                 updateDeviceToken(token)
             }
-            return (true, "Welcome back, \(player.nickname.isEmpty ? player.name : player.nickname)!")
+            return (true, "Welcome back, \(player.displayName)!")
         } else {
             return (false, "No player found with this phone number. Please tap 'New Player' below to register!")
         }
@@ -834,7 +835,7 @@ public class DataManager: ObservableObject {
         FirestoreService.shared.saveGame(game)
         
         let promoted = player(for: playerId)
-        let promotedName = promoted.nickname.isEmpty ? promoted.name : promoted.nickname
+        let promotedName = promoted.displayName
         
         postNotification(
             title: "🎉 Added from Waiting",
@@ -847,21 +848,10 @@ public class DataManager: ObservableObject {
         if let token = promoted.deviceToken, !token.isEmpty {
             NotificationService.shared.sendDirectRemotePush(
                 to: token,
-                title: "🏐 Volleyball Match Alert",
-                body: "🎉 The host added you from Waiting into '\(game.title)'!",
+                title: "🏐 Added to Game!",
+                body: "🎉 The host promoted you into '\(game.title)'!",
                 gameId: game.id
             )
-        } else {
-            FirestoreService.shared.fetchDeviceToken(for: playerId) { token in
-                if let token = token, !token.isEmpty {
-                    NotificationService.shared.sendDirectRemotePush(
-                        to: token,
-                        title: "🏐 Volleyball Match Alert",
-                        body: "🎉 The host added you from Waiting into '\(game.title)'!",
-                        gameId: game.id
-                    )
-                }
-            }
         }
         
         return (true, "Successfully added \(promotedName) into the match!")
@@ -925,7 +915,7 @@ public class DataManager: ObservableObject {
         games[index] = game
         saveToDisk()
         FirestoreService.shared.saveGame(game)
-        let pName = p.nickname.isEmpty ? p.name : p.nickname
+        let pName = p.displayName
         
         if let token = p.deviceToken, !token.isEmpty {
             NotificationService.shared.sendDirectRemotePush(
@@ -970,7 +960,7 @@ public class DataManager: ObservableObject {
             saveToDisk()
             FirestoreService.shared.saveGame(game)
             let removed = player(for: playerId)
-            let removedName = removed.nickname.isEmpty ? removed.name : removed.nickname
+            let removedName = removed.displayName
             return (true, "Removed \(removedName) from waitlist.")
         }
         
@@ -980,7 +970,7 @@ public class DataManager: ObservableObject {
         // Auto-promote first eligible waitlisted player into the open spot
         var promotedName: String? = nil
         if let promoted = autoPromoteNextEligibleWaitlistedPlayer(for: &game) {
-            promotedName = promoted.nickname.isEmpty ? promoted.name : promoted.nickname
+            promotedName = promoted.displayName
         }
         
         games[index] = game
@@ -988,7 +978,7 @@ public class DataManager: ObservableObject {
         FirestoreService.shared.saveGame(game)
         
         let removed = player(for: playerId)
-        let removedName = removed.nickname.isEmpty ? removed.name : removed.nickname
+        let removedName = removed.displayName
         
         postNotification(
             title: "Match Update",
@@ -1189,7 +1179,7 @@ public class DataManager: ObservableObject {
         // Auto-promote first eligible waitlisted player into the open spot
         var promotedName: String? = nil
         if let promoted = autoPromoteNextEligibleWaitlistedPlayer(for: &game) {
-            promotedName = promoted.nickname.isEmpty ? promoted.name : promoted.nickname
+            promotedName = promoted.displayName
         }
         
         // If host leaves, reassign to another player if any remain
@@ -1224,8 +1214,8 @@ public class DataManager: ObservableObject {
         postNotification(
             title: isFlakerNow ? "⚠️ Flaker Penalty Applied (F)" : "⚠️ Player Backed Out",
             message: isFlakerNow ?
-                "\(user.nickname.isEmpty ? user.name : user.nickname) backed out 3 times in a row: flagged as Flaker (F) and rating lowered by 1 point." :
-                "\(user.nickname.isEmpty ? user.name : user.nickname) had to leave \(game.title). A spot is now open!",
+                "\(user.displayName) backed out 3 times in a row: flagged as Flaker (F) and rating lowered by 1 point." :
+                "\(user.displayName) had to leave \(game.title). A spot is now open!",
             type: .matchInvite,
             relatedGameId: game.id
         )
@@ -1437,7 +1427,7 @@ public class DataManager: ObservableObject {
             return (false, "Match not found.")
         }
         
-        let senderName = user.nickname.isEmpty ? user.name : user.nickname
+        let senderName = user.displayName
         let newMsg = GameChatMessage(
             senderId: user.id,
             senderName: senderName,
@@ -1691,6 +1681,11 @@ public class DataManager: ObservableObject {
                     }
                 }
                 self.availabilitySlots = merged
+                self.saveToDisk()
+            },
+            onTournamentsUpdate: { [weak self] remoteTournaments in
+                guard let self = self else { return }
+                self.tournaments = self.deduplicateTournaments(remoteTournaments)
                 self.saveToDisk()
             }
         )
@@ -2000,7 +1995,271 @@ public class DataManager: ObservableObject {
     private var playersFileURL: URL { documentsDirectory.appendingPathComponent("setgames_players.json") }
     private var gamesFileURL: URL { documentsDirectory.appendingPathComponent("setgames_games.json") }
     private var slotsFileURL: URL { documentsDirectory.appendingPathComponent("setgames_slots.json") }
+    private var tournamentsFileURL: URL { documentsDirectory.appendingPathComponent("setgames_tournaments.json") }
     private var userSessionKey: String { "setgames_current_user_id" }
+    
+    // MARK: - Tournament Deduplication
+    
+    public func deduplicateTournaments(_ list: [Tournament]) -> [Tournament] {
+        var result: [Tournament] = []
+        let calendar = Calendar.current
+        
+        for t in list {
+            let tId = t.id.uuidString
+            let tRaw = (t.rawId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let tTitle = t.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            
+            let existingIdx = result.firstIndex { e in
+                let eId = e.id.uuidString
+                let eRaw = (e.rawId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                let eTitle = e.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                
+                // 1. Direct ID match
+                if eId == tId { return true }
+                // 2. Direct rawId match
+                if !tRaw.isEmpty && !eRaw.isEmpty && tRaw == eRaw { return true }
+                // 3. Cross ID match
+                if !tRaw.isEmpty && tRaw == eId { return true }
+                if !eRaw.isEmpty && eRaw == tId { return true }
+                // 4. Same title and same calendar day
+                if !tTitle.isEmpty && !eTitle.isEmpty && tTitle == eTitle && calendar.isDate(e.date, inSameDayAs: t.date) {
+                    return true
+                }
+                return false
+            }
+            
+            if let idx = existingIdx {
+                var existing = result[idx]
+                
+                // Merge registered teams without duplicate players
+                for tm in t.teams {
+                    let alreadyHas = existing.teams.contains { m in
+                        m.id == tm.id || (m.player1Id == tm.player1Id && m.division == tm.division)
+                    }
+                    if !alreadyHas {
+                        existing.teams.append(tm)
+                    }
+                }
+                
+                // Merge free agents without duplicates
+                for fa in t.freeAgents {
+                    let alreadyHas = existing.freeAgents.contains { m in
+                        m.id == fa.id || (m.playerId == fa.playerId && m.division == fa.division)
+                    }
+                    if !alreadyHas {
+                        existing.freeAgents.append(fa)
+                    }
+                }
+                
+                // Keep matches if existing has none
+                if existing.matches.isEmpty && !t.matches.isEmpty {
+                    existing.matches = t.matches
+                }
+                
+                // Preserve fuller notes / host / rawId
+                if existing.notes.isEmpty && !t.notes.isEmpty {
+                    existing.notes = t.notes
+                }
+                if existing.hostPlayerId == nil && t.hostPlayerId != nil {
+                    existing.hostPlayerId = t.hostPlayerId
+                }
+                if existing.rawId == nil && t.rawId != nil {
+                    existing.rawId = t.rawId
+                }
+                
+                result[idx] = existing
+            } else {
+                result.append(t)
+            }
+        }
+        
+        return result
+    }
+    
+    // MARK: - Tournament Management API
+    
+    public func createTournament(
+        title: String,
+        date: Date,
+        location: String,
+        courts: [String],
+        allowedDivisions: [TournamentDivisionCategory],
+        maxTeamsPerDivision: Int = 8,
+        notes: String,
+        teamFormat: TournamentTeamFormat = .doubles2v2
+    ) {
+        let t = Tournament(
+            id: UUID(),
+            rawId: UUID().uuidString,
+            title: title,
+            hostPlayerId: currentUser?.id,
+            date: date,
+            location: location,
+            courts: courts,
+            allowedDivisions: allowedDivisions,
+            maxTeamsPerDivision: maxTeamsPerDivision,
+            teams: [],
+            freeAgents: [],
+            matches: [],
+            status: "registration_open",
+            notes: notes,
+            teamFormat: teamFormat
+        )
+        tournaments.insert(t, at: 0)
+        saveToDisk()
+        FirestoreService.shared.saveTournament(t)
+        postNotification(
+            title: "🏆 New Tournament Hosted",
+            message: "\(title) is open for sign-ups at \(location)!",
+            type: .tournament
+        )
+    }
+    
+    public func registerTeamForTournament(
+        tournamentId: UUID,
+        teamName: String,
+        player1Id: UUID,
+        player2Id: UUID?,
+        player3Id: UUID? = nil,
+        player4Id: UUID? = nil,
+        division: TournamentDivisionCategory
+    ) {
+        guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        // Remove any prior team or free-agent registration for player1
+        tournaments[idx].teams.removeAll { $0.containsPlayer(player1Id) }
+        tournaments[idx].freeAgents.removeAll { $0.playerId == player1Id }
+        // Remove prior registrations for player3 and player4 if provided
+        if let p3 = player3Id {
+            tournaments[idx].teams.removeAll { $0.containsPlayer(p3) }
+            tournaments[idx].freeAgents.removeAll { $0.playerId == p3 }
+        }
+        if let p4 = player4Id {
+            tournaments[idx].teams.removeAll { $0.containsPlayer(p4) }
+            tournaments[idx].freeAgents.removeAll { $0.playerId == p4 }
+        }
+        
+        let newTeam = TournamentTeam(
+            id: UUID(),
+            teamName: teamName.isEmpty ? "Team \(players.first(where: { $0.id == player1Id })?.name ?? "Beach")" : teamName,
+            player1Id: player1Id,
+            player2Id: player2Id,
+            player3Id: player3Id,
+            player4Id: player4Id,
+            seed: tournaments[idx].teams(for: division).count + 1,
+            division: division
+        )
+        tournaments[idx].teams.append(newTeam)
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        
+        postNotification(
+            title: "✅ Registered for Tournament",
+            message: "You're registered for \(division.displayName) in \(tournaments[idx].title)!",
+            type: .tournament
+        )
+    }
+    
+    public func registerFreeAgentForTournament(
+        tournamentId: UUID,
+        playerId: UUID,
+        division: TournamentDivisionCategory,
+        notes: String = ""
+    ) {
+        guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        tournaments[idx].teams.removeAll { $0.containsPlayer(playerId) }
+        tournaments[idx].freeAgents.removeAll { $0.playerId == playerId }
+        
+        let fa = TournamentFreeAgent(
+            id: UUID(),
+            playerId: playerId,
+            division: division,
+            notes: notes
+        )
+        tournaments[idx].freeAgents.append(fa)
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        
+        postNotification(
+            title: "🏐 Free Agent Pool Joined",
+            message: "You're in the free agent list for \(division.displayName)!",
+            type: .tournament
+        )
+    }
+    
+    public func leaveTournament(tournamentId: UUID, playerId: UUID) {
+        guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        tournaments[idx].teams.removeAll { $0.containsPlayer(playerId) }
+        tournaments[idx].freeAgents.removeAll { $0.playerId == playerId }
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+    }
+    
+    public func updateTournamentMatchScore(
+        tournamentId: UUID,
+        matchId: UUID,
+        team1Score: Int,
+        team2Score: Int,
+        winningTeamId: UUID?
+    ) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        guard let mIdx = tournaments[tIdx].matches.firstIndex(where: { $0.id == matchId }) else { return }
+        
+        tournaments[tIdx].matches[mIdx].team1Score = team1Score
+        tournaments[tIdx].matches[mIdx].team2Score = team2Score
+        tournaments[tIdx].matches[mIdx].winningTeamId = winningTeamId
+        tournaments[tIdx].matches[mIdx].isCompleted = true
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+    }
+    
+    public func updateTournament(
+        id: UUID,
+        title: String,
+        date: Date,
+        location: String,
+        courts: [String],
+        allowedDivisions: [TournamentDivisionCategory],
+        maxTeamsPerDivision: Int,
+        notes: String,
+        teamFormat: TournamentTeamFormat
+    ) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let idx = tournaments.firstIndex(where: { $0.id == id }) else {
+            return (false, "Tournament not found.")
+        }
+        let isHost = (tournaments[idx].hostPlayerId == user.id) || user.isRoot
+        guard isHost else {
+            return (false, "Only the tournament host or admin can edit this tournament.")
+        }
+        tournaments[idx].title = title
+        tournaments[idx].date = date
+        tournaments[idx].location = location
+        tournaments[idx].courts = courts
+        tournaments[idx].allowedDivisions = allowedDivisions
+        tournaments[idx].maxTeamsPerDivision = maxTeamsPerDivision
+        tournaments[idx].notes = notes
+        tournaments[idx].teamFormat = teamFormat
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        return (true, "Tournament updated successfully.")
+    }
+    
+    @discardableResult
+    public func deleteTournament(id: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let t = tournaments.first(where: { $0.id == id }) else {
+            return (false, "Tournament not found.")
+        }
+        let isHost = (t.hostPlayerId == user.id) || user.isRoot
+        guard isHost else {
+            return (false, "Only the tournament host or admin can delete this tournament.")
+        }
+        tournaments.removeAll { $0.id == id }
+        saveToDisk()
+        FirestoreService.shared.deleteTournament(id: id, rawId: t.rawId)
+        return (true, "Tournament deleted successfully.")
+    }
     
     public func saveToDisk() {
         let encoder = JSONEncoder()
@@ -2012,6 +2271,9 @@ public class DataManager: ObservableObject {
         }
         if let data = try? encoder.encode(games) {
             try? data.write(to: gamesFileURL, options: .atomic)
+        }
+        if let data = try? encoder.encode(tournaments) {
+            try? data.write(to: tournamentsFileURL, options: .atomic)
         }
         if let data = try? encoder.encode(availabilitySlots) {
             try? data.write(to: slotsFileURL, options: .atomic)
@@ -2037,6 +2299,11 @@ public class DataManager: ObservableObject {
         if let gData = try? Data(contentsOf: gamesFileURL),
            let loadedGames = try? decoder.decode([SetGame].self, from: gData) {
             self.games = loadedGames.filter { $0.status != .canceled }
+        }
+        
+        if let tData = try? Data(contentsOf: tournamentsFileURL),
+           let loadedTournaments = try? decoder.decode([Tournament].self, from: tData) {
+            self.tournaments = deduplicateTournaments(loadedTournaments)
         }
         
         if let sData = try? Data(contentsOf: slotsFileURL),

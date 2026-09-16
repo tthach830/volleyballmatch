@@ -9,6 +9,7 @@ public class FirestoreService: ObservableObject {
     private var playersListener: ListenerRegistration?
     private var gamesListener: ListenerRegistration?
     private var slotsListener: ListenerRegistration?
+    private var tournamentsListener: ListenerRegistration?
     
     private init() {
         let settings = FirestoreSettings()
@@ -41,7 +42,8 @@ public class FirestoreService: ObservableObject {
     public func startListening(
         onPlayersUpdate: @escaping ([Player]) -> Void,
         onGamesUpdate: @escaping ([SetGame]) -> Void,
-        onSlotsUpdate: @escaping ([AvailabilitySlot]) -> Void
+        onSlotsUpdate: @escaping ([AvailabilitySlot]) -> Void,
+        onTournamentsUpdate: (([Tournament]) -> Void)? = nil
     ) {
         // Real-time listener for Players
         playersListener = db.collection("players").addSnapshotListener { [weak self] snapshot, error in
@@ -108,12 +110,38 @@ public class FirestoreService: ObservableObject {
                 onSlotsUpdate(slots)
             }
         }
+        
+        // Real-time listener for Tournaments
+        if let onTournamentsUpdate = onTournamentsUpdate {
+            tournamentsListener = db.collection("tournaments").addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self, let documents = snapshot?.documents, error == nil else { return }
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                let tournaments: [Tournament] = documents.compactMap { doc in
+                    do {
+                        var safeDict = (self.sanitizeForJSON(doc.data()) as? [String: Any]) ?? [:]
+                        if safeDict["id"] == nil {
+                            safeDict["id"] = doc.documentID
+                        }
+                        let data = try JSONSerialization.data(withJSONObject: safeDict)
+                        return try decoder.decode(Tournament.self, from: data)
+                    } catch {
+                        print("⚠️ Error decoding tournament \(doc.documentID): \(error)")
+                        return nil
+                    }
+                }
+                DispatchQueue.main.async {
+                    onTournamentsUpdate(tournaments)
+                }
+            }
+        }
     }
     
     public func stopListening() {
         playersListener?.remove()
         gamesListener?.remove()
         slotsListener?.remove()
+        tournamentsListener?.remove()
     }
     
     // MARK: - Save Operations to Cloud Firestore
@@ -184,6 +212,31 @@ public class FirestoreService: ObservableObject {
             if let error = error {
                 print("Error deleting availability slot from Firestore: \(error.localizedDescription)")
             }
+        }
+    }
+    
+    public func saveTournament(_ tournament: Tournament) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(tournament),
+              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        
+        let docId = tournament.rawId ?? tournament.id.uuidString
+        if dict["id"] == nil {
+            dict["id"] = docId
+        }
+        db.collection("tournaments").document(docId).setData(dict, merge: true)
+    }
+    
+    public func deleteTournament(id: UUID, rawId: String? = nil) {
+        let docId = rawId ?? id.uuidString
+        db.collection("tournaments").document(docId).delete { error in
+            if let error = error {
+                print("Error deleting tournament from Firestore: \(error.localizedDescription)")
+            }
+        }
+        if let raw = rawId, raw != id.uuidString {
+            db.collection("tournaments").document(id.uuidString).delete { _ in }
         }
     }
     

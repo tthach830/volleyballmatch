@@ -1,0 +1,496 @@
+import Foundation
+
+public enum TournamentDivisionCategory: String, Codable, CaseIterable, Identifiable {
+    case coedNovice2v2 = "2v2 Coed Novice"
+    case coedIntermediate2v2 = "2v2 Coed Intermediate"
+    case coed4v4 = "4v4 Coed"
+    case mensIntermediate2v2 = "2v2 Men's Intermediate"
+    
+    public var id: String { rawValue }
+    
+    public var displayName: String { rawValue }
+    
+    public var icon: String {
+        switch self {
+        case .coedNovice2v2, .coedIntermediate2v2: return "👫"
+        case .coed4v4: return "🏐"
+        case .mensIntermediate2v2: return "👨"
+        }
+    }
+    
+    public var genderCategory: GameGenderCategory {
+        switch self {
+        case .coedNovice2v2, .coedIntermediate2v2, .coed4v4: return .coed
+        case .mensIntermediate2v2: return .male
+        }
+    }
+    
+    public var skillLevel: String {
+        switch self {
+        case .coedNovice2v2: return "Novice"
+        case .coedIntermediate2v2, .mensIntermediate2v2: return "Intermediate"
+        case .coed4v4: return "Open"
+        }
+    }
+    
+    public var teamSize: Int {
+        switch self {
+        case .coed4v4: return 4
+        case .coedNovice2v2, .coedIntermediate2v2, .mensIntermediate2v2: return 2
+        }
+    }
+    
+    public var isQuads: Bool {
+        self == .coed4v4
+    }
+    
+    public var isNovice: Bool {
+        self == .coedNovice2v2
+    }
+    
+    public var maxAllowedRating: RatingTier? {
+        switch self {
+        case .coedNovice2v2: return .novice
+        default: return nil
+        }
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        if let exact = TournamentDivisionCategory(rawValue: raw) {
+            self = exact
+            return
+        }
+        // Backward compatibility mapping for legacy values
+        switch raw {
+        case "Coed Novice", "2v2 Coed Novice":
+            self = .coedNovice2v2
+        case "Coed Intermediate", "2v2 Coed Intermediate":
+            self = .coedIntermediate2v2
+        case "Men's Intermediate", "2v2 Men's Intermediate":
+            self = .mensIntermediate2v2
+        case "4v4 Coed", "4v4":
+            self = .coed4v4
+        case "Men's Novice":
+            // Men's Novice deprecated -> mapped to Men's Intermediate
+            self = .mensIntermediate2v2
+        case "Women's Novice", "Women's Intermediate":
+            // Women's divisions deprecated -> mapped to Coed Intermediate
+            self = .coedIntermediate2v2
+        default:
+            self = .coedNovice2v2
+        }
+    }
+}
+
+public enum TournamentTeamFormat: String, Codable, CaseIterable, Identifiable {
+    case doubles2v2 = "2v2"
+    case quads4v4 = "4v4"
+    
+    public var id: String { rawValue }
+    
+    public var displayName: String {
+        switch self {
+        case .doubles2v2: return "2v2 Doubles"
+        case .quads4v4: return "4v4 Quads"
+        }
+    }
+    
+    public var icon: String {
+        switch self {
+        case .doubles2v2: return "👥"
+        case .quads4v4: return "🏐"
+        }
+    }
+    
+    public var teamSize: Int {
+        switch self {
+        case .doubles2v2: return 2
+        case .quads4v4: return 4
+        }
+    }
+}
+
+public struct TournamentFreeAgent: Identifiable, Codable, Hashable {
+    public var id: UUID
+    public var playerId: UUID
+    public var division: TournamentDivisionCategory
+    public var notes: String
+    public var registeredAt: Date
+    
+    public init(
+        id: UUID = UUID(),
+        playerId: UUID,
+        division: TournamentDivisionCategory,
+        notes: String = "",
+        registeredAt: Date = Date()
+    ) {
+        self.id = id
+        self.playerId = playerId
+        self.division = division
+        self.notes = notes
+        self.registeredAt = registeredAt
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, playerId, division, notes, registeredAt
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let raw = try? container.decode(String.self, forKey: .id) {
+            id = UUID(uuidString: raw) ?? SetGame.parseUUID(from: raw) ?? UUID()
+        } else if let uuid = try? container.decode(UUID.self, forKey: .id) {
+            id = uuid
+        } else {
+            id = UUID()
+        }
+        
+        if let pRaw = try? container.decode(String.self, forKey: .playerId) {
+            playerId = UUID(uuidString: pRaw) ?? SetGame.parseUUID(from: pRaw) ?? UUID()
+        } else {
+            playerId = (try? container.decode(UUID.self, forKey: .playerId)) ?? UUID()
+        }
+        
+        division = try container.decode(TournamentDivisionCategory.self, forKey: .division)
+        notes = (try? container.decode(String.self, forKey: .notes)) ?? ""
+        registeredAt = (try? container.decode(Date.self, forKey: .registeredAt)) ?? Date()
+    }
+}
+
+public struct TournamentTeam: Identifiable, Codable, Hashable {
+    public var id: UUID
+    public var teamName: String
+    public var player1Id: UUID
+    public var player2Id: UUID?
+    public var player3Id: UUID?
+    public var player4Id: UUID?
+    public var seed: Int?
+    public var division: TournamentDivisionCategory
+    public var isConfirmed: Bool
+    public var registeredAt: Date
+    
+    public init(
+        id: UUID = UUID(),
+        teamName: String,
+        player1Id: UUID,
+        player2Id: UUID? = nil,
+        player3Id: UUID? = nil,
+        player4Id: UUID? = nil,
+        seed: Int? = nil,
+        division: TournamentDivisionCategory,
+        isConfirmed: Bool = true,
+        registeredAt: Date = Date()
+    ) {
+        self.id = id
+        self.teamName = teamName
+        self.player1Id = player1Id
+        self.player2Id = player2Id
+        self.player3Id = player3Id
+        self.player4Id = player4Id
+        self.seed = seed
+        self.division = division
+        self.isConfirmed = isConfirmed
+        self.registeredAt = registeredAt
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, teamName, player1Id, player2Id, player3Id, player4Id, seed, division, isConfirmed, registeredAt
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let raw = try? container.decode(String.self, forKey: .id) {
+            id = UUID(uuidString: raw) ?? SetGame.parseUUID(from: raw) ?? UUID()
+        } else if let uuid = try? container.decode(UUID.self, forKey: .id) {
+            id = uuid
+        } else {
+            id = UUID()
+        }
+        
+        teamName = (try? container.decode(String.self, forKey: .teamName)) ?? "Team"
+        
+        if let p1Raw = try? container.decode(String.self, forKey: .player1Id) {
+            player1Id = UUID(uuidString: p1Raw) ?? SetGame.parseUUID(from: p1Raw) ?? UUID()
+        } else {
+            player1Id = (try? container.decode(UUID.self, forKey: .player1Id)) ?? UUID()
+        }
+        
+        if let p2Raw = try? container.decode(String.self, forKey: .player2Id) {
+            player2Id = UUID(uuidString: p2Raw) ?? SetGame.parseUUID(from: p2Raw)
+        } else {
+            player2Id = try? container.decode(UUID.self, forKey: .player2Id)
+        }
+        
+        if let p3Raw = try? container.decode(String.self, forKey: .player3Id) {
+            player3Id = UUID(uuidString: p3Raw) ?? SetGame.parseUUID(from: p3Raw)
+        } else {
+            player3Id = try? container.decode(UUID.self, forKey: .player3Id)
+        }
+        
+        if let p4Raw = try? container.decode(String.self, forKey: .player4Id) {
+            player4Id = UUID(uuidString: p4Raw) ?? SetGame.parseUUID(from: p4Raw)
+        } else {
+            player4Id = try? container.decode(UUID.self, forKey: .player4Id)
+        }
+        
+        seed = try container.decodeIfPresent(Int.self, forKey: .seed)
+        division = try container.decode(TournamentDivisionCategory.self, forKey: .division)
+        isConfirmed = try container.decodeIfPresent(Bool.self, forKey: .isConfirmed) ?? true
+        registeredAt = try container.decodeIfPresent(Date.self, forKey: .registeredAt) ?? Date()
+    }
+    
+    public var allPlayerIds: [UUID] {
+        var list: [UUID] = [player1Id]
+        if let p2 = player2Id { list.append(p2) }
+        if let p3 = player3Id { list.append(p3) }
+        if let p4 = player4Id { list.append(p4) }
+        return list
+    }
+    
+    public func containsPlayer(_ playerId: UUID) -> Bool {
+        allPlayerIds.contains(playerId)
+    }
+}
+
+public struct TournamentMatch: Identifiable, Codable, Hashable {
+    public var id: UUID
+    public var roundNumber: Int
+    public var matchNumber: Int
+    public var division: TournamentDivisionCategory
+    public var courtNumber: String
+    public var team1Id: UUID?
+    public var team2Id: UUID?
+    public var team1Score: Int?
+    public var team2Score: Int?
+    public var winningTeamId: UUID?
+    public var isCompleted: Bool
+    
+    public init(
+        id: UUID = UUID(),
+        roundNumber: Int = 1,
+        matchNumber: Int = 1,
+        division: TournamentDivisionCategory,
+        courtNumber: String = "Court #1",
+        team1Id: UUID? = nil,
+        team2Id: UUID? = nil,
+        team1Score: Int? = nil,
+        team2Score: Int? = nil,
+        winningTeamId: UUID? = nil,
+        isCompleted: Bool = false
+    ) {
+        self.id = id
+        self.roundNumber = roundNumber
+        self.matchNumber = matchNumber
+        self.division = division
+        self.courtNumber = courtNumber
+        self.team1Id = team1Id
+        self.team2Id = team2Id
+        self.team1Score = team1Score
+        self.team2Score = team2Score
+        self.winningTeamId = winningTeamId
+        self.isCompleted = isCompleted
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, roundNumber, matchNumber, division, courtNumber, team1Id, team2Id, team1Score, team2Score, winningTeamId, isCompleted
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let raw = try? container.decode(String.self, forKey: .id) {
+            id = UUID(uuidString: raw) ?? SetGame.parseUUID(from: raw) ?? UUID()
+        } else if let uuid = try? container.decode(UUID.self, forKey: .id) {
+            id = uuid
+        } else {
+            id = UUID()
+        }
+        
+        roundNumber = (try? container.decode(Int.self, forKey: .roundNumber)) ?? 1
+        matchNumber = (try? container.decode(Int.self, forKey: .matchNumber)) ?? 1
+        division = try container.decode(TournamentDivisionCategory.self, forKey: .division)
+        courtNumber = (try? container.decode(String.self, forKey: .courtNumber)) ?? "Court #1"
+        
+        if let t1Raw = try? container.decode(String.self, forKey: .team1Id) {
+            team1Id = UUID(uuidString: t1Raw) ?? SetGame.parseUUID(from: t1Raw)
+        } else {
+            team1Id = try? container.decode(UUID.self, forKey: .team1Id)
+        }
+        
+        if let t2Raw = try? container.decode(String.self, forKey: .team2Id) {
+            team2Id = UUID(uuidString: t2Raw) ?? SetGame.parseUUID(from: t2Raw)
+        } else {
+            team2Id = try? container.decode(UUID.self, forKey: .team2Id)
+        }
+        
+        team1Score = try? container.decode(Int.self, forKey: .team1Score)
+        team2Score = try? container.decode(Int.self, forKey: .team2Score)
+        
+        if let wRaw = try? container.decode(String.self, forKey: .winningTeamId) {
+            winningTeamId = UUID(uuidString: wRaw) ?? SetGame.parseUUID(from: wRaw)
+        } else {
+            winningTeamId = try? container.decode(UUID.self, forKey: .winningTeamId)
+        }
+        
+        isCompleted = (try? container.decode(Bool.self, forKey: .isCompleted)) ?? false
+    }
+}
+
+public struct Tournament: Identifiable, Codable, Hashable {
+    public var id: UUID
+    public var rawId: String?
+    public var title: String
+    public var hostPlayerId: UUID?
+    public var date: Date
+    public var location: String
+    public var courts: [String]
+    public var allowedDivisions: [TournamentDivisionCategory]
+    public var maxTeamsPerDivision: Int
+    public var teams: [TournamentTeam]
+    public var freeAgents: [TournamentFreeAgent]
+    public var matches: [TournamentMatch]
+    public var status: String // "registration_open", "in_progress", "completed"
+    public var notes: String
+    public var createdAt: Date
+    public var teamFormat: TournamentTeamFormat
+    
+    public init(
+        id: UUID = UUID(),
+        rawId: String? = nil,
+        title: String,
+        hostPlayerId: UUID? = nil,
+        date: Date,
+        location: String = "Main Beach",
+        courts: [String] = ["Court #1", "Court #2", "Court #3", "Court #4"],
+        allowedDivisions: [TournamentDivisionCategory] = TournamentDivisionCategory.allCases,
+        maxTeamsPerDivision: Int = 8,
+        teams: [TournamentTeam] = [],
+        freeAgents: [TournamentFreeAgent] = [],
+        matches: [TournamentMatch] = [],
+        status: String = "registration_open",
+        notes: String = "Standard beach rules. Rally score to 21, switch sides every 7 points.",
+        createdAt: Date = Date(),
+        teamFormat: TournamentTeamFormat = .doubles2v2
+    ) {
+        self.id = id
+        self.rawId = rawId ?? id.uuidString
+        self.title = title
+        self.hostPlayerId = hostPlayerId
+        self.date = date
+        self.location = location
+        self.courts = courts
+        self.allowedDivisions = allowedDivisions
+        self.maxTeamsPerDivision = maxTeamsPerDivision
+        self.teams = teams
+        self.freeAgents = freeAgents
+        self.matches = matches
+        self.status = status
+        self.notes = notes
+        self.createdAt = createdAt
+        self.teamFormat = teamFormat
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, rawId, title, hostPlayerId, date, location, courts, allowedDivisions, maxTeamsPerDivision, teams, freeAgents, matches, status, notes, createdAt, teamFormat
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let raw = try? container.decode(String.self, forKey: .id) {
+            rawId = raw
+            id = UUID(uuidString: raw) ?? SetGame.parseUUID(from: raw) ?? UUID()
+        } else if let uuid = try? container.decode(UUID.self, forKey: .id) {
+            id = uuid
+            rawId = uuid.uuidString
+        } else {
+            id = UUID()
+            rawId = id.uuidString
+        }
+        
+        title = (try? container.decode(String.self, forKey: .title)) ?? "Tournament"
+        
+        if let hRaw = try? container.decode(String.self, forKey: .hostPlayerId) {
+            hostPlayerId = UUID(uuidString: hRaw) ?? SetGame.parseUUID(from: hRaw)
+        } else {
+            hostPlayerId = try? container.decode(UUID.self, forKey: .hostPlayerId)
+        }
+        
+        if let d = try? container.decode(Date.self, forKey: .date) {
+            date = d
+        } else if let dStr = try? container.decode(String.self, forKey: .date),
+                  let parsed = ISO8601DateFormatter().date(from: dStr) {
+            date = parsed
+        } else {
+            date = Date()
+        }
+        
+        location = (try? container.decode(String.self, forKey: .location)) ?? "Main Beach"
+        courts = (try? container.decode([String].self, forKey: .courts)) ?? ["Court #1", "Court #2"]
+        allowedDivisions = (try? container.decode([TournamentDivisionCategory].self, forKey: .allowedDivisions)) ?? TournamentDivisionCategory.allCases
+        maxTeamsPerDivision = (try? container.decode(Int.self, forKey: .maxTeamsPerDivision)) ?? 8
+        teams = (try? container.decode([TournamentTeam].self, forKey: .teams)) ?? []
+        freeAgents = (try? container.decode([TournamentFreeAgent].self, forKey: .freeAgents)) ?? []
+        matches = (try? container.decode([TournamentMatch].self, forKey: .matches)) ?? []
+        status = (try? container.decode(String.self, forKey: .status)) ?? "registration_open"
+        notes = (try? container.decode(String.self, forKey: .notes)) ?? ""
+        
+        if let c = try? container.decode(Date.self, forKey: .createdAt) {
+            createdAt = c
+        } else {
+            createdAt = Date()
+        }
+        
+        teamFormat = (try? container.decode(TournamentTeamFormat.self, forKey: .teamFormat)) ?? .doubles2v2
+    }
+    
+    public var teamSize: Int {
+        teamFormat.teamSize
+    }
+    
+    public var isQuads: Bool {
+        teamFormat == .quads4v4
+    }
+    
+    public var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE, MMM d • h:mm a"
+        return formatter.string(from: date)
+    }
+    
+    public func teams(for division: TournamentDivisionCategory) -> [TournamentTeam] {
+        teams.filter { $0.division == division }
+    }
+    
+    public func freeAgents(for division: TournamentDivisionCategory) -> [TournamentFreeAgent] {
+        freeAgents.filter { $0.division == division }
+    }
+    
+    public func matches(for division: TournamentDivisionCategory) -> [TournamentMatch] {
+        matches.filter { $0.division == division }
+    }
+    
+    public func isPlayerRegistered(_ playerId: UUID) -> Bool {
+        teams.contains { $0.containsPlayer(playerId) } || freeAgents.contains { $0.playerId == playerId }
+    }
+    
+    public func registrationStatus(for division: TournamentDivisionCategory) -> String {
+        let count = teams(for: division).count
+        if count >= maxTeamsPerDivision {
+            return "Full (Waitlist Available)"
+        }
+        return "\(count)/\(maxTeamsPerDivision) Teams"
+    }
+    
+    public var isRegistrationOpen: Bool {
+        status == "registration_open"
+    }
+    
+    public var isInProgress: Bool {
+        status == "in_progress"
+    }
+    
+    public var isCompleted: Bool {
+        status == "completed"
+    }
+}

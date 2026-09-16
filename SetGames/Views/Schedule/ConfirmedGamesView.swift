@@ -6,6 +6,7 @@ public struct ConfirmedGamesView: View {
     @State private var selectedFilter: GameFilter = .all
     @State private var showNotificationsSheet: Bool = false
     @State private var showCreateMatchSheet: Bool = false
+    @State private var showTournamentsSheet: Bool = false
     @State private var showRandomTeamsSheet: Bool = false
     @State private var showInstantPickupSheet: Bool = false
     @State private var qrGameForSheet: SetGame? = nil
@@ -35,7 +36,62 @@ public struct ConfirmedGamesView: View {
     public var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 14) {
+                    // Action Buttons Row: + New Game, 🚀 Quick Play, 🏆 Tournaments
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            Button {
+                                showCreateMatchSheet = true
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 13, weight: .bold))
+                                    Text("New Game")
+                                        .font(.system(size: 13, weight: .bold))
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color(red: 0.17, green: 0.43, blue: 0.48)) // #2b6e7a
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                            }
+                            
+                            Button {
+                                showInstantPickupSheet = true
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text("🚀")
+                                        .font(.system(size: 13))
+                                    Text("Quick Play")
+                                        .font(.system(size: 13, weight: .bold))
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color(red: 0.17, green: 0.43, blue: 0.48)) // #2b6e7a
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                            }
+                            
+                            Button {
+                                showTournamentsSheet = true
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text("🏆")
+                                        .font(.system(size: 13))
+                                    Text("Tournaments")
+                                        .font(.system(size: 13, weight: .bold))
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.orange)
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.top, 4)
+
                     // Custom Dark Capsule Filter Bar
                     HStack(spacing: 0) {
                         ForEach(Array(GameFilter.allCases.enumerated()), id: \.offset) { index, filter in
@@ -63,7 +119,6 @@ public struct ConfirmedGamesView: View {
                             .stroke(Color.white.opacity(0.1), lineWidth: 0.8)
                     )
                     .padding(.horizontal)
-                    .padding(.top, 4)
                     
                     // Filtered Games List
                     let displayGames = filteredGames
@@ -106,39 +161,9 @@ public struct ConfirmedGamesView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 8) {
-                        Button {
-                            showCreateMatchSheet = true
-                        } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 13, weight: .bold))
-                                Text("New Game")
-                                    .font(.system(size: 13, weight: .bold))
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(Color(red: 0.17, green: 0.43, blue: 0.48)) // #2b6e7a
-                            .foregroundColor(.white)
-                            .clipShape(Capsule())
-                        }
-                        
-                        Button {
-                            showInstantPickupSheet = true
-                        } label: {
-                            HStack(spacing: 5) {
-                                Text("🚀")
-                                    .font(.system(size: 13))
-                                Text("Quick Play")
-                                    .font(.system(size: 13, weight: .bold))
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(Color(red: 0.17, green: 0.43, blue: 0.48)) // #2b6e7a
-                            .foregroundColor(.white)
-                            .clipShape(Capsule())
-                        }
-                    }
+                    Text("Set Games")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -167,6 +192,9 @@ public struct ConfirmedGamesView: View {
             }
             .fullScreenCover(isPresented: $showCreateMatchSheet) {
                 CreateMatchSheet(dataManager: dataManager)
+            }
+            .sheet(isPresented: $showTournamentsSheet) {
+                TournamentHubView(dataManager: dataManager)
             }
             .sheet(isPresented: $showRandomTeamsSheet) {
                 RandomTeamGeneratorSheet(dataManager: dataManager)
@@ -226,7 +254,7 @@ public struct ConfirmedGamesView: View {
                 }
             } message: {
                 if let target = playerToRemove {
-                    Text("Are you sure you want to remove \(target.player.nickname.isEmpty ? target.player.name : target.player.nickname) from the player pool? If players are on the waitlist, the next player will be auto-promoted.")
+                    Text("Are you sure you want to remove \(target.player.displayName) from the player pool? If players are on the waitlist, the next player will be auto-promoted.")
                 }
             }
         }
@@ -289,14 +317,14 @@ public struct ConfirmedGamesView: View {
         if pids.isEmpty { return "TBD" }
         let names = pids.map { pid in
             let p = dataManager.player(for: pid)
-            return p.nickname.isEmpty ? p.name : p.nickname
+            return p.displayName
         }.joined(separator: " & ")
         return isWinner ? "\(names) 🏅🏅" : names
     }
 
     private func playerCardTile(pid: UUID, game: SetGame, isHost: Bool, isMyGame: Bool, isTeam1: Bool) -> some View {
         let p = dataManager.player(for: pid)
-        let displayName = isMyGame ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player"
+        let displayName = isMyGame ? p.displayName : "Player"
         let ratingTier = p.rating
         let starStr = String(format: "%.1f", p.averageStarRating)
         let borderColor = isTeam1 ? Color(red: 0.94, green: 0.27, blue: 0.27) : Color(red: 0.22, green: 0.74, blue: 0.97)
@@ -480,7 +508,7 @@ public struct ConfirmedGamesView: View {
     private func cardMetadataLines(game: SetGame) -> some View {
         let skillStr = (game.allowedRatings.count >= RatingTier.allCases.count || game.allowedRatings.isEmpty) ? "All Levels" : game.allowedRatings.map(\.rawValue).joined(separator: "/")
         let host = hostPlayer(for: game)
-        let hostName = host?.nickname.isEmpty == false ? host!.nickname : (host?.name ?? "Host")
+        let hostName = host?.displayName ?? "Host"
         let hostRating = host != nil ? String(format: "%.1f", host!.averageStarRating) : "5.0"
         let formatStr = game.maxPlayers == 2 ? "1v1" : (game.maxPlayers == 6 ? "3v3" : "2v2")
         
@@ -733,7 +761,7 @@ public struct ConfirmedGamesView: View {
                 VStack(spacing: 6) {
                     ForEach(Array(game.allPlayerIds.enumerated()), id: \.offset) { idx, pid in
                         let p = dataManager.player(for: pid)
-                        let displayName = isMyGame ? (p.nickname.isEmpty ? p.name : p.nickname) : "Player"
+                        let displayName = isMyGame ? p.displayName : "Player"
                         let ratingTier = p.rating
                         let starStr = String(format: "%.1f", p.averageStarRating)
                         let isGameHost = pid == game.hostPlayerId
@@ -745,68 +773,65 @@ public struct ConfirmedGamesView: View {
                             Text("#\(idx + 1)")
                                 .font(.system(size: 10, weight: .black))
                                 .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
-                                .frame(width: 22, height: 22)
-                                .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.18))
+                                .frame(width: 20, height: 20)
+                                .background(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.15))
                                 .clipShape(Circle())
                             
-                            // Avatar
-                            CourtAvatarIconView(avatarKey: isMyGame ? p.avatarEmoji : "🏐", size: 28)
+                            // Avatar icon
+                            CourtAvatarIconView(avatarKey: p.avatarEmoji, size: 28)
                             
-                            // Name & Badges
                             VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 4) {
+                                HStack(spacing: 6) {
                                     Text(displayName)
-                                        .font(.system(size: 12, weight: .bold))
+                                        .font(.system(size: 13, weight: .semibold))
                                         .foregroundColor(.white)
-                                        .lineLimit(1)
                                     
                                     if isGameHost {
                                         Text("HOST")
-                                            .font(.system(size: 8, weight: .black))
-                                            .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.2))
-                                            .padding(.horizontal, 4)
+                                            .font(.system(size: 8, weight: .bold))
+                                            .padding(.horizontal, 5)
                                             .padding(.vertical, 1)
-                                            .background(Color(red: 1.0, green: 0.75, blue: 0.2).opacity(0.18))
-                                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                                            .background(Color.orange.opacity(0.2))
+                                            .foregroundColor(.orange)
+                                            .clipShape(Capsule())
                                     }
                                 }
                                 
-                                HStack(spacing: 5) {
+                                HStack(spacing: 4) {
                                     Text(ratingTier.gameDisplay)
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundColor(ratingTier == .intermediate ? Color(red: 0.02, green: 0.52, blue: 0.78) : .white)
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 1)
-                                        .background(ratingTier == .intermediate ? Color(red: 0.75, green: 0.90, blue: 0.99) : ratingTier.badgeColor)
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(ratingTier.color)
                                     
-                                    HStack(spacing: 2) {
-                                        Text("⭐")
-                                            .font(.system(size: 8))
-                                        Text(starStr)
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(Color(red: 1.0, green: 0.75, blue: 0.2))
-                                    }
+                                    Text("•")
+                                        .font(.system(size: 8))
+                                        .foregroundColor(.gray)
+                                    
+                                    Text("★ \(starStr)")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.yellow)
                                 }
                             }
                             
-                            Spacer(minLength: 0)
+                            Spacer()
                             
                             if canRemove {
                                 Button {
-                                    playerToRemove = (game.id, p)
-                                    showRemovePlayerAlert = true
+                                    playerToRemove = (player: p, gameId: game.id)
+                                    showRemoveAlert = true
                                 } label: {
                                     Image(systemName: "trash")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(Color(red: 0.94, green: 0.27, blue: 0.27))
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.red.opacity(0.8))
+                                        .padding(6)
+                                        .background(Color.red.opacity(0.12))
+                                        .clipShape(Circle())
                                 }
                                 .buttonStyle(.borderless)
                             }
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color(red: 0.07, green: 0.09, blue: 0.13))
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(Color(white: 0.12).opacity(0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
@@ -939,7 +964,7 @@ public struct ConfirmedGamesView: View {
             if !game.waitlistPlayerIds.isEmpty {
                 ForEach(Array(game.waitlistPlayerIds.enumerated()), id: \.offset) { idx, wId in
                     let wp = dataManager.player(for: wId)
-                    let wpName = isMyGame ? (wp.nickname.isEmpty ? wp.name : "\(wp.name) (\(wp.nickname))") : "Player \(idx + 1)"
+                    let wpName = isMyGame ? wp.displayName : "Player \(idx + 1)"
                     HStack {
                         Text("#\(idx + 1)")
                             .font(.system(size: 10, weight: .black))
@@ -1181,7 +1206,7 @@ public struct ConfirmedGamesView: View {
                         if !game.waitlistPlayerIds.isEmpty {
                             let firstWaitingId = game.waitlistPlayerIds[0]
                             let wp = dataManager.player(for: firstWaitingId)
-                            let wpName = wp.nickname.isEmpty ? wp.name : wp.nickname
+                            let wpName = wp.displayName
                             Button {
                                 let res = dataManager.promoteWaitlistPlayer(gameId: game.id, playerId: firstWaitingId)
                                 alertMessage = res.message
