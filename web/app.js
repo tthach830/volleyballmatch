@@ -3469,7 +3469,7 @@ window.renderAddPlayerModalList = () => {
 
   if (availablePlayers.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; color: var(--text-secondary, #94a3b8); padding: 24px 12px; font-size: 13px;">
+      <div style="text-align: center; color: var(--text-muted, #8e8e93); padding: 24px 12px; font-size: 13px;">
         No available players found.
       </div>
     `;
@@ -3477,20 +3477,48 @@ window.renderAddPlayerModalList = () => {
   }
 
   container.innerHTML = availablePlayers.map(p => {
-    const displayName = p.nickname ? `${p.name} (${p.nickname})` : p.name;
-    const ratingBadge = p.rating ? `<span class="rating-badge rating-${(p.rating || '').toLowerCase()}" style="font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">${p.rating}</span>` : '';
-    const genderLabel = p.gender ? `<span style="font-size: 11px; color: var(--text-secondary, #94a3b8); text-transform: capitalize;">${p.gender}</span>` : '';
-    const avatar = p.avatarUrl ? `<img src="${p.avatarUrl}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">` : `<div style="width: 36px; height: 36px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: white;">${(p.name || '?')[0].toUpperCase()}</div>`;
+    // Format: FirstName(Nickname) like Shannon(The Rock)
+    const rawName = String(p.name || "").trim();
+    const parts = rawName.split(/\s+/).filter(Boolean);
+    const firstName = parts[0] || "Player";
+    const rawNick = String(p.nickname || "").trim();
+    const cleanNick = rawNick.replace(/^\((.*)\)$/, '$1').trim();
+    let displayName;
+    if (cleanNick && cleanNick.toLowerCase() !== "player" && cleanNick.toLowerCase() !== firstName.toLowerCase()) {
+      displayName = `${firstName}(${cleanNick})`;
+    } else {
+      displayName = rawName || firstName || "Player";
+    }
+
+    const rating = p.rating || "B";
+    const ratingBadge = `<span class="badge-tier-pill badge-tier-${rating.toLowerCase()}">${rating}</span>`;
+    const homeBeach = p.homeBeach || "Main Beach";
+    const elo = p.eloRating ?? 1500;
+
+    // Avatar
+    let avatarContent;
+    if (p.avatarUrl) {
+      avatarContent = `<img src="${p.avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+    } else {
+      avatarContent = renderAvatarContent(p.avatarEmoji || "🏐");
+    }
 
     return `
-      <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; gap: 10px;">
-        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
-          ${avatar}
-          <div style="display: flex; flex-direction: column; min-width: 0;">
-            <div style="font-weight: 700; font-size: 13px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</div>
-            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-              ${genderLabel}
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg, #f8fafc); border: 1px solid var(--border, rgba(60,60,67,0.12)); border-radius: 12px; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; line-height: 1; background: rgba(0,0,0,0.04); flex-shrink: 0; overflow: hidden; border: 1px solid var(--border, rgba(0,0,0,0.08));">
+            ${avatarContent}
+          </div>
+          <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+            <div style="font-weight: 700; font-size: 14px; color: var(--text-main, #000000); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${displayName}
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted, #8e8e93); margin-top: 2px; flex-wrap: wrap;">
               ${ratingBadge}
+              <span>•</span>
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${homeBeach}</span>
+              <span>•</span>
+              <span style="white-space: nowrap; font-weight: 600;">Elo: ${elo}</span>
             </div>
           </div>
         </div>

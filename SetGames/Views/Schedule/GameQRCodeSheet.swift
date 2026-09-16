@@ -225,6 +225,19 @@ public struct GamePlayerPickerSheet: View {
         self.onPlayerSelected = onPlayerSelected
     }
     
+    private func formattedPlayerName(_ player: Player) -> String {
+        let rawName = player.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = rawName.split(separator: " ").map(String.init)
+        let firstName = parts.first ?? (rawName.isEmpty ? "Player" : rawName)
+        let rawNick = player.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanNick = rawNick.replacingOccurrences(of: "^\\((.*)\\)$", with: "$1", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanNick.isEmpty && cleanNick.caseInsensitiveCompare("Player") != .orderedSame && cleanNick.caseInsensitiveCompare(firstName) != .orderedSame {
+            return "\(firstName)(\(cleanNick))"
+        } else {
+            return rawName.isEmpty ? "Player" : rawName
+        }
+    }
+    
     public var body: some View {
         NavigationStack {
             List(eligiblePlayers) { player in
@@ -233,14 +246,30 @@ public struct GamePlayerPickerSheet: View {
                     dismiss()
                 } label: {
                     HStack(spacing: 12) {
-                        PlayerAvatarView(player: player, dimension: 40)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(player.displayName)
+                        PlayerAvatarView(player: player, dimension: 42)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(formattedPlayerName(player))
                                 .font(.headline)
                                 .foregroundColor(.primary)
-                            Text("\(player.gender.capitalized) • \(player.homeBeach) • Elo: \(player.eloRating)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            HStack(spacing: 6) {
+                                Text(player.rating.rawValue)
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(player.rating.badgeColor)
+                                Text("•")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text(player.homeBeach.isEmpty ? "Main Beach" : player.homeBeach)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                Text("•")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("Elo: \(player.eloRating)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         Spacer()
                         RatingBadge(rating: player.rating)
