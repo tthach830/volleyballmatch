@@ -1179,6 +1179,26 @@
       </div>
     </div>
 
+    <!-- Add Player to Game Modal (Host / Admin manual player addition) -->
+    <div id="modal-add-player-to-game" class="modal-backdrop" onclick="if(event.target === this) window.closeAddPlayerModal()">
+      <div class="modal-card" style="max-width: 440px; max-height: 85vh; display: flex; flex-direction: column; padding: 18px;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border, #334155); padding-bottom: 12px; margin-bottom: 10px;">
+          <h2 class="modal-title" style="font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+            <span>➕</span> Add Player to Game
+          </h2>
+          <button type="button" class="modal-close" onclick="window.closeAddPlayerModal()">✕</button>
+        </div>
+
+        <div style="padding: 4px 0 10px;">
+          <input type="text" id="add-player-search" class="form-input" placeholder="Search player by name or nickname..." oninput="window.renderAddPlayerModalList()" style="width: 100%; font-size: 13px;">
+        </div>
+
+        <div id="add-player-list" style="overflow-y: auto; flex: 1; max-height: 55vh; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Injected via window.renderAddPlayerModalList() -->
+        </div>
+      </div>
+    </div>
+
     <!-- Admin Actions & Settings Modal -->
     <div id="admin-actions-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeAdminActionsModal()">
       <div class="modal-card" style="max-width: 380px; padding: 18px;">

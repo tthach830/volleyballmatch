@@ -196,3 +196,66 @@ public struct GameQRCodeSheet: View {
         return UIImage(cgImage: cgImage)
     }
 }
+
+// MARK: - Game Player Picker Sheet (Host / Admin manual player addition)
+public struct GamePlayerPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var dataManager: DataManager
+    let game: SetGame
+    let onPlayerSelected: (Player) -> Void
+    
+    @State private var searchQuery: String = ""
+    
+    private var eligiblePlayers: [Player] {
+        let currentInGame = Set(game.allPlayerIds)
+        return dataManager.players.filter { p in
+            guard !currentInGame.contains(p.id) else { return false }
+            if !searchQuery.isEmpty {
+                let matches = p.name.localizedCaseInsensitiveContains(searchQuery) ||
+                              p.nickname.localizedCaseInsensitiveContains(searchQuery)
+                if !matches { return false }
+            }
+            return true
+        }
+    }
+    
+    public init(dataManager: DataManager, game: SetGame, onPlayerSelected: @escaping (Player) -> Void) {
+        self.dataManager = dataManager
+        self.game = game
+        self.onPlayerSelected = onPlayerSelected
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            List(eligiblePlayers) { player in
+                Button {
+                    onPlayerSelected(player)
+                    dismiss()
+                } label: {
+                    HStack(spacing: 12) {
+                        PlayerAvatarView(player: player, dimension: 40)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(player.displayName)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Text("\(player.gender.capitalized) • \(player.homeBeach) • Elo: \(player.eloRating)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        RatingBadge(rating: player.rating)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .searchable(text: $searchQuery, prompt: "Search player by name or nickname...")
+            .navigationTitle("Add Player to Game")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}

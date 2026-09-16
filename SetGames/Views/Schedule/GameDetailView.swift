@@ -16,6 +16,7 @@ public struct GameDetailView: View {
     @State private var showAlert: Bool = false
     @State private var selectedSubMatchForScore: SubMatch? = nil
     @State private var showQRCodeSheet: Bool = false
+    @State private var showAddPlayerSheet: Bool = false
     @State private var isMatchesCollapsed: Bool = true
     @State private var isPoolCollapsed: Bool = false
     @State private var isChatCollapsed: Bool = false
@@ -596,6 +597,21 @@ public struct GameDetailView: View {
 
                                 
                                 if canHostCancelMatch(game: game) || (dataManager.currentUser?.isRoot == true) {
+                                    Button {
+                                        showAddPlayerSheet = true
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "person.badge.plus")
+                                            Text("+ Add Player to Game")
+                                        }
+                                        .font(.system(size: 15, weight: .bold))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                        .background(Color.green.opacity(0.12))
+                                        .foregroundColor(.green)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    }
+                                    
                                     if game.spotsRemaining == 0 {
                                         Button {
                                             let res = dataManager.addSpotToGame(gameId: game.id)
@@ -677,6 +693,14 @@ public struct GameDetailView: View {
                 }
                 .sheet(isPresented: $showQRCodeSheet) {
                     GameQRCodeSheet(game: game)
+                }
+                .sheet(isPresented: $showAddPlayerSheet) {
+                    GamePlayerPickerSheet(dataManager: dataManager, game: game) { selectedPlayer in
+                        let res = dataManager.addPlayerToGame(gameId: game.id, playerId: selectedPlayer.id)
+                        alertTitle = res.success ? "Added Player" : "Notice"
+                        alertMessage = res.message
+                        showAlert = true
+                    }
                 }
             } else {
                 Text("Game not found.")

@@ -8,7 +8,7 @@ public struct ConfirmedGamesView: View {
     @State private var showCreateMatchSheet: Bool = false
     @State private var showTournamentsSheet: Bool = false
     @State private var showRandomTeamsSheet: Bool = false
-    @State private var showInstantPickupSheet: Bool = false
+    @State private var addPlayerGameForSheet: SetGame? = nil
     @State private var qrGameForSheet: SetGame? = nil
     @State private var editGameForSheet: SetGame? = nil
     @State private var gameForRandomTeams: SetGame? = nil
@@ -182,6 +182,13 @@ public struct ConfirmedGamesView: View {
             }
             .sheet(isPresented: $showRandomTeamsSheet) {
                 RandomTeamGeneratorSheet(dataManager: dataManager)
+            }
+            .sheet(item: $addPlayerGameForSheet) { game in
+                GamePlayerPickerSheet(dataManager: dataManager, game: game) { selectedPlayer in
+                    let res = dataManager.addPlayerToGame(gameId: game.id, playerId: selectedPlayer.id)
+                    alertMessage = res.message
+                    showAlert = true
+                }
             }
             .sheet(item: $qrGameForSheet) { game in
                 GameQRCodeSheet(game: game)
@@ -417,6 +424,14 @@ public struct ConfirmedGamesView: View {
                     editGameForSheet = game
                 } label: {
                     Label("Edit Details", systemImage: "pencil")
+                }
+                
+                if isHost || dataManager.currentUser?.isRoot == true {
+                    Button {
+                        addPlayerGameForSheet = game
+                    } label: {
+                        Label("+ Add Player to Game", systemImage: "person.badge.plus")
+                    }
                 }
                 
                 if (isHost || dataManager.currentUser?.isRoot == true) && game.spotsRemaining == 0 {
@@ -1193,6 +1208,12 @@ public struct ConfirmedGamesView: View {
                             } label: {
                                 Label("Add \(wpName) to Game", systemImage: "person.badge.plus")
                             }
+                        }
+                        
+                        Button {
+                            addPlayerGameForSheet = game
+                        } label: {
+                            Label("+ Add Player to Game", systemImage: "person.badge.plus")
                         }
                         
                         if game.spotsRemaining == 0 {

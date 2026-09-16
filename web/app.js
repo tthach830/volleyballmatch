@@ -1820,7 +1820,8 @@ function renderMatches() {
       } else {
         const emptyClass = isTeam1 ? 'player-tile-empty-t1' : 'player-tile-empty-t2';
         const canJoin = needsPlayers && !isMember && !game.isPrivate;
-        const joinAttr = canJoin ? `onclick="window.joinGamePool('${game.id}')"` : '';
+        const canHostAdd = (isHost || isRoot);
+        const joinAttr = canJoin ? `onclick="window.joinGamePool('${game.id}')"` : (canHostAdd ? `onclick="window.openAddPlayerModal('${game.id}')" style="cursor: pointer;"` : '');
         const spotLabel = getOpenSpotLabel(game, isTeam1, slotIndex);
         return `
           <div class="player-tile-dark ${emptyClass}" ${joinAttr}>
@@ -1854,6 +1855,11 @@ function renderMatches() {
               <button type="button" class="card-dropdown-item" onclick="window.openEditMatchModal('${game.id}')">
                 <span>✏️</span> Edit Details
               </button>
+              ${(isHost || isRoot) ? `
+                <button type="button" class="card-dropdown-item" style="color: #34d399;" onclick="window.toggleCardActionsMenu('${game.id}'); window.openAddPlayerModal('${game.id}')">
+                  <span>👤➕</span> + Add Player
+                </button>
+              ` : ''}
               ${isMember ? `
                 <button type="button" class="card-dropdown-item" style="color: #f87171;" onclick="window.toggleCardActionsMenu('${game.id}'); window.leaveGame('${game.id}')">
                   <span>🚪</span> Leave Game
@@ -3421,6 +3427,156 @@ window.closeAdminActionsModal = () => {
   if (m) m.classList.remove("active");
 };
 
+let currentAddPlayerGameId = null;
+
+window.openAddPlayerModal = (gameId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game) return;
+  currentAddPlayerGameId = gameId;
+  const searchInput = document.getElementById("add-player-search");
+  if (searchInput) searchInput.value = "";
+  window.renderAddPlayerModalList();
+  const modal = document.getElementById("modal-add-player-to-game");
+  if (modal) modal.classList.add("active");
+};
+
+window.closeAddPlayerModal = () => {
+  const modal = document.getElementById("modal-add-player-to-game");
+  if (modal) modal.classList.remove("active");
+  currentAddPlayerGameId = null;
+};
+
+window.renderAddPlayerModalList = () => {
+  const container = document.getElementById("add-player-list");
+  if (!container || !currentAddPlayerGameId) return;
+
+  const game = state.games.find(g => g.id === currentAddPlayerGameId);
+  if (!game) return;
+
+  const gamePlayerIds = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+  const searchInput = document.getElementById("add-player-search");
+  const query = (searchInput ? searchInput.value : "").trim().toLowerCase();
+
+  const availablePlayers = (state.players || [])
+    .filter(p => !gamePlayerIds.includes(p.id))
+    .filter(p => {
+      if (!query) return true;
+      const nameMatch = (p.name || "").toLowerCase().includes(query);
+      const nickMatch = (p.nickname || "").toLowerCase().includes(query);
+      return nameMatch || nickMatch;
+    })
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+  if (availablePlayers.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-secondary, #94a3b8); padding: 24px 12px; font-size: 13px;">
+        No available players found.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = availablePlayers.map(p => {
+    const displayName = p.nickname ? `${p.name} (${p.nickname})` : p.name;
+    const ratingBadge = p.rating ? `<span class="rating-badge rating-${(p.rating || '').toLowerCase()}" style="font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">${p.rating}</span>` : '';
+    const genderLabel = p.gender ? `<span style="font-size: 11px; color: var(--text-secondary, #94a3b8); text-transform: capitalize;">${p.gender}</span>` : '';
+    const avatar = p.avatarUrl ? `<img src="${p.avatarUrl}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">` : `<div style="width: 36px; height: 36px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: white;">${(p.name || '?')[0].toUpperCase()}</div>`;
+
+    return `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+          ${avatar}
+          <div style="display: flex; flex-direction: column; min-width: 0;">
+            <div style="font-weight: 700; font-size: 13px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</div>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+              ${genderLabel}
+              ${ratingBadge}
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm" style="background: #10b981; color: white; border: none; font-weight: 700; padding: 6px 14px; font-size: 12px; border-radius: 8px; cursor: pointer; flex-shrink: 0;" onclick="window.addPlayerToGameWeb('${game.id}', '${p.id}')">
+          + Add
+        </button>
+      </div>
+    `;
+  }).join('');
+};
+
+window.addPlayerToGameWeb = (gameId, playerId) => {
+  const game = state.games.find(g => g.id === gameId);
+  if (!game || !state.currentUser) return;
+
+  const currentUserId = state.currentUser.id;
+  const isHost = (game.hostPlayerId === currentUserId) || (game.team1PlayerIds && game.team1PlayerIds[0] === currentUserId) || (state.currentUser && state.currentUser.isRoot);
+  if (!isHost) {
+    showToast("Only the match host or admin can add players.");
+    return;
+  }
+
+  const allPlayers = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+  if (allPlayers.includes(playerId)) {
+    showToast("Player is already in this game.");
+    return;
+  }
+
+  const playerObj = state.getPlayer(playerId);
+  if (!playerObj) {
+    showToast("Player not found.");
+    return;
+  }
+
+  const genderCheck = checkPlayerGenderJoinable(game, playerObj);
+  if (!genderCheck.allowed) {
+    showToast(genderCheck.message || "Player cannot join due to division restrictions.");
+    return;
+  }
+
+  // Remove from waitlist if they were on it
+  if (game.waitlistPlayerIds && game.waitlistPlayerIds.includes(playerId)) {
+    game.waitlistPlayerIds = game.waitlistPlayerIds.filter(id => id !== playerId);
+  }
+
+  if (!game.team1PlayerIds) game.team1PlayerIds = [];
+  if (!game.team2PlayerIds) game.team2PlayerIds = [];
+
+  const maxP = game.maxPlayers || 4;
+  if (allPlayers.length >= maxP) {
+    game.maxPlayers = allPlayers.length + 1;
+  }
+
+  if (game.team1PlayerIds.length <= game.team2PlayerIds.length) {
+    game.team1PlayerIds.push(playerId);
+  } else {
+    game.team2PlayerIds.push(playerId);
+  }
+
+  state.saveLocal();
+  saveGameToFirestore(game);
+  renderMatches();
+  window.closeAddPlayerModal();
+
+  const pName = playerObj.nickname ? `${playerObj.name} (${playerObj.nickname})` : playerObj.name;
+  showToast(`Added ${pName} to the game!`);
+
+  // Dispatch APNs push
+  const token = playerObj.deviceToken;
+  const hostPlayer = state.getPlayer(currentUserId);
+  const hostName = hostPlayer ? (hostPlayer.nickname || hostPlayer.name) : "The host";
+  if (token && token !== state.currentUser?.deviceToken) {
+    fetch("/api/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tokens: [token],
+        title: "🎉 Added to Game",
+        body: `${hostName} added you to '${game.title || "Match"}'!`,
+        gameId: game.id
+      })
+    }).catch(err => console.log("Push note:", err));
+  }
+};
+
+
 window.toggleCardAdminMenu = (gameId) => {
   const game = state.games.find(g => g.id === gameId);
   if (!game) return;
@@ -3462,6 +3618,13 @@ window.toggleCardAdminMenu = (gameId) => {
       <span style="font-size: 16px;">✏️</span>
       <span>Edit Game Preferences</span>
     </button>
+
+    ${(isHost || isRoot) ? `
+      <button type="button" class="btn btn-outline" style="justify-content: flex-start; gap: 8px; font-weight: 700; color: #10b981; border-color: #6ee7b7; padding: 10px 14px;" onclick="window.closeAdminActionsModal(); window.openAddPlayerModal('${game.id}')">
+        <span style="font-size: 16px;">👤➕</span>
+        <span>+ Add Player to Game</span>
+      </button>
+    ` : ''}
 
     ${(isHost || isRoot) && game.waitlistPlayerIds && game.waitlistPlayerIds.length > 0 ? `
       <div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; margin-top: 4px;">
