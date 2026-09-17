@@ -1092,11 +1092,12 @@
           </div>
         </div>
 
-        <!-- Detail Sub-Tabs: Teams | Matches | Info -->
-        <div class="ios-segmented-control" style="margin-bottom: 14px;">
-          <button type="button" class="ios-segment-btn active" id="td-tab-roster" onclick="window.setTournamentSubTab('roster')">👥 Teams & Free Agents</button>
-          <button type="button" class="ios-segment-btn" id="td-tab-matches" onclick="window.setTournamentSubTab('matches')">🏆 Bracket & Matches</button>
-          <button type="button" class="ios-segment-btn" id="td-tab-info" onclick="window.setTournamentSubTab('info')">📋 Rules & Format</button>
+        <!-- Detail Sub-Tabs: Pools | Bracket | Rosters | Info -->
+        <div class="ios-segmented-control" style="margin-bottom: 14px; display: flex; gap: 4px;">
+          <button type="button" class="ios-segment-btn active" id="td-tab-pools" onclick="window.setTournamentSubTab('pools')">🏊 Pools</button>
+          <button type="button" class="ios-segment-btn" id="td-tab-bracket" onclick="window.setTournamentSubTab('bracket')">🏆 Bracket</button>
+          <button type="button" class="ios-segment-btn" id="td-tab-roster" onclick="window.setTournamentSubTab('roster')">👥 Rosters</button>
+          <button type="button" class="ios-segment-btn" id="td-tab-info" onclick="window.setTournamentSubTab('info')">📋 Info</button>
         </div>
 
         <div id="tournament-detail-body">
@@ -1105,6 +1106,22 @@
 
         <div id="tournament-detail-footer" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border, #e2e8f0);">
           <!-- Sign Up / Leave buttons injected via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Tournament Match Scoring Modal -->
+    <div id="tournament-score-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTournamentScoreModal()">
+      <div class="modal-card" style="max-width: 440px; padding: 20px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div>
+            <div id="tourn-score-subtitle" style="font-size: 11px; font-weight: 800; color: #0284c7; text-transform: uppercase;">Official Score Report</div>
+            <h2 class="modal-title" style="font-size: 17px; font-weight: 800; margin: 2px 0 0 0;">🏐 Record Match Score</h2>
+          </div>
+          <button type="button" class="modal-close" onclick="window.closeTournamentScoreModal()">&times;</button>
+        </div>
+        <div id="tournament-score-body">
+          <!-- Injected via JS -->
         </div>
       </div>
     </div>

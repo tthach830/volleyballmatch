@@ -2167,6 +2167,31 @@ public class DataManager: ObservableObject {
         )
     }
     
+    public func addDemoTeams(
+        tournamentId: UUID,
+        division: TournamentDivisionCategory
+    ) {
+        guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        let currentCount = tournaments[idx].teams(for: division).count
+        let demoNames = ["Sandstorm", "Spike Force", "Net Ninjas", "Ace Bandits"]
+        
+        for (i, name) in demoNames.enumerated() {
+            let p1 = players.indices.contains(i * 2) ? players[i * 2].id : UUID()
+            let p2 = players.indices.contains(i * 2 + 1) ? players[i * 2 + 1].id : UUID()
+            let team = TournamentTeam(
+                id: UUID(),
+                teamName: name,
+                player1Id: p1,
+                player2Id: p2,
+                seed: currentCount + i + 1,
+                division: division
+            )
+            tournaments[idx].teams.append(team)
+        }
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+    }
+    
     public func registerFreeAgentForTournament(
         tournamentId: UUID,
         playerId: UUID,
@@ -2219,6 +2244,292 @@ public class DataManager: ObservableObject {
         
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[tIdx])
+    }
+    
+    // MARK: - Tournament Pool Play & Bracket Logic
+    @discardableResult
+    public func generatePoolPlay(
+        tournamentId: UUID,
+        division: TournamentDivisionCategory
+    ) -> (success: Bool, message: String) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Tournament not found.")
+        }
+        
+        var divTeams = tournaments[tIdx].teams.filter { $0.division == division }
+        guard divTeams.count >= 4 else {
+            return (false, "At least 4 teams are required to generate pool play.")
+        }
+        
+        // 1. Calculate average team Elo rating
+        func teamElo(_ team: TournamentTeam) -> Double {
+            let pIds = team.allPlayerIds
+            let teamPlayers = players.filter { pIds.contains($0.id) }
+            if teamPlayers.isEmpty { return 1500.0 }
+            let total = teamPlayers.reduce(0) { $0 + $1.eloRating }
+            return Double(total) / Double(teamPlayers.count)
+        }
+        
+        // 2. Sort teams by Elo descending
+        divTeams.sort { teamElo($0) > teamElo($1) }
+        
+        // Assign overall seed
+        for i in 0..<divTeams.count {
+            divTeams[i].seed = i + 1
+        }
+        
+        // 3. Snake Seeding into Pools A & B
+        let poolNames = ["Pool A", "Pool B"]
+        let poolCount = 2
+        var pools: [String: [TournamentTeam]] = ["Pool A": [], "Pool B": []]
+        
+        for (i, team) in divTeams.enumerated() {
+            let round = i / poolCount
+            let pos = i % poolCount
+            let poolIndex = (round % 2 == 0) ? pos : (poolCount - 1 - pos)
+            let pName = poolNames[poolIndex]
+            var t = team
+            t.poolName = pName
+            t.poolSeed = (pools[pName]?.count ?? 0) + 1
+            pools[pName]?.append(t)
+        }
+        
+        // Update teams back into tournament
+        for (poolName, pTeams) in pools {
+            for team in pTeams {
+                if let teamIdx = tournaments[tIdx].teams.firstIndex(where: { $0.id == team.id }) {
+                    tournaments[tIdx].teams[teamIdx].seed = team.seed
+                    tournaments[tIdx].teams[teamIdx].poolName = poolName
+                    tournaments[tIdx].teams[teamIdx].poolSeed = team.poolSeed
+                }
+            }
+        }
+        
+        // 4. Remove previous pool matches for this division
+        tournaments[tIdx].matches.removeAll { $0.division == division && $0.stage == "pool" }
+        
+        // 5. Generate Round-Robin Matches for each pool
+        let courts = tournaments[tIdx].courts.isEmpty ? ["Court #1", "Court #2"] : tournaments[tIdx].courts
+        var generatedMatches: [TournamentMatch] = []
+        var matchNum = 1
+        
+        for poolName in poolNames {
+            guard let pTeams = pools[poolName], pTeams.count >= 2 else { continue }
+            
+            let pairings: [(r: Int, i1: Int, i2: Int)] = [
+                (1, 0, min(3, pTeams.count - 1)),
+                (1, min(1, pTeams.count - 1), min(2, pTeams.count - 1)),
+                (2, 0, min(2, pTeams.count - 1)),
+                (2, min(1, pTeams.count - 1), min(3, pTeams.count - 1)),
+                (3, 0, min(1, pTeams.count - 1)),
+                (3, min(2, pTeams.count - 1), min(3, pTeams.count - 1))
+            ]
+            
+            var seenPairs = Set<String>()
+            for p in pairings {
+                let t1 = pTeams[p.i1]
+                let t2 = pTeams[p.i2]
+                guard t1.id != t2.id else { continue }
+                let key = [t1.id.uuidString, t2.id.uuidString].sorted().joined(separator: "-")
+                if seenPairs.contains(key) { continue }
+                seenPairs.insert(key)
+                
+                let court = courts[(matchNum - 1) % courts.count]
+                let match = TournamentMatch(
+                    id: UUID(),
+                    roundNumber: p.r,
+                    matchNumber: matchNum,
+                    division: division,
+                    courtNumber: court,
+                    team1Id: t1.id,
+                    team2Id: t2.id,
+                    poolName: poolName,
+                    stage: "pool"
+                )
+                generatedMatches.append(match)
+                matchNum += 1
+            }
+        }
+        
+        tournaments[tIdx].matches.append(contentsOf: generatedMatches)
+        tournaments[tIdx].status = "in_progress"
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        postNotification(
+            title: "🏐 Pool Play Generated!",
+            message: "Pool A & Pool B matches are scheduled for \(division.displayName)!",
+            type: .tournament
+        )
+        
+        return (true, "Successfully generated \(generatedMatches.count) pool matches across Pools A & B.")
+    }
+    
+    @discardableResult
+    public func generatePlayoffBracket(
+        tournamentId: UUID,
+        division: TournamentDivisionCategory
+    ) -> (success: Bool, message: String) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Tournament not found.")
+        }
+        
+        let t = tournaments[tIdx]
+        let poolAStandings = t.poolStandings(for: division, poolName: "Pool A")
+        let poolBStandings = t.poolStandings(for: division, poolName: "Pool B")
+        
+        guard poolAStandings.count >= 2 && poolBStandings.count >= 2 else {
+            return (false, "Both pools need at least 2 teams with standings to create playoffs.")
+        }
+        
+        let a1 = poolAStandings[0].team
+        let a2 = poolAStandings[1].team
+        let b1 = poolBStandings[0].team
+        let b2 = poolBStandings[1].team
+        
+        // Remove existing playoff matches
+        tournaments[tIdx].matches.removeAll { $0.division == division && $0.stage != "pool" }
+        
+        let courts = t.courts.isEmpty ? ["Court #1", "Court #2"] : t.courts
+        let finalId = UUID()
+        let thirdPlaceId = UUID()
+        let semi1Id = UUID()
+        let semi2Id = UUID()
+        
+        // Semifinal 1: Pool A #1 vs Pool B #2 -> Winner to Final Slot 1
+        let semi1 = TournamentMatch(
+            id: semi1Id,
+            roundNumber: 1,
+            matchNumber: 1,
+            division: division,
+            courtNumber: courts[0],
+            team1Id: a1.id,
+            team2Id: b2.id,
+            stage: "semifinal",
+            bracketRound: 1,
+            nextMatchId: finalId,
+            nextMatchSlot: 1
+        )
+        
+        // Semifinal 2: Pool B #1 vs Pool A #2 -> Winner to Final Slot 2
+        let semi2 = TournamentMatch(
+            id: semi2Id,
+            roundNumber: 1,
+            matchNumber: 2,
+            division: division,
+            courtNumber: courts[courts.count > 1 ? 1 : 0],
+            team1Id: b1.id,
+            team2Id: a2.id,
+            stage: "semifinal",
+            bracketRound: 1,
+            nextMatchId: finalId,
+            nextMatchSlot: 2
+        )
+        
+        // Championship Final: Winner Semi 1 vs Winner Semi 2
+        let finalMatch = TournamentMatch(
+            id: finalId,
+            roundNumber: 2,
+            matchNumber: 3,
+            division: division,
+            courtNumber: courts[0],
+            stage: "final",
+            bracketRound: 2
+        )
+        
+        // 3rd Place Match: Loser Semi 1 vs Loser Semi 2
+        let bronzeMatch = TournamentMatch(
+            id: thirdPlaceId,
+            roundNumber: 2,
+            matchNumber: 4,
+            division: division,
+            courtNumber: courts[courts.count > 1 ? 1 : 0],
+            stage: "third_place",
+            bracketRound: 2
+        )
+        
+        tournaments[tIdx].matches.append(contentsOf: [semi1, semi2, finalMatch, bronzeMatch])
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        postNotification(
+            title: "🏆 Playoff Bracket Live!",
+            message: "Semifinals & Finals are set for \(division.displayName)!",
+            type: .tournament
+        )
+        
+        return (true, "Playoff bracket generated! Semifinals are live.")
+    }
+    
+    @discardableResult
+    public func submitTournamentMatchScore(
+        tournamentId: UUID,
+        matchId: UUID,
+        team1Score: Int,
+        team2Score: Int
+    ) -> (success: Bool, message: String) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Tournament not found.")
+        }
+        guard let mIdx = tournaments[tIdx].matches.firstIndex(where: { $0.id == matchId }) else {
+            return (false, "Match not found.")
+        }
+        
+        let match = tournaments[tIdx].matches[mIdx]
+        guard let t1Id = match.team1Id, let t2Id = match.team2Id else {
+            return (false, "Match teams are not yet determined.")
+        }
+        guard team1Score != team2Score else {
+            return (false, "Matches cannot end in a tie.")
+        }
+        
+        let winningTeamId = team1Score > team2Score ? t1Id : t2Id
+        let losingTeamId = team1Score > team2Score ? t2Id : t1Id
+        
+        tournaments[tIdx].matches[mIdx].team1Score = team1Score
+        tournaments[tIdx].matches[mIdx].team2Score = team2Score
+        tournaments[tIdx].matches[mIdx].winningTeamId = winningTeamId
+        tournaments[tIdx].matches[mIdx].isCompleted = true
+        
+        // Automated Bracket Advancement
+        if let nextId = match.nextMatchId,
+           let nextSlot = match.nextMatchSlot,
+           let nextIdx = tournaments[tIdx].matches.firstIndex(where: { $0.id == nextId }) {
+            if nextSlot == 1 {
+                tournaments[tIdx].matches[nextIdx].team1Id = winningTeamId
+            } else if nextSlot == 2 {
+                tournaments[tIdx].matches[nextIdx].team2Id = winningTeamId
+            }
+        }
+        
+        // If semifinal, also place loser into 3rd place match if present
+        if match.stage == "semifinal" {
+            if let bronzeIdx = tournaments[tIdx].matches.firstIndex(where: { $0.division == match.division && $0.stage == "third_place" }) {
+                if tournaments[tIdx].matches[bronzeIdx].team1Id == nil {
+                    tournaments[tIdx].matches[bronzeIdx].team1Id = losingTeamId
+                } else if tournaments[tIdx].matches[bronzeIdx].team2Id == nil {
+                    tournaments[tIdx].matches[bronzeIdx].team2Id = losingTeamId
+                }
+            }
+        }
+        
+        let team1 = tournaments[tIdx].teams.first(where: { $0.id == t1Id })
+        let team2 = tournaments[tIdx].teams.first(where: { $0.id == t2Id })
+        let winnerName = (winningTeamId == t1Id ? team1?.teamName : team2?.teamName) ?? "Winner"
+        let loserName = (winningTeamId == t1Id ? team2?.teamName : team1?.teamName) ?? "Opponent"
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        postNotification(
+            title: "🏐 Match Score Reported",
+            message: "\(winnerName) defeated \(loserName) (\(max(team1Score, team2Score))-\(min(team1Score, team2Score))) on \(match.courtNumber)",
+            type: .scoreLogged
+        )
+        
+        return (true, "Score submitted successfully!")
     }
     
     public func updateTournament(

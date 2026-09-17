@@ -167,6 +167,8 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
     public var player3Id: UUID?
     public var player4Id: UUID?
     public var seed: Int?
+    public var poolName: String?
+    public var poolSeed: Int?
     public var division: TournamentDivisionCategory
     public var isConfirmed: Bool
     public var registeredAt: Date
@@ -179,6 +181,8 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         player3Id: UUID? = nil,
         player4Id: UUID? = nil,
         seed: Int? = nil,
+        poolName: String? = nil,
+        poolSeed: Int? = nil,
         division: TournamentDivisionCategory,
         isConfirmed: Bool = true,
         registeredAt: Date = Date()
@@ -190,13 +194,15 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         self.player3Id = player3Id
         self.player4Id = player4Id
         self.seed = seed
+        self.poolName = poolName
+        self.poolSeed = poolSeed
         self.division = division
         self.isConfirmed = isConfirmed
         self.registeredAt = registeredAt
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, teamName, player1Id, player2Id, player3Id, player4Id, seed, division, isConfirmed, registeredAt
+        case id, teamName, player1Id, player2Id, player3Id, player4Id, seed, poolName, poolSeed, division, isConfirmed, registeredAt
     }
     
     public init(from decoder: Decoder) throws {
@@ -236,6 +242,8 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         }
         
         seed = try container.decodeIfPresent(Int.self, forKey: .seed)
+        poolName = try container.decodeIfPresent(String.self, forKey: .poolName)
+        poolSeed = try container.decodeIfPresent(Int.self, forKey: .poolSeed)
         division = try container.decode(TournamentDivisionCategory.self, forKey: .division)
         isConfirmed = try container.decodeIfPresent(Bool.self, forKey: .isConfirmed) ?? true
         registeredAt = try container.decodeIfPresent(Date.self, forKey: .registeredAt) ?? Date()
@@ -254,6 +262,20 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
     }
 }
 
+public struct PoolTeamStanding: Identifiable, Hashable {
+    public var id: UUID { team.id }
+    public let team: TournamentTeam
+    public let matchesPlayed: Int
+    public let wins: Int
+    public let losses: Int
+    public let pointsFor: Int
+    public let pointsAgainst: Int
+    public var pointDifferential: Int { pointsFor - pointsAgainst }
+    public var winRate: Double {
+        matchesPlayed > 0 ? Double(wins) / Double(matchesPlayed) : 0.0
+    }
+}
+
 public struct TournamentMatch: Identifiable, Codable, Hashable {
     public var id: UUID
     public var roundNumber: Int
@@ -266,6 +288,17 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
     public var team2Score: Int?
     public var winningTeamId: UUID?
     public var isCompleted: Bool
+    public var poolName: String?
+    public var stage: String // "pool", "quarterfinal", "semifinal", "final", "third_place"
+    public var bracketRound: Int?
+    public var nextMatchId: UUID?
+    public var nextMatchSlot: Int? // 1 or 2
+    
+    public var status: String {
+        if isCompleted { return "completed" }
+        if team1Score != nil || team2Score != nil { return "in_progress" }
+        return "scheduled"
+    }
     
     public init(
         id: UUID = UUID(),
@@ -278,7 +311,12 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
         team1Score: Int? = nil,
         team2Score: Int? = nil,
         winningTeamId: UUID? = nil,
-        isCompleted: Bool = false
+        isCompleted: Bool = false,
+        poolName: String? = nil,
+        stage: String = "pool",
+        bracketRound: Int? = nil,
+        nextMatchId: UUID? = nil,
+        nextMatchSlot: Int? = nil
     ) {
         self.id = id
         self.roundNumber = roundNumber
@@ -291,10 +329,15 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
         self.team2Score = team2Score
         self.winningTeamId = winningTeamId
         self.isCompleted = isCompleted
+        self.poolName = poolName
+        self.stage = stage
+        self.bracketRound = bracketRound
+        self.nextMatchId = nextMatchId
+        self.nextMatchSlot = nextMatchSlot
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, roundNumber, matchNumber, division, courtNumber, team1Id, team2Id, team1Score, team2Score, winningTeamId, isCompleted
+        case id, roundNumber, matchNumber, division, courtNumber, team1Id, team2Id, team1Score, team2Score, winningTeamId, isCompleted, poolName, stage, bracketRound, nextMatchId, nextMatchSlot
     }
     
     public init(from decoder: Decoder) throws {
@@ -334,6 +377,17 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
         }
         
         isCompleted = (try? container.decode(Bool.self, forKey: .isCompleted)) ?? false
+        poolName = try? container.decode(String.self, forKey: .poolName)
+        stage = (try? container.decode(String.self, forKey: .stage)) ?? "pool"
+        bracketRound = try? container.decode(Int.self, forKey: .bracketRound)
+        
+        if let nextRaw = try? container.decode(String.self, forKey: .nextMatchId) {
+            nextMatchId = UUID(uuidString: nextRaw) ?? SetGame.parseUUID(from: nextRaw)
+        } else {
+            nextMatchId = try? container.decode(UUID.self, forKey: .nextMatchId)
+        }
+        
+        nextMatchSlot = try? container.decode(Int.self, forKey: .nextMatchSlot)
     }
 }
 
@@ -492,5 +546,75 @@ public struct Tournament: Identifiable, Codable, Hashable {
     
     public var isCompleted: Bool {
         status == "completed"
+    }
+    
+    public func poolNames(for division: TournamentDivisionCategory) -> [String] {
+        let divTeams = teams(for: division)
+        let names = Set(divTeams.compactMap { $0.poolName })
+        return names.sorted()
+    }
+    
+    public func poolMatches(for division: TournamentDivisionCategory, poolName: String? = nil) -> [TournamentMatch] {
+        matches(for: division).filter { m in
+            m.stage == "pool" && (poolName == nil || m.poolName == poolName)
+        }
+    }
+    
+    public func bracketMatches(for division: TournamentDivisionCategory) -> [TournamentMatch] {
+        matches(for: division).filter { m in
+            m.stage != "pool"
+        }
+    }
+    
+    public func poolStandings(for division: TournamentDivisionCategory, poolName: String) -> [PoolTeamStanding] {
+        let poolTeams = teams(for: division).filter { $0.poolName == poolName }
+        let pMatches = matches(for: division).filter { $0.poolName == poolName && $0.stage == "pool" }
+        
+        var standings: [PoolTeamStanding] = poolTeams.map { team in
+            var mp = 0
+            var wins = 0
+            var losses = 0
+            var pf = 0
+            var pa = 0
+            
+            for m in pMatches where m.isCompleted {
+                if m.team1Id == team.id {
+                    mp += 1
+                    let s1 = m.team1Score ?? 0
+                    let s2 = m.team2Score ?? 0
+                    pf += s1
+                    pa += s2
+                    if m.winningTeamId == team.id { wins += 1 } else { losses += 1 }
+                } else if m.team2Id == team.id {
+                    mp += 1
+                    let s1 = m.team1Score ?? 0
+                    let s2 = m.team2Score ?? 0
+                    pf += s2
+                    pa += s1
+                    if m.winningTeamId == team.id { wins += 1 } else { losses += 1 }
+                }
+            }
+            
+            return PoolTeamStanding(
+                team: team,
+                matchesPlayed: mp,
+                wins: wins,
+                losses: losses,
+                pointsFor: pf,
+                pointsAgainst: pa
+            )
+        }
+        
+        standings.sort { a, b in
+            if a.wins != b.wins {
+                return a.wins > b.wins
+            }
+            if a.pointDifferential != b.pointDifferential {
+                return a.pointDifferential > b.pointDifferential
+            }
+            return a.pointsFor > b.pointsFor
+        }
+        
+        return standings
     }
 }

@@ -2535,6 +2535,8 @@ function renderProfile() {
   const privBadge = document.getElementById("profile-privacy-badge");
   if (privBadge) privBadge.style.display = user.isStatsHidden ? "inline-block" : "none";
 
+  const isRoot = isRootUser(user);
+
   // Test Push button - only visible to Root Admin
   const testPushBtn = document.getElementById("btn-test-push");
   if (testPushBtn) {
@@ -2543,7 +2545,6 @@ function renderProfile() {
 
   // Demo Mode Profile Switcher - strictly restricted to 4087869405
   const demoCard = document.getElementById("demo-mode-card");
-  const isRoot = isRootUser(user);
   if (demoCard) {
     if (isRoot) {
       demoCard.style.display = "block";
@@ -6312,7 +6313,7 @@ window.saveGeneratedMatchesToSchedule = () => {
 window.currentTournamentFilter = "upcoming";
 window.activeTournamentId = null;
 window.activeTournamentDivision = "Coed Novice";
-window.activeTournamentSubTab = "roster";
+window.activeTournamentSubTab = "pools";
 
 const DIVISION_CONFIG = [
   { name: "2v2 Coed Novice", icon: "👫", gender: "COED", skill: "Novice", teamSize: 2, maxRating: "Novice" },
@@ -6525,9 +6526,62 @@ window.setTournamentDivision = function(divisionName) {
   window.renderTournamentDetail();
 };
 
+window.calculatePoolStandings = function(teams, matches) {
+  const standings = (teams || []).map(team => {
+    let played = 0;
+    let wins = 0;
+    let losses = 0;
+    let pointsFor = 0;
+    let pointsAgainst = 0;
+
+    (matches || []).forEach(m => {
+      if (m.status !== "completed") return;
+      if (m.team1Id === team.id) {
+        played++;
+        const s1 = parseInt(m.team1Score, 10) || 0;
+        const s2 = parseInt(m.team2Score, 10) || 0;
+        pointsFor += s1;
+        pointsAgainst += s2;
+        if (s1 > s2) wins++;
+        else if (s2 > s1) losses++;
+      } else if (m.team2Id === team.id) {
+        played++;
+        const s1 = parseInt(m.team1Score, 10) || 0;
+        const s2 = parseInt(m.team2Score, 10) || 0;
+        pointsFor += s2;
+        pointsAgainst += s1;
+        if (s2 > s1) wins++;
+        else if (s1 > s2) losses++;
+      }
+    });
+
+    const pointDifferential = pointsFor - pointsAgainst;
+    const winRate = played > 0 ? wins / played : 0;
+
+    return {
+      team,
+      matchesPlayed: played,
+      wins,
+      losses,
+      pointsFor,
+      pointsAgainst,
+      pointDifferential,
+      winRate
+    };
+  });
+
+  standings.sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (b.pointDifferential !== a.pointDifferential) return b.pointDifferential - a.pointDifferential;
+    return b.pointsFor - a.pointsFor;
+  });
+
+  return standings;
+};
+
 window.setTournamentSubTab = function(tabName) {
   window.activeTournamentSubTab = tabName;
-  ["roster", "matches", "info"].forEach(t => {
+  ["pools", "bracket", "roster", "info"].forEach(t => {
     const btn = document.getElementById("td-tab-" + t);
     if (btn) btn.classList.toggle("active", t === tabName);
   });
@@ -6609,7 +6663,187 @@ window.renderTournamentDetail = function() {
   const divFreeAgents = (t.freeAgents || []).filter(fa => fa.division === currentDiv);
   const divMatches = (t.matches || []).filter(m => m.division === currentDiv);
 
-  if (window.activeTournamentSubTab === "roster") {
+  if (window.activeTournamentSubTab === "pools") {
+    const poolAName = "Pool A";
+    const poolBName = "Pool B";
+    const poolAMatches = divMatches.filter(m => m.poolName === poolAName);
+    const poolBMatches = divMatches.filter(m => m.poolName === poolBName);
+    const hasPools = poolAMatches.length > 0 || poolBMatches.length > 0;
+    const poolATeams = divTeams.filter(tm => tm.poolName === poolAName || !tm.poolName);
+    const poolBTeams = divTeams.filter(tm => tm.poolName === poolBName);
+    const standingsA = window.calculatePoolStandings(divTeams.filter(tm => tm.poolName === poolAName), poolAMatches);
+    const standingsB = window.calculatePoolStandings(divTeams.filter(tm => tm.poolName === poolBName), poolBMatches);
+    const bracketMatches = divMatches.filter(m => m.stage !== "pool" && !m.poolName);
+
+    const renderStandingsTable = (poolName, standings, matches) => `
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 12px; font-weight: 900; color: #0284c7; text-transform: uppercase;">${poolName}</span>
+          <span style="font-size: 11px; font-weight: 700; color: var(--text-muted, #64748b);">Top 2 Advance</span>
+        </div>
+
+        <!-- Table Card -->
+        <div style="background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background: var(--bg-alt, #f8fafc); border-bottom: 1px solid var(--border, #e2e8f0); color: var(--text-muted, #64748b); font-size: 10px; font-weight: 800; text-transform: uppercase;">
+                <th style="padding: 8px 10px; text-align: left; width: 28px;">#</th>
+                <th style="padding: 8px 10px; text-align: left;">Team</th>
+                <th style="padding: 8px 8px; text-align: center; width: 34px;">MP</th>
+                <th style="padding: 8px 8px; text-align: center; width: 44px;">W-L</th>
+                <th style="padding: 8px 10px; text-align: right; width: 38px;">+/-</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${standings.length === 0 ? `
+                <tr><td colspan="5" style="padding: 16px; text-align: center; color: var(--text-muted, #94a3b8);">No teams seeded yet</td></tr>
+              ` : standings.map((row, idx) => {
+                const isTop2 = idx < 2;
+                return `
+                  <tr style="border-bottom: 1px solid var(--border, #f1f5f9); ${isTop2 ? 'background: rgba(22,163,74,0.03);' : ''}">
+                    <td style="padding: 8px 10px; font-weight: ${isTop2 ? '900' : '600'}; color: ${isTop2 ? '#16a34a' : 'inherit'};">
+                      ${idx + 1} ${isTop2 ? '🟢' : ''}
+                    </td>
+                    <td style="padding: 8px 10px; font-weight: ${isTop2 ? '700' : '500'}; color: var(--text-main, #0f172a);">
+                      ${row.team.teamName}
+                    </td>
+                    <td style="padding: 8px 8px; text-align: center; color: var(--text-muted, #64748b);">${row.matchesPlayed}</td>
+                    <td style="padding: 8px 8px; text-align: center; font-weight: 700; color: ${row.wins > 0 ? '#16a34a' : 'inherit'};">${row.wins}-${row.losses}</td>
+                    <td style="padding: 8px 10px; text-align: right; font-weight: 700; color: ${row.pointDifferential >= 0 ? '#16a34a' : '#dc2626'};">
+                      ${row.pointDifferential >= 0 ? `+${row.pointDifferential}` : row.pointDifferential}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Matches in this pool -->
+        ${matches.length > 0 ? `
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+            ${matches.map(m => window.renderMatchCardHTML(t, m)).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    bodyContainer.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        ${!hasPools ? `
+          <div style="text-align: center; padding: 24px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
+            <div style="font-size: 32px; margin-bottom: 6px;">🏊</div>
+            <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 15px;">Auto Pool Play Generator</div>
+            <div style="font-size: 12px; color: var(--text-muted, #64748b); max-width: 360px; margin: 4px auto 12px auto; line-height: 1.4;">
+              Automatically divides registered teams (${divTeams.length}) into Pool A & Pool B based on team Elo rating and builds the round-robin schedule.
+            </div>
+            <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 800; font-size: 13px;" onclick="window.generatePoolPlay('${t.id}', '${currentDiv}')" ${divTeams.length < 4 ? 'disabled' : ''}>
+              ✨ Generate Pools (Snake Seeding)
+            </button>
+            ${divTeams.length < 4 ? `
+              <div style="font-size: 11px; color: #ea580c; margin-top: 8px;">At least 4 teams required to seed pool play.</div>
+              <button type="button" class="btn btn-outline" style="font-size: 12px; padding: 6px 14px; margin-top: 10px; font-weight: 700;" onclick="window.addDemoTournamentTeams('${t.id}', '${currentDiv}')">
+                ⚡ Quick-Add 4 Demo Teams
+              </button>
+            ` : ''}
+          </div>
+        ` : `
+          ${renderStandingsTable(poolAName, standingsA, poolAMatches)}
+          ${renderStandingsTable(poolBName, standingsB, poolBMatches)}
+
+          ${bracketMatches.length === 0 ? `
+            <div style="text-align: center; padding: 18px; background: rgba(234,88,12,0.06); border: 1px solid rgba(234,88,12,0.2); border-radius: 14px; margin-top: 6px;">
+              <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 14px;">Ready for the Playoffs?</div>
+              <div style="font-size: 12px; color: var(--text-muted, #64748b); margin: 2px 0 10px 0;">Advance top 2 teams from Pool A and Pool B to the Semifinals!</div>
+              <button type="button" class="btn btn-primary" style="padding: 8px 18px; font-weight: 800; font-size: 12px;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
+                🏆 Generate Playoff Bracket
+              </button>
+            </div>
+          ` : ''}
+
+          ${isHost ? `
+            <div style="text-align: center; margin-top: 4px;">
+              <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 4px 12px;" onclick="if(confirm('Re-seed pool play? Existing match scores in pools will be reset.')) window.generatePoolPlay('${t.id}', '${currentDiv}')">
+                🔄 Re-Seed Pools
+              </button>
+            </div>
+          ` : ''}
+        `}
+      </div>
+    `;
+  } else if (window.activeTournamentSubTab === "bracket") {
+    const bracketMatches = divMatches.filter(m => m.stage !== "pool" && !m.poolName);
+    const finalMatch = bracketMatches.find(m => m.stage === "final");
+    const thirdMatch = bracketMatches.find(m => m.stage === "third_place");
+    const semiMatches = bracketMatches.filter(m => m.stage === "semi");
+    const champTeam = finalMatch?.winningTeamId ? (t.teams || []).find(tm => tm.id === finalMatch.winningTeamId) : null;
+
+    bodyContainer.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        ${bracketMatches.length === 0 ? `
+          <div style="text-align: center; padding: 32px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
+            <div style="font-size: 36px; margin-bottom: 6px;">🏆</div>
+            <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 15px;">Playoff Bracket Not Yet Generated</div>
+            <div style="font-size: 12px; color: var(--text-muted, #64748b); max-width: 360px; margin: 4px auto 12px auto; line-height: 1.4;">
+              Playoffs will be seeded from top 2 teams in Pool A and Pool B (A1 vs B2, B1 vs A2).
+            </div>
+            <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 800; font-size: 13px;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
+              ✨ Generate Playoff Bracket
+            </button>
+          </div>
+        ` : `
+          ${champTeam ? `
+            <div style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border: 2px solid #f59e0b; border-radius: 16px; padding: 18px; text-align: center; box-shadow: 0 4px 12px rgba(245,158,11,0.15);">
+              <div style="font-size: 32px; margin-bottom: 4px;">👑</div>
+              <div style="font-size: 10px; font-weight: 900; color: #b45309; text-transform: uppercase; letter-spacing: 0.05em;">Tournament Champion</div>
+              <div style="font-size: 20px; font-weight: 900; color: #78350f; margin-top: 2px;">${champTeam.teamName}</div>
+              <div style="font-size: 12px; color: #92400e; margin-top: 2px;">Division: ${currentDiv}</div>
+            </div>
+          ` : ''}
+
+          <!-- Championship Final -->
+          ${finalMatch ? `
+            <div>
+              <div style="font-size: 11px; font-weight: 900; color: #ea580c; text-transform: uppercase; margin-bottom: 6px;">
+                🥇 Championship Final
+              </div>
+              ${window.renderMatchCardHTML(t, finalMatch)}
+            </div>
+          ` : ''}
+
+          <!-- 3rd Place Match -->
+          ${thirdMatch ? `
+            <div>
+              <div style="font-size: 11px; font-weight: 900; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">
+                🥉 3rd Place Consolation
+              </div>
+              ${window.renderMatchCardHTML(t, thirdMatch)}
+            </div>
+          ` : ''}
+
+          <!-- Semifinals -->
+          ${semiMatches.length > 0 ? `
+            <div>
+              <div style="font-size: 11px; font-weight: 900; color: var(--text-muted, #64748b); text-transform: uppercase; margin-bottom: 6px;">
+                ⚡️ Semifinals (Single Elimination)
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${semiMatches.map(m => window.renderMatchCardHTML(t, m)).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${isHost ? `
+            <div style="text-align: center; margin-top: 4px;">
+              <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 4px 12px;" onclick="if(confirm('Re-seed playoff bracket? Bracket scores will be reset.')) window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
+                🔄 Re-Seed Bracket
+              </button>
+            </div>
+          ` : ''}
+        `}
+      </div>
+    `;
+  } else if (window.activeTournamentSubTab === "roster") {
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 16px;">
         <!-- Teams List -->
@@ -6640,7 +6874,10 @@ window.renderTournamentDetail = function() {
                     <div style="display: flex; align-items: center; gap: 10px;">
                       <span style="font-size: 12px; font-weight: 900; color: #ea580c; width: 24px;">#${team.seed || (idx + 1)}</span>
                       <div>
-                        <div style="font-size: 14px; font-weight: 700; color: var(--text-main, #0f172a);">${team.teamName}</div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                          <span style="font-size: 14px; font-weight: 700; color: var(--text-main, #0f172a);">${team.teamName}</span>
+                          ${team.poolName ? `<span style="font-size: 10px; font-weight: 800; color: #0284c7; background: rgba(2,132,199,0.1); padding: 1px 6px; border-radius: 8px;">${team.poolName}</span>` : ''}
+                        </div>
                         <div style="font-size: 11px; color: var(--text-muted, #64748b);">
                           ${playerLine1}
                         </div>
@@ -6689,45 +6926,6 @@ window.renderTournamentDetail = function() {
         </div>
       </div>
     `;
-  } else if (window.activeTournamentSubTab === "matches") {
-    bodyContainer.innerHTML = `
-      <div>
-        <div style="font-size: 12px; font-weight: 800; color: #ea580c; text-transform: uppercase; margin-bottom: 8px;">
-          Bracket & Matches (${currentDiv})
-        </div>
-        ${divMatches.length === 0 ? `
-          <div style="text-align: center; padding: 32px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px;">
-            <div style="font-size: 32px; margin-bottom: 6px;">🏆</div>
-            <div style="font-weight: 700; color: var(--text-main, #1e293b);">Bracket not seeded yet</div>
-            <div style="font-size: 12px; color: var(--text-muted, #64748b); margin-top: 4px;">
-              Matches will be generated across assigned courts once registration closes!
-            </div>
-          </div>
-        ` : `
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            ${divMatches.map(m => {
-              const t1 = (t.teams || []).find(tm => tm.id === m.team1Id);
-              const t2 = (t.teams || []).find(tm => tm.id === m.team2Id);
-              return `
-                <div style="background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 12px;">
-                  <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #ea580c; margin-bottom: 6px;">
-                    <span>Round ${m.roundNumber} • Match ${m.matchNumber}</span>
-                    <span style="color: #0284c7;">${m.courtNumber || 'Court #1'}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700;">
-                    <span style="color: ${m.winningTeamId === m.team1Id ? '#16a34a' : 'inherit'};">${t1?.teamName || 'TBD'}</span>
-                    <span style="font-size: 14px; font-weight: 900; background: var(--bg-alt, #f1f5f9); padding: 2px 10px; border-radius: 6px;">
-                      ${m.team1Score !== undefined && m.team1Score !== null ? `${m.team1Score} - ${m.team2Score}` : 'vs'}
-                    </span>
-                    <span style="color: ${m.winningTeamId === m.team2Id ? '#16a34a' : 'inherit'};">${t2?.teamName || 'TBD'}</span>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        `}
-      </div>
-    `;
   } else {
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 14px; font-size: 13px; color: var(--text-main, #334155);">
@@ -6743,6 +6941,8 @@ window.renderTournamentDetail = function() {
             <li>Switch sides every 7 points to balance wind and sunlight conditions.</li>
             <li>No open-hand tips (roll shots, knuckles, or cut-shots only).</li>
             <li>Coed division teams must consist of 1 male and 1 female player.</li>
+            <li>Pool play: Round-robin within Pool A and Pool B.</li>
+            <li>Playoffs: Top 2 from each pool advance to Semifinals (A1 vs B2, B1 vs A2).</li>
           </ul>
         </div>
       </div>
@@ -6777,6 +6977,470 @@ window.renderTournamentDetail = function() {
       `;
     }
   }
+};
+
+window.renderMatchCardHTML = function(tournament, match) {
+  const t1 = (tournament.teams || []).find(tm => tm.id === match.team1Id);
+  const t2 = (tournament.teams || []).find(tm => tm.id === match.team2Id);
+  const isFinal = match.status === "completed";
+  const stageName = match.poolName ? match.poolName : (match.stage ? match.stage.replace('_', ' ').toUpperCase() : 'MATCH');
+
+  return `
+    <div style="background: var(--surface, #ffffff); border: 1px solid ${isFinal ? 'rgba(22,163,74,0.3)' : 'var(--border, #e2e8f0)'}; border-radius: 12px; padding: 12px;">
+      <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #ea580c; margin-bottom: 8px;">
+        <span style="background: rgba(234,88,12,0.1); padding: 2px 8px; border-radius: 999px;">${stageName} • #${match.matchNumber}</span>
+        <span style="color: #0284c7; font-weight: 700;">📍 ${match.courtNumber || 'Court #1'}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; gap: 8px;">
+        <div style="flex: 1; text-align: left; color: ${match.winningTeamId === match.team1Id ? '#16a34a' : 'inherit'}; font-weight: ${match.winningTeamId === match.team1Id ? '900' : '700'};">
+          ${t1?.teamName || '<span style="color: var(--text-muted, #94a3b8); font-weight: 400; font-style: italic;">TBD</span>'}
+          ${match.winningTeamId === match.team1Id ? ' ✓' : ''}
+        </div>
+
+        <div style="font-size: 14px; font-weight: 900; background: var(--bg-alt, #f1f5f9); padding: 4px 12px; border-radius: 8px; white-space: nowrap;">
+          ${match.team1Score !== undefined && match.team1Score !== null ? `${match.team1Score} - ${match.team2Score}` : 'vs'}
+        </div>
+
+        <div style="flex: 1; text-align: right; color: ${match.winningTeamId === match.team2Id ? '#16a34a' : 'inherit'}; font-weight: ${match.winningTeamId === match.team2Id ? '900' : '700'};">
+          ${match.winningTeamId === match.team2Id ? '✓ ' : ''}
+          ${t2?.teamName || '<span style="color: var(--text-muted, #94a3b8); font-weight: 400; font-style: italic;">TBD</span>'}
+        </div>
+      </div>
+
+      ${(t1 && t2) ? `
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border, #e2e8f0); text-align: center;">
+          <button type="button" class="btn btn-outline" style="font-size: 11px; font-weight: 700; color: #ea580c; border-color: rgba(234,88,12,0.3); padding: 3px 12px;" onclick="window.openTournamentScoreModal('${tournament.id}', '${match.id}')">
+            ${isFinal ? '✏️ Edit Score' : '⚡️ Report Score'}
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+};
+
+window.addDemoTournamentTeams = function(tournamentId, division) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
+    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+  );
+  if (!t) return;
+  t.teams = t.teams || [];
+  const currentDivTeams = t.teams.filter(tm => tm.division === division);
+  const demoConfigs = [
+    { name: "⚡ Sandstorm", p1: 0, p2: 1 },
+    { name: "🔥 Spike Force", p1: 2, p2: 3 },
+    { name: "🌊 Net Ninjas", p1: 4, p2: 5 },
+    { name: "💥 Ace Bandits", p1: 6, p2: 7 }
+  ];
+  
+  demoConfigs.forEach((item, idx) => {
+    const p1 = (state.players && state.players[item.p1]) ? state.players[item.p1].id : `demo-p-${idx * 2 + 1}`;
+    const p2 = (state.players && state.players[item.p2]) ? state.players[item.p2].id : `demo-p-${idx * 2 + 2}`;
+    t.teams.push({
+      id: "demo-team-" + Date.now() + "-" + idx,
+      teamName: item.name,
+      player1Id: p1,
+      player2Id: p2,
+      seed: currentDivTeams.length + idx + 1,
+      division: division
+    });
+  });
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  showToast(`⚡ Added 4 demo teams for ${division}!`);
+  window.renderTournamentDetail();
+  window.renderTournamentsList();
+};
+
+window.generatePoolPlay = function(tournamentId, division) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
+    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+  );
+  if (!t) return;
+
+  const divTeams = (t.teams || []).filter(tm => tm.division === division);
+  if (divTeams.length < 4) {
+    showToast("At least 4 teams required to seed pool play!");
+    return;
+  }
+
+  // Calculate average team Elo for seeding
+  const seededTeams = divTeams.map(tm => {
+    const p1 = state.players.find(p => p.id === tm.player1Id);
+    const p2 = tm.player2Id ? state.players.find(p => p.id === tm.player2Id) : null;
+    const elo1 = p1?.eloRating || 1500;
+    const elo2 = p2 ? (p2.eloRating || 1500) : elo1;
+    const avgElo = Math.round((elo1 + elo2) / 2);
+    return { ...tm, avgElo };
+  });
+
+  seededTeams.sort((a, b) => b.avgElo - a.avgElo);
+
+  // Snake seed into Pool A & Pool B
+  const poolATeams = [];
+  const poolBTeams = [];
+
+  seededTeams.forEach((tm, idx) => {
+    const isPoolA = (idx % 4 === 0 || idx % 4 === 3);
+    const poolName = isPoolA ? "Pool A" : "Pool B";
+    const teamInPool = {
+      ...tm,
+      poolName,
+      poolSeed: (isPoolA ? poolATeams.length : poolBTeams.length) + 1,
+      seed: idx + 1
+    };
+    if (isPoolA) {
+      poolATeams.push(teamInPool);
+    } else {
+      poolBTeams.push(teamInPool);
+    }
+  });
+
+  // Update teams in tournament
+  const updatedTeamIds = new Set(seededTeams.map(tm => tm.id));
+  t.teams = (t.teams || []).filter(tm => !updatedTeamIds.has(tm.id)).concat(poolATeams, poolBTeams);
+
+  // Remove existing pool matches for this division
+  t.matches = (t.matches || []).filter(m => !(m.division === division && (m.poolName || m.stage === "pool")));
+
+  const courts = (t.courts && t.courts.length > 0) ? t.courts : ["Court #1", "Court #2"];
+  let courtIndex = 0;
+  let matchNumber = 1;
+
+  function buildPoolRoundRobin(poolTeams, poolName) {
+    const matches = [];
+    const n = poolTeams.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        matches.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          division,
+          poolName,
+          stage: "pool",
+          roundNumber: 1,
+          matchNumber: matchNumber++,
+          courtNumber: courts[courtIndex % courts.length],
+          team1Id: poolTeams[i].id,
+          team2Id: poolTeams[j].id,
+          team1Score: null,
+          team2Score: null,
+          winningTeamId: null,
+          status: "scheduled"
+        });
+        courtIndex++;
+      }
+    }
+    return matches;
+  }
+
+  const poolAMatches = buildPoolRoundRobin(poolATeams, "Pool A");
+  const poolBMatches = buildPoolRoundRobin(poolBTeams, "Pool B");
+
+  t.matches = (t.matches || []).concat(poolAMatches, poolBMatches);
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  showToast(`✅ Pool Play seeded! ${poolAMatches.length + poolBMatches.length} matches created across ${courts.join(', ')}.`);
+  window.renderTournamentDetail();
+};
+
+window.generatePlayoffBracket = function(tournamentId, division) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
+    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+  );
+  if (!t) return;
+
+  const divTeams = (t.teams || []).filter(tm => tm.division === division);
+  const divPoolAMatches = (t.matches || []).filter(m => m.division === division && m.poolName === "Pool A");
+  const divPoolBMatches = (t.matches || []).filter(m => m.division === division && m.poolName === "Pool B");
+
+  const poolATeams = divTeams.filter(tm => tm.poolName === "Pool A");
+  const poolBTeams = divTeams.filter(tm => tm.poolName === "Pool B");
+
+  const standingsA = window.calculatePoolStandings(poolATeams, divPoolAMatches);
+  const standingsB = window.calculatePoolStandings(poolBTeams, divPoolBMatches);
+
+  if (standingsA.length < 2 || standingsB.length < 2) {
+    showToast("Need at least 2 teams in Pool A and Pool B to generate playoffs!");
+    return;
+  }
+
+  const a1 = standingsA[0].team;
+  const a2 = standingsA[1].team;
+  const b1 = standingsB[0].team;
+  const b2 = standingsB[1].team;
+
+  // Clear previous bracket matches for this division
+  t.matches = (t.matches || []).filter(m => !(m.division === division && m.stage !== "pool" && !m.poolName));
+
+  const courts = (t.courts && t.courts.length > 0) ? t.courts : ["Court #1", "Court #2"];
+  const finalMatchId = crypto.randomUUID ? crypto.randomUUID() : 'final_' + Date.now();
+  const thirdMatchId = crypto.randomUUID ? crypto.randomUUID() : 'third_' + Date.now();
+
+  const semi1 = {
+    id: crypto.randomUUID ? crypto.randomUUID() : 'semi1_' + Date.now(),
+    division,
+    stage: "semi",
+    roundNumber: 4,
+    bracketRound: 1,
+    matchNumber: 1,
+    courtNumber: courts[0],
+    team1Id: a1.id,
+    team2Id: b2.id,
+    team1Score: null,
+    team2Score: null,
+    winningTeamId: null,
+    status: "scheduled",
+    nextMatchId: finalMatchId,
+    nextMatchSlot: 1
+  };
+
+  const semi2 = {
+    id: crypto.randomUUID ? crypto.randomUUID() : 'semi2_' + Date.now(),
+    division,
+    stage: "semi",
+    roundNumber: 4,
+    bracketRound: 1,
+    matchNumber: 2,
+    courtNumber: courts.length > 1 ? courts[1] : courts[0],
+    team1Id: b1.id,
+    team2Id: a2.id,
+    team1Score: null,
+    team2Score: null,
+    winningTeamId: null,
+    status: "scheduled",
+    nextMatchId: finalMatchId,
+    nextMatchSlot: 2
+  };
+
+  const finalMatch = {
+    id: finalMatchId,
+    division,
+    stage: "final",
+    roundNumber: 5,
+    bracketRound: 2,
+    matchNumber: 1,
+    courtNumber: courts[0],
+    team1Id: null,
+    team2Id: null,
+    team1Score: null,
+    team2Score: null,
+    winningTeamId: null,
+    status: "scheduled"
+  };
+
+  const thirdMatch = {
+    id: thirdMatchId,
+    division,
+    stage: "third_place",
+    roundNumber: 5,
+    bracketRound: 2,
+    matchNumber: 2,
+    courtNumber: courts.length > 1 ? courts[1] : courts[0],
+    team1Id: null,
+    team2Id: null,
+    team1Score: null,
+    team2Score: null,
+    winningTeamId: null,
+    status: "scheduled"
+  };
+
+  t.matches = (t.matches || []).concat([semi1, semi2, finalMatch, thirdMatch]);
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  window.setTournamentSubTab("bracket");
+  showToast("🏆 Playoff Bracket created! Semifinals seeded (A1 vs B2, B1 vs A2).");
+  window.renderTournamentDetail();
+};
+
+window.submitTournamentMatchScore = function(tournamentId, matchId, team1Score, team2Score) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
+    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+  );
+  if (!t) return;
+
+  const match = (t.matches || []).find(m => String(m.id).trim() === String(matchId).trim());
+  if (!match) return;
+
+  const s1 = parseInt(team1Score, 10);
+  const s2 = parseInt(team2Score, 10);
+  if (isNaN(s1) || isNaN(s2) || s1 === s2) {
+    showToast("Invalid score. Ties are not allowed.");
+    return;
+  }
+
+  const winningTeamId = s1 > s2 ? match.team1Id : match.team2Id;
+  const losingTeamId = s1 > s2 ? match.team2Id : match.team1Id;
+
+  match.team1Score = s1;
+  match.team2Score = s2;
+  match.winningTeamId = winningTeamId;
+  match.status = "completed";
+
+  // Advance winner to next match in bracket if present
+  if (match.nextMatchId) {
+    const nextMatch = (t.matches || []).find(m => String(m.id).trim() === String(match.nextMatchId).trim());
+    if (nextMatch) {
+      if (match.nextMatchSlot === 1) {
+        nextMatch.team1Id = winningTeamId;
+      } else {
+        nextMatch.team2Id = winningTeamId;
+      }
+    }
+  }
+
+  // If this was a semifinal, advance loser to 3rd place match
+  if (match.stage === "semi") {
+    const thirdMatch = (t.matches || []).find(m => m.division === match.division && m.stage === "third_place");
+    if (thirdMatch) {
+      if (match.nextMatchSlot === 1) {
+        thirdMatch.team1Id = losingTeamId;
+      } else {
+        thirdMatch.team2Id = losingTeamId;
+      }
+    }
+  }
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  window.closeTournamentScoreModal();
+  showToast("✅ Match score submitted! Bracket updated.");
+  window.renderTournamentDetail();
+};
+
+window.openTournamentScoreModal = function(tournamentId, matchId) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
+    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+  );
+  if (!t) return;
+  const match = (t.matches || []).find(m => String(m.id).trim() === String(matchId).trim());
+  if (!match) return;
+
+  const t1 = (t.teams || []).find(tm => tm.id === match.team1Id);
+  const t2 = (t.teams || []).find(tm => tm.id === match.team2Id);
+  if (!t1 || !t2) {
+    showToast("Teams are not yet determined for this match.");
+    return;
+  }
+
+  const s1 = (match.team1Score !== null && match.team1Score !== undefined) ? match.team1Score : 21;
+  const s2 = (match.team2Score !== null && match.team2Score !== undefined) ? match.team2Score : 19;
+
+  const modal = document.getElementById("tournament-score-modal");
+  const body = document.getElementById("tournament-score-body");
+  if (!modal || !body) return;
+
+  const stageName = match.poolName ? match.poolName : (match.stage ? match.stage.replace('_', ' ').toUpperCase() : 'MATCH');
+
+  body.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div style="text-align: center; background: var(--bg-alt, #f8fafc); padding: 10px; border-radius: 12px;">
+        <span style="font-size: 11px; font-weight: 800; color: #ea580c; text-transform: uppercase;">${stageName}</span>
+        <div style="font-size: 12px; color: var(--text-muted, #64748b); margin-top: 2px;">Match #${match.matchNumber} • ${match.courtNumber || 'Court #1'}</div>
+      </div>
+
+      <div style="display: flex; justify-content: space-around; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 14px; padding: 16px;">
+        <div style="text-align: center; flex: 1;">
+          <div style="font-size: 14px; font-weight: 800; color: var(--text-main, #0f172a); margin-bottom: 8px; line-height: 1.2;">${t1.teamName}</div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 18px; font-weight: 900;" onclick="window.adjustTournScore('team1', -1)">-</button>
+            <input type="number" id="ts-score-1" value="${s1}" min="0" max="99" style="width: 54px; text-align: center; font-size: 24px; font-weight: 900; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); padding: 4px;" onchange="window.updateTournScorePreview()">
+            <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 18px; font-weight: 900; color: #ea580c;" onclick="window.adjustTournScore('team1', 1)">+</button>
+          </div>
+        </div>
+
+        <div style="font-size: 18px; font-weight: 900; color: var(--text-muted, #94a3b8); padding: 0 10px;">vs</div>
+
+        <div style="text-align: center; flex: 1;">
+          <div style="font-size: 14px; font-weight: 800; color: var(--text-main, #0f172a); margin-bottom: 8px; line-height: 1.2;">${t2.teamName}</div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 18px; font-weight: 900;" onclick="window.adjustTournScore('team2', -1)">-</button>
+            <input type="number" id="ts-score-2" value="${s2}" min="0" max="99" style="width: 54px; text-align: center; font-size: 24px; font-weight: 900; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); padding: 4px;" onchange="window.updateTournScorePreview()">
+            <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 18px; font-weight: 900; color: #ea580c;" onclick="window.adjustTournScore('team2', 1)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Presets -->
+      <div>
+        <div style="font-size: 10px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase; margin-bottom: 6px;">Quick Presets</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          ${[[21,19],[21,17],[21,15],[21,12],[15,13]].map(([p1, p2]) => `
+            <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="window.setTournScorePreset(${p1}, ${p2})">${p1}-${p2}</button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div id="ts-winner-preview" style="text-align: center; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 700; background: rgba(22,163,74,0.12); color: #16a34a;">
+        Projected Winner: ${s1 > s2 ? t1.teamName : (s2 > s1 ? t2.teamName : 'None (Tie not allowed)')}
+      </div>
+
+      <button type="button" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 800; font-size: 14px;" onclick="window.submitTournamentScoreModal('${t.id}', '${match.id}')">
+        Submit Official Score
+      </button>
+    </div>
+  `;
+
+  modal.classList.add("active");
+};
+
+window.closeTournamentScoreModal = function() {
+  document.getElementById("tournament-score-modal")?.classList.remove("active");
+};
+
+window.adjustTournScore = function(team, delta) {
+  const input = document.getElementById(team === "team1" ? "ts-score-1" : "ts-score-2");
+  if (input) {
+    let val = parseInt(input.value, 10) || 0;
+    val = Math.max(0, Math.min(99, val + delta));
+    input.value = val;
+    window.updateTournScorePreview();
+  }
+};
+
+window.setTournScorePreset = function(s1, s2) {
+  const in1 = document.getElementById("ts-score-1");
+  const in2 = document.getElementById("ts-score-2");
+  if (in1 && in2) {
+    in1.value = s1;
+    in2.value = s2;
+    window.updateTournScorePreview();
+  }
+};
+
+window.updateTournScorePreview = function() {
+  const in1 = document.getElementById("ts-score-1");
+  const in2 = document.getElementById("ts-score-2");
+  const preview = document.getElementById("ts-winner-preview");
+  if (!in1 || !in2 || !preview) return;
+
+  const s1 = parseInt(in1.value, 10) || 0;
+  const s2 = parseInt(in2.value, 10) || 0;
+
+  if (s1 === s2) {
+    preview.style.background = "rgba(220,38,38,0.12)";
+    preview.style.color = "#dc2626";
+    preview.innerText = "Ties not allowed in volleyball";
+  } else {
+    preview.style.background = "rgba(22,163,74,0.12)";
+    preview.style.color = "#16a34a";
+    preview.innerText = s1 > s2 ? "Projected Winner: Team 1" : "Projected Winner: Team 2";
+  }
+};
+
+window.submitTournamentScoreModal = function(tournamentId, matchId) {
+  const in1 = document.getElementById("ts-score-1");
+  const in2 = document.getElementById("ts-score-2");
+  if (!in1 || !in2) return;
+  const s1 = parseInt(in1.value, 10);
+  const s2 = parseInt(in2.value, 10);
+  window.submitTournamentMatchScore(tournamentId, matchId, s1, s2);
 };
 
 window.leaveTournament = function(tournamentId) {
