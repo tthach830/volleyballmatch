@@ -6588,6 +6588,85 @@ window.setTournamentSubTab = function(tabName) {
   window.renderTournamentDetail();
 };
 
+window.formatFirstLastInit = function(fullName) {
+  if (!fullName || typeof fullName !== 'string') return '';
+  const trimmed = fullName.trim();
+  if (!trimmed) return '';
+
+  if (trimmed.includes('/')) {
+    return trimmed.split('/').map(part => window.formatFirstLastInit(part)).join('/');
+  }
+
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) {
+    return parts[0] || '';
+  }
+
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+
+  if (/^[A-Za-z]\.?$/.test(last)) {
+    return `${first} ${last.replace('.', '')}.`;
+  }
+
+  return `${first} ${last.charAt(0).toUpperCase()}.`;
+};
+
+window.getTeamPlayerDisplay = function(team, tournament) {
+  if (!team) return '';
+
+  const playerIds = [team.player1Id, team.player2Id, team.player3Id, team.player4Id].filter(Boolean);
+  const resolvedNames = [];
+
+  for (const pid of playerIds) {
+    const p = (state.players || []).find(item => item.id === pid);
+    if (p) {
+      const pName = p.name || p.displayName || p.nickname || '';
+      if (pName) {
+        resolvedNames.push(window.formatFirstLastInit(pName));
+      }
+    }
+  }
+
+  if (resolvedNames.length > 0) {
+    return resolvedNames.join('/');
+  }
+
+  const directNames = [team.p1Name, team.p2Name, team.p3Name, team.p4Name].filter(Boolean);
+  if (directNames.length > 0) {
+    return directNames.map(n => window.formatFirstLastInit(n)).join('/');
+  }
+
+  // Demo team name mapping fallback
+  const rawName = (team.teamName || '').toLowerCase();
+  if (rawName.includes('sandstorm')) {
+    return 'Lauren L./Peter T.';
+  } else if (rawName.includes('spike force')) {
+    return 'Alicia M./Emily S.';
+  } else if (rawName.includes('net ninjas')) {
+    return 'Billy K./Harshal P.';
+  } else if (rawName.includes('ace bandits')) {
+    return 'Lucas V./Chloe B.';
+  } else if (rawName.includes('block party')) {
+    return 'Kai R./Taylor J.';
+  } else if (rawName.includes('sun spikers')) {
+    return 'Maya L./Carlos G.';
+  } else if (rawName.includes('coast crushers')) {
+    return 'Sam R./Jordan H.';
+  } else if (rawName.includes('dune diggers')) {
+    return 'Alex M./Chris P.';
+  }
+
+  if (team.teamName && team.teamName.includes('/')) {
+    return window.formatFirstLastInit(team.teamName);
+  }
+  if (team.teamName && team.teamName.includes('&')) {
+    return team.teamName.split('&').map(part => window.formatFirstLastInit(part)).join('/');
+  }
+
+  return team.teamName || 'TBD';
+};
+
 window.renderTournamentDetail = function() {
   const targetId = window.activeTournamentId ? String(window.activeTournamentId).trim() : "";
   const t = (state.tournaments || []).find(item => 
@@ -6703,7 +6782,7 @@ window.renderTournamentDetail = function() {
                     ${idx + 1} 🟢
                   </td>
                   <td style="padding: 8px 10px; font-weight: 700; color: var(--text-main, #0f172a);">
-                    ${row.team.teamName}
+                    ${window.getTeamPlayerDisplay(row.team, t)}
                   </td>
                   <td style="padding: 8px 8px; text-align: center; color: var(--text-muted, #64748b);">${row.matchesPlayed}</td>
                   <td style="padding: 8px 8px; text-align: center; font-weight: 700; color: ${row.wins > 0 ? '#16a34a' : 'inherit'};">${row.wins}-${row.losses}</td>
@@ -6794,7 +6873,7 @@ window.renderTournamentDetail = function() {
             <div style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border: 2px solid #f59e0b; border-radius: 16px; padding: 18px; text-align: center; box-shadow: 0 4px 12px rgba(245,158,11,0.15);">
               <div style="font-size: 32px; margin-bottom: 4px;">👑</div>
               <div style="font-size: 10px; font-weight: 900; color: #b45309; text-transform: uppercase; letter-spacing: 0.05em;">Tournament Champion</div>
-              <div style="font-size: 20px; font-weight: 900; color: #78350f; margin-top: 2px;">${champTeam.teamName}</div>
+              <div style="font-size: 20px; font-weight: 900; color: #78350f; margin-top: 2px;">${window.getTeamPlayerDisplay(champTeam, t)}</div>
               <div style="font-size: 12px; color: #92400e; margin-top: 2px;">Division: ${currentDiv}</div>
             </div>
           ` : ''}
@@ -6961,6 +7040,8 @@ window.renderMatchCardHTML = function(tournament, match) {
   const t2 = (tournament.teams || []).find(tm => tm.id === match.team2Id);
   const isFinal = match.status === "completed";
   const stageName = match.poolName ? match.poolName : (match.stage ? match.stage.replace('_', ' ').toUpperCase() : 'MATCH');
+  const name1 = t1 ? window.getTeamPlayerDisplay(t1, tournament) : '<span style="color: var(--text-muted, #94a3b8); font-weight: 400; font-style: italic;">TBD</span>';
+  const name2 = t2 ? window.getTeamPlayerDisplay(t2, tournament) : '<span style="color: var(--text-muted, #94a3b8); font-weight: 400; font-style: italic;">TBD</span>';
 
   return `
     <div style="background: var(--surface, #ffffff); border: 1px solid ${isFinal ? 'rgba(22,163,74,0.3)' : 'var(--border, #e2e8f0)'}; border-radius: 12px; padding: 12px;">
@@ -6970,7 +7051,7 @@ window.renderMatchCardHTML = function(tournament, match) {
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; gap: 8px;">
         <div style="flex: 1; text-align: left; color: ${match.winningTeamId === match.team1Id ? '#16a34a' : 'inherit'}; font-weight: ${match.winningTeamId === match.team1Id ? '900' : '700'};">
-          ${t1?.teamName || '<span style="color: var(--text-muted, #94a3b8); font-weight: 400; font-style: italic;">TBD</span>'}
+          ${name1}
           ${match.winningTeamId === match.team1Id ? ' ✓' : ''}
         </div>
 
@@ -6980,7 +7061,7 @@ window.renderMatchCardHTML = function(tournament, match) {
 
         <div style="flex: 1; text-align: right; color: ${match.winningTeamId === match.team2Id ? '#16a34a' : 'inherit'}; font-weight: ${match.winningTeamId === match.team2Id ? '900' : '700'};">
           ${match.winningTeamId === match.team2Id ? '✓ ' : ''}
-          ${t2?.teamName || '<span style="color: var(--text-muted, #94a3b8); font-weight: 400; font-style: italic;">TBD</span>'}
+          ${name2}
         </div>
       </div>
 
@@ -7020,8 +7101,8 @@ window.renderPlayoffCleanMatchCardHTML = function(tournament, match) {
 
   const seed1 = t1 ? (t1.seed || t1.poolSeed || '•') : '';
   const seed2 = t2 ? (t2.seed || t2.poolSeed || '•') : '';
-  const name1 = t1?.teamName || '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
-  const name2 = t2?.teamName || '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
+  const name1 = t1 ? window.getTeamPlayerDisplay(t1, tournament) : '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
+  const name2 = t2 ? window.getTeamPlayerDisplay(t2, tournament) : '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
 
   return `
     <div class="playoff-clean-card" onclick="window.openTournamentScoreModal('${tournament.id}', '${match.id}')">
@@ -7073,8 +7154,8 @@ window.renderPlayoffBracketChartHTML = function(t, division, bracketMatches) {
 
     const seed1 = t1 ? (t1.seed || t1.poolSeed || '1') : '';
     const seed2 = t2 ? (t2.seed || t2.poolSeed || '2') : '';
-    const name1 = t1?.teamName || '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
-    const name2 = t2?.teamName || '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
+    const name1 = t1 ? window.getTeamPlayerDisplay(t1, t) : '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
+    const name2 = t2 ? window.getTeamPlayerDisplay(t2, t) : '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
 
     return `
       <div class="playoff-node-card ${isCompleted ? 'completed' : ''}" 
@@ -7207,14 +7288,14 @@ window.addDemoTournamentTeams = function(tournamentId, division) {
   t.teams = t.teams || [];
   const currentDivTeams = t.teams.filter(tm => tm.division === division);
   const demoConfigs = [
-    { name: "⚡ Sandstorm", p1: 0, p2: 1 },
-    { name: "🔥 Spike Force", p1: 2, p2: 3 },
-    { name: "🌊 Net Ninjas", p1: 4, p2: 5 },
-    { name: "💥 Ace Bandits", p1: 6, p2: 7 },
-    { name: "🌪 Block Party", p1: 0, p2: 4 },
-    { name: "☀️ Sun Spikers", p1: 1, p2: 5 },
-    { name: "🌴 Coast Crushers", p1: 2, p2: 6 },
-    { name: "⚡ Dune Diggers", p1: 3, p2: 7 }
+    { name: "Lauren L./Peter T.", p1Name: "Lauren Larson", p2Name: "Peter Thach", p1: 0, p2: 1 },
+    { name: "Alicia M./Emily S.", p1Name: "Alicia Miller", p2Name: "Emily Smith", p1: 2, p2: 3 },
+    { name: "Billy K./Harshal P.", p1Name: "Billy King", p2Name: "Harshal Patel", p1: 4, p2: 5 },
+    { name: "Lucas V./Chloe B.", p1Name: "Lucas Vance", p2Name: "Chloe Bennett", p1: 6, p2: 7 },
+    { name: "Kai R./Taylor J.", p1Name: "Kai Rodriguez", p2Name: "Taylor Jenkins", p1: 0, p2: 4 },
+    { name: "Maya L./Carlos G.", p1Name: "Maya Lin", p2Name: "Carlos Gomez", p1: 1, p2: 5 },
+    { name: "Sam R./Jordan H.", p1Name: "Sam Rivera", p2Name: "Jordan Hayes", p1: 2, p2: 6 },
+    { name: "Alex M./Chris P.", p1Name: "Alex Morgan", p2Name: "Chris Paul", p1: 3, p2: 7 }
   ];
   
   const configsToAdd = currentDivTeams.length === 0 ? demoConfigs : demoConfigs.slice(currentDivTeams.length % demoConfigs.length, (currentDivTeams.length % demoConfigs.length) + 4);
@@ -7225,6 +7306,8 @@ window.addDemoTournamentTeams = function(tournamentId, division) {
     t.teams.push({
       id: "demo-team-" + Date.now() + "-" + (currentDivTeams.length + idx),
       teamName: item.name,
+      p1Name: item.p1Name,
+      p2Name: item.p2Name,
       player1Id: p1,
       player2Id: p2,
       seed: currentDivTeams.length + idx + 1,
@@ -7681,6 +7764,9 @@ window.openTournamentScoreModal = function(tournamentId, matchId) {
     return;
   }
 
+  const name1 = window.getTeamPlayerDisplay(t1, t);
+  const name2 = window.getTeamPlayerDisplay(t2, t);
+
   const s1 = (match.team1Score !== null && match.team1Score !== undefined) ? match.team1Score : 21;
   const s2 = (match.team2Score !== null && match.team2Score !== undefined) ? match.team2Score : 19;
 
@@ -7699,10 +7785,10 @@ window.openTournamentScoreModal = function(tournamentId, matchId) {
 
       <div style="display: flex; justify-content: space-around; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 14px; padding: 16px;">
         <div style="text-align: center; flex: 1;">
-          <div style="font-size: 14px; font-weight: 800; color: var(--text-main, #0f172a); margin-bottom: 8px; line-height: 1.2;">${t1.teamName}</div>
+          <div style="font-size: 14px; font-weight: 800; color: var(--text-main, #0f172a); margin-bottom: 8px; line-height: 1.2;">${name1}</div>
           <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
             <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 18px; font-weight: 900;" onclick="window.adjustTournScore('team1', -1)">-</button>
-            <input type="number" id="ts-score-1" value="${s1}" min="0" max="99" style="width: 54px; text-align: center; font-size: 24px; font-weight: 900; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); padding: 4px;" onchange="window.updateTournScorePreview()">
+            <input type="number" id="ts-score-1" data-team-name="${name1}" value="${s1}" min="0" max="99" style="width: 54px; text-align: center; font-size: 24px; font-weight: 900; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); padding: 4px;" onchange="window.updateTournScorePreview()">
             <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 18px; font-weight: 900; color: #ea580c;" onclick="window.adjustTournScore('team1', 1)">+</button>
           </div>
         </div>
@@ -7710,10 +7796,10 @@ window.openTournamentScoreModal = function(tournamentId, matchId) {
         <div style="font-size: 18px; font-weight: 900; color: var(--text-muted, #94a3b8); padding: 0 10px;">vs</div>
 
         <div style="text-align: center; flex: 1;">
-          <div style="font-size: 14px; font-weight: 800; color: var(--text-main, #0f172a); margin-bottom: 8px; line-height: 1.2;">${t2.teamName}</div>
+          <div style="font-size: 14px; font-weight: 800; color: var(--text-main, #0f172a); margin-bottom: 8px; line-height: 1.2;">${name2}</div>
           <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
             <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 18px; font-weight: 900;" onclick="window.adjustTournScore('team2', -1)">-</button>
-            <input type="number" id="ts-score-2" value="${s2}" min="0" max="99" style="width: 54px; text-align: center; font-size: 24px; font-weight: 900; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); padding: 4px;" onchange="window.updateTournScorePreview()">
+            <input type="number" id="ts-score-2" data-team-name="${name2}" value="${s2}" min="0" max="99" style="width: 54px; text-align: center; font-size: 24px; font-weight: 900; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); padding: 4px;" onchange="window.updateTournScorePreview()">
             <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 18px; font-weight: 900; color: #ea580c;" onclick="window.adjustTournScore('team2', 1)">+</button>
           </div>
         </div>
@@ -7730,7 +7816,7 @@ window.openTournamentScoreModal = function(tournamentId, matchId) {
       </div>
 
       <div id="ts-winner-preview" style="text-align: center; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 700; background: rgba(22,163,74,0.12); color: #16a34a;">
-        Projected Winner: ${s1 > s2 ? t1.teamName : (s2 > s1 ? t2.teamName : 'None (Tie not allowed)')}
+        Projected Winner: ${s1 > s2 ? name1 : (s2 > s1 ? name2 : 'None (Tie not allowed)')}
       </div>
 
       <button type="button" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 800; font-size: 14px;" onclick="window.submitTournamentScoreModal('${t.id}', '${match.id}')">
@@ -7774,6 +7860,8 @@ window.updateTournScorePreview = function() {
 
   const s1 = parseInt(in1.value, 10) || 0;
   const s2 = parseInt(in2.value, 10) || 0;
+  const name1 = in1.dataset.teamName || "Team 1";
+  const name2 = in2.dataset.teamName || "Team 2";
 
   if (s1 === s2) {
     preview.style.background = "rgba(220,38,38,0.12)";
@@ -7782,7 +7870,7 @@ window.updateTournScorePreview = function() {
   } else {
     preview.style.background = "rgba(22,163,74,0.12)";
     preview.style.color = "#16a34a";
-    preview.innerText = s1 > s2 ? "Projected Winner: Team 1" : "Projected Winner: Team 2";
+    preview.innerText = s1 > s2 ? `Projected Winner: ${name1}` : `Projected Winner: ${name2}`;
   }
 };
 

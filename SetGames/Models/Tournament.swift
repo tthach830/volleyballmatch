@@ -260,6 +260,80 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
     public func containsPlayer(_ playerId: UUID) -> Bool {
         allPlayerIds.contains(playerId)
     }
+    
+    public static func formatFirstLastInit(from name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        
+        if trimmed.contains("/") {
+            return trimmed.components(separatedBy: "/")
+                .map { formatFirstLastInit(from: $0) }
+                .joined(separator: "/")
+        }
+        
+        let parts = trimmed.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+        guard parts.count > 1 else { return parts.first ?? "" }
+        
+        let first = parts[0]
+        let last = parts[parts.count - 1]
+        
+        if last.count == 1 {
+            return "\(first) \(last.uppercased())."
+        }
+        if last.count == 2 && last.hasSuffix(".") {
+            return "\(first) \(last.uppercased())"
+        }
+        
+        let initial = String(last.prefix(1)).uppercased()
+        return "\(first) \(initial)."
+    }
+
+    public func playerNamesDisplay(players: [Player]) -> String {
+        let resolvedNames: [String] = allPlayerIds.compactMap { pid in
+            if let p = players.first(where: { $0.id == pid }) {
+                let pName = p.name.isEmpty ? (p.displayName.isEmpty ? p.nickname : p.displayName) : p.name
+                if !pName.isEmpty {
+                    return TournamentTeam.formatFirstLastInit(from: pName)
+                }
+            }
+            return nil
+        }
+        
+        if !resolvedNames.isEmpty {
+            return resolvedNames.joined(separator: "/")
+        }
+        
+        // Demo team name mapping fallback
+        let lower = teamName.lowercased()
+        if lower.contains("sandstorm") {
+            return "Lauren L./Peter T."
+        } else if lower.contains("spike force") {
+            return "Alicia M./Emily S."
+        } else if lower.contains("net ninjas") {
+            return "Billy K./Harshal P."
+        } else if lower.contains("ace bandits") {
+            return "Lucas V./Chloe B."
+        } else if lower.contains("block party") {
+            return "Kai R./Taylor J."
+        } else if lower.contains("sun spikers") {
+            return "Maya L./Carlos G."
+        } else if lower.contains("coast crushers") {
+            return "Sam R./Jordan H."
+        } else if lower.contains("dune diggers") {
+            return "Alex M./Chris P."
+        }
+        
+        if teamName.contains("/") {
+            return TournamentTeam.formatFirstLastInit(from: teamName)
+        }
+        if teamName.contains("&") {
+            return teamName.components(separatedBy: "&")
+                .map { TournamentTeam.formatFirstLastInit(from: $0) }
+                .joined(separator: "/")
+        }
+        
+        return teamName
+    }
 }
 
 public struct PoolTeamStanding: Identifiable, Hashable {

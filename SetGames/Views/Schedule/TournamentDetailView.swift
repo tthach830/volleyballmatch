@@ -480,7 +480,7 @@ public struct TournamentDetailView: View {
                         }
                         .frame(width: 24, alignment: .leading)
                         
-                        Text(row.team.teamName)
+                        Text(row.team.playerNamesDisplay(players: dataManager.players))
                             .font(.system(size: 13, weight: isTopTwo ? .bold : .medium))
                             .foregroundColor(.white)
                             .lineLimit(1)
@@ -518,7 +518,7 @@ public struct TournamentDetailView: View {
             if !matches.isEmpty {
                 VStack(spacing: 8) {
                     ForEach(matches) { match in
-                        TournamentMatchRowView(match: match, teams: t.teams) {
+                        TournamentMatchRowView(match: match, teams: t.teams, players: dataManager.players) {
                             scoringMatch = match
                         }
                     }
@@ -538,35 +538,38 @@ public struct TournamentDetailView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "trophy")
                         .font(.system(size: 40))
-                        .foregroundColor(.orange.opacity(0.6))
+                        .foregroundColor(.orange)
+                    
                     Text("Playoff Bracket Not Yet Generated")
                         .font(.headline)
                         .foregroundColor(.white)
-                    Text("Complete pool play matches first, then generate the single elimination bracket!")
+                    
+                    Text("Complete pool play matches first. Every single team advances to the single-elimination playoff bracket!")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                     
                     Button {
                         dataManager.generatePlayoffBracket(tournamentId: t.id, division: division)
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "wand.and.stars")
-                            Text("Generate Bracket From Pool Standings")
+                        HStack {
+                            Image(systemName: "sparkles")
+                            Text("Generate Single Elimination Bracket")
                                 .fontWeight(.bold)
                         }
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
+                        .font(.footnote)
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
                         .background(Color.orange)
-                        .cornerRadius(12)
+                        .cornerRadius(10)
                     }
                 }
-                .padding(32)
+                .padding(24)
                 .frame(maxWidth: .infinity)
                 .background(Color(red: 0.11, green: 0.13, blue: 0.18))
-                .cornerRadius(20)
+                .cornerRadius(16)
                 .padding(.horizontal)
             } else {
                 // Champion Trophy Banner if final completed
@@ -580,7 +583,7 @@ public struct TournamentDetailView: View {
                                 Text("DIVISION CHAMPION")
                                     .font(.system(size: 10, weight: .black))
                                     .foregroundColor(.orange)
-                                Text(champTeam.teamName)
+                                Text(champTeam.playerNamesDisplay(players: dataManager.players))
                                     .font(.title2)
                                     .fontWeight(.heavy)
                                     .foregroundColor(.white)
@@ -602,7 +605,7 @@ public struct TournamentDetailView: View {
                 }
                 
                 // Interactive Tournament Bracket Tree Diagram
-                PlayoffBracketChartView(tournament: t, division: division) { m in
+                PlayoffBracketChartView(tournament: t, division: division, players: dataManager.players) { m in
                     scoringMatch = m
                 }
                 
@@ -619,7 +622,7 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(finals) { m in
-                            PlayoffCleanMatchCardView(match: m, teams: t.teams) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
                                 scoringMatch = m
                             }
                         }
@@ -639,7 +642,7 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(thirdPlace) { m in
-                            PlayoffCleanMatchCardView(match: m, teams: t.teams) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
                                 scoringMatch = m
                             }
                         }
@@ -659,7 +662,7 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(semis) { m in
-                            PlayoffCleanMatchCardView(match: m, teams: t.teams) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
                                 scoringMatch = m
                             }
                         }
@@ -679,7 +682,7 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(quarters) { m in
-                            PlayoffCleanMatchCardView(match: m, teams: t.teams) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
                                 scoringMatch = m
                             }
                         }
@@ -825,7 +828,7 @@ struct TournamentTeamRowView: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(team.teamName)
+                    Text(team.playerNamesDisplay(players: players))
                         .font(.headline)
                         .foregroundColor(.white)
                     if let pool = team.poolName {
@@ -943,6 +946,7 @@ struct TournamentFreeAgentRowView: View {
 struct TournamentMatchRowView: View {
     let match: TournamentMatch
     let teams: [TournamentTeam]
+    var players: [Player] = []
     var onScore: (() -> Void)? = nil
     
     var body: some View {
@@ -990,7 +994,7 @@ struct TournamentMatchRowView: View {
                 // Team 1
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text(t1?.teamName ?? "TBD")
+                        Text(t1?.playerNamesDisplay(players: players) ?? "TBD")
                             .font(.system(size: 14, weight: match.winningTeamId == t1?.id ? .heavy : .medium))
                             .foregroundColor(match.winningTeamId == t1?.id ? .green : (t1 != nil ? .white : .secondary))
                             .lineLimit(1)
@@ -1038,7 +1042,7 @@ struct TournamentMatchRowView: View {
                                 .font(.caption2)
                                 .foregroundColor(.green)
                         }
-                        Text(t2?.teamName ?? "TBD")
+                        Text(t2?.playerNamesDisplay(players: players) ?? "TBD")
                             .font(.system(size: 14, weight: match.winningTeamId == t2?.id ? .heavy : .medium))
                             .foregroundColor(match.winningTeamId == t2?.id ? .green : (t2 != nil ? .white : .secondary))
                             .lineLimit(1)
@@ -1096,8 +1100,8 @@ struct TournamentScoreSheet: View {
     var body: some View {
         let t1 = tournament.teams.first(where: { $0.id == match.team1Id })
         let t2 = tournament.teams.first(where: { $0.id == match.team2Id })
-        let t1Name = t1?.teamName ?? "Team 1"
-        let t2Name = t2?.teamName ?? "Team 2"
+        let t1Name = t1?.playerNamesDisplay(players: dataManager.players) ?? (t1?.teamName ?? "Team 1")
+        let t2Name = t2?.playerNamesDisplay(players: dataManager.players) ?? (t2?.teamName ?? "Team 2")
         let winnerName: String? = team1Score > team2Score ? t1Name : (team2Score > team1Score ? t2Name : nil)
         
         NavigationView {
@@ -1305,6 +1309,7 @@ struct RuleBulletPoint: View {
 struct PlayoffBracketChartView: View {
     let tournament: Tournament
     let division: TournamentDivisionCategory
+    var players: [Player] = []
     var onSelectMatch: ((TournamentMatch) -> Void)? = nil
     
     private let colWidth: CGFloat = 175
@@ -1472,7 +1477,7 @@ struct PlayoffBracketChartView: View {
                         .background(Color.cyan.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                     
-                    Text(t1?.teamName ?? "TBD")
+                    Text(t1?.playerNamesDisplay(players: players) ?? "TBD")
                         .font(.system(size: 11, weight: winner1 ? .bold : .regular))
                         .foregroundColor(winner1 ? .green : (t1 != nil ? .white : .secondary))
                         .lineLimit(1)
@@ -1495,7 +1500,7 @@ struct PlayoffBracketChartView: View {
                         .background(Color.cyan.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                     
-                    Text(t2?.teamName ?? "TBD")
+                    Text(t2?.playerNamesDisplay(players: players) ?? "TBD")
                         .font(.system(size: 11, weight: winner2 ? .bold : .regular))
                         .foregroundColor(winner2 ? .green : (t2 != nil ? .white : .secondary))
                         .lineLimit(1)
@@ -1603,6 +1608,7 @@ struct BracketConnectorLines: Shape {
 struct PlayoffCleanMatchCardView: View {
     let match: TournamentMatch
     let teams: [TournamentTeam]
+    var players: [Player] = []
     var onScore: (() -> Void)? = nil
     
     var body: some View {
@@ -1645,7 +1651,7 @@ struct PlayoffCleanMatchCardView: View {
                                 .foregroundColor(.white.opacity(0.45))
                                 .frame(width: 20, alignment: .leading)
                             
-                            Text(t1?.teamName ?? "TBD")
+                            Text(t1?.playerNamesDisplay(players: players) ?? "TBD")
                                 .font(.system(size: 15, weight: winner1 ? .heavy : .medium))
                                 .foregroundColor(winner1 ? .white : (t1 != nil ? .white.opacity(0.85) : .secondary))
                             
@@ -1667,7 +1673,7 @@ struct PlayoffCleanMatchCardView: View {
                                 .foregroundColor(.white.opacity(0.45))
                                 .frame(width: 20, alignment: .leading)
                             
-                            Text(t2?.teamName ?? "TBD")
+                            Text(t2?.playerNamesDisplay(players: players) ?? "TBD")
                                 .font(.system(size: 15, weight: winner2 ? .heavy : .medium))
                                 .foregroundColor(winner2 ? .white : (t2 != nil ? .white.opacity(0.85) : .secondary))
                             
