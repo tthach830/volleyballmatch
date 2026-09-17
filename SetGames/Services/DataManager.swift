@@ -2378,15 +2378,11 @@ public class DataManager: ObservableObject {
         let t = tournaments[tIdx]
         let poolAStandings = t.poolStandings(for: division, poolName: "Pool A")
         let poolBStandings = t.poolStandings(for: division, poolName: "Pool B")
+        let totalTeams = poolAStandings.count + poolBStandings.count
         
-        guard poolAStandings.count >= 2 && poolBStandings.count >= 2 else {
-            return (false, "Both pools need at least 2 teams with standings to create playoffs.")
+        guard totalTeams >= 4 else {
+            return (false, "Need at least 4 teams with standings to create playoffs.")
         }
-        
-        let a1 = poolAStandings[0].team
-        let a2 = poolAStandings[1].team
-        let b1 = poolBStandings[0].team
-        let b2 = poolBStandings[1].team
         
         // Remove existing playoff matches
         tournaments[tIdx].matches.removeAll { $0.division == division && $0.stage != "pool" }
@@ -2397,70 +2393,218 @@ public class DataManager: ObservableObject {
         let semi1Id = UUID()
         let semi2Id = UUID()
         
-        // Semifinal 1: Pool A #1 vs Pool B #2 -> Winner to Final Slot 1
-        let semi1 = TournamentMatch(
-            id: semi1Id,
-            roundNumber: 1,
-            matchNumber: 1,
-            division: division,
-            courtNumber: courts[0],
-            team1Id: a1.id,
-            team2Id: b2.id,
-            stage: "semifinal",
-            bracketRound: 1,
-            nextMatchId: finalId,
-            nextMatchSlot: 1
-        )
+        var newMatches: [TournamentMatch] = []
+        var matchNumber = (tournaments[tIdx].matches.filter { $0.division == division }.map { $0.matchNumber }.max() ?? 0) + 1
         
-        // Semifinal 2: Pool B #1 vs Pool A #2 -> Winner to Final Slot 2
-        let semi2 = TournamentMatch(
-            id: semi2Id,
-            roundNumber: 1,
-            matchNumber: 2,
-            division: division,
-            courtNumber: courts[courts.count > 1 ? 1 : 0],
-            team1Id: b1.id,
-            team2Id: a2.id,
-            stage: "semifinal",
-            bracketRound: 1,
-            nextMatchId: finalId,
-            nextMatchSlot: 2
-        )
+        // Every team goes to playoff!
+        // If either pool has > 2 teams (6 or 8 teams total), generate single-elimination Quarterfinals
+        let hasQuarterfinals = poolAStandings.count > 2 || poolBStandings.count > 2
+        
+        if hasQuarterfinals {
+            // QUARTERFINALS (Single Elimination)
+            // Cross-pool pairings:
+            // Match 1: A1 vs B4 (or bye if no B4) -> Winner to Semi 1 Slot 1
+            // Match 2: B2 vs A3 (or bye if no A3) -> Winner to Semi 1 Slot 2
+            // Match 3: B1 vs A4 (or bye if no A4) -> Winner to Semi 2 Slot 1
+            // Match 4: A2 vs B3 (or bye if no B3) -> Winner to Semi 2 Slot 2
+            let a1 = poolAStandings.indices.contains(0) ? poolAStandings[0].team : nil
+            let a2 = poolAStandings.indices.contains(1) ? poolAStandings[1].team : nil
+            let a3 = poolAStandings.indices.contains(2) ? poolAStandings[2].team : nil
+            let a4 = poolAStandings.indices.contains(3) ? poolAStandings[3].team : nil
+            
+            let b1 = poolBStandings.indices.contains(0) ? poolBStandings[0].team : nil
+            let b2 = poolBStandings.indices.contains(1) ? poolBStandings[1].team : nil
+            let b3 = poolBStandings.indices.contains(2) ? poolBStandings[2].team : nil
+            let b4 = poolBStandings.indices.contains(3) ? poolBStandings[3].team : nil
+            
+            var semi1Slot1TeamId: UUID? = nil
+            var semi1Slot2TeamId: UUID? = nil
+            var semi2Slot1TeamId: UUID? = nil
+            var semi2Slot2TeamId: UUID? = nil
+            
+            // QF 1: A1 vs B4
+            if let a1 = a1, let b4 = b4 {
+                newMatches.append(TournamentMatch(
+                    id: UUID(),
+                    roundNumber: 2,
+                    matchNumber: matchNumber,
+                    division: division,
+                    courtNumber: courts[0],
+                    team1Id: a1.id,
+                    team2Id: b4.id,
+                    stage: "quarterfinal",
+                    bracketRound: 1,
+                    nextMatchId: semi1Id,
+                    nextMatchSlot: 1
+                ))
+                matchNumber += 1
+            } else if let a1 = a1 {
+                semi1Slot1TeamId = a1.id
+            }
+            
+            // QF 2: B2 vs A3
+            if let b2 = b2, let a3 = a3 {
+                newMatches.append(TournamentMatch(
+                    id: UUID(),
+                    roundNumber: 2,
+                    matchNumber: matchNumber,
+                    division: division,
+                    courtNumber: courts[courts.count > 1 ? 1 : 0],
+                    team1Id: b2.id,
+                    team2Id: a3.id,
+                    stage: "quarterfinal",
+                    bracketRound: 1,
+                    nextMatchId: semi1Id,
+                    nextMatchSlot: 2
+                ))
+                matchNumber += 1
+            } else if let b2 = b2 {
+                semi1Slot2TeamId = b2.id
+            }
+            
+            // QF 3: B1 vs A4
+            if let b1 = b1, let a4 = a4 {
+                newMatches.append(TournamentMatch(
+                    id: UUID(),
+                    roundNumber: 2,
+                    matchNumber: matchNumber,
+                    division: division,
+                    courtNumber: courts[0],
+                    team1Id: b1.id,
+                    team2Id: a4.id,
+                    stage: "quarterfinal",
+                    bracketRound: 1,
+                    nextMatchId: semi2Id,
+                    nextMatchSlot: 1
+                ))
+                matchNumber += 1
+            } else if let b1 = b1 {
+                semi2Slot1TeamId = b1.id
+            }
+            
+            // QF 4: A2 vs B3
+            if let a2 = a2, let b3 = b3 {
+                newMatches.append(TournamentMatch(
+                    id: UUID(),
+                    roundNumber: 2,
+                    matchNumber: matchNumber,
+                    division: division,
+                    courtNumber: courts[courts.count > 1 ? 1 : 0],
+                    team1Id: a2.id,
+                    team2Id: b3.id,
+                    stage: "quarterfinal",
+                    bracketRound: 1,
+                    nextMatchId: semi2Id,
+                    nextMatchSlot: 2
+                ))
+                matchNumber += 1
+            } else if let a2 = a2 {
+                semi2Slot2TeamId = a2.id
+            }
+            
+            // SEMIFINALS
+            newMatches.append(TournamentMatch(
+                id: semi1Id,
+                roundNumber: 3,
+                matchNumber: matchNumber,
+                division: division,
+                courtNumber: courts[0],
+                team1Id: semi1Slot1TeamId,
+                team2Id: semi1Slot2TeamId,
+                stage: "semifinal",
+                bracketRound: 2,
+                nextMatchId: finalId,
+                nextMatchSlot: 1
+            ))
+            matchNumber += 1
+            
+            newMatches.append(TournamentMatch(
+                id: semi2Id,
+                roundNumber: 3,
+                matchNumber: matchNumber,
+                division: division,
+                courtNumber: courts[courts.count > 1 ? 1 : 0],
+                team1Id: semi2Slot1TeamId,
+                team2Id: semi2Slot2TeamId,
+                stage: "semifinal",
+                bracketRound: 2,
+                nextMatchId: finalId,
+                nextMatchSlot: 2
+            ))
+            matchNumber += 1
+        } else {
+            // 4 Teams: All 4 teams advance directly to Semifinals (A1 vs B2, B1 vs A2)
+            let a1 = poolAStandings.indices.contains(0) ? poolAStandings[0].team : nil
+            let a2 = poolAStandings.indices.contains(1) ? poolAStandings[1].team : nil
+            let b1 = poolBStandings.indices.contains(0) ? poolBStandings[0].team : nil
+            let b2 = poolBStandings.indices.contains(1) ? poolBStandings[1].team : nil
+            
+            newMatches.append(TournamentMatch(
+                id: semi1Id,
+                roundNumber: 2,
+                matchNumber: matchNumber,
+                division: division,
+                courtNumber: courts[0],
+                team1Id: a1?.id,
+                team2Id: b2?.id,
+                stage: "semifinal",
+                bracketRound: 1,
+                nextMatchId: finalId,
+                nextMatchSlot: 1
+            ))
+            matchNumber += 1
+            
+            newMatches.append(TournamentMatch(
+                id: semi2Id,
+                roundNumber: 2,
+                matchNumber: matchNumber,
+                division: division,
+                courtNumber: courts[courts.count > 1 ? 1 : 0],
+                team1Id: b1?.id,
+                team2Id: a2?.id,
+                stage: "semifinal",
+                bracketRound: 1,
+                nextMatchId: finalId,
+                nextMatchSlot: 2
+            ))
+            matchNumber += 1
+        }
         
         // Championship Final: Winner Semi 1 vs Winner Semi 2
-        let finalMatch = TournamentMatch(
+        newMatches.append(TournamentMatch(
             id: finalId,
-            roundNumber: 2,
-            matchNumber: 3,
+            roundNumber: hasQuarterfinals ? 4 : 3,
+            matchNumber: matchNumber,
             division: division,
             courtNumber: courts[0],
             stage: "final",
-            bracketRound: 2
-        )
+            bracketRound: hasQuarterfinals ? 3 : 2
+        ))
+        matchNumber += 1
         
-        // 3rd Place Match: Loser Semi 1 vs Loser Semi 2
-        let bronzeMatch = TournamentMatch(
+        // 3rd Place Consolation: Loser Semi 1 vs Loser Semi 2
+        newMatches.append(TournamentMatch(
             id: thirdPlaceId,
-            roundNumber: 2,
-            matchNumber: 4,
+            roundNumber: hasQuarterfinals ? 4 : 3,
+            matchNumber: matchNumber,
             division: division,
             courtNumber: courts[courts.count > 1 ? 1 : 0],
             stage: "third_place",
-            bracketRound: 2
-        )
+            bracketRound: hasQuarterfinals ? 3 : 2
+        ))
         
-        tournaments[tIdx].matches.append(contentsOf: [semi1, semi2, finalMatch, bronzeMatch])
+        tournaments[tIdx].matches.append(contentsOf: newMatches)
         
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[tIdx])
         
         postNotification(
-            title: "🏆 Playoff Bracket Live!",
-            message: "Semifinals & Finals are set for \(division.displayName)!",
+            title: "🏆 Single Elimination Playoff Live!",
+            message: "All teams have advanced to the single-elimination playoff bracket for \(division.displayName)!",
             type: .tournament
         )
         
-        return (true, "Playoff bracket generated! Semifinals are live.")
+        return (true, "Playoff bracket generated! All teams advanced to single-elimination.")
     }
     
     @discardableResult
@@ -2505,7 +2649,7 @@ public class DataManager: ObservableObject {
         }
         
         // If semifinal, also place loser into 3rd place match if present
-        if match.stage == "semifinal" {
+        if match.stage == "semifinal" || match.stage == "semi" {
             if let bronzeIdx = tournaments[tIdx].matches.firstIndex(where: { $0.division == match.division && $0.stage == "third_place" }) {
                 if tournaments[tIdx].matches[bronzeIdx].team1Id == nil {
                     tournaments[tIdx].matches[bronzeIdx].team1Id = losingTeamId

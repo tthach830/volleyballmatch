@@ -6679,7 +6679,7 @@ window.renderTournamentDetail = function() {
       <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 12px; font-weight: 900; color: #0284c7; text-transform: uppercase;">${poolName}</span>
-          <span style="font-size: 11px; font-weight: 700; color: var(--text-muted, #64748b);">Top 2 Advance</span>
+          <span style="font-size: 11px; font-weight: 800; color: #16a34a;">All Teams Advance to Playoffs</span>
         </div>
 
         <!-- Table Card -->
@@ -6697,24 +6697,21 @@ window.renderTournamentDetail = function() {
             <tbody>
               ${standings.length === 0 ? `
                 <tr><td colspan="5" style="padding: 16px; text-align: center; color: var(--text-muted, #94a3b8);">No teams seeded yet</td></tr>
-              ` : standings.map((row, idx) => {
-                const isTop2 = idx < 2;
-                return `
-                  <tr style="border-bottom: 1px solid var(--border, #f1f5f9); ${isTop2 ? 'background: rgba(22,163,74,0.03);' : ''}">
-                    <td style="padding: 8px 10px; font-weight: ${isTop2 ? '900' : '600'}; color: ${isTop2 ? '#16a34a' : 'inherit'};">
-                      ${idx + 1} ${isTop2 ? '🟢' : ''}
-                    </td>
-                    <td style="padding: 8px 10px; font-weight: ${isTop2 ? '700' : '500'}; color: var(--text-main, #0f172a);">
-                      ${row.team.teamName}
-                    </td>
-                    <td style="padding: 8px 8px; text-align: center; color: var(--text-muted, #64748b);">${row.matchesPlayed}</td>
-                    <td style="padding: 8px 8px; text-align: center; font-weight: 700; color: ${row.wins > 0 ? '#16a34a' : 'inherit'};">${row.wins}-${row.losses}</td>
-                    <td style="padding: 8px 10px; text-align: right; font-weight: 700; color: ${row.pointDifferential >= 0 ? '#16a34a' : '#dc2626'};">
-                      ${row.pointDifferential >= 0 ? `+${row.pointDifferential}` : row.pointDifferential}
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
+              ` : standings.map((row, idx) => `
+                <tr style="border-bottom: 1px solid var(--border, #f1f5f9); background: rgba(22,163,74,0.03);">
+                  <td style="padding: 8px 10px; font-weight: 900; color: #16a34a;">
+                    ${idx + 1} 🟢
+                  </td>
+                  <td style="padding: 8px 10px; font-weight: 700; color: var(--text-main, #0f172a);">
+                    ${row.team.teamName}
+                  </td>
+                  <td style="padding: 8px 8px; text-align: center; color: var(--text-muted, #64748b);">${row.matchesPlayed}</td>
+                  <td style="padding: 8px 8px; text-align: center; font-weight: 700; color: ${row.wins > 0 ? '#16a34a' : 'inherit'};">${row.wins}-${row.losses}</td>
+                  <td style="padding: 8px 10px; text-align: right; font-weight: 700; color: ${row.pointDifferential >= 0 ? '#16a34a' : '#dc2626'};">
+                    ${row.pointDifferential >= 0 ? `+${row.pointDifferential}` : row.pointDifferential}
+                  </td>
+                </tr>
+              `).join('')}
             </tbody>
           </table>
         </div>
@@ -6735,7 +6732,7 @@ window.renderTournamentDetail = function() {
             <div style="font-size: 32px; margin-bottom: 6px;">🏊</div>
             <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 15px;">Auto Pool Play Generator</div>
             <div style="font-size: 12px; color: var(--text-muted, #64748b); max-width: 360px; margin: 4px auto 12px auto; line-height: 1.4;">
-              Automatically divides registered teams (${divTeams.length}) into Pool A & Pool B based on team Elo rating and builds the round-robin schedule.
+              Automatically divides registered teams (${divTeams.length}) into Pool A & Pool B based on team Elo rating. Every team advances to the single-elimination playoff bracket!
             </div>
             <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 800; font-size: 13px;" onclick="window.generatePoolPlay('${t.id}', '${currentDiv}')" ${divTeams.length < 4 ? 'disabled' : ''}>
               ✨ Generate Pools (Snake Seeding)
@@ -6743,7 +6740,7 @@ window.renderTournamentDetail = function() {
             ${divTeams.length < 4 ? `
               <div style="font-size: 11px; color: #ea580c; margin-top: 8px;">At least 4 teams required to seed pool play.</div>
               <button type="button" class="btn btn-outline" style="font-size: 12px; padding: 6px 14px; margin-top: 10px; font-weight: 700;" onclick="window.addDemoTournamentTeams('${t.id}', '${currentDiv}')">
-                ⚡ Quick-Add 4 Demo Teams
+                ⚡ Quick-Add Demo Teams
               </button>
             ` : ''}
           </div>
@@ -6753,10 +6750,10 @@ window.renderTournamentDetail = function() {
 
           ${bracketMatches.length === 0 ? `
             <div style="text-align: center; padding: 18px; background: rgba(234,88,12,0.06); border: 1px solid rgba(234,88,12,0.2); border-radius: 14px; margin-top: 6px;">
-              <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 14px;">Ready for the Playoffs?</div>
-              <div style="font-size: 12px; color: var(--text-muted, #64748b); margin: 2px 0 10px 0;">Advance top 2 teams from Pool A and Pool B to the Semifinals!</div>
+              <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 14px;">Ready for Single Elimination Playoffs?</div>
+              <div style="font-size: 12px; color: var(--text-muted, #64748b); margin: 2px 0 10px 0;">Every team advances to the single-elimination playoff bracket seeded by pool finish!</div>
               <button type="button" class="btn btn-primary" style="padding: 8px 18px; font-weight: 800; font-size: 12px;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
-                🏆 Generate Playoff Bracket
+                🏆 Generate Single Elimination Bracket
               </button>
             </div>
           ` : ''}
@@ -6775,7 +6772,8 @@ window.renderTournamentDetail = function() {
     const bracketMatches = divMatches.filter(m => m.stage !== "pool" && !m.poolName);
     const finalMatch = bracketMatches.find(m => m.stage === "final");
     const thirdMatch = bracketMatches.find(m => m.stage === "third_place");
-    const semiMatches = bracketMatches.filter(m => m.stage === "semi");
+    const semiMatches = bracketMatches.filter(m => m.stage === "semi" || m.stage === "semifinal");
+    const quarterMatches = bracketMatches.filter(m => m.stage === "quarter" || m.stage === "quarterfinal");
     const champTeam = finalMatch?.winningTeamId ? (t.teams || []).find(tm => tm.id === finalMatch.winningTeamId) : null;
 
     bodyContainer.innerHTML = `
@@ -6785,10 +6783,10 @@ window.renderTournamentDetail = function() {
             <div style="font-size: 36px; margin-bottom: 6px;">🏆</div>
             <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 15px;">Playoff Bracket Not Yet Generated</div>
             <div style="font-size: 12px; color: var(--text-muted, #64748b); max-width: 360px; margin: 4px auto 12px auto; line-height: 1.4;">
-              Playoffs will be seeded from top 2 teams in Pool A and Pool B (A1 vs B2, B1 vs A2).
+              Complete pool play matches first. Every single team advances to the single-elimination playoff bracket!
             </div>
             <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 800; font-size: 13px;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
-              ✨ Generate Playoff Bracket
+              ✨ Generate Single Elimination Bracket
             </button>
           </div>
         ` : `
@@ -6829,6 +6827,18 @@ window.renderTournamentDetail = function() {
               </div>
               <div style="display: flex; flex-direction: column; gap: 8px;">
                 ${semiMatches.map(m => window.renderMatchCardHTML(t, m)).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Quarterfinals -->
+          ${quarterMatches.length > 0 ? `
+            <div>
+              <div style="font-size: 11px; font-weight: 900; color: var(--text-muted, #64748b); text-transform: uppercase; margin-bottom: 6px;">
+                ⚔️ Quarterfinals (Single Elimination)
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${quarterMatches.map(m => window.renderMatchCardHTML(t, m)).join('')}
               </div>
             </div>
           ` : ''}
@@ -7030,14 +7040,20 @@ window.addDemoTournamentTeams = function(tournamentId, division) {
     { name: "⚡ Sandstorm", p1: 0, p2: 1 },
     { name: "🔥 Spike Force", p1: 2, p2: 3 },
     { name: "🌊 Net Ninjas", p1: 4, p2: 5 },
-    { name: "💥 Ace Bandits", p1: 6, p2: 7 }
+    { name: "💥 Ace Bandits", p1: 6, p2: 7 },
+    { name: "🌪 Block Party", p1: 0, p2: 4 },
+    { name: "☀️ Sun Spikers", p1: 1, p2: 5 },
+    { name: "🌴 Coast Crushers", p1: 2, p2: 6 },
+    { name: "⚡ Dune Diggers", p1: 3, p2: 7 }
   ];
   
-  demoConfigs.forEach((item, idx) => {
-    const p1 = (state.players && state.players[item.p1]) ? state.players[item.p1].id : `demo-p-${idx * 2 + 1}`;
-    const p2 = (state.players && state.players[item.p2]) ? state.players[item.p2].id : `demo-p-${idx * 2 + 2}`;
+  const configsToAdd = currentDivTeams.length === 0 ? demoConfigs : demoConfigs.slice(currentDivTeams.length % demoConfigs.length, (currentDivTeams.length % demoConfigs.length) + 4);
+  
+  configsToAdd.forEach((item, idx) => {
+    const p1 = (state.players && state.players[item.p1]) ? state.players[item.p1].id : `demo-p-${Date.now()}-${idx * 2 + 1}`;
+    const p2 = (state.players && state.players[item.p2]) ? state.players[item.p2].id : `demo-p-${Date.now()}-${idx * 2 + 2}`;
     t.teams.push({
-      id: "demo-team-" + Date.now() + "-" + idx,
+      id: "demo-team-" + Date.now() + "-" + (currentDivTeams.length + idx),
       teamName: item.name,
       player1Id: p1,
       player2Id: p2,
@@ -7048,7 +7064,7 @@ window.addDemoTournamentTeams = function(tournamentId, division) {
 
   state.saveLocal();
   saveTournamentToFirestore(t);
-  showToast(`⚡ Added 4 demo teams for ${division}!`);
+  showToast(`⚡ Added ${configsToAdd.length} demo teams for ${division}!`);
   window.renderTournamentDetail();
   window.renderTournamentsList();
 };
@@ -7162,16 +7178,12 @@ window.generatePlayoffBracket = function(tournamentId, division) {
 
   const standingsA = window.calculatePoolStandings(poolATeams, divPoolAMatches);
   const standingsB = window.calculatePoolStandings(poolBTeams, divPoolBMatches);
+  const totalTeams = standingsA.length + standingsB.length;
 
-  if (standingsA.length < 2 || standingsB.length < 2) {
-    showToast("Need at least 2 teams in Pool A and Pool B to generate playoffs!");
+  if (totalTeams < 4) {
+    showToast("Need at least 4 teams with standings to create playoffs!");
     return;
   }
-
-  const a1 = standingsA[0].team;
-  const a2 = standingsA[1].team;
-  const b1 = standingsB[0].team;
-  const b2 = standingsB[1].team;
 
   // Clear previous bracket matches for this division
   t.matches = (t.matches || []).filter(m => !(m.division === division && m.stage !== "pool" && !m.poolName));
@@ -7179,50 +7191,217 @@ window.generatePlayoffBracket = function(tournamentId, division) {
   const courts = (t.courts && t.courts.length > 0) ? t.courts : ["Court #1", "Court #2"];
   const finalMatchId = crypto.randomUUID ? crypto.randomUUID() : 'final_' + Date.now();
   const thirdMatchId = crypto.randomUUID ? crypto.randomUUID() : 'third_' + Date.now();
+  const semi1Id = crypto.randomUUID ? crypto.randomUUID() : 'semi1_' + Date.now();
+  const semi2Id = crypto.randomUUID ? crypto.randomUUID() : 'semi2_' + Date.now();
 
-  const semi1 = {
-    id: crypto.randomUUID ? crypto.randomUUID() : 'semi1_' + Date.now(),
-    division,
-    stage: "semi",
-    roundNumber: 4,
-    bracketRound: 1,
-    matchNumber: 1,
-    courtNumber: courts[0],
-    team1Id: a1.id,
-    team2Id: b2.id,
-    team1Score: null,
-    team2Score: null,
-    winningTeamId: null,
-    status: "scheduled",
-    nextMatchId: finalMatchId,
-    nextMatchSlot: 1
-  };
+  const existingMatches = (t.matches || []).filter(m => m.division === division);
+  let matchNumber = existingMatches.reduce((max, m) => Math.max(max, m.matchNumber || 0), 0) + 1;
 
-  const semi2 = {
-    id: crypto.randomUUID ? crypto.randomUUID() : 'semi2_' + Date.now(),
-    division,
-    stage: "semi",
-    roundNumber: 4,
-    bracketRound: 1,
-    matchNumber: 2,
-    courtNumber: courts.length > 1 ? courts[1] : courts[0],
-    team1Id: b1.id,
-    team2Id: a2.id,
-    team1Score: null,
-    team2Score: null,
-    winningTeamId: null,
-    status: "scheduled",
-    nextMatchId: finalMatchId,
-    nextMatchSlot: 2
-  };
+  const hasQuarterfinals = standingsA.length > 2 || standingsB.length > 2;
+  const newMatches = [];
 
-  const finalMatch = {
+  if (hasQuarterfinals) {
+    // QUARTERFINALS (Single Elimination)
+    // Cross-pool pairings:
+    // Match 1: A1 vs B4 (or bye if no B4) -> Winner to Semi 1 Slot 1
+    // Match 2: B2 vs A3 (or bye if no A3) -> Winner to Semi 1 Slot 2
+    // Match 3: B1 vs A4 (or bye if no A4) -> Winner to Semi 2 Slot 1
+    // Match 4: A2 vs B3 (or bye if no B3) -> Winner to Semi 2 Slot 2
+    const a1 = standingsA[0]?.team || null;
+    const a2 = standingsA[1]?.team || null;
+    const a3 = standingsA[2]?.team || null;
+    const a4 = standingsA[3]?.team || null;
+
+    const b1 = standingsB[0]?.team || null;
+    const b2 = standingsB[1]?.team || null;
+    const b3 = standingsB[2]?.team || null;
+    const b4 = standingsB[3]?.team || null;
+
+    let semi1Slot1TeamId = null;
+    let semi1Slot2TeamId = null;
+    let semi2Slot1TeamId = null;
+    let semi2Slot2TeamId = null;
+
+    // QF 1: A1 vs B4
+    if (a1 && b4) {
+      newMatches.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : 'qf1_' + Date.now(),
+        division,
+        stage: "quarter",
+        roundNumber: 2,
+        bracketRound: 1,
+        matchNumber: matchNumber++,
+        courtNumber: courts[0],
+        team1Id: a1.id,
+        team2Id: b4.id,
+        team1Score: null,
+        team2Score: null,
+        winningTeamId: null,
+        status: "scheduled",
+        nextMatchId: semi1Id,
+        nextMatchSlot: 1
+      });
+    } else if (a1) {
+      semi1Slot1TeamId = a1.id;
+    }
+
+    // QF 2: B2 vs A3
+    if (b2 && a3) {
+      newMatches.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : 'qf2_' + Date.now(),
+        division,
+        stage: "quarter",
+        roundNumber: 2,
+        bracketRound: 1,
+        matchNumber: matchNumber++,
+        courtNumber: courts.length > 1 ? courts[1] : courts[0],
+        team1Id: b2.id,
+        team2Id: a3.id,
+        team1Score: null,
+        team2Score: null,
+        winningTeamId: null,
+        status: "scheduled",
+        nextMatchId: semi1Id,
+        nextMatchSlot: 2
+      });
+    } else if (b2) {
+      semi1Slot2TeamId = b2.id;
+    }
+
+    // QF 3: B1 vs A4
+    if (b1 && a4) {
+      newMatches.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : 'qf3_' + Date.now(),
+        division,
+        stage: "quarter",
+        roundNumber: 2,
+        bracketRound: 1,
+        matchNumber: matchNumber++,
+        courtNumber: courts[0],
+        team1Id: b1.id,
+        team2Id: a4.id,
+        team1Score: null,
+        team2Score: null,
+        winningTeamId: null,
+        status: "scheduled",
+        nextMatchId: semi2Id,
+        nextMatchSlot: 1
+      });
+    } else if (b1) {
+      semi2Slot1TeamId = b1.id;
+    }
+
+    // QF 4: A2 vs B3
+    if (a2 && b3) {
+      newMatches.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : 'qf4_' + Date.now(),
+        division,
+        stage: "quarter",
+        roundNumber: 2,
+        bracketRound: 1,
+        matchNumber: matchNumber++,
+        courtNumber: courts.length > 1 ? courts[1] : courts[0],
+        team1Id: a2.id,
+        team2Id: b3.id,
+        team1Score: null,
+        team2Score: null,
+        winningTeamId: null,
+        status: "scheduled",
+        nextMatchId: semi2Id,
+        nextMatchSlot: 2
+      });
+    } else if (a2) {
+      semi2Slot2TeamId = a2.id;
+    }
+
+    // SEMIFINALS
+    newMatches.push({
+      id: semi1Id,
+      division,
+      stage: "semi",
+      roundNumber: 3,
+      bracketRound: 2,
+      matchNumber: matchNumber++,
+      courtNumber: courts[0],
+      team1Id: semi1Slot1TeamId,
+      team2Id: semi1Slot2TeamId,
+      team1Score: null,
+      team2Score: null,
+      winningTeamId: null,
+      status: "scheduled",
+      nextMatchId: finalMatchId,
+      nextMatchSlot: 1
+    });
+
+    newMatches.push({
+      id: semi2Id,
+      division,
+      stage: "semi",
+      roundNumber: 3,
+      bracketRound: 2,
+      matchNumber: matchNumber++,
+      courtNumber: courts.length > 1 ? courts[1] : courts[0],
+      team1Id: semi2Slot1TeamId,
+      team2Id: semi2Slot2TeamId,
+      team1Score: null,
+      team2Score: null,
+      winningTeamId: null,
+      status: "scheduled",
+      nextMatchId: finalMatchId,
+      nextMatchSlot: 2
+    });
+  } else {
+    // 4 Teams: All 4 teams advance directly to Semifinals (A1 vs B2, B1 vs A2)
+    const a1 = standingsA[0]?.team;
+    const a2 = standingsA[1]?.team;
+    const b1 = standingsB[0]?.team;
+    const b2 = standingsB[1]?.team;
+
+    newMatches.push({
+      id: semi1Id,
+      division,
+      stage: "semi",
+      roundNumber: 2,
+      bracketRound: 1,
+      matchNumber: matchNumber++,
+      courtNumber: courts[0],
+      team1Id: a1 ? a1.id : null,
+      team2Id: b2 ? b2.id : null,
+      team1Score: null,
+      team2Score: null,
+      winningTeamId: null,
+      status: "scheduled",
+      nextMatchId: finalMatchId,
+      nextMatchSlot: 1
+    });
+
+    newMatches.push({
+      id: semi2Id,
+      division,
+      stage: "semi",
+      roundNumber: 2,
+      bracketRound: 1,
+      matchNumber: matchNumber++,
+      courtNumber: courts.length > 1 ? courts[1] : courts[0],
+      team1Id: b1 ? b1.id : null,
+      team2Id: a2 ? a2.id : null,
+      team1Score: null,
+      team2Score: null,
+      winningTeamId: null,
+      status: "scheduled",
+      nextMatchId: finalMatchId,
+      nextMatchSlot: 2
+    });
+  }
+
+  // Championship Final
+  newMatches.push({
     id: finalMatchId,
     division,
     stage: "final",
-    roundNumber: 5,
-    bracketRound: 2,
-    matchNumber: 1,
+    roundNumber: hasQuarterfinals ? 4 : 3,
+    bracketRound: hasQuarterfinals ? 3 : 2,
+    matchNumber: matchNumber++,
     courtNumber: courts[0],
     team1Id: null,
     team2Id: null,
@@ -7230,15 +7409,16 @@ window.generatePlayoffBracket = function(tournamentId, division) {
     team2Score: null,
     winningTeamId: null,
     status: "scheduled"
-  };
+  });
 
-  const thirdMatch = {
+  // 3rd Place Consolation
+  newMatches.push({
     id: thirdMatchId,
     division,
     stage: "third_place",
-    roundNumber: 5,
-    bracketRound: 2,
-    matchNumber: 2,
+    roundNumber: hasQuarterfinals ? 4 : 3,
+    bracketRound: hasQuarterfinals ? 3 : 2,
+    matchNumber: matchNumber++,
     courtNumber: courts.length > 1 ? courts[1] : courts[0],
     team1Id: null,
     team2Id: null,
@@ -7246,14 +7426,16 @@ window.generatePlayoffBracket = function(tournamentId, division) {
     team2Score: null,
     winningTeamId: null,
     status: "scheduled"
-  };
+  });
 
-  t.matches = (t.matches || []).concat([semi1, semi2, finalMatch, thirdMatch]);
+  t.matches = (t.matches || []).concat(newMatches);
 
   state.saveLocal();
   saveTournamentToFirestore(t);
   window.setTournamentSubTab("bracket");
-  showToast("🏆 Playoff Bracket created! Semifinals seeded (A1 vs B2, B1 vs A2).");
+  showToast(hasQuarterfinals 
+    ? "🏆 Playoff Bracket created! Quarterfinals seeded (all 8 teams advanced to single elimination)." 
+    : "🏆 Playoff Bracket created! Semifinals seeded (all teams advanced to single elimination).");
   window.renderTournamentDetail();
 };
 
@@ -7295,7 +7477,7 @@ window.submitTournamentMatchScore = function(tournamentId, matchId, team1Score, 
   }
 
   // If this was a semifinal, advance loser to 3rd place match
-  if (match.stage === "semi") {
+  if (match.stage === "semi" || match.stage === "semifinal") {
     const thirdMatch = (t.matches || []).find(m => m.division === match.division && m.stage === "third_place");
     if (thirdMatch) {
       if (match.nextMatchSlot === 1) {

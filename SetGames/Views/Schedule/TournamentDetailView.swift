@@ -373,14 +373,15 @@ public struct TournamentDetailView: View {
                 // Advance to Playoff Bracket Button
                 let bracketMatches = t.bracketMatches(for: division)
                 if bracketMatches.isEmpty {
-                    VStack(spacing: 10) {
-                        Text("Ready for the Playoffs?")
+                    VStack(spacing: 8) {
+                        Text("Ready for Single Elimination Playoffs?")
                             .font(.subheadline)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
-                        Text("Advance top 2 from each pool to Semifinals (A1 vs B2, B1 vs A2).")
+                        Text("Every team advances to the single-elimination playoff bracket seeded by pool finish!")
                             .font(.caption2)
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                         
                         Button {
                             dataManager.generatePlayoffBracket(tournamentId: t.id, division: division)
@@ -388,7 +389,7 @@ public struct TournamentDetailView: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "trophy.fill")
-                                Text("Generate Playoff Bracket")
+                                Text("Generate Single Elimination Bracket")
                                     .fontWeight(.bold)
                             }
                             .font(.footnote)
@@ -428,9 +429,9 @@ public struct TournamentDetailView: View {
                     .font(.system(size: 12, weight: .black))
                     .foregroundColor(.cyan)
                 Spacer()
-                Text("Top 2 Advance")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                Text("All Teams Advance to Playoffs")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.green)
             }
             .padding(.horizontal)
             
@@ -641,18 +642,38 @@ public struct TournamentDetailView: View {
                 }
                 
                 // Semifinals
-                let semis = bracketMatches.filter { $0.stage == "semi" }
+                let semis = bracketMatches.filter { $0.stage == "semi" || $0.stage == "semifinal" }
                 if !semis.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("⚡️ SEMIFINALS")
+                            Text("⚡️ SEMIFINALS (SINGLE ELIMINATION)")
                                 .font(.system(size: 11, weight: .black))
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(.white.opacity(0.85))
                             Spacer()
                         }
                         .padding(.horizontal)
                         
                         ForEach(semis) { m in
+                            TournamentMatchRowView(match: m, teams: t.teams) {
+                                scoringMatch = m
+                            }
+                        }
+                    }
+                }
+                
+                // Quarterfinals
+                let quarters = bracketMatches.filter { $0.stage == "quarter" || $0.stage == "quarterfinal" }
+                if !quarters.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("⚔️ QUARTERFINALS (SINGLE ELIMINATION)")
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundColor(.white.opacity(0.85))
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        
+                        ForEach(quarters) { m in
                             TournamentMatchRowView(match: m, teams: t.teams) {
                                 scoringMatch = m
                             }
