@@ -723,11 +723,15 @@ class AppState {
     let savedPlayers = null;
     let savedGames = null;
     let savedSlots = null;
+    let savedTourns = null;
+    let savedNotifs = null;
     let savedUserId = null;
     try {
       savedPlayers = JSON.parse(localStorage.getItem("setgames_players"));
       savedGames = JSON.parse(localStorage.getItem("setgames_games"));
       savedSlots = JSON.parse(localStorage.getItem("setgames_slots"));
+      savedTourns = JSON.parse(localStorage.getItem("setgames_tournaments"));
+      savedNotifs = JSON.parse(localStorage.getItem("setgames_notifications"));
       savedUserId = localStorage.getItem("setgames_current_user_id");
     } catch (e) {
       console.warn("Storage read warning:", e);
@@ -736,12 +740,17 @@ class AppState {
     this.players = (savedPlayers && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
     this.games = Array.isArray(savedGames) ? savedGames.filter(isUpcomingGame) : [];
     this.availabilitySlots = deduplicateSlots(savedSlots || []);
-    try {
-      const parsedTourns = JSON.parse(localStorage.getItem("setgames_tournaments")) || [];
-      this.tournaments = deduplicateTournaments(parsedTourns);
-    } catch (e) {
-      this.tournaments = [];
-    }
+    this.tournaments = deduplicateTournaments(Array.isArray(savedTourns) ? savedTourns : []);
+    this.notifications = Array.isArray(savedNotifs) ? savedNotifs : [
+      {
+        id: "notif-welcome",
+        title: "🏐 Welcome to Set Games!",
+        message: "You'll receive match alerts, partner notifications, and score updates here.",
+        type: "Match Confirmed",
+        timestamp: new Date().toISOString(),
+        isRead: false
+      }
+    ];
     this.pickupQueue = [];
     this.selectedLadderTier = "All";
     this.selectedLadderTimeframe = "month";
@@ -765,6 +774,7 @@ class AppState {
       localStorage.setItem("setgames_games", JSON.stringify(this.games));
       localStorage.setItem("setgames_slots", JSON.stringify(this.availabilitySlots));
       localStorage.setItem("setgames_tournaments", JSON.stringify(this.tournaments));
+      localStorage.setItem("setgames_notifications", JSON.stringify(this.notifications || []));
       if (this.isDemoModeEnabled) {
         localStorage.setItem("setgames_demo_mode", "true");
       } else {
@@ -2688,11 +2698,58 @@ window.handleSaveEditProfile = (e) => {
   showToast("Profile updated & synced successfully!");
 };
 
-// PUSH NOTIFICATION HELPERS
+// PUSH & IN-APP NOTIFICATION HELPERS
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatTimeAgo(isoString) {
+  if (!isoString) return "Just now";
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function getNotificationIcon(type) {
+  switch (type) {
+    case "Match Confirmed": return "🏐";
+    case "Match Update": return "🔔";
+    case "Match Chat": return "💬";
+    case "Score Logged": return "🏆";
+    case "Queue Update": return "⚡️";
+    case "Ladder Update": return "📈";
+    case "Popular Kids Badge": return "👑";
+    case "Tournament": return "🥇";
+    default: return "🔔";
+  }
+}
+
 export function updatePushStatusBadge() {
   const badge = document.getElementById("push-status-badge");
   const btn = document.getElementById("btn-enable-push");
   if (!badge) return;
+
+  if (window.AndroidBridge) {
+    badge.textContent = "Android Push: Active 🔔";
+    badge.style.background = "#dcfce7";
+    badge.style.color = "#15803d";
+    if (btn) {
+      btn.textContent = "Android Alerts Active ✅";
+      btn.classList.replace("btn-primary", "btn-outline");
+    }
+    return;
+  }
 
   if (!("Notification" in window)) {
     badge.textContent = "Push: Not Supported";
@@ -2722,9 +2779,18 @@ export function updatePushStatusBadge() {
   }
 }
 
-export async function triggerWebPushNotification(title, body) {
-  if (!("Notification" in window)) return;
-  if (Notification.permission === "granted") {
+export async function triggerWebPushNotification(title, body, options = {}) {
+  // 1. Android Native Push Bridge
+  if (window.AndroidBridge && typeof window.AndroidBridge.postNotification === "function") {
+    try {
+      window.AndroidBridge.postNotification(title, body);
+    } catch (e) {
+      console.warn("AndroidBridge notification error:", e);
+    }
+  }
+
+  // 2. Web Standard Notifications API
+  if ("Notification" in window && Notification.permission === "granted") {
     try {
       if ("serviceWorker" in navigator) {
         const reg = await navigator.serviceWorker.getRegistration();
@@ -2736,17 +2802,149 @@ export async function triggerWebPushNotification(title, body) {
             vibrate: [200, 100, 200],
             tag: "setmatch-alert"
           });
-          return;
+        } else {
+          new Notification(title, { body, icon: "assets/slug.png" });
         }
+      } else {
+        new Notification(title, { body, icon: "assets/slug.png" });
       }
-      new Notification(title, { body, icon: "assets/slug.png" });
     } catch (e) {
-      console.warn("Notification error:", e);
+      console.warn("Web Notification error:", e);
     }
+  }
+
+  // 3. In-App Notification Center History
+  if (!options.skipHistory) {
+    window.addAppNotification({
+      title,
+      message: body,
+      type: options.type || "Match Confirmed",
+      relatedGameId: options.relatedGameId || null
+    }, false);
   }
 }
 
+window.addAppNotification = function(notifItem, shouldTriggerPush = true) {
+  if (!state.notifications) state.notifications = [];
+  const newItem = {
+    id: notifItem.id || ("notif-" + Date.now() + "-" + Math.random().toString(36).substr(2, 4)),
+    title: notifItem.title || "Notification",
+    message: notifItem.message || "",
+    type: notifItem.type || "Match Confirmed",
+    timestamp: notifItem.timestamp || new Date().toISOString(),
+    isRead: false,
+    relatedGameId: notifItem.relatedGameId || null
+  };
+
+  state.notifications.unshift(newItem);
+  if (state.notifications.length > 50) {
+    state.notifications = state.notifications.slice(0, 50);
+  }
+  state.saveLocal();
+  window.updateNotificationBadge();
+  if (document.getElementById("modal-notifications")?.classList.contains("active")) {
+    window.renderNotificationsList();
+  }
+
+  if (shouldTriggerPush) {
+    triggerWebPushNotification(newItem.title, newItem.message, { skipHistory: true });
+  }
+};
+
+window.updateNotificationBadge = function() {
+  const dot = document.getElementById("notifications-badge-dot");
+  if (!dot) return;
+  const notifs = state.notifications || [];
+  const unreadCount = notifs.filter(n => !n.isRead).length;
+  dot.style.display = unreadCount > 0 ? "block" : "none";
+};
+
+window.renderNotificationsList = function() {
+  const container = document.getElementById("notifications-modal-list");
+  if (!container) return;
+
+  const notifs = state.notifications || [];
+  if (notifs.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 36px 16px; color: var(--text-muted, #64748b);">
+        <div style="font-size: 36px; margin-bottom: 8px;">🔕</div>
+        <div style="font-weight: 700; font-size: 15px; color: var(--text-primary, #0f172a); margin-bottom: 4px;">No notifications yet</div>
+        <div style="font-size: 13px; line-height: 1.4;">You will get notified whenever an auto-match is confirmed or match scores are logged!</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = notifs.map(n => {
+    const isUnread = !n.isRead;
+    const icon = getNotificationIcon(n.type);
+    const timeAgo = formatTimeAgo(n.timestamp || n.date);
+    return `
+      <div class="notification-card" style="display: flex; gap: 12px; padding: 12px; border-radius: 12px; background: ${isUnread ? 'rgba(234, 88, 12, 0.08)' : 'var(--bg-subtle, #f8fafc)'}; border: 1px solid ${isUnread ? 'rgba(234, 88, 12, 0.3)' : 'var(--border-color, #e2e8f0)'}; align-items: flex-start; transition: all 0.2s;">
+        <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(234, 88, 12, 0.15); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
+          ${icon}
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 3px;">
+            <div style="font-weight: ${isUnread ? '700' : '600'}; font-size: 14px; color: ${isUnread ? '#ea580c' : 'var(--text-primary, #0f172a)'}; line-height: 1.3;">
+              ${escapeHtml(n.title)}
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted, #64748b); flex-shrink: 0; font-weight: 500;">
+              ${timeAgo}
+            </div>
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary, #334155); line-height: 1.4;">
+            ${escapeHtml(n.message)}
+          </div>
+        </div>
+        ${isUnread ? '<div style="width: 8px; height: 8px; border-radius: 50%; background: #ea580c; flex-shrink: 0; margin-top: 4px;"></div>' : ''}
+      </div>
+    `;
+  }).join("");
+};
+
+window.openNotificationsModal = function() {
+  const modal = document.getElementById("modal-notifications");
+  if (!modal) return;
+  modal.classList.add("active");
+  window.renderNotificationsList();
+
+  if (window.AndroidBridge && typeof window.AndroidBridge.requestPermission === "function") {
+    try {
+      window.AndroidBridge.requestPermission();
+    } catch (e) {}
+  }
+};
+
+window.closeNotificationsModal = function() {
+  document.getElementById("modal-notifications")?.classList.remove("active");
+};
+
+window.markAllNotificationsRead = function() {
+  if (state.notifications) {
+    state.notifications.forEach(n => n.isRead = true);
+    state.saveLocal();
+  }
+  window.renderNotificationsList();
+  window.updateNotificationBadge();
+  showToast("All notifications marked as read ✓");
+};
+
 window.enablePushNotifications = async () => {
+  if (window.AndroidBridge && typeof window.AndroidBridge.requestPermission === "function") {
+    try {
+      window.AndroidBridge.requestPermission();
+      showToast("Requesting Android notification permission... 🔔");
+      setTimeout(() => {
+        triggerWebPushNotification("🏐 Notifications Enabled!", "You'll now receive instant alerts when your set games are locked.");
+        updatePushStatusBadge();
+      }, 1000);
+      return;
+    } catch (e) {
+      console.warn("AndroidBridge requestPermission error:", e);
+    }
+  }
+
   if (!("Notification" in window)) {
     showToast("Web Push notifications are not supported in this browser.");
     return;
@@ -2763,12 +2961,10 @@ window.enablePushNotifications = async () => {
 };
 
 window.sendTestNotification = () => {
-  if (Notification.permission === "granted") {
-    triggerWebPushNotification("🏐 Volleyball Match Alert", "Saturday Morning AA Doubles at Main Beach Court #2 is locked!");
-    showToast("Test push notification dispatched!");
-  } else {
-    showToast("Please click 'Enable Browser Push' first!");
-  }
+  const title = "🏐 Volleyball Match Alert";
+  const body = "Saturday Morning AA Doubles at Main Beach Court #2 is locked!";
+  triggerWebPushNotification(title, body, { type: "Match Confirmed" });
+  showToast("Test notification dispatched! 🔔");
 };
 
 // 30-Minute Upcoming Match Reminders (Web Parity)
@@ -7080,6 +7276,7 @@ function initApp() {
   try { renderLadder(); } catch (e) { console.error("renderLadder error:", e); }
   try { renderPopularKids(); } catch (e) { console.error("renderPopularKids error:", e); }
   try { renderAvailabilityWindows(); } catch (e) { console.error("renderAvailabilityWindows error:", e); }
+  try { window.updateNotificationBadge(); } catch (e) { console.error("updateNotificationBadge error:", e); }
 
   try {
     if (state.currentUser) {
@@ -7098,6 +7295,13 @@ function initApp() {
   document.getElementById("auth-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "auth-modal") {
       window.closeAuthModal();
+    }
+  });
+
+  // Backdrop click to close notifications modal
+  document.getElementById("modal-notifications")?.addEventListener("click", (e) => {
+    if (e.target.id === "modal-notifications") {
+      window.closeNotificationsModal();
     }
   });
 
