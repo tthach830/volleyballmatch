@@ -6777,7 +6777,7 @@ window.renderTournamentDetail = function() {
     const champTeam = finalMatch?.winningTeamId ? (t.teams || []).find(tm => tm.id === finalMatch.winningTeamId) : null;
 
     bodyContainer.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
         ${bracketMatches.length === 0 ? `
           <div style="text-align: center; padding: 32px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
             <div style="font-size: 36px; margin-bottom: 6px;">🏆</div>
@@ -6799,53 +6799,20 @@ window.renderTournamentDetail = function() {
             </div>
           ` : ''}
 
-          <!-- Championship Final -->
-          ${finalMatch ? `
-            <div>
-              <div style="font-size: 11px; font-weight: 900; color: #ea580c; text-transform: uppercase; margin-bottom: 6px;">
-                🥇 Championship Final
-              </div>
-              ${window.renderMatchCardHTML(t, finalMatch)}
-            </div>
-          ` : ''}
+          <!-- Visual Playoff Bracket Tree Chart -->
+          ${window.renderPlayoffBracketChartHTML(t, currentDiv, bracketMatches)}
 
-          <!-- 3rd Place Match -->
-          ${thirdMatch ? `
-            <div>
-              <div style="font-size: 11px; font-weight: 900; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">
-                🥉 3rd Place Consolation
-              </div>
-              ${window.renderMatchCardHTML(t, thirdMatch)}
-            </div>
-          ` : ''}
-
-          <!-- Semifinals -->
-          ${semiMatches.length > 0 ? `
-            <div>
-              <div style="font-size: 11px; font-weight: 900; color: var(--text-muted, #64748b); text-transform: uppercase; margin-bottom: 6px;">
-                ⚡️ Semifinals (Single Elimination)
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                ${semiMatches.map(m => window.renderMatchCardHTML(t, m)).join('')}
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Quarterfinals -->
-          ${quarterMatches.length > 0 ? `
-            <div>
-              <div style="font-size: 11px; font-weight: 900; color: var(--text-muted, #64748b); text-transform: uppercase; margin-bottom: 6px;">
-                ⚔️ Quarterfinals (Single Elimination)
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                ${quarterMatches.map(m => window.renderMatchCardHTML(t, m)).join('')}
-              </div>
-            </div>
-          ` : ''}
+          <!-- Clean Playoff Match Cards List -->
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${finalMatch ? window.renderPlayoffCleanMatchCardHTML(t, finalMatch) : ''}
+            ${thirdMatch ? window.renderPlayoffCleanMatchCardHTML(t, thirdMatch) : ''}
+            ${semiMatches.map(m => window.renderPlayoffCleanMatchCardHTML(t, m)).join('')}
+            ${quarterMatches.map(m => window.renderPlayoffCleanMatchCardHTML(t, m)).join('')}
+          </div>
 
           ${isHost ? `
-            <div style="text-align: center; margin-top: 4px;">
-              <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 4px 12px;" onclick="if(confirm('Re-seed playoff bracket? Bracket scores will be reset.')) window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
+            <div style="text-align: center; margin-top: 6px;">
+              <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 5px 14px;" onclick="if(confirm('Re-seed playoff bracket? Bracket scores will be reset.')) window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
                 🔄 Re-Seed Bracket
               </button>
             </div>
@@ -7024,6 +6991,209 @@ window.renderMatchCardHTML = function(tournament, match) {
           </button>
         </div>
       ` : ''}
+    </div>
+  `;
+};
+
+window.renderPlayoffCleanMatchCardHTML = function(tournament, match) {
+  const t1 = (tournament.teams || []).find(tm => tm.id === match.team1Id);
+  const t2 = (tournament.teams || []).find(tm => tm.id === match.team2Id);
+  const isFinal = match.status === "completed";
+  
+  let roundTitle = "";
+  if (match.stage === "quarter" || match.stage === "quarterfinal") {
+    roundTitle = `Quarterfinals #${match.matchNumber || ''} (${match.courtNumber || 'Court #1'})`;
+  } else if (match.stage === "semi" || match.stage === "semifinal") {
+    roundTitle = `Semifinals #${match.matchNumber || ''} (${match.courtNumber || 'Court #1'})`;
+  } else if (match.stage === "final") {
+    roundTitle = `Finals (${match.courtNumber || 'Court #1'})`;
+  } else if (match.stage === "third_place") {
+    roundTitle = `3rd Place Consolation (${match.courtNumber || 'Court #2'})`;
+  } else {
+    roundTitle = `${match.stage ? match.stage.toUpperCase() : 'PLAYOFF'} (${match.courtNumber || 'Court #1'})`;
+  }
+
+  const s1 = match.team1Score !== undefined && match.team1Score !== null ? match.team1Score : "";
+  const s2 = match.team2Score !== undefined && match.team2Score !== null ? match.team2Score : "";
+  const winner1 = isFinal && match.winningTeamId === match.team1Id;
+  const winner2 = isFinal && match.winningTeamId === match.team2Id;
+
+  const seed1 = t1 ? (t1.seed || t1.poolSeed || '•') : '';
+  const seed2 = t2 ? (t2.seed || t2.poolSeed || '•') : '';
+  const name1 = t1?.teamName || '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
+  const name2 = t2?.teamName || '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
+
+  return `
+    <div class="playoff-clean-card" onclick="window.openTournamentScoreModal('${tournament.id}', '${match.id}')">
+      <div class="playoff-clean-header">${roundTitle}</div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="flex: 1;">
+          <div class="playoff-clean-team-row">
+            <span class="playoff-clean-seed">${seed1}</span>
+            <span class="playoff-clean-team-name ${winner1 ? 'winner' : ''}">${name1}</span>
+            <span class="playoff-clean-score ${winner1 ? 'winner' : ''}">${s1}</span>
+          </div>
+          <div class="playoff-clean-team-row">
+            <span class="playoff-clean-seed">${seed2}</span>
+            <span class="playoff-clean-team-name ${winner2 ? 'winner' : ''}">${name2}</span>
+            <span class="playoff-clean-score ${winner2 ? 'winner' : ''}">${s2}</span>
+          </div>
+        </div>
+        <span class="playoff-clean-chevron">›</span>
+      </div>
+    </div>
+  `;
+};
+
+window.renderPlayoffBracketChartHTML = function(t, division, bracketMatches) {
+  const quarterMatches = bracketMatches.filter(m => m.stage === "quarter" || m.stage === "quarterfinal");
+  const semiMatches = bracketMatches.filter(m => m.stage === "semi" || m.stage === "semifinal");
+  const finalMatch = bracketMatches.find(m => m.stage === "final");
+
+  if (!finalMatch && semiMatches.length === 0) return '';
+
+  const hasQuarters = quarterMatches.length > 0;
+  const colWidth = 175;
+  const colGap = 36;
+  const nodeH = 60;
+
+  let totalW = 0;
+  let totalH = 0;
+  let svgPaths = [];
+
+  function renderNode(m, top, left, label, isFinal) {
+    if (!m) return '';
+    const t1 = (t.teams || []).find(tm => tm.id === m.team1Id);
+    const t2 = (t.teams || []).find(tm => tm.id === m.team2Id);
+    const isCompleted = m.status === "completed";
+    const s1 = (m.team1Score !== undefined && m.team1Score !== null) ? m.team1Score : '';
+    const s2 = (m.team2Score !== undefined && m.team2Score !== null) ? m.team2Score : '';
+    const winner1 = isCompleted && m.winningTeamId === m.team1Id;
+    const winner2 = isCompleted && m.winningTeamId === m.team2Id;
+
+    const seed1 = t1 ? (t1.seed || t1.poolSeed || '1') : '';
+    const seed2 = t2 ? (t2.seed || t2.poolSeed || '2') : '';
+    const name1 = t1?.teamName || '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
+    const name2 = t2?.teamName || '<span style="color: #94a3b8; font-style: italic;">TBD</span>';
+
+    return `
+      <div class="playoff-node-card ${isCompleted ? 'completed' : ''}" 
+           style="position: absolute; top: ${top}px; left: ${left}px; width: ${colWidth}px;" 
+           onclick="window.openTournamentScoreModal('${t.id}', '${m.id}')">
+        <div class="playoff-node-header">${label}</div>
+        <div class="playoff-node-team ${winner1 ? 'winner' : ''}">
+          <span class="playoff-node-seed">${seed1}</span>
+          <span class="playoff-node-name">${name1}</span>
+          <span class="playoff-node-score">${s1}</span>
+        </div>
+        <div class="playoff-node-team ${winner2 ? 'winner' : ''}">
+          <span class="playoff-node-seed">${seed2}</span>
+          <span class="playoff-node-name">${name2}</span>
+          <span class="playoff-node-score">${s2}</span>
+        </div>
+        ${isFinal ? '<div class="playoff-node-subtitle">Winner is champion</div>' : ''}
+      </div>
+    `;
+  }
+
+  let nodesHtml = '';
+
+  if (hasQuarters) {
+    // 8 Teams: Quarterfinals (col 0) -> Semifinals (col 1) -> Finals (col 2)
+    totalH = 346;
+    const x0 = 8;
+    const x1 = x0 + colWidth + colGap; // 8 + 175 + 36 = 219
+    const x2 = x1 + colWidth + colGap; // 219 + 175 + 36 = 430
+    totalW = x2 + colWidth + 18;       // 430 + 175 + 18 = 623
+
+    const q0 = quarterMatches[0] || null;
+    const q1 = quarterMatches[1] || null;
+    const q2 = quarterMatches[2] || null;
+    const q3 = quarterMatches[3] || null;
+
+    const s0 = semiMatches[0] || null;
+    const s1 = semiMatches[1] || null;
+
+    // Y Centers
+    const yQ0 = 42;
+    const yQ1 = 126;
+    const yQ2 = 216;
+    const yQ3 = 300;
+
+    const yS0 = (yQ0 + yQ1) / 2; // 84
+    const yS1 = (yQ2 + yQ3) / 2; // 258
+    const yF = (yS0 + yS1) / 2;  // 171
+
+    // Render Quarters
+    if (q0) nodesHtml += renderNode(q0, yQ0 - nodeH/2, x0, `Quarterfinals #1 (${q0.courtNumber || 'Court #1'})`, false);
+    if (q1) nodesHtml += renderNode(q1, yQ1 - nodeH/2, x0, `Quarterfinals #2 (${q1.courtNumber || 'Court #2'})`, false);
+    if (q2) nodesHtml += renderNode(q2, yQ2 - nodeH/2, x0, `Quarterfinals #3 (${q2.courtNumber || 'Court #1'})`, false);
+    if (q3) nodesHtml += renderNode(q3, yQ3 - nodeH/2, x0, `Quarterfinals #4 (${q3.courtNumber || 'Court #2'})`, false);
+
+    // Render Semis
+    if (s0) nodesHtml += renderNode(s0, yS0 - nodeH/2, x1, `Semifinals #1 (${s0.courtNumber || 'Court #1'})`, false);
+    if (s1) nodesHtml += renderNode(s1, yS1 - nodeH/2, x1, `Semifinals #2 (${s1.courtNumber || 'Court #2'})`, false);
+
+    // Render Final
+    if (finalMatch) nodesHtml += renderNode(finalMatch, yF - nodeH/2, x2, `Finals (${finalMatch.courtNumber || 'Court #1'})`, true);
+
+    // SVG Connectors between Quarters (x0 + colWidth) and Semis (x1)
+    const midX0 = x0 + colWidth + (colGap / 2); // 8 + 175 + 18 = 201
+    svgPaths.push(`M ${x0 + colWidth} ${yQ0} H ${midX0} V ${yQ1} H ${x0 + colWidth}`);
+    svgPaths.push(`M ${midX0} ${yS0} H ${x1}`);
+
+    svgPaths.push(`M ${x0 + colWidth} ${yQ2} H ${midX0} V ${yQ3} H ${x0 + colWidth}`);
+    svgPaths.push(`M ${midX0} ${yS1} H ${x1}`);
+
+    // SVG Connectors between Semis (x1 + colWidth) and Finals (x2)
+    const midX1 = x1 + colWidth + (colGap / 2); // 219 + 175 + 18 = 412
+    svgPaths.push(`M ${x1 + colWidth} ${yS0} H ${midX1} V ${yS1} H ${x1 + colWidth}`);
+    svgPaths.push(`M ${midX1} ${yF} H ${x2}`);
+
+  } else {
+    // 4 Teams: Semifinals (col 0) -> Finals (col 1)
+    totalH = 220;
+    const x0 = 8;
+    const x1 = x0 + colWidth + colGap; // 8 + 175 + 36 = 219
+    totalW = x1 + colWidth + 18;
+
+    const s0 = semiMatches[0] || null;
+    const s1 = semiMatches[1] || null;
+
+    const yS0 = 55;
+    const yS1 = 165;
+    const yF = (yS0 + yS1) / 2; // 110
+
+    if (s0) nodesHtml += renderNode(s0, yS0 - nodeH/2, x0, `Semifinals #1 (${s0.courtNumber || 'Court #1'})`, false);
+    if (s1) nodesHtml += renderNode(s1, yS1 - nodeH/2, x0, `Semifinals #2 (${s1.courtNumber || 'Court #2'})`, false);
+    if (finalMatch) nodesHtml += renderNode(finalMatch, yF - nodeH/2, x1, `Finals (${finalMatch.courtNumber || 'Court #1'})`, true);
+
+    const midX0 = x0 + colWidth + (colGap / 2);
+    svgPaths.push(`M ${x0 + colWidth} ${yS0} H ${midX0} V ${yS1} H ${x0 + colWidth}`);
+    svgPaths.push(`M ${midX0} ${yF} H ${x1}`);
+  }
+
+  return `
+    <div class="playoff-chart-wrapper">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 4px;">
+        <span style="font-size: 11px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.05em;">
+          🏆 Playoff Bracket Tree
+        </span>
+        <span style="font-size: 10px; color: var(--text-muted, #94a3b8);">
+          Scroll horizontally ➔
+        </span>
+      </div>
+      <div class="playoff-chart-scroll" style="height: ${totalH}px;">
+        <div style="position: relative; width: ${totalW}px; height: ${totalH}px;">
+          <!-- SVG Connector Lines -->
+          <svg style="position: absolute; top: 0; left: 0; width: ${totalW}px; height: ${totalH}px; pointer-events: none; z-index: 1;">
+            <path d="${svgPaths.join(' ')}" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Match Nodes -->
+          ${nodesHtml}
+        </div>
+      </div>
+      <span class="playoff-chart-hint">›</span>
     </div>
   `;
 };

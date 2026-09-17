@@ -601,6 +601,11 @@ public struct TournamentDetailView: View {
                     .padding(.horizontal)
                 }
                 
+                // Interactive Tournament Bracket Tree Diagram
+                PlayoffBracketChartView(tournament: t, division: division) { m in
+                    scoringMatch = m
+                }
+                
                 // Championship Final
                 let finals = bracketMatches.filter { $0.stage == "final" }
                 if !finals.isEmpty {
@@ -614,7 +619,7 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(finals) { m in
-                            TournamentMatchRowView(match: m, teams: t.teams) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams) {
                                 scoringMatch = m
                             }
                         }
@@ -634,7 +639,7 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(thirdPlace) { m in
-                            TournamentMatchRowView(match: m, teams: t.teams) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams) {
                                 scoringMatch = m
                             }
                         }
@@ -654,7 +659,7 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(semis) { m in
-                            TournamentMatchRowView(match: m, teams: t.teams) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams) {
                                 scoringMatch = m
                             }
                         }
@@ -674,7 +679,7 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(quarters) { m in
-                            TournamentMatchRowView(match: m, teams: t.teams) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams) {
                                 scoringMatch = m
                             }
                         }
@@ -1293,5 +1298,405 @@ struct RuleBulletPoint: View {
                 .font(.caption)
                 .foregroundColor(.white.opacity(0.85))
         }
+    }
+}
+
+// MARK: - Interactive Playoff Bracket Tree View
+struct PlayoffBracketChartView: View {
+    let tournament: Tournament
+    let division: TournamentDivisionCategory
+    var onSelectMatch: ((TournamentMatch) -> Void)? = nil
+    
+    private let colWidth: CGFloat = 175
+    private let colGap: CGFloat = 36
+    
+    var body: some View {
+        let bracketMatches = tournament.bracketMatches(for: division)
+        let quarters = bracketMatches.filter { $0.stage == "quarter" || $0.stage == "quarterfinal" }
+        let semis = bracketMatches.filter { $0.stage == "semi" || $0.stage == "semifinal" }
+        let finalMatch = bracketMatches.first { $0.stage == "final" }
+        
+        let hasQuarters = !quarters.isEmpty
+        
+        if finalMatch == nil && semis.isEmpty {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chart.bar.doc.horizontal")
+                            .foregroundColor(.orange)
+                        Text("PLAYOFF BRACKET TREE")
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundColor(.orange)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 4) {
+                        Text("Scroll bracket")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.horizontal)
+                
+                let totalHeight: CGFloat = hasQuarters ? 350 : 230
+                let totalWidth: CGFloat = hasQuarters ? (8 + colWidth * 3 + colGap * 2 + 18) : (8 + colWidth * 2 + colGap + 18)
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    ZStack(alignment: .topLeading) {
+                        // Connector paths
+                        BracketConnectorLines(hasQuarters: hasQuarters, colWidth: colWidth, colGap: colGap)
+                            .stroke(Color.white.opacity(0.25), lineWidth: 1.5)
+                            .frame(width: totalWidth, height: totalHeight)
+                        
+                        // Nodes
+                        if hasQuarters {
+                            let x0: CGFloat = 8
+                            let x1: CGFloat = x0 + colWidth + colGap
+                            let x2: CGFloat = x1 + colWidth + colGap
+                            
+                            let yQ0: CGFloat = 42
+                            let yQ1: CGFloat = 126
+                            let yQ2: CGFloat = 216
+                            let yQ3: CGFloat = 300
+                            
+                            let yS0: CGFloat = (yQ0 + yQ1) / 2
+                            let yS1: CGFloat = (yQ2 + yQ3) / 2
+                            let yF: CGFloat = (yS0 + yS1) / 2
+                            
+                            // Quarters
+                            if quarters.indices.contains(0) {
+                                matchNodeView(match: quarters[0], title: "Quarterfinals #1 (\(quarters[0].courtNumber))", isFinal: false)
+                                    .frame(width: colWidth)
+                                    .position(x: x0 + colWidth / 2, y: yQ0)
+                            }
+                            if quarters.indices.contains(1) {
+                                matchNodeView(match: quarters[1], title: "Quarterfinals #2 (\(quarters[1].courtNumber))", isFinal: false)
+                                    .frame(width: colWidth)
+                                    .position(x: x0 + colWidth / 2, y: yQ1)
+                            }
+                            if quarters.indices.contains(2) {
+                                matchNodeView(match: quarters[2], title: "Quarterfinals #3 (\(quarters[2].courtNumber))", isFinal: false)
+                                    .frame(width: colWidth)
+                                    .position(x: x0 + colWidth / 2, y: yQ2)
+                            }
+                            if quarters.indices.contains(3) {
+                                matchNodeView(match: quarters[3], title: "Quarterfinals #4 (\(quarters[3].courtNumber))", isFinal: false)
+                                    .frame(width: colWidth)
+                                    .position(x: x0 + colWidth / 2, y: yQ3)
+                            }
+                            
+                            // Semis
+                            if semis.indices.contains(0) {
+                                matchNodeView(match: semis[0], title: "Semifinals #1 (\(semis[0].courtNumber))", isFinal: false)
+                                    .frame(width: colWidth)
+                                    .position(x: x1 + colWidth / 2, y: yS0)
+                            }
+                            if semis.indices.contains(1) {
+                                matchNodeView(match: semis[1], title: "Semifinals #2 (\(semis[1].courtNumber))", isFinal: false)
+                                    .frame(width: colWidth)
+                                    .position(x: x1 + colWidth / 2, y: yS1)
+                            }
+                            
+                            // Final
+                            if let finalMatch = finalMatch {
+                                matchNodeView(match: finalMatch, title: "Finals (\(finalMatch.courtNumber))", isFinal: true)
+                                    .frame(width: colWidth)
+                                    .position(x: x2 + colWidth / 2, y: yF)
+                            }
+                        } else {
+                            let x0: CGFloat = 8
+                            let x1: CGFloat = x0 + colWidth + colGap
+                            
+                            let yS0: CGFloat = 55
+                            let yS1: CGFloat = 165
+                            let yF: CGFloat = (yS0 + yS1) / 2
+                            
+                            if semis.indices.contains(0) {
+                                matchNodeView(match: semis[0], title: "Semifinals #1 (\(semis[0].courtNumber))", isFinal: false)
+                                    .frame(width: colWidth)
+                                    .position(x: x0 + colWidth / 2, y: yS0)
+                            }
+                            if semis.indices.contains(1) {
+                                matchNodeView(match: semis[1], title: "Semifinals #2 (\(semis[1].courtNumber))", isFinal: false)
+                                    .frame(width: colWidth)
+                                    .position(x: x0 + colWidth / 2, y: yS1)
+                            }
+                            if let finalMatch = finalMatch {
+                                matchNodeView(match: finalMatch, title: "Finals (\(finalMatch.courtNumber))", isFinal: true)
+                                    .frame(width: colWidth)
+                                    .position(x: x1 + colWidth / 2, y: yF)
+                            }
+                        }
+                    }
+                    .frame(width: totalWidth, height: totalHeight)
+                    .padding(.horizontal, 12)
+                }
+                .padding(.vertical, 8)
+                .background(Color(red: 0.08, green: 0.10, blue: 0.14))
+                .cornerRadius(16)
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
+                .padding(.horizontal)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func matchNodeView(match: TournamentMatch, title: String, isFinal: Bool) -> some View {
+        let t1 = tournament.teams.first(where: { $0.id == match.team1Id })
+        let t2 = tournament.teams.first(where: { $0.id == match.team2Id })
+        let isDone = match.isCompleted
+        let winner1 = isDone && match.winningTeamId == match.team1Id
+        let winner2 = isDone && match.winningTeamId == match.team2Id
+        
+        Button {
+            onSelectMatch?(match)
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                
+                // Team 1
+                HStack(spacing: 5) {
+                    Text("\(t1?.seed ?? t1?.poolSeed ?? 1)")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.cyan)
+                        .frame(width: 14, height: 14)
+                        .background(Color.cyan.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                    
+                    Text(t1?.teamName ?? "TBD")
+                        .font(.system(size: 11, weight: winner1 ? .bold : .regular))
+                        .foregroundColor(winner1 ? .green : (t1 != nil ? .white : .secondary))
+                        .lineLimit(1)
+                    
+                    Spacer(minLength: 2)
+                    
+                    if let s1 = match.team1Score {
+                        Text("\(s1)")
+                            .font(.system(size: 11, weight: winner1 ? .heavy : .regular))
+                            .foregroundColor(winner1 ? .green : .white)
+                    }
+                }
+                
+                // Team 2
+                HStack(spacing: 5) {
+                    Text("\(t2?.seed ?? t2?.poolSeed ?? 2)")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.cyan)
+                        .frame(width: 14, height: 14)
+                        .background(Color.cyan.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                    
+                    Text(t2?.teamName ?? "TBD")
+                        .font(.system(size: 11, weight: winner2 ? .bold : .regular))
+                        .foregroundColor(winner2 ? .green : (t2 != nil ? .white : .secondary))
+                        .lineLimit(1)
+                    
+                    Spacer(minLength: 2)
+                    
+                    if let s2 = match.team2Score {
+                        Text("\(s2)")
+                            .font(.system(size: 11, weight: winner2 ? .heavy : .regular))
+                            .foregroundColor(winner2 ? .green : .white)
+                    }
+                }
+                
+                if isFinal {
+                    Text("Winner is champion")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundColor(.orange)
+                        .padding(.top, 1)
+                }
+            }
+            .padding(7)
+            .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isDone ? Color.green.opacity(0.4) : Color.white.opacity(0.12), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Orthogonal Bracket Connectors Shape
+struct BracketConnectorLines: Shape {
+    let hasQuarters: Bool
+    let colWidth: CGFloat
+    let colGap: CGFloat
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        if hasQuarters {
+            let x0: CGFloat = 8
+            let x1: CGFloat = x0 + colWidth + colGap
+            let x2: CGFloat = x1 + colWidth + colGap
+            
+            let yQ0: CGFloat = 42
+            let yQ1: CGFloat = 126
+            let yQ2: CGFloat = 216
+            let yQ3: CGFloat = 300
+            
+            let yS0: CGFloat = (yQ0 + yQ1) / 2
+            let yS1: CGFloat = (yQ2 + yQ3) / 2
+            let yF: CGFloat = (yS0 + yS1) / 2
+            
+            let midX0: CGFloat = x0 + colWidth + (colGap / 2)
+            
+            // Connect Q0 & Q1 to S0
+            path.move(to: CGPoint(x: x0 + colWidth, y: yQ0))
+            path.addLine(to: CGPoint(x: midX0, y: yQ0))
+            path.addLine(to: CGPoint(x: midX0, y: yQ1))
+            path.addLine(to: CGPoint(x: x0 + colWidth, y: yQ1))
+            path.move(to: CGPoint(x: midX0, y: yS0))
+            path.addLine(to: CGPoint(x: x1, y: yS0))
+            
+            // Connect Q2 & Q3 to S1
+            path.move(to: CGPoint(x: x0 + colWidth, y: yQ2))
+            path.addLine(to: CGPoint(x: midX0, y: yQ2))
+            path.addLine(to: CGPoint(x: midX0, y: yQ3))
+            path.addLine(to: CGPoint(x: x0 + colWidth, y: yQ3))
+            path.move(to: CGPoint(x: midX0, y: yS1))
+            path.addLine(to: CGPoint(x: x1, y: yS1))
+            
+            // Connect S0 & S1 to F
+            let midX1: CGFloat = x1 + colWidth + (colGap / 2)
+            path.move(to: CGPoint(x: x1 + colWidth, y: yS0))
+            path.addLine(to: CGPoint(x: midX1, y: yS0))
+            path.addLine(to: CGPoint(x: midX1, y: yS1))
+            path.addLine(to: CGPoint(x: x1 + colWidth, y: yS1))
+            path.move(to: CGPoint(x: midX1, y: yF))
+            path.addLine(to: CGPoint(x: x2, y: yF))
+        } else {
+            let x0: CGFloat = 8
+            let x1: CGFloat = x0 + colWidth + colGap
+            
+            let yS0: CGFloat = 55
+            let yS1: CGFloat = 165
+            let yF: CGFloat = (yS0 + yS1) / 2
+            
+            let midX0: CGFloat = x0 + colWidth + (colGap / 2)
+            
+            path.move(to: CGPoint(x: x0 + colWidth, y: yS0))
+            path.addLine(to: CGPoint(x: midX0, y: yS0))
+            path.addLine(to: CGPoint(x: midX0, y: yS1))
+            path.addLine(to: CGPoint(x: x0 + colWidth, y: yS1))
+            path.move(to: CGPoint(x: midX0, y: yF))
+            path.addLine(to: CGPoint(x: x1, y: yF))
+        }
+        
+        return path
+    }
+}
+
+// MARK: - Clean Match Card View (Matching Design Reference)
+struct PlayoffCleanMatchCardView: View {
+    let match: TournamentMatch
+    let teams: [TournamentTeam]
+    var onScore: (() -> Void)? = nil
+    
+    var body: some View {
+        let t1 = teams.first(where: { $0.id == match.team1Id })
+        let t2 = teams.first(where: { $0.id == match.team2Id })
+        let isCompleted = match.isCompleted
+        let winner1 = isCompleted && match.winningTeamId == match.team1Id
+        let winner2 = isCompleted && match.winningTeamId == match.team2Id
+        
+        var roundTitle: String {
+            if match.stage == "quarter" || match.stage == "quarterfinal" {
+                return "Quarterfinals #\(match.matchNumber) (\(match.courtNumber))"
+            } else if match.stage == "semi" || match.stage == "semifinal" {
+                return "Semifinals #\(match.matchNumber) (\(match.courtNumber))"
+            } else if match.stage == "final" {
+                return "Finals (\(match.courtNumber))"
+            } else if match.stage == "third_place" {
+                return "3rd Place Consolation (\(match.courtNumber))"
+            } else {
+                return "\(match.stage.uppercased()) (\(match.courtNumber))"
+            }
+        }
+        
+        Button {
+            onScore?()
+        } label: {
+            VStack(spacing: 8) {
+                // Centered header
+                Text(roundTitle)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                
+                HStack(spacing: 12) {
+                    VStack(spacing: 6) {
+                        // Team 1 row
+                        HStack(spacing: 12) {
+                            Text(t1 != nil ? "\(t1?.seed ?? t1?.poolSeed ?? 1)" : "-")
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundColor(.white.opacity(0.45))
+                                .frame(width: 20, alignment: .leading)
+                            
+                            Text(t1?.teamName ?? "TBD")
+                                .font(.system(size: 15, weight: winner1 ? .heavy : .medium))
+                                .foregroundColor(winner1 ? .white : (t1 != nil ? .white.opacity(0.85) : .secondary))
+                            
+                            Spacer()
+                            
+                            if let s1 = match.team1Score {
+                                Text("\(s1)")
+                                    .font(.system(size: 16, weight: winner1 ? .heavy : .bold))
+                                    .foregroundColor(winner1 ? .white : .white.opacity(0.7))
+                            }
+                        }
+                        
+                        Divider().background(Color.white.opacity(0.08))
+                        
+                        // Team 2 row
+                        HStack(spacing: 12) {
+                            Text(t2 != nil ? "\(t2?.seed ?? t2?.poolSeed ?? 2)" : "-")
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundColor(.white.opacity(0.45))
+                                .frame(width: 20, alignment: .leading)
+                            
+                            Text(t2?.teamName ?? "TBD")
+                                .font(.system(size: 15, weight: winner2 ? .heavy : .medium))
+                                .foregroundColor(winner2 ? .white : (t2 != nil ? .white.opacity(0.85) : .secondary))
+                            
+                            Spacer()
+                            
+                            if let s2 = match.team2Score {
+                                Text("\(s2)")
+                                    .font(.system(size: 16, weight: winner2 ? .heavy : .bold))
+                                    .foregroundColor(winner2 ? .white : .white.opacity(0.7))
+                            }
+                        }
+                    }
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white.opacity(0.35))
+                        .padding(.leading, 4)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+            .cornerRadius(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal)
     }
 }
