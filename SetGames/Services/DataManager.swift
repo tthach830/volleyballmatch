@@ -878,7 +878,7 @@ public class DataManager: ObservableObject {
     }
 
     @discardableResult
-    public func addPlayerToGame(gameId: UUID, playerId: UUID) -> (success: Bool, message: String) {
+    public func addPlayerToGame(gameId: UUID, playerId: UUID, teamNumber: Int? = nil) -> (success: Bool, message: String) {
         guard let user = currentUser,
               let index = games.firstIndex(where: { $0.id == gameId }) else {
             return (false, "Match not found.")
@@ -906,10 +906,18 @@ public class DataManager: ObservableObject {
             game.maxPlayers = game.allPlayerIds.count + 1
         }
         
-        if game.team1PlayerIds.count <= game.team2PlayerIds.count {
-            game.team1PlayerIds.append(playerId)
+        if let teamNumber = teamNumber {
+            if teamNumber == 1 {
+                game.team1PlayerIds.append(playerId)
+            } else {
+                game.team2PlayerIds.append(playerId)
+            }
         } else {
-            game.team2PlayerIds.append(playerId)
+            if game.team1PlayerIds.count <= game.team2PlayerIds.count {
+                game.team1PlayerIds.append(playerId)
+            } else {
+                game.team2PlayerIds.append(playerId)
+            }
         }
         
         games[index] = game

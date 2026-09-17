@@ -9,6 +9,7 @@ public struct ConfirmedGamesView: View {
     @State private var showTournamentsSheet: Bool = false
     @State private var showRandomTeamsSheet: Bool = false
     @State private var addPlayerGameForSheet: SetGame? = nil
+    @State private var addPlayerTeamNumber: Int? = nil
     @State private var qrGameForSheet: SetGame? = nil
     @State private var editGameForSheet: SetGame? = nil
     @State private var gameForRandomTeams: SetGame? = nil
@@ -185,7 +186,8 @@ public struct ConfirmedGamesView: View {
             }
             .sheet(item: $addPlayerGameForSheet) { game in
                 GamePlayerPickerSheet(dataManager: dataManager, game: game) { selectedPlayer in
-                    let res = dataManager.addPlayerToGame(gameId: game.id, playerId: selectedPlayer.id)
+                    let res = dataManager.addPlayerToGame(gameId: game.id, playerId: selectedPlayer.id, teamNumber: addPlayerTeamNumber)
+                    addPlayerTeamNumber = nil
                     alertMessage = res.message
                     showAlert = true
                 }
@@ -379,8 +381,14 @@ public struct ConfirmedGamesView: View {
         let borderColor = isTeam1 ? Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.6) : Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6)
         let labelText = game.openSpotLabel(isTeam1: isTeam1, slotIndex: slotIndex, allPlayers: dataManager.players)
         
+        let isHost = (game.hostPlayerId == dataManager.currentUser?.id) || (game.team1PlayerIds.first == dataManager.currentUser?.id)
+        let isRoot = dataManager.currentUser?.isRoot == true
+        
         return Button {
-            if canUserJoin(game) {
+            if isHost || isRoot {
+                addPlayerTeamNumber = isTeam1 ? 1 : 2
+                addPlayerGameForSheet = game
+            } else if canUserJoin(game) {
                 let res = dataManager.joinGamePool(gameId: game.id)
                 alertMessage = res.message
                 showAlert = true
@@ -428,6 +436,7 @@ public struct ConfirmedGamesView: View {
                 
                 if isHost || dataManager.currentUser?.isRoot == true {
                     Button {
+                        addPlayerTeamNumber = nil
                         addPlayerGameForSheet = game
                     } label: {
                         Label("+ Add Player to Game", systemImage: "person.badge.plus")
@@ -760,7 +769,11 @@ public struct ConfirmedGamesView: View {
                     // Open spots if available
                     if game.spotsRemaining > 0 {
                         Button {
-                            if canUserJoin(game) {
+                            let canHostAdd = isHost || (dataManager.currentUser?.isRoot == true)
+                            if canHostAdd {
+                                addPlayerTeamNumber = nil
+                                addPlayerGameForSheet = game
+                            } else if canUserJoin(game) {
                                 let res = dataManager.joinGamePool(gameId: game.id)
                                 alertMessage = res.message
                                 showAlert = true
@@ -1216,6 +1229,7 @@ public struct ConfirmedGamesView: View {
                         }
                         
                         Button {
+                            addPlayerTeamNumber = nil
                             addPlayerGameForSheet = game
                         } label: {
                             Label("+ Add Player to Game", systemImage: "person.badge.plus")

@@ -17,6 +17,7 @@ public struct GameDetailView: View {
     @State private var selectedSubMatchForScore: SubMatch? = nil
     @State private var showQRCodeSheet: Bool = false
     @State private var showAddPlayerSheet: Bool = false
+    @State private var addPlayerTeamNumber: Int? = nil
     @State private var isMatchesCollapsed: Bool = true
     @State private var isPoolCollapsed: Bool = false
     @State private var isChatCollapsed: Bool = false
@@ -275,32 +276,40 @@ public struct GameDetailView: View {
                                             playerCard(dataManager.player(for: pid), game: game, playerIndex: index + 1)
                                         }
                                         
-                                        if game.spotsRemaining > 0 && !isUserInMatch {
-                                            if !game.isPrivate {
-                                                Button {
-                                                    let res = dataManager.joinGamePool(gameId: game.id)
-                                                    if !res.success {
-                                                        alertTitle = "Cannot Join Pool"
-                                                        alertMessage = res.message
-                                                        showAlert = true
+                                        if game.spotsRemaining > 0 {
+                                            let canHostAdd = canHostCancelMatch(game: game) || (dataManager.currentUser?.isRoot == true)
+                                            if canHostAdd || !isUserInMatch {
+                                                if !game.isPrivate || canHostAdd {
+                                                    Button {
+                                                        if canHostAdd {
+                                                            addPlayerTeamNumber = nil
+                                                            showAddPlayerSheet = true
+                                                        } else {
+                                                            let res = dataManager.joinGamePool(gameId: game.id)
+                                                            if !res.success {
+                                                                alertTitle = "Cannot Join Pool"
+                                                                alertMessage = res.message
+                                                                showAlert = true
+                                                            }
+                                                        }
+                                                    } label: {
+                                                        HStack(spacing: 6) {
+                                                            Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
+                                                            let suffix = game.openSpotGenderSuffix(allPlayers: dataManager.players)
+                                                            Text(canHostAdd ? "+ Add Player\(suffix)" : (game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "+ Join Player Pool\(suffix)"))
+                                                        }
+                                                        .font(.system(size: 13, weight: .bold))
+                                                        .foregroundColor(.orange)
+                                                        .frame(maxWidth: .infinity)
+                                                        .padding(12)
+                                                        .background(Color.orange.opacity(0.08))
+                                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                        .overlay(
+                                                            RoundedRectangle(cornerRadius: 12)
+                                                                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                                                .foregroundColor(.orange.opacity(0.5))
+                                                        )
                                                     }
-                                                } label: {
-                                                    HStack(spacing: 6) {
-                                                        Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
-                                                        let suffix = game.openSpotGenderSuffix(allPlayers: dataManager.players)
-                                                        Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "+ Join Player Pool\(suffix)")
-                                                    }
-                                                    .font(.system(size: 13, weight: .bold))
-                                                    .foregroundColor(.orange)
-                                                    .frame(maxWidth: .infinity)
-                                                    .padding(12)
-                                                    .background(Color.orange.opacity(0.08))
-                                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                                    .overlay(
-                                                        RoundedRectangle(cornerRadius: 12)
-                                                            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
-                                                            .foregroundColor(.orange.opacity(0.5))
-                                                    )
                                                 }
                                             }
                                         }
@@ -312,49 +321,57 @@ public struct GameDetailView: View {
                                             playerCard(dataManager.player(for: pid), game: game, playerIndex: index + 1)
                                         }
                                         
-                                        if game.spotsRemaining > 0 && !isUserInMatch {
-                                            if game.isPrivate {
-                                                VStack(spacing: 4) {
-                                                    Image(systemName: "lock.shield")
-                                                        .font(.system(size: 18))
-                                                        .foregroundColor(.secondary)
-                                                    Text("Private Game • Invite Only")
-                                                        .font(.system(size: 11, weight: .bold))
-                                                        .foregroundColor(.secondary)
-                                                        .lineLimit(1)
-                                                }
-                                                .padding(12)
-                                                .frame(maxWidth: .infinity)
-                                                .background(Color(UIColor.systemGray6))
-                                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                            } else {
-                                                Button {
-                                                    let res = dataManager.joinGamePool(gameId: game.id)
-                                                    if !res.success {
-                                                        alertTitle = "Cannot Join Pool"
-                                                        alertMessage = res.message
-                                                        showAlert = true
-                                                    }
-                                                } label: {
+                                        if game.spotsRemaining > 0 {
+                                            let canHostAdd = canHostCancelMatch(game: game) || (dataManager.currentUser?.isRoot == true)
+                                            if canHostAdd || !isUserInMatch {
+                                                if game.isPrivate && !canHostAdd {
                                                     VStack(spacing: 4) {
-                                                        Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
+                                                        Image(systemName: "lock.shield")
                                                             .font(.system(size: 18))
-                                                            .foregroundColor(.orange)
-                                                        let suffix = game.openSpotGenderSuffix(allPlayers: dataManager.players)
-                                                        Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "+ Join Player Pool\(suffix)")
+                                                            .foregroundColor(.secondary)
+                                                        Text("Private Game • Invite Only")
                                                             .font(.system(size: 11, weight: .bold))
-                                                            .foregroundColor(.orange)
+                                                            .foregroundColor(.secondary)
                                                             .lineLimit(1)
                                                     }
                                                     .padding(12)
                                                     .frame(maxWidth: .infinity)
-                                                    .background(Color.orange.opacity(0.08))
+                                                    .background(Color(UIColor.systemGray6))
                                                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                                                    .overlay(
-                                                        RoundedRectangle(cornerRadius: 12)
-                                                            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
-                                                            .foregroundColor(.orange.opacity(0.5))
-                                                    )
+                                                } else {
+                                                    Button {
+                                                        if canHostAdd {
+                                                            addPlayerTeamNumber = nil
+                                                            showAddPlayerSheet = true
+                                                        } else {
+                                                            let res = dataManager.joinGamePool(gameId: game.id)
+                                                            if !res.success {
+                                                                alertTitle = "Cannot Join Pool"
+                                                                alertMessage = res.message
+                                                                showAlert = true
+                                                            }
+                                                        }
+                                                    } label: {
+                                                        VStack(spacing: 4) {
+                                                            Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "person.badge.plus")
+                                                                .font(.system(size: 18))
+                                                                .foregroundColor(.orange)
+                                                            let suffix = game.openSpotGenderSuffix(allPlayers: dataManager.players)
+                                                            Text(canHostAdd ? "+ Add Player\(suffix)" : (game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "+ Join Player Pool\(suffix)"))
+                                                                .font(.system(size: 11, weight: .bold))
+                                                                .foregroundColor(.orange)
+                                                                .lineLimit(1)
+                                                        }
+                                                        .padding(12)
+                                                        .frame(maxWidth: .infinity)
+                                                        .background(Color.orange.opacity(0.08))
+                                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                        .overlay(
+                                                            RoundedRectangle(cornerRadius: 12)
+                                                                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                                                .foregroundColor(.orange.opacity(0.5))
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -598,6 +615,7 @@ public struct GameDetailView: View {
                                 
                                 if canHostCancelMatch(game: game) || (dataManager.currentUser?.isRoot == true) {
                                     Button {
+                                        addPlayerTeamNumber = nil
                                         showAddPlayerSheet = true
                                     } label: {
                                         HStack {
@@ -696,7 +714,8 @@ public struct GameDetailView: View {
                 }
                 .sheet(isPresented: $showAddPlayerSheet) {
                     GamePlayerPickerSheet(dataManager: dataManager, game: game) { selectedPlayer in
-                        let res = dataManager.addPlayerToGame(gameId: game.id, playerId: selectedPlayer.id)
+                        let res = dataManager.addPlayerToGame(gameId: game.id, playerId: selectedPlayer.id, teamNumber: addPlayerTeamNumber)
+                        addPlayerTeamNumber = nil
                         alertTitle = res.success ? "Added Player" : "Notice"
                         alertMessage = res.message
                         showAlert = true
@@ -1012,7 +1031,8 @@ public struct GameDetailView: View {
     
     @ViewBuilder
     private func emptySpotCard(teamNumber: Int, game: SetGame) -> some View {
-        if game.isPrivate && !isUserInMatch {
+        let canHostAdd = canHostCancelMatch(game: game) || (dataManager.currentUser?.isRoot == true)
+        if game.isPrivate && !isUserInMatch && !canHostAdd {
             VStack(spacing: 4) {
                 Image(systemName: "lock.shield")
                     .font(.system(size: 18))
@@ -1028,19 +1048,24 @@ public struct GameDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
         } else {
             Button {
-                let res = dataManager.joinOpenGame(gameId: game.id, teamNumber: teamNumber)
-                if !res.success {
-                    alertTitle = "Cannot Join Match"
-                    alertMessage = res.message
-                    showAlert = true
+                if canHostAdd {
+                    addPlayerTeamNumber = teamNumber
+                    showAddPlayerSheet = true
+                } else {
+                    let res = dataManager.joinOpenGame(gameId: game.id, teamNumber: teamNumber)
+                    if !res.success {
+                        alertTitle = "Cannot Join Match"
+                        alertMessage = res.message
+                        showAlert = true
+                    }
                 }
             } label: {
                 VStack(spacing: 4) {
-                    Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : "plus.circle.dashed")
+                    Image(systemName: game.isLevelLocked ? "lock.circle.dotted" : (canHostAdd ? "person.badge.plus" : "plus.circle.dashed"))
                         .font(.system(size: 18))
                         .foregroundColor(.orange)
                     let suffix = game.openSpotGenderSuffix(isTeam1: teamNumber == 1, slotIndex: 0, allPlayers: dataManager.players)
-                    Text(game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "Open Spot\(suffix)")
+                    Text(canHostAdd ? "+ Add Player\(suffix)" : (game.isLevelLocked ? "Join (\(game.allowedRatingsDescription))\(suffix)" : "Open Spot\(suffix)"))
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.orange)
                         .lineLimit(1)
