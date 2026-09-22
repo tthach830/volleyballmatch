@@ -1047,11 +1047,11 @@
 
     <!-- Tournaments Hub Modal -->
     <div id="tournaments-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTournamentsModal()">
-      <div class="modal-card" style="max-width: 580px; padding: 20px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-card tournament-modal-card" style="max-width: 580px; padding: 20px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <div>
             <h2 class="modal-title" style="font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px;">🏆 Beach Tournaments</h2>
-            <div style="font-size: 12px; color: var(--text-muted, #64748b);">Coed, Men's, Women's • Novice & Intermediate</div>
+            <div style="font-size: 12px; color: var(--text-muted, #94a3b8);">Coed, Men's, Women's • Novice & Intermediate</div>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button type="button" class="btn btn-sm btn-primary" onclick="window.openCreateTournamentModal()" style="font-size: 12px; font-weight: 700;">+ Host Tournament</button>
@@ -1076,7 +1076,7 @@
 
     <!-- Tournament Detail Modal -->
     <div id="tournament-detail-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTournamentDetailModal()">
-      <div class="modal-card" style="max-width: 620px; padding: 20px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-card tournament-modal-card" style="max-width: 640px; padding: 20px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div id="tournament-detail-header">
             <!-- Title & meta injected via JS -->
@@ -1104,7 +1104,7 @@
           <!-- Injected via JS -->
         </div>
 
-        <div id="tournament-detail-footer" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border, #e2e8f0);">
+        <div id="tournament-detail-footer" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border, rgba(255,255,255,0.12));">
           <!-- Sign Up / Leave buttons injected via JS -->
         </div>
       </div>
@@ -1112,10 +1112,10 @@
 
     <!-- Tournament Match Scoring Modal -->
     <div id="tournament-score-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTournamentScoreModal()">
-      <div class="modal-card" style="max-width: 440px; padding: 20px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-card tournament-modal-card" style="max-width: 440px; padding: 20px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div>
-            <div id="tourn-score-subtitle" style="font-size: 11px; font-weight: 800; color: #0284c7; text-transform: uppercase;">Official Score Report</div>
+            <div id="tourn-score-subtitle" style="font-size: 11px; font-weight: 800; color: #38bdf8; text-transform: uppercase;">Official Score Report</div>
             <h2 class="modal-title" style="font-size: 17px; font-weight: 800; margin: 2px 0 0 0;">🏐 Record Match Score</h2>
           </div>
           <button type="button" class="modal-close" onclick="window.closeTournamentScoreModal()">&times;</button>
@@ -1128,7 +1128,7 @@
 
     <!-- Tournament Sign-Up Modal -->
     <div id="tournament-signup-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTournamentSignUpModal()">
-      <div class="modal-card" style="max-width: 460px; padding: 20px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-card tournament-modal-card" style="max-width: 460px; padding: 20px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <h2 class="modal-title" style="font-size: 16px; font-weight: 800;">🏐 Tournament Registration</h2>
           <button type="button" class="modal-close" onclick="window.closeTournamentSignUpModal()">&times;</button>
@@ -1142,7 +1142,7 @@
 
     <!-- Host New Tournament Modal -->
     <div id="create-tournament-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeCreateTournamentModal()">
-      <div class="modal-card" style="max-width: 480px; padding: 20px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-card tournament-modal-card" style="max-width: 480px; padding: 20px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <h2 class="modal-title" id="create-tourn-modal-title" style="font-size: 16px; font-weight: 800;">🏆 Host Beach Tournament</h2>
           <button type="button" class="modal-close" onclick="window.closeCreateTournamentModal()">&times;</button>
@@ -1151,13 +1151,13 @@
         <form id="create-tournament-form" onsubmit="window.submitCreateTournament(event)" style="display: flex; flex-direction: column; gap: 12px;">
           <input type="hidden" id="edit-tourn-id" value="">
           <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Tournament Title</label>
-            <input type="text" id="new-tourn-title" placeholder="e.g. Santa Cruz Beach Open" class="form-input" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px;">
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Tournament Title</label>
+            <input type="text" id="new-tourn-title" placeholder="e.g. Santa Cruz Beach Open" class="form-input" required style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
           </div>
 
           <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Location</label>
-            <select id="new-tourn-location" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px;">
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Beach Location</label>
+            <select id="new-tourn-location" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
               <option value="Main Beach">Main Beach (Santa Cruz)</option>
               <option value="Harbor Beach">Harbor Beach (Santa Cruz)</option>
               <option value="Capitola Beach">Capitola Beach</option>
@@ -1168,22 +1168,31 @@
           </div>
 
           <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Date & Time</label>
-            <input type="datetime-local" id="new-tourn-date" class="form-input" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px;">
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Date & Time</label>
+            <input type="datetime-local" id="new-tourn-date" class="form-input" required style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
           </div>
 
           <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Courts (comma-separated)</label>
-            <input type="text" id="new-tourn-courts" value="Court #1, Court #2, Court #3, Court #4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px;">
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Courts (comma-separated)</label>
+            <input type="text" id="new-tourn-courts" value="Court #1, Court #2, Court #3, Court #4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
           </div>
 
           <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Max Teams Per Division</label>
-            <input type="number" id="new-tourn-max-teams" value="8" min="4" max="32" step="4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px;">
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Max Teams Per Division</label>
+            <input type="number" id="new-tourn-max-teams" value="8" min="4" max="32" step="4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+          </div>
+
+          <!-- Team Format (2v2 Doubles vs 4v4 Quads) -->
+          <div>
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Team Format</label>
+            <select id="new-tourn-format" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+              <option value="2v2">👥 2v2 Doubles (Standard 2-player)</option>
+              <option value="4v4">🏐 4v4 Quads (4-player teams)</option>
+            </select>
           </div>
 
           <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b); display: block; margin-bottom: 6px;">Divisions Offered</label>
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8); display: block; margin-bottom: 6px;">Divisions Offered</label>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
               <label style="font-size: 12px; display: flex; align-items: center; gap: 6px;"><input type="checkbox" name="tourn-div" value="2v2 Coed Novice" checked> 👫 2v2 Coed Novice</label>
               <label style="font-size: 12px; display: flex; align-items: center; gap: 6px;"><input type="checkbox" name="tourn-div" value="2v2 Coed Intermediate" checked> 👫 2v2 Coed Int</label>
@@ -1193,29 +1202,30 @@
           </div>
 
           <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b); display: flex; justify-content: space-between; align-items: center;">
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8); display: flex; justify-content: space-between; align-items: center;">
               <span>Co-Hosts (Optional)</span>
-              <span style="font-size: 10px; font-weight: 400; color: var(--text-muted, #94a3b8);">Hold Ctrl/Cmd to select</span>
+              <span style="font-size: 10px; font-weight: 400; color: var(--text-muted, #94a3b8);">Hold Ctrl/Cmd to select multiple</span>
             </label>
-            <select id="new-tourn-cohosts" class="form-input" multiple size="3" style="width: 100%; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px; font-size: 12px;">
+            <input type="text" id="new-tourn-cohost-search" placeholder="🔍 Search by phone #, first name, or nickname..." class="form-input" style="width: 100%; padding: 8px 10px; font-size: 12px; border-radius: 8px; margin-top: 4px; margin-bottom: 6px;" oninput="window.filterCreateTournCoHosts()">
+            <select id="new-tourn-cohosts" class="form-input" multiple size="3" style="width: 100%; padding: 6px 10px; border-radius: 8px; font-size: 12px;">
               <!-- Dynamically populated -->
             </select>
           </div>
 
           <div>
-            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Tournament Notes & Rules</label>
-            <textarea id="new-tourn-notes" rows="2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px;">Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.</textarea>
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Tournament Notes & Rules</label>
+            <textarea id="new-tourn-notes" rows="2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.</textarea>
           </div>
 
-          <button type="submit" id="create-tourn-submit-btn" class="btn btn-primary" style="margin-top: 8px; font-weight: 800; padding: 12px;">Create Tournament</button>
+          <button type="submit" id="create-tourn-submit-btn" class="btn btn-primary" style="margin-top: 8px; font-weight: 800; padding: 12px; background: #ea580c; border: none;">Create Tournament</button>
         </form>
       </div>
     </div>
 
     <!-- Manage Co-Hosts Modal -->
     <div id="manage-cohosts-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeManageCoHostsModal()">
-      <div class="modal-card" style="max-width: 440px; padding: 20px; max-height: 85vh; display: flex; flex-direction: column;">
-        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border, #cbd5e1); padding-bottom: 8px;">
+      <div class="modal-card tournament-modal-card" style="max-width: 440px; padding: 20px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.12)); padding-bottom: 8px;">
           <h2 class="modal-title" style="font-size: 16px; font-weight: 800;">👥 Manage Co-Hosts</h2>
           <button type="button" class="modal-close" onclick="window.closeManageCoHostsModal()">&times;</button>
         </div>

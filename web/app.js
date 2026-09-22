@@ -6650,87 +6650,40 @@ window.renderTournamentsList = function() {
     return t.status !== "completed";
   });
 
+  list.sort((a, b) => {
+    const da = parseGameDate(a.date).getTime();
+    const db = parseGameDate(b.date).getTime();
+    if (window.currentTournamentFilter === "past") {
+      return db - da;
+    }
+    return da - db;
+  });
+
   if (list.length === 0) {
+    let emptyTitle = "No Upcoming Tournaments";
+    let emptyDesc = "Be the first to host a beach tournament for the community!";
+    if (window.currentTournamentFilter === "my") {
+      emptyTitle = "No Registered Tournaments";
+      emptyDesc = "You haven't signed up for or hosted any tournaments yet.";
+    } else if (window.currentTournamentFilter === "past") {
+      emptyTitle = "No Past Tournaments";
+      emptyDesc = "Completed beach tournaments will be archived here.";
+    }
+
     container.innerHTML = `
-      <div style="text-align: center; padding: 36px 16px; color: var(--text-muted, #94a3b8);">
-        <div style="font-size: 36px; margin-bottom: 8px;">🏐</div>
-        <div style="font-weight: 700; color: var(--text-main, #1e293b);">No tournaments found</div>
-        <div style="font-size: 12px; margin-top: 4px;">Host a beach tournament or check other filters!</div>
+      <div style="text-align: center; padding: 48px 16px; color: rgba(255, 255, 255, 0.6);">
+        <div style="font-size: 44px; margin-bottom: 12px;">🏆</div>
+        <div style="font-weight: 800; font-size: 17px; color: #ffffff; margin-bottom: 6px;">${emptyTitle}</div>
+        <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6); max-width: 280px; margin: 0 auto 18px auto; line-height: 1.4;">${emptyDesc}</div>
+        <button type="button" class="btn btn-primary" onclick="window.openCreateTournamentModal()" style="background: #ea580c; border: none; font-weight: 800; padding: 10px 20px; border-radius: 12px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px;">
+          <span>➕</span> Host Tournament
+        </button>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = list.map(t => {
-    const d = new Date(t.date);
-    const dateStr = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-    const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    const totalTeams = (t.teams || []).length;
-    const allowedDivs = t.allowedDivisions || DIVISION_CONFIG.map(div => div.name);
-
-    const poolMatches = (t.matches || []).filter(m => m.poolName);
-    const poolTotal = poolMatches.length;
-    const poolPlayed = poolMatches.filter(m => m.score1 !== null && m.score2 !== null && (m.score1 > 0 || m.score2 > 0 || m.winningTeamId)).length;
-    const isHostCard = currentUserId && t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId);
-    const isCoHostCard = currentUserId && (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
-
-    return `
-      <div class="tournament-card" onclick="window.openTournamentDetail('${t.id}')" style="background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 16px; padding: 16px; cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
-          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-            <div style="font-size: 11px; font-weight: 800; color: #ea580c; background: rgba(234, 88, 12, 0.1); padding: 3px 8px; border-radius: 999px;">
-              BEACH TOURNAMENT
-            </div>
-            ${isHostCard ? `
-              <div style="font-size: 11px; font-weight: 800; color: #ea580c; background: rgba(234, 88, 12, 0.12); padding: 3px 8px; border-radius: 999px;">
-                👑 Host
-              </div>
-            ` : ''}
-            ${isCoHostCard ? `
-              <div style="font-size: 11px; font-weight: 800; color: #0284c7; background: rgba(2, 132, 199, 0.12); padding: 3px 8px; border-radius: 999px;">
-                👥 Co-Host
-              </div>
-            ` : ''}
-            <div style="font-size: 11px; font-weight: 800; color: #0891b2; background: rgba(8, 145, 178, 0.1); padding: 3px 8px; border-radius: 999px;">
-              ${t.teamFormat === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
-            </div>
-          </div>
-          <div style="display: flex; gap: 6px; align-items: center;">
-            ${poolTotal > 0 ? `
-              <div style="font-size: 11px; font-weight: 800; color: ${poolPlayed === poolTotal ? '#16a34a' : '#0284c7'}; background: ${poolPlayed === poolTotal ? 'rgba(22, 163, 74, 0.1)' : 'rgba(2, 132, 199, 0.1)'}; padding: 3px 8px; border-radius: 999px;">
-                📊 ${poolPlayed}/${poolTotal} Pools
-              </div>
-            ` : ''}
-            <div style="font-size: 11px; font-weight: 800; color: #16a34a; background: rgba(22, 163, 74, 0.1); padding: 3px 8px; border-radius: 999px;">
-              ${(t.status || 'registration_open').replace(/_/g, ' ').toUpperCase()}
-            </div>
-          </div>
-        </div>
-
-        <h3 style="font-size: 17px; font-weight: 800; color: var(--text-main, #0f172a); margin: 0 0 6px 0;">${t.title}</h3>
-
-        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted, #64748b); margin-bottom: 12px;">
-          <div>📅 ${dateStr} • ${timeStr}</div>
-          <div>📍 ${t.location} • ${(t.courts || []).join(', ')}</div>
-        </div>
-
-        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
-          ${allowedDivs.map(divName => {
-            const conf = DIVISION_CONFIG.find(c => c.name === divName) || { icon: "🏐", name: divName };
-            const divTeamCount = (t.teams || []).filter(tm => tm.division === divName).length;
-            return `<span style="font-size: 11px; font-weight: 700; background: var(--bg-alt, #f1f5f9); color: var(--text-main, #334155); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border, #cbd5e1);">
-              ${conf.icon} ${conf.name} (${divTeamCount}/${t.maxTeamsPerDivision || 8})
-            </span>`;
-          }).join('')}
-        </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border, #e2e8f0); padding-top: 10px; font-size: 12px; font-weight: 700; color: #ea580c;">
-          <span>👥 ${totalTeams} Teams Registered</span>
-          <span>View Details & Sign Up →</span>
-        </div>
-      </div>
-    `;
-  }).join('');
+  container.innerHTML = list.map((t, idx) => renderTournamentCardHtml(t, currentUserId, idx)).join("");
 };
 
 window.openTournamentDetail = function(tournamentId) {
@@ -8282,13 +8235,15 @@ window.renderTournamentSignUpBody = function() {
   }).sort((a, b) => a.name.localeCompare(b.name));
 
   const partnerOption = (partners, selectId) => `
-    <select id="${selectId}" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px;">
+    <select id="${selectId}" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
       <option value="">-- Looking for Teammate / TBD --</option>
-      ${partners.map(p => `
-        <option value="${p.id}">
-          ${getPlayerDisplayName(p)} (${p.gender ? p.gender.toUpperCase() : '?'}, Rating: ${p.rating || 'Novice'})
-        </option>
-      `).join('')}
+      ${partners.map(p => {
+        const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+        const firstName = (p.name || "").split(/\s+/)[0] || "";
+        const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== firstName.toLowerCase()) ? ` "${p.nickname}"` : "";
+        const pPhone = p.phoneNumber ? ` • 📞 ${window.formatPhoneNumber(p.phoneNumber)}` : "";
+        return `<option value="${p.id}">${name}${pNick}${pPhone} (${p.gender ? p.gender.toUpperCase() : '?'}, Rating: ${p.rating || 'Novice'})</option>`;
+      }).join('')}
     </select>
   `;
 
@@ -8510,25 +8465,46 @@ window.openCreateTournamentModal = function() {
   document.getElementById("new-tourn-date").value = "";
   document.getElementById("new-tourn-courts").value = "Court #1, Court #2, Court #3, Court #4";
   document.getElementById("new-tourn-max-teams").value = "8";
-  document.getElementById("new-tourn-format").value = "2v2";
+  const formatEl = document.getElementById("new-tourn-format");
+  if (formatEl) formatEl.value = "2v2";
   document.getElementById("new-tourn-notes").value = "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.";
   document.querySelectorAll('input[name="tourn-div"]').forEach(cb => cb.checked = true);
 
-  const coHostsSelect = document.getElementById("new-tourn-cohosts");
-  if (coHostsSelect) {
-    const curUserId = state.currentUser?.id;
-    coHostsSelect.innerHTML = (state.players || [])
-      .filter(p => !isSamePlayer(p.id, curUserId))
-      .map(p => {
-        const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
-        const firstName = (p.name || "").split(/\s+/)[0] || "";
-        const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== firstName.toLowerCase()) ? ` "${p.nickname}"` : "";
-        const pPhone = p.phoneNumber ? ` • 📞 ${window.formatPhoneNumber(p.phoneNumber)}` : "";
-        return `<option value="${p.id}">${name}${pNick}${pPhone} (${p.rating || 'Player'})</option>`;
-      }).join('');
-  }
+  const cohostSearch = document.getElementById("new-tourn-cohost-search");
+  if (cohostSearch) cohostSearch.value = "";
+  window.filterCreateTournCoHosts();
 
   modal.classList.add("active");
+};
+
+window.filterCreateTournCoHosts = function() {
+  const query = (document.getElementById("new-tourn-cohost-search")?.value || "").toLowerCase().trim();
+  const coHostsSelect = document.getElementById("new-tourn-cohosts");
+  if (!coHostsSelect) return;
+  const curUserId = state.currentUser?.id;
+  const selectedValues = new Set(Array.from(coHostsSelect.selectedOptions).map(o => o.value));
+
+  coHostsSelect.innerHTML = (state.players || [])
+    .filter(p => !isSamePlayer(p.id, curUserId))
+    .filter(p => {
+      if (!query) return true;
+      const name = (p.name || "").toLowerCase();
+      const nick = (p.nickname || "").toLowerCase();
+      const phone = (p.phoneNumber || "").replace(/\D/g, "");
+      const cleanQ = query.replace(/\D/g, "");
+      const matchName = name.includes(query);
+      const matchNick = nick.includes(query);
+      const matchPhone = cleanQ.length > 0 && phone.includes(cleanQ);
+      return matchName || matchNick || matchPhone;
+    })
+    .map(p => {
+      const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+      const firstName = (p.name || "").split(/\s+/)[0] || "";
+      const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== firstName.toLowerCase()) ? ` "${p.nickname}"` : "";
+      const pPhone = p.phoneNumber ? ` • 📞 ${window.formatPhoneNumber(p.phoneNumber)}` : "";
+      const isSelected = selectedValues.has(p.id) ? "selected" : "";
+      return `<option value="${p.id}" ${isSelected}>${name}${pNick}${pPhone} (${p.rating || 'Player'})</option>`;
+    }).join('');
 };
 
 window.openEditTournamentModal = function(tournamentId) {
