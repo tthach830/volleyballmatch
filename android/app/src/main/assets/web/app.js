@@ -1667,6 +1667,120 @@ window.setMatchFilter = (filter) => {
   renderMatches();
 };
 
+export function renderTournamentCardHtml(t, currentUserId, index = 0) {
+  try {
+    const d = parseGameDate(t.date);
+    const dateFormatted = d.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    }) + " • " + d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit"
+    });
+    const courtsList = Array.isArray(t.courts) ? t.courts : [];
+    const courtStr = courtsList.length > 0 ? `${courtsList.length} Court${courtsList.length > 1 ? 's' : ''}` : 'Courts TBD';
+
+    const isHost = currentUserId && t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId);
+    const isCoHost = currentUserId && (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+    const isRegistered = currentUserId && (
+      (t.teams || []).some(tm =>
+        isSamePlayer(tm.player1Id, currentUserId) ||
+        isSamePlayer(tm.player2Id, currentUserId) ||
+        isSamePlayer(tm.player3Id, currentUserId) ||
+        isSamePlayer(tm.player4Id, currentUserId)
+      ) ||
+      (t.freeAgents || []).some(fa => isSamePlayer(fa.playerId, currentUserId))
+    );
+
+    const poolMatches = (t.matches || []).filter(m => m.poolName);
+    const poolTotal = poolMatches.length;
+    const poolPlayed = poolMatches.filter(m => m.score1 !== null && m.score2 !== null && (m.score1 > 0 || m.score2 > 0 || m.winningTeamId)).length;
+
+    const allowedDivs = t.allowedDivisions || (typeof DIVISION_CONFIG !== "undefined" ? DIVISION_CONFIG.map(div => div.name) : ["2v2 Coed Novice", "2v2 Coed Intermediate", "4v4 Coed", "2v2 Men's Intermediate"]);
+    const totalTeams = (t.teams || []).length;
+    const totalFreeAgents = (t.freeAgents || []).length;
+
+    return `
+      ${index > 0 ? '<div class="games-white-gap"></div>' : ''}
+      <div class="game-details-card" id="tournament-card-${t.id}" onclick="window.openTournamentDetail('${t.id}')" style="cursor: pointer;">
+        <!-- Header Row -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="font-size: 18px;">🏆</span>
+            <span style="font-size: 17px; font-weight: 800; color: #ffffff;">${t.title || 'Beach Tournament'}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+            ${isHost ? `
+              <span style="font-size: 10px; font-weight: 800; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 2px 7px; border-radius: 999px;">
+                👑 Host
+              </span>
+            ` : ''}
+            ${isCoHost ? `
+              <span style="font-size: 10px; font-weight: 800; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 7px; border-radius: 999px;">
+                👥 Co-Host
+              </span>
+            ` : ''}
+            ${isRegistered ? `
+              <span style="font-size: 10px; font-weight: 800; background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 2px 7px; border-radius: 999px;">
+                🟢 Registered
+              </span>
+            ` : ''}
+            ${poolTotal > 0 ? `
+              <span style="font-size: 10px; font-weight: 800; background: ${poolPlayed === poolTotal ? 'rgba(34, 197, 94, 0.2)' : 'rgba(249, 115, 22, 0.2)'}; color: ${poolPlayed === poolTotal ? '#4ade80' : '#fb923c'}; padding: 2px 7px; border-radius: 999px;">
+                📊 ${poolPlayed}/${poolTotal} Pools
+              </span>
+            ` : ''}
+            <span style="font-size: 10px; font-weight: 800; background: rgba(8, 145, 178, 0.25); color: #22d3ee; padding: 2px 7px; border-radius: 999px;">
+              ${t.teamFormat === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
+            </span>
+          </div>
+        </div>
+
+        <!-- Date & Location -->
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="color: #fb923c;">📅</span>
+            <span style="color: #ffffff; font-weight: 600;">${dateFormatted}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="color: #38bdf8;">📍</span>
+            <span>${t.location || 'Main Beach'} • ${courtStr}</span>
+          </div>
+        </div>
+
+        <!-- Divisions Badges -->
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+          ${allowedDivs.map(divName => {
+            const conf = (typeof DIVISION_CONFIG !== "undefined" ? DIVISION_CONFIG.find(c => c.name === divName) : null) || { icon: "🏐", name: divName };
+            const divTeamCount = (t.teams || []).filter(tm => tm.division === divName).length;
+            const maxTeams = t.maxTeamsPerDivision || 8;
+            return `
+              <span style="font-size: 11px; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: #e2e8f0; padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                ${conf.icon || "🏐"} ${conf.name || divName} (${divTeamCount}/${maxTeams})
+              </span>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- Footer -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 10px; font-size: 12px; font-weight: 700; color: #fb923c;">
+          <span style="color: rgba(255, 255, 255, 0.6); font-weight: 500;">
+            👥 ${totalTeams} Team${totalTeams !== 1 ? 's' : ''} Registered${totalFreeAgents > 0 ? ` • ${totalFreeAgents} Free Agent${totalFreeAgents !== 1 ? 's' : ''}` : ''}
+          </span>
+          <span style="display: flex; align-items: center; gap: 4px;">
+            View Details & Sign Up →
+          </span>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Error rendering tournament card:", t?.id, err);
+    return "";
+  }
+}
+window.renderTournamentCardHtml = renderTournamentCardHtml;
+
 function renderMatches() {
   const container = document.getElementById("matches-list");
   if (!container) return;
@@ -1689,20 +1803,37 @@ function renderMatches() {
   }
 
   const currentUserId = state.currentUser?.id;
+  const isRoot = isRootUser(state.currentUser);
   checkUpcomingMatchReminders();
 
-  // 1. Determine games for current view filter
-  const isCompletedFilter = currentMatchFilter === "completed" || currentMatchFilter === "pastGames";
-  let targetGames;
-  if (isCompletedFilter) {
-    targetGames = state.games.filter(g => {
-      const s = String(g.status || "").trim().toLowerCase();
-      return s === "completed" || parseGameDate(g.scheduledDate) < new Date();
-    }).sort((a, b) => parseGameDate(b.scheduledDate).getTime() - parseGameDate(a.scheduledDate).getTime());
-  } else {
-    targetGames = state.games.filter(isUpcomingGame)
-      .sort((a, b) => parseGameDate(a.scheduledDate).getTime() - parseGameDate(b.scheduledDate).getTime());
+  if (typeof deduplicateTournaments === "function") {
+    state.tournaments = deduplicateTournaments(state.tournaments || []);
   }
+
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  const isCompletedFilter = currentMatchFilter === "completed" || currentMatchFilter === "pastGames";
+
+  const isUserInTournament = (t) => {
+    if (!currentUserId) return false;
+    const isReg = (t.teams || []).some(tm =>
+      isSamePlayer(tm.player1Id, currentUserId) ||
+      isSamePlayer(tm.player2Id, currentUserId) ||
+      isSamePlayer(tm.player3Id, currentUserId) ||
+      isSamePlayer(tm.player4Id, currentUserId)
+    ) || (t.freeAgents || []).some(fa => isSamePlayer(fa.playerId, currentUserId));
+    const isHost = t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId);
+    const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+    return isReg || isHost || isCoHost || isRoot;
+  };
+
+  const isUserInGame = (game) => {
+    if (!currentUserId) return false;
+    const allP = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
+    return isPlayerInList(allP, currentUserId) ||
+      isSamePlayer(game.hostPlayerId, currentUserId) ||
+      isSamePlayer(game.team1PlayerIds?.[0], currentUserId) ||
+      isRoot;
+  };
 
   const canJoin = (game) => {
     const allP = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
@@ -1721,33 +1852,99 @@ function renderMatches() {
     return true;
   };
 
-  // 2. Apply selected view filter ('all', 'myGames', 'pastGames')
-  let displayGames = targetGames.filter(game => {
-    if (isCompletedFilter) return true;
-    const isMember = currentUserId && (
-      game.team1PlayerIds?.includes(currentUserId) ||
-      game.team2PlayerIds?.includes(currentUserId) ||
-      game.hostPlayerId === currentUserId
-    );
-    if (currentMatchFilter === "myGames" || currentMatchFilter === "myMatches") {
-      return isMember;
-    } else if (currentMatchFilter === "openSpots") {
-      return canJoin(game);
-    }
-    return true;
-  });
+  // Determine feed items (Games + Tournaments) for current filter
+  let feedItems = [];
 
-  if (displayGames.length === 0) {
-    const emptyMsg = isCompletedFilter ?
-      "No past completed games found." :
-      (currentMatchFilter === "myGames" || currentMatchFilter === "myMatches") ?
-      `You are not registered in any upcoming games.<br><button type="button" class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="window.setMatchFilter('all')">📅 View All Upcoming Games (${targetGames.length})</button>` :
-      `No upcoming games available.<br><button type="button" class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="window.openCreateMatchModal()">+ Host a Game</button>`;
-    container.innerHTML = `<div style="text-align:center; padding: 40px 16px; color: var(--text-muted);">${emptyMsg}</div>`;
+  if (isCompletedFilter) {
+    const pastGames = (state.games || []).filter(g => {
+      const s = String(g.status || "").trim().toLowerCase();
+      const d = parseGameDate(g.scheduledDate);
+      return s === "completed" || d <= twoHoursAgo;
+    }).map(g => ({ type: "game", item: g, date: parseGameDate(g.scheduledDate) }));
+
+    const pastTournaments = (state.tournaments || []).filter(t => {
+      const s = String(t.status || "").trim().toLowerCase();
+      const d = parseGameDate(t.date);
+      return s === "completed" || d <= twoHoursAgo;
+    }).map(t => ({ type: "tournament", item: t, date: parseGameDate(t.date) }));
+
+    feedItems = [...pastGames, ...pastTournaments].sort((a, b) => b.date.getTime() - a.date.getTime());
+  } else if (currentMatchFilter === "myGames" || currentMatchFilter === "myMatches") {
+    if (currentUserId) {
+      const myGames = (state.games || []).filter(g => {
+        const s = String(g.status || "").trim().toLowerCase();
+        if (s === "canceled" || s === "cancelled") return false;
+        const d = parseGameDate(g.scheduledDate);
+        if (d <= twoHoursAgo) return false;
+        return isUserInGame(g);
+      }).map(g => ({ type: "game", item: g, date: parseGameDate(g.scheduledDate) }));
+
+      const myTournaments = (state.tournaments || []).filter(t => {
+        const s = String(t.status || "").trim().toLowerCase();
+        if (s === "completed") return false;
+        const d = parseGameDate(t.date);
+        if (d <= twoHoursAgo) return false;
+        return isUserInTournament(t);
+      }).map(t => ({ type: "tournament", item: t, date: parseGameDate(t.date) }));
+
+      feedItems = [...myGames, ...myTournaments].sort((a, b) => a.date.getTime() - b.date.getTime());
+    }
+  } else {
+    const upcomingGames = (state.games || []).filter(g => {
+      const s = String(g.status || "").trim().toLowerCase();
+      if (s === "canceled" || s === "cancelled" || s === "completed") return false;
+      const d = parseGameDate(g.scheduledDate);
+      if (d <= twoHoursAgo) return false;
+      if (currentMatchFilter === "openSpots") return canJoin(g);
+      return true;
+    }).map(g => ({ type: "game", item: g, date: parseGameDate(g.scheduledDate) }));
+
+    const upcomingTournaments = (currentMatchFilter === "openSpots") ? [] : (state.tournaments || []).filter(t => {
+      const s = String(t.status || "").trim().toLowerCase();
+      if (s === "completed") return false;
+      const d = parseGameDate(t.date);
+      return d > twoHoursAgo;
+    }).map(t => ({ type: "tournament", item: t, date: parseGameDate(t.date) }));
+
+    feedItems = [...upcomingGames, ...upcomingTournaments].sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  if (feedItems.length === 0) {
+    let emptyTitle = "No Upcoming Events";
+    let emptySub = "There are no upcoming games or tournaments scheduled yet.";
+    if (isCompletedFilter) {
+      emptyTitle = "No Past Events";
+      emptySub = "No past games or tournaments found in history.";
+    } else if (currentMatchFilter === "myGames" || currentMatchFilter === "myMatches") {
+      emptyTitle = "No Games or Tournaments";
+      emptySub = "You haven't joined or hosted any upcoming games or tournaments.";
+    }
+
+    container.innerHTML = `
+      <div style="text-align: center; padding: 48px 20px; color: var(--text-muted, #94a3b8);">
+        <div style="font-size: 44px; margin-bottom: 12px;">🏐</div>
+        <h3 style="font-size: 18px; font-weight: 800; color: #ffffff; margin-bottom: 6px;">${emptyTitle}</h3>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.65); max-width: 340px; margin: 0 auto 22px auto; line-height: 1.4;">
+          ${emptySub}
+        </p>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 240px; margin: 0 auto;">
+          <button type="button" class="btn btn-primary" onclick="window.openCreateMatchModal()" style="width: 100%; padding: 12px 18px; font-size: 14px; font-weight: 700; border-radius: 999px; background: #2b6e7a; border: none; color: #ffffff; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(43, 110, 122, 0.4); cursor: pointer;">
+            <span>➕</span> Host a Game
+          </button>
+          <button type="button" class="btn" onclick="window.openCreateTournamentModal()" style="width: 100%; padding: 12px 18px; font-size: 14px; font-weight: 700; border-radius: 999px; background: #ea580c; border: none; color: #ffffff; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4); cursor: pointer;">
+            <span>🏆</span> Host Tournament
+          </button>
+        </div>
+      </div>
+    `;
     return;
   }
 
-  const cardsHtml = displayGames.map((game, index) => {
+  const cardsHtml = feedItems.map((feedItem, index) => {
+    if (feedItem.type === "tournament") {
+      return renderTournamentCardHtml(feedItem.item, currentUserId, index);
+    }
+    const game = feedItem.item;
     try {
     const allPlayerIds = [...(game.team1PlayerIds || []), ...(game.team2PlayerIds || [])];
     const maxPlayers = game.maxPlayers || 4;
