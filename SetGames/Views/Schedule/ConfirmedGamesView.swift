@@ -23,6 +23,7 @@ public struct ConfirmedGamesView: View {
     @State private var collapsedPoolGameIds: Set<UUID> = []
     @State private var playerToRemove: (gameId: UUID, player: Player)? = nil
     @State private var showRemovePlayerAlert: Bool = false
+    @State private var showUserSwitcher: Bool = false
     
     public enum GameFilter: String, CaseIterable {
         case all = "🗺️ All Upcoming"
@@ -36,8 +37,11 @@ public struct ConfirmedGamesView: View {
     
     public var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView {
-                VStack(spacing: 14) {
+            VStack(spacing: 0) {
+                topHeaderView
+                
+                ScrollView {
+                    VStack(spacing: 14) {
                     // Action Buttons Row: + New Game, 🚀 Quick Play, 🏆 Tournaments
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -138,42 +142,17 @@ public struct ConfirmedGamesView: View {
                 }
                 .padding(.bottom, 30)
             }
+            }
             .background(Color(red: 0.08, green: 0.09, blue: 0.12).ignoresSafeArea())
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { gameId in
                 GameDetailView(dataManager: dataManager, gameId: gameId)
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Text("Set Games")
-                        .font(.system(size: 20, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
-                }
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        NotificationService.shared.requestPermission()
-                        showNotificationsSheet = true
-                    } label: {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "bell.fill")
-                                .font(.system(size: 17))
-                                .foregroundColor(.orange)
-                            
-                            if dataManager.unreadNotificationsCount > 0 {
-                                Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 9, height: 9)
-                                    .offset(x: 3, y: -3)
-                            }
-                        }
-                        .padding(4)
-                    }
-                }
-            }
             .sheet(isPresented: $showNotificationsSheet) {
                 NotificationsSheet(dataManager: dataManager)
+            }
+            .sheet(isPresented: $showUserSwitcher) {
+                UserSwitcherView(dataManager: dataManager)
             }
             .fullScreenCover(isPresented: $showCreateMatchSheet) {
                 CreateMatchSheet(dataManager: dataManager)
@@ -246,6 +225,90 @@ public struct ConfirmedGamesView: View {
                 }
             }
         }
+    }
+    
+    // MARK: - Top App Bar Header
+    private var topHeaderView: some View {
+        HStack(alignment: .center, spacing: 10) {
+            // Brand: Icon + Title
+            HStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(red: 1.0, green: 0.52, blue: 0.2), Color(red: 1.0, green: 0.33, blue: 0.0)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 32, height: 32)
+                        .shadow(color: Color.orange.opacity(0.3), radius: 3, x: 0, y: 2)
+                    Text("🏐")
+                        .font(.system(size: 18))
+                }
+                
+                Text("Volleyball Match")
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+            
+            Spacer(minLength: 4)
+            
+            // Notifications Bell + User Profile Chip
+            HStack(spacing: 8) {
+                Button {
+                    NotificationService.shared.requestPermission()
+                    showNotificationsSheet = true
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.orange)
+                        
+                        if dataManager.unreadNotificationsCount > 0 {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 8, height: 8)
+                                .offset(x: 3, y: -3)
+                        }
+                    }
+                    .frame(width: 34, height: 34)
+                    .background(Color.orange.opacity(0.14))
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle().stroke(Color.orange.opacity(0.28), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                
+                if let user = dataManager.currentUser {
+                    Button {
+                        showUserSwitcher = true
+                    } label: {
+                        HStack(spacing: 5) {
+                            PlayerAvatarView(player: user, dimension: 24, showBadge: false)
+                            Text(user.displayName)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                            RatingBadge(rating: user.rating, size: .small)
+                        }
+                        .padding(.leading, 4)
+                        .padding(.trailing, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(red: 0.13, green: 0.15, blue: 0.20))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 6)
     }
     
     private func canUserJoin(_ game: SetGame) -> Bool {

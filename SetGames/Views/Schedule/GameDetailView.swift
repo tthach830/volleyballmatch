@@ -728,7 +728,21 @@ public struct GameDetailView: View {
         .background(Color(UIColor.systemGroupedBackground))
         .navigationTitle("Game Details")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Back")
+                    }
+                    .foregroundColor(.orange)
+                }
+            }
+            
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     showQRCodeSheet = true
