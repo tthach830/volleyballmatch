@@ -5,14 +5,27 @@ public struct TournamentDetailView: View {
     @ObservedObject var dataManager: DataManager
     let tournamentId: UUID
     
+    public enum TournamentDetailSheet: Identifiable {
+        case signUp
+        case editTournament
+        case manageCoHosts
+        case scoreMatch(TournamentMatch)
+        
+        public var id: String {
+            switch self {
+            case .signUp: return "signUp"
+            case .editTournament: return "editTournament"
+            case .manageCoHosts: return "manageCoHosts"
+            case .scoreMatch(let match): return "scoreMatch-\(match.id.uuidString)"
+            }
+        }
+    }
+    
     @State private var selectedDivision: TournamentDivisionCategory = .coedNovice2v2
     @State private var selectedSubTab: SubTab = .pools
-    @State private var showSignUpSheet: Bool = false
+    @State private var activeSheet: TournamentDetailSheet? = nil
     @State private var showLeaveAlert: Bool = false
-    @State private var showEditTournamentSheet: Bool = false
     @State private var showDeleteTournamentAlert: Bool = false
-    @State private var showManageCoHostsSheet: Bool = false
-    @State private var scoringMatch: TournamentMatch? = nil
     
     public enum SubTab: String, CaseIterable {
         case pools = "🏊 Pools"
@@ -227,7 +240,7 @@ public struct TournamentDetailView: View {
                             .padding(.horizontal)
                         } else {
                             Button {
-                                showSignUpSheet = true
+                                activeSheet = .signUp
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "plus.circle.fill")
@@ -263,14 +276,14 @@ public struct TournamentDetailView: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             Menu {
                                 Button {
-                                    showEditTournamentSheet = true
+                                    activeSheet = .editTournament
                                 } label: {
                                     Label("Edit Tournament", systemImage: "pencil")
                                 }
                                 
                                 if isPrimaryHostOrAdmin {
                                     Button {
-                                        showManageCoHostsSheet = true
+                                        activeSheet = .manageCoHosts
                                     } label: {
                                         Label("Manage Co-Hosts", systemImage: "person.badge.shield.checkmark")
                                     }
@@ -289,17 +302,17 @@ public struct TournamentDetailView: View {
                         }
                     }
                 }
-                .sheet(isPresented: $showSignUpSheet) {
-                    TournamentSignUpSheet(dataManager: dataManager, tournament: t, preselectedDivision: selectedDivision)
-                }
-                .sheet(isPresented: $showEditTournamentSheet) {
-                    CreateTournamentSheet(dataManager: dataManager, tournamentToEdit: t)
-                }
-                .sheet(isPresented: $showManageCoHostsSheet) {
-                    ManageCoHostsSheet(dataManager: dataManager, tournament: t)
-                }
-                .sheet(item: $scoringMatch) { match in
-                    TournamentScoreSheet(tournament: t, match: match, dataManager: dataManager)
+                .sheet(item: $activeSheet) { sheet in
+                    switch sheet {
+                    case .signUp:
+                        TournamentSignUpSheet(dataManager: dataManager, tournament: t, preselectedDivision: selectedDivision)
+                    case .editTournament:
+                        CreateTournamentSheet(dataManager: dataManager, tournamentToEdit: t)
+                    case .manageCoHosts:
+                        ManageCoHostsSheet(dataManager: dataManager, tournament: t)
+                    case .scoreMatch(let match):
+                        TournamentScoreSheet(tournament: t, match: match, dataManager: dataManager)
+                    }
                 }
                 .alert("Leave Tournament?", isPresented: $showLeaveAlert) {
                     Button("Cancel", role: .cancel) {}
@@ -580,7 +593,7 @@ public struct TournamentDetailView: View {
                 VStack(spacing: 8) {
                     ForEach(matches) { match in
                         TournamentMatchRowView(match: match, teams: t.teams, players: dataManager.players) {
-                            scoringMatch = match
+                            activeSheet = .scoreMatch(match)
                         }
                     }
                 }
@@ -872,7 +885,7 @@ public struct TournamentDetailView: View {
                 
                 // Interactive Tournament Bracket Tree Diagram
                 PlayoffBracketChartView(tournament: t, division: division, players: dataManager.players) { m in
-                    scoringMatch = m
+                    activeSheet = .scoreMatch(m)
                 }
                 
                 // Championship Final
@@ -889,7 +902,7 @@ public struct TournamentDetailView: View {
                         
                         ForEach(finals) { m in
                             PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
-                                scoringMatch = m
+                                activeSheet = .scoreMatch(m)
                             }
                         }
                     }
@@ -909,7 +922,7 @@ public struct TournamentDetailView: View {
                         
                         ForEach(thirdPlace) { m in
                             PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
-                                scoringMatch = m
+                                activeSheet = .scoreMatch(m)
                             }
                         }
                     }
@@ -929,7 +942,7 @@ public struct TournamentDetailView: View {
                         
                         ForEach(semis) { m in
                             PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
-                                scoringMatch = m
+                                activeSheet = .scoreMatch(m)
                             }
                         }
                     }
@@ -949,7 +962,7 @@ public struct TournamentDetailView: View {
                         
                         ForEach(quarters) { m in
                             PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
-                                scoringMatch = m
+                                activeSheet = .scoreMatch(m)
                             }
                         }
                     }

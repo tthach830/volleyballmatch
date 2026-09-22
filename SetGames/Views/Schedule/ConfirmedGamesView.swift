@@ -157,7 +157,7 @@ public struct ConfirmedGamesView: View {
             .fullScreenCover(isPresented: $showCreateMatchSheet) {
                 CreateMatchSheet(dataManager: dataManager)
             }
-            .sheet(isPresented: $showTournamentsSheet) {
+            .fullScreenCover(isPresented: $showTournamentsSheet) {
                 TournamentHubView(dataManager: dataManager)
             }
             .sheet(isPresented: $showRandomTeamsSheet) {

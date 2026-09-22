@@ -7,15 +7,27 @@ public struct TournamentSignUpSheet: View {
     let preselectedDivision: TournamentDivisionCategory?
     
     @State private var selectedDivision: TournamentDivisionCategory
+    public enum ActivePartnerPickerSlot: Identifiable {
+        case teammate2
+        case teammate3
+        case teammate4
+        
+        public var id: String {
+            switch self {
+            case .teammate2: return "teammate2"
+            case .teammate3: return "teammate3"
+            case .teammate4: return "teammate4"
+            }
+        }
+    }
+    
     @State private var registrationType: RegistrationType = .team
     @State private var teamName: String = ""
     @State private var selectedPartner: Player? = nil
     @State private var selectedPartner2: Player? = nil
     @State private var selectedPartner3: Player? = nil
     @State private var freeAgentNotes: String = ""
-    @State private var showPartnerPicker: Bool = false
-    @State private var showPartnerPicker2: Bool = false
-    @State private var showPartnerPicker3: Bool = false
+    @State private var activePartnerPickerSlot: ActivePartnerPickerSlot? = nil
     @State private var partnerSearchQuery: String = ""
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
@@ -246,7 +258,7 @@ public struct TournamentSignUpSheet: View {
                                         }
                                         Spacer()
                                         Button("Change") {
-                                            showPartnerPicker = true
+                                            activePartnerPickerSlot = .teammate2
                                         }
                                         .font(.caption)
                                         .foregroundColor(.orange)
@@ -256,7 +268,7 @@ public struct TournamentSignUpSheet: View {
                                     .cornerRadius(14)
                                 } else {
                                     Button {
-                                        showPartnerPicker = true
+                                        activePartnerPickerSlot = .teammate2
                                     } label: {
                                         HStack(spacing: 10) {
                                             Image(systemName: "person.badge.plus")
@@ -299,7 +311,7 @@ public struct TournamentSignUpSheet: View {
                                             }
                                             Spacer()
                                             Button("Change") {
-                                                showPartnerPicker2 = true
+                                                activePartnerPickerSlot = .teammate3
                                             }
                                             .font(.caption)
                                             .foregroundColor(.orange)
@@ -309,7 +321,7 @@ public struct TournamentSignUpSheet: View {
                                         .cornerRadius(14)
                                     } else {
                                         Button {
-                                            showPartnerPicker2 = true
+                                            activePartnerPickerSlot = .teammate3
                                         } label: {
                                             HStack(spacing: 10) {
                                                 Image(systemName: "person.badge.plus")
@@ -350,7 +362,7 @@ public struct TournamentSignUpSheet: View {
                                             }
                                             Spacer()
                                             Button("Change") {
-                                                showPartnerPicker3 = true
+                                                activePartnerPickerSlot = .teammate4
                                             }
                                             .font(.caption)
                                             .foregroundColor(.orange)
@@ -360,7 +372,7 @@ public struct TournamentSignUpSheet: View {
                                         .cornerRadius(14)
                                     } else {
                                         Button {
-                                            showPartnerPicker3 = true
+                                            activePartnerPickerSlot = .teammate4
                                         } label: {
                                             HStack(spacing: 10) {
                                                 Image(systemName: "person.badge.plus")
@@ -439,38 +451,39 @@ public struct TournamentSignUpSheet: View {
                     .foregroundColor(.secondary)
                 }
             }
-            .sheet(isPresented: $showPartnerPicker) {
-                PartnerPickerView(
-                    dataManager: dataManager,
-                    selectedGender: selectedDivision.genderCategory,
-                    maxAllowedRating: selectedDivision.maxAllowedRating,
-                    onSelect: { partner in
-                        selectedPartner = partner
-                        showPartnerPicker = false
-                    }
-                )
-            }
-            .sheet(isPresented: $showPartnerPicker2) {
-                PartnerPickerView(
-                    dataManager: dataManager,
-                    selectedGender: selectedDivision.genderCategory,
-                    maxAllowedRating: selectedDivision.maxAllowedRating,
-                    onSelect: { partner in
-                        selectedPartner2 = partner
-                        showPartnerPicker2 = false
-                    }
-                )
-            }
-            .sheet(isPresented: $showPartnerPicker3) {
-                PartnerPickerView(
-                    dataManager: dataManager,
-                    selectedGender: selectedDivision.genderCategory,
-                    maxAllowedRating: selectedDivision.maxAllowedRating,
-                    onSelect: { partner in
-                        selectedPartner3 = partner
-                        showPartnerPicker3 = false
-                    }
-                )
+            .sheet(item: $activePartnerPickerSlot) { slot in
+                switch slot {
+                case .teammate2:
+                    PartnerPickerView(
+                        dataManager: dataManager,
+                        selectedGender: selectedDivision.genderCategory,
+                        maxAllowedRating: selectedDivision.maxAllowedRating,
+                        onSelect: { partner in
+                            selectedPartner = partner
+                            activePartnerPickerSlot = nil
+                        }
+                    )
+                case .teammate3:
+                    PartnerPickerView(
+                        dataManager: dataManager,
+                        selectedGender: selectedDivision.genderCategory,
+                        maxAllowedRating: selectedDivision.maxAllowedRating,
+                        onSelect: { partner in
+                            selectedPartner2 = partner
+                            activePartnerPickerSlot = nil
+                        }
+                    )
+                case .teammate4:
+                    PartnerPickerView(
+                        dataManager: dataManager,
+                        selectedGender: selectedDivision.genderCategory,
+                        maxAllowedRating: selectedDivision.maxAllowedRating,
+                        onSelect: { partner in
+                            selectedPartner3 = partner
+                            activePartnerPickerSlot = nil
+                        }
+                    )
+                }
             }
             .alert("Registration Notice", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }

@@ -4,9 +4,20 @@ public struct TournamentHubView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var dataManager: DataManager
     
+    public enum TournamentHubSheet: Identifiable {
+        case create
+        case edit(Tournament)
+        
+        public var id: String {
+            switch self {
+            case .create: return "create"
+            case .edit(let t): return "edit-\(t.id.uuidString)"
+            }
+        }
+    }
+    
     @State private var selectedFilter: TournamentFilter = .upcoming
-    @State private var showCreateTournamentSheet: Bool = false
-    @State private var tournamentToEdit: Tournament? = nil
+    @State private var activeSheet: TournamentHubSheet? = nil
     @State private var tournamentToDelete: Tournament? = nil
     @State private var selectedTournamentForDetail: Tournament? = nil
     
@@ -81,6 +92,22 @@ public struct TournamentHubView: View {
                             Text("Tap '+ Host Tournament' to organize a beach tournament!")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                            
+                            Button {
+                                activeSheet = .create
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "plus.circle.fill")
+                                    Text("Host Tournament")
+                                }
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.orange)
+                                .clipShape(Capsule())
+                            }
+                            .padding(.top, 4)
                         }
                         .padding(50)
                     } else {
@@ -95,7 +122,7 @@ public struct TournamentHubView: View {
                                     let isPrimaryHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (tournament.hostPlayerId != nil && tournament.hostPlayerId == dataManager.currentUser?.id)
                                     if isHostOrAdmin {
                                         Button {
-                                            tournamentToEdit = tournament
+                                            activeSheet = .edit(tournament)
                                         } label: {
                                             Label("Edit Tournament", systemImage: "pencil")
                                         }
@@ -122,7 +149,7 @@ public struct TournamentHubView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        showCreateTournamentSheet = true
+                        activeSheet = .create
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
@@ -145,11 +172,13 @@ public struct TournamentHubView: View {
                     .foregroundColor(.orange)
                 }
             }
-            .sheet(isPresented: $showCreateTournamentSheet) {
-                CreateTournamentSheet(dataManager: dataManager)
-            }
-            .sheet(item: $tournamentToEdit) { tourn in
-                CreateTournamentSheet(dataManager: dataManager, tournamentToEdit: tourn)
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .create:
+                    CreateTournamentSheet(dataManager: dataManager)
+                case .edit(let tourn):
+                    CreateTournamentSheet(dataManager: dataManager, tournamentToEdit: tourn)
+                }
             }
             .alert("Delete Tournament?", isPresented: Binding(
                 get: { tournamentToDelete != nil },
