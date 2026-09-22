@@ -11,6 +11,7 @@ public struct TournamentDetailView: View {
     @State private var showLeaveAlert: Bool = false
     @State private var showEditTournamentSheet: Bool = false
     @State private var showDeleteTournamentAlert: Bool = false
+    @State private var showManageCoHostsSheet: Bool = false
     @State private var scoringMatch: TournamentMatch? = nil
     
     public enum SubTab: String, CaseIterable {
@@ -89,6 +90,30 @@ public struct TournamentDetailView: View {
                                         Text("\(t.location) • \(t.courts.joined(separator: ", "))")
                                             .font(.caption)
                                             .foregroundColor(.white.opacity(0.9))
+                                    }
+                                    
+                                    // Host & Co-Hosts
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "crown.fill")
+                                            .font(.caption2)
+                                            .foregroundColor(.yellow)
+                                        let hostName = dataManager.players.first(where: { $0.id == t.hostPlayerId })?.displayName ?? "Organizer"
+                                        Text("Host: \(hostName)")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white.opacity(0.9))
+                                        
+                                        let coHosts = t.coHosts(from: dataManager.players)
+                                        if !coHosts.isEmpty {
+                                            Text("•")
+                                                .foregroundColor(.white.opacity(0.4))
+                                            Image(systemName: "person.2.fill")
+                                                .font(.caption2)
+                                                .foregroundColor(.cyan)
+                                            Text("Co-Hosts: \(coHosts.map { $0.displayName }.joined(separator: ", "))")
+                                                .font(.caption)
+                                                .foregroundColor(.cyan)
+                                        }
                                     }
                                 }
                             }
@@ -232,7 +257,8 @@ public struct TournamentDetailView: View {
                 .navigationTitle(t.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (t.hostPlayerId != nil && t.hostPlayerId == dataManager.currentUser?.id)
+                    let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || t.isHostOrCoHost(dataManager.currentUser?.id)
+                    let isPrimaryHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (t.hostPlayerId != nil && t.hostPlayerId == dataManager.currentUser?.id)
                     if isHostOrAdmin {
                         ToolbarItem(placement: .topBarTrailing) {
                             Menu {
@@ -242,10 +268,18 @@ public struct TournamentDetailView: View {
                                     Label("Edit Tournament", systemImage: "pencil")
                                 }
                                 
-                                Button(role: .destructive) {
-                                    showDeleteTournamentAlert = true
-                                } label: {
-                                    Label("Delete Tournament", systemImage: "trash")
+                                if isPrimaryHostOrAdmin {
+                                    Button {
+                                        showManageCoHostsSheet = true
+                                    } label: {
+                                        Label("Manage Co-Hosts", systemImage: "person.badge.shield.checkmark")
+                                    }
+                                    
+                                    Button(role: .destructive) {
+                                        showDeleteTournamentAlert = true
+                                    } label: {
+                                        Label("Delete Tournament", systemImage: "trash")
+                                    }
                                 }
                             } label: {
                                 Image(systemName: "ellipsis.circle")
@@ -260,6 +294,9 @@ public struct TournamentDetailView: View {
                 }
                 .sheet(isPresented: $showEditTournamentSheet) {
                     CreateTournamentSheet(dataManager: dataManager, tournamentToEdit: t)
+                }
+                .sheet(isPresented: $showManageCoHostsSheet) {
+                    ManageCoHostsSheet(dataManager: dataManager, tournament: t)
                 }
                 .sheet(item: $scoringMatch) { match in
                     TournamentScoreSheet(tournament: t, match: match, dataManager: dataManager)
@@ -299,7 +336,7 @@ public struct TournamentDetailView: View {
         let poolBMatches = t.poolMatches(for: division, poolName: poolBName)
         let hasPools = !poolAMatches.isEmpty || !poolBMatches.isEmpty
         let divisionTeams = t.teams(for: division)
-        let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (t.hostPlayerId != nil && t.hostPlayerId == dataManager.currentUser?.id)
+        let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || t.isHostOrCoHost(dataManager.currentUser?.id)
         
         VStack(spacing: 20) {
             // Generator Card (if no pools exist or host wants to re-generate)
@@ -364,6 +401,9 @@ public struct TournamentDetailView: View {
                 .cornerRadius(18)
                 .padding(.horizontal)
             } else {
+                // Host Pools Status Dashboard
+                poolStatusDashboardView(t: t, division: division, poolAMatches: poolAMatches, poolBMatches: poolBMatches)
+                
                 // Standings for Pool A
                 poolSectionView(t: t, division: division, poolName: poolAName, matches: poolAMatches)
                 
@@ -422,16 +462,37 @@ public struct TournamentDetailView: View {
     @ViewBuilder
     private func poolSectionView(t: Tournament, division: TournamentDivisionCategory, poolName: String, matches: [TournamentMatch]) -> some View {
         let standings = t.poolStandings(for: division, poolName: poolName)
+        let playedCount = matches.filter { $0.isCompleted }.count
+        let totalCount = matches.count
+        let isPoolComplete = totalCount > 0 && playedCount == totalCount
         
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(poolName.uppercased())
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundColor(.cyan)
+                HStack(spacing: 6) {
+                    Text(poolName.uppercased())
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundColor(.cyan)
+                    
+                    Text("(\(playedCount)/\(totalCount) Played)")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(isPoolComplete ? .green : .secondary)
+                }
+                
                 Spacer()
-                Text("All Teams Advance to Playoffs")
-                    .font(.system(size: 11, weight: .bold))
+                
+                if isPoolComplete {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 10))
+                        Text("Pool Complete")
+                            .font(.system(size: 11, weight: .bold))
+                    }
                     .foregroundColor(.green)
+                } else {
+                    Text("All Teams Advance to Playoffs")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.green)
+                }
             }
             .padding(.horizontal)
             
@@ -527,11 +588,216 @@ public struct TournamentDetailView: View {
         }
     }
     
+    // MARK: - Host Pools Status Dashboard
+    @ViewBuilder
+    private func poolStatusDashboardView(
+        t: Tournament,
+        division: TournamentDivisionCategory,
+        poolAMatches: [TournamentMatch],
+        poolBMatches: [TournamentMatch]
+    ) -> some View {
+        let allPoolMatches = poolAMatches + poolBMatches
+        let total = allPoolMatches.count
+        let played = allPoolMatches.filter { $0.isCompleted }.count
+        let remaining = total - played
+        let pct = total > 0 ? Double(played) / Double(total) : 0.0
+        let poolAPlayed = poolAMatches.filter { $0.isCompleted }.count
+        let poolBPlayed = poolBMatches.filter { $0.isCompleted }.count
+        let isComplete = total > 0 && played == total
+        let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || t.isHostOrCoHost(dataManager.currentUser?.id)
+        
+        VStack(spacing: 12) {
+            // Header row with title and status badge
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.caption)
+                        .foregroundColor(.cyan)
+                    Text("POOLS STATUS")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(.cyan)
+                }
+                
+                Spacer()
+                
+                if isComplete {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11))
+                        Text("ALL PLAYED")
+                            .font(.system(size: 10, weight: .black))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.green.opacity(0.2)))
+                    .foregroundColor(.green)
+                } else {
+                    HStack(spacing: 4) {
+                        Circle().fill(Color.orange).frame(width: 6, height: 6)
+                        Text("IN PROGRESS")
+                            .font(.system(size: 10, weight: .black))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.orange.opacity(0.2)))
+                    .foregroundColor(.orange)
+                }
+            }
+            
+            // Score progress row
+            HStack(alignment: .lastTextBaseline) {
+                HStack(spacing: 4) {
+                    Text("\(played)")
+                        .font(.system(size: 28, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                    Text("/ \(total)")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.6))
+                    Text("Games Played")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 4)
+                }
+                
+                Spacer()
+                
+                Text("\(Int(pct * 100))%")
+                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .foregroundColor(isComplete ? .green : .cyan)
+            }
+            
+            // Progress Bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 10)
+                    
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(
+                            LinearGradient(
+                                colors: isComplete ? [Color.green, Color.mint] : [Color.orange, Color.cyan],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(0, min(geo.size.width, geo.size.width * CGFloat(pct))), height: 10)
+                        .animation(.easeInOut(duration: 0.3), value: pct)
+                }
+            }
+            .frame(height: 10)
+            
+            // Pools breakdown chips
+            HStack(spacing: 8) {
+                // Pool A chip
+                HStack(spacing: 4) {
+                    Text("Pool A:")
+                        .fontWeight(.bold)
+                        .foregroundColor(.secondary)
+                    Text("\(poolAPlayed)/\(poolAMatches.count)")
+                        .fontWeight(.black)
+                        .foregroundColor(poolAPlayed == poolAMatches.count && !poolAMatches.isEmpty ? .green : .white)
+                    if poolAPlayed == poolAMatches.count && !poolAMatches.isEmpty {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.green)
+                    }
+                }
+                .font(.caption2)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(8)
+                
+                // Pool B chip
+                HStack(spacing: 4) {
+                    Text("Pool B:")
+                        .fontWeight(.bold)
+                        .foregroundColor(.secondary)
+                    Text("\(poolBPlayed)/\(poolBMatches.count)")
+                        .fontWeight(.black)
+                        .foregroundColor(poolBPlayed == poolBMatches.count && !poolBMatches.isEmpty ? .green : .white)
+                    if poolBPlayed == poolBMatches.count && !poolBMatches.isEmpty {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.green)
+                    }
+                }
+                .font(.caption2)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(8)
+                
+                Spacer()
+                
+                Text(remaining > 0 ? "\(remaining) to play" : "Ready for Playoffs")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundColor(remaining > 0 ? .orange : .green)
+            }
+            
+            // If all pool games played and playoff bracket not yet generated
+            if isComplete && t.bracketMatches(for: division).isEmpty && isHostOrAdmin {
+                VStack(spacing: 8) {
+                    Divider().background(Color.white.opacity(0.1))
+                    
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("All Pool Games Completed!")
+                                .font(.footnote)
+                                .fontWeight(.bold)
+                                .foregroundColor(.green)
+                            Text("Seeds are locked. Advance all teams to single elimination.")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Button {
+                            dataManager.generatePlayoffBracket(tournamentId: t.id, division: division)
+                            selectedSubTab = .bracket
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "trophy.fill")
+                                Text("Start Playoffs")
+                                    .fontWeight(.bold)
+                            }
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.orange)
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(16)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.12, green: 0.14, blue: 0.20), Color(red: 0.09, green: 0.11, blue: 0.16)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isComplete ? Color.green.opacity(0.3) : Color.cyan.opacity(0.2), lineWidth: 1)
+        )
+        .padding(.horizontal)
+    }
+    
     // MARK: - Playoff Bracket Sub-View
     @ViewBuilder
     private func bracketView(t: Tournament, division: TournamentDivisionCategory) -> some View {
         let bracketMatches = t.bracketMatches(for: division)
-        let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (t.hostPlayerId != nil && t.hostPlayerId == dataManager.currentUser?.id)
+        let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || t.isHostOrCoHost(dataManager.currentUser?.id)
         
         VStack(spacing: 16) {
             if bracketMatches.isEmpty {
@@ -1704,5 +1970,114 @@ struct PlayoffCleanMatchCardView: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal)
+    }
+}
+
+// MARK: - Manage Co-Hosts Sheet
+struct ManageCoHostsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var dataManager: DataManager
+    let tournament: Tournament
+    
+    @State private var showPicker: Bool = false
+    
+    private var excludedCoHostIds: Set<UUID> {
+        var excluded = Set(tournament.coHostPlayerIds)
+        if let hostId = tournament.hostPlayerId {
+            _ = excluded.insert(hostId)
+        }
+        return excluded
+    }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Tournament Host (Owner)") {
+                    if let host = dataManager.players.first(where: { $0.id == tournament.hostPlayerId }) {
+                        HStack(spacing: 12) {
+                            PlayerAvatarView(player: host, dimension: 40)
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(host.displayName)
+                                        .font(.headline)
+                                    Text("👑 Owner")
+                                        .font(.system(size: 10, weight: .black))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Capsule().fill(Color.yellow.opacity(0.2)))
+                                        .foregroundColor(.yellow)
+                                }
+                                Text("\(host.gender.capitalized) • \(host.homeBeach)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    } else {
+                        Text("Organizer")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Section("Co-Hosts") {
+                    let coHosts = tournament.coHosts(from: dataManager.players)
+                    if coHosts.isEmpty {
+                        Text("No co-hosts assigned. Co-hosts can manage pools, enter match scores, and run playoffs.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(coHosts) { player in
+                            HStack(spacing: 12) {
+                                PlayerAvatarView(player: player, dimension: 40)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(player.displayName)
+                                        .font(.headline)
+                                    Text("\(player.gender.capitalized) • \(player.homeBeach)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button(role: .destructive) {
+                                    dataManager.removeCoHost(tournamentId: tournament.id, playerId: player.id)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .foregroundColor(.red)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                    
+                    Button {
+                        showPicker = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "person.badge.plus")
+                            Text("Add Co-Host")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.cyan)
+                    }
+                }
+            }
+            .navigationTitle("Manage Co-Hosts")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showPicker) {
+                CoHostPickerSheet(
+                    dataManager: dataManager,
+                    excludedIds: excludedCoHostIds,
+                    onSelect: { player in
+                        dataManager.addCoHost(tournamentId: tournament.id, playerId: player.id)
+                        showPicker = false
+                    }
+                )
+            }
+        }
     }
 }

@@ -6443,7 +6443,9 @@ window.renderTournamentsList = function() {
       if (!currentUserId) return false;
       const isReg = (t.teams || []).some(tm => tm.player1Id === currentUserId || tm.player2Id === currentUserId || tm.player3Id === currentUserId || tm.player4Id === currentUserId) ||
                     (t.freeAgents || []).some(fa => fa.playerId === currentUserId);
-      return isReg || t.hostPlayerId === currentUserId;
+      const isHost = t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId);
+      const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+      return isReg || isHost || isCoHost;
     }
     if (window.currentTournamentFilter === "past") {
       return t.status === "completed";
@@ -6469,17 +6471,42 @@ window.renderTournamentsList = function() {
     const totalTeams = (t.teams || []).length;
     const allowedDivs = t.allowedDivisions || DIVISION_CONFIG.map(div => div.name);
 
+    const poolMatches = (t.matches || []).filter(m => m.poolName);
+    const poolTotal = poolMatches.length;
+    const poolPlayed = poolMatches.filter(m => m.score1 !== null && m.score2 !== null && (m.score1 > 0 || m.score2 > 0 || m.winningTeamId)).length;
+    const isHostCard = currentUserId && t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId);
+    const isCoHostCard = currentUserId && (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+
     return `
       <div class="tournament-card" onclick="window.openTournamentDetail('${t.id}')" style="background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 16px; padding: 16px; cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-          <div style="font-size: 11px; font-weight: 800; color: #ea580c; background: rgba(234, 88, 12, 0.1); padding: 3px 8px; border-radius: 999px;">
-            BEACH TOURNAMENT
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <div style="font-size: 11px; font-weight: 800; color: #ea580c; background: rgba(234, 88, 12, 0.1); padding: 3px 8px; border-radius: 999px;">
+              BEACH TOURNAMENT
+            </div>
+            ${isHostCard ? `
+              <div style="font-size: 11px; font-weight: 800; color: #ea580c; background: rgba(234, 88, 12, 0.12); padding: 3px 8px; border-radius: 999px;">
+                👑 Host
+              </div>
+            ` : ''}
+            ${isCoHostCard ? `
+              <div style="font-size: 11px; font-weight: 800; color: #0284c7; background: rgba(2, 132, 199, 0.12); padding: 3px 8px; border-radius: 999px;">
+                👥 Co-Host
+              </div>
+            ` : ''}
+            <div style="font-size: 11px; font-weight: 800; color: #0891b2; background: rgba(8, 145, 178, 0.1); padding: 3px 8px; border-radius: 999px;">
+              ${t.teamFormat === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
+            </div>
           </div>
-          <div style="font-size: 11px; font-weight: 800; color: #16a34a; background: rgba(22, 163, 74, 0.1); padding: 3px 8px; border-radius: 999px;">
-            ${(t.status || 'registration_open').replace(/_/g, ' ').toUpperCase()}
-          </div>
-          <div style="font-size: 11px; font-weight: 800; color: #0891b2; background: rgba(8, 145, 178, 0.1); padding: 3px 8px; border-radius: 999px;">
-            ${t.teamFormat === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
+          <div style="display: flex; gap: 6px; align-items: center;">
+            ${poolTotal > 0 ? `
+              <div style="font-size: 11px; font-weight: 800; color: ${poolPlayed === poolTotal ? '#16a34a' : '#0284c7'}; background: ${poolPlayed === poolTotal ? 'rgba(22, 163, 74, 0.1)' : 'rgba(2, 132, 199, 0.1)'}; padding: 3px 8px; border-radius: 999px;">
+                📊 ${poolPlayed}/${poolTotal} Pools
+              </div>
+            ` : ''}
+            <div style="font-size: 11px; font-weight: 800; color: #16a34a; background: rgba(22, 163, 74, 0.1); padding: 3px 8px; border-radius: 999px;">
+              ${(t.status || 'registration_open').replace(/_/g, ' ').toUpperCase()}
+            </div>
           </div>
         </div>
 
@@ -6681,12 +6708,19 @@ window.renderTournamentDetail = function() {
   }
 
   const isRoot = isRootUser(state.currentUser);
-  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, state.currentUser?.id)) || isRoot;
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, state.currentUser?.id));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, state.currentUser?.id)) || isCoHost || isRoot;
+  const isPrimaryHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, state.currentUser?.id)) || isRoot;
 
   // Render Header
   const headerContainer = document.getElementById("tournament-detail-header");
   if (headerContainer) {
     const d = new Date(t.date);
+    const hostPlayer = t.hostPlayerId ? state.getPlayer(t.hostPlayerId) : null;
+    const hostName = hostPlayer ? (window.formatFirstLastInit ? window.formatFirstLastInit(hostPlayer.name) : hostPlayer.name) : "Organizer";
+    const coHosts = (t.coHostPlayerIds || []).map(id => state.getPlayer(id)).filter(Boolean);
+    const coHostNames = coHosts.map(p => window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name).join(', ');
+
     headerContainer.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
         <div>
@@ -6700,16 +6734,27 @@ window.renderTournamentDetail = function() {
           <div style="font-size: 12px; color: var(--text-muted, #64748b);">
             📅 ${d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} • 📍 ${t.location} (${(t.courts || []).join(', ')})
           </div>
+          <div style="font-size: 11px; color: var(--text-muted, #64748b); margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="display: inline-flex; align-items: center; gap: 3px;">👑 <b>Host:</b> ${hostName}</span>
+            ${coHostNames ? `<span style="color: #cbd5e1;">•</span> <span style="display: inline-flex; align-items: center; gap: 3px; color: #0284c7;">👥 <b>Co-Hosts:</b> ${coHostNames}</span>` : ''}
+          </div>
         </div>
 
         ${isHost ? `
-          <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;">
+          <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;">
+            ${isPrimaryHost ? `
+              <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; font-weight: 700; color: #0284c7; border-color: #bae6fd;" onclick="window.openManageCoHostsModal('${t.id}')">
+                👥 Co-Hosts
+              </button>
+            ` : ''}
             <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; font-weight: 700;" onclick="window.openEditTournamentModal('${t.id}')">
               ✏️ Edit
             </button>
-            <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; font-weight: 700; color: #dc2626; border-color: #fca5a5;" onclick="window.deleteTournament('${t.id}')">
-              🗑️ Delete
-            </button>
+            ${isPrimaryHost ? `
+              <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; font-weight: 700; color: #dc2626; border-color: #fca5a5;" onclick="window.deleteTournament('${t.id}')">
+                🗑️ Delete
+              </button>
+            ` : ''}
           </div>
         ` : ''}
       </div>
@@ -6754,10 +6799,75 @@ window.renderTournamentDetail = function() {
     const standingsB = window.calculatePoolStandings(divTeams.filter(tm => tm.poolName === poolBName), poolBMatches);
     const bracketMatches = divMatches.filter(m => m.stage !== "pool" && !m.poolName);
 
-    const renderStandingsTable = (poolName, standings, matches) => `
+    const isMatchPlayed = m => m.score1 !== null && m.score2 !== null && (m.score1 > 0 || m.score2 > 0 || m.winningTeamId);
+    const playedA = poolAMatches.filter(isMatchPlayed).length;
+    const totalA = poolAMatches.length;
+    const playedB = poolBMatches.filter(isMatchPlayed).length;
+    const totalB = poolBMatches.length;
+    const totalPoolMatches = totalA + totalB;
+    const playedPoolMatches = playedA + playedB;
+    const percentPlayed = totalPoolMatches > 0 ? Math.round((playedPoolMatches / totalPoolMatches) * 100) : 0;
+    const remainingMatches = totalPoolMatches - playedPoolMatches;
+    const allPoolsComplete = playedPoolMatches === totalPoolMatches && totalPoolMatches > 0;
+
+    const renderPoolStatusDashboard = () => {
+      if (!hasPools) return '';
+      return `
+        <div style="background: var(--surface, #ffffff); border: 1px solid var(--border, #cbd5e1); border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); margin-bottom: 2px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 14px;">📊</span>
+              <span style="font-size: 13px; font-weight: 800; color: var(--text-main, #0f172a);">Pools Status</span>
+            </div>
+            <div style="font-size: 11px; font-weight: 800; color: ${allPoolsComplete ? '#16a34a' : '#ea580c'}; background: ${allPoolsComplete ? 'rgba(22,163,74,0.1)' : 'rgba(234,88,12,0.1)'}; padding: 3px 8px; border-radius: 999px;">
+              ${playedPoolMatches} / ${totalPoolMatches} Games Played (${percentPlayed}%)
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div style="width: 100%; height: 8px; background: var(--bg-alt, #e2e8f0); border-radius: 999px; overflow: hidden; margin-bottom: 10px;">
+            <div style="width: ${percentPlayed}%; height: 100%; background: ${allPoolsComplete ? '#16a34a' : 'linear-gradient(90deg, #ea580c, #f59e0b)'}; border-radius: 999px; transition: width 0.3s ease;"></div>
+          </div>
+
+          <!-- Pool Breakdown Chips -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <div style="font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 8px; background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); color: var(--text-main, #334155);">
+                🏊 <b>Pool A:</b> ${playedA}/${totalA} ${playedA === totalA && totalA > 0 ? '✅' : ''}
+              </div>
+              <div style="font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 8px; background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); color: var(--text-main, #334155);">
+                🏊 <b>Pool B:</b> ${playedB}/${totalB} ${playedB === totalB && totalB > 0 ? '✅' : ''}
+              </div>
+            </div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted, #64748b);">
+              ${remainingMatches > 0 ? `⏳ ${remainingMatches} game${remainingMatches === 1 ? '' : 's'} remaining` : '🎉 All pool games complete!'}
+            </div>
+          </div>
+
+          ${allPoolsComplete && bracketMatches.length === 0 ? `
+            <div style="margin-top: 12px; padding: 10px; border-radius: 10px; background: rgba(22,163,74,0.08); border: 1px solid rgba(22,163,74,0.25); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div style="font-size: 12px; font-weight: 700; color: #15803d;">
+                🎉 All pool games finished! Ready to seed playoffs.
+              </div>
+              <button type="button" class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; font-weight: 800; background: #16a34a; border-color: #15803d;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
+                🚀 Start Single Elimination Playoffs
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    };
+
+    const renderStandingsTable = (poolName, standings, matches) => {
+      const poolPlayedCount = matches.filter(isMatchPlayed).length;
+      const poolTotalCount = matches.length;
+      const isPoolDone = poolPlayedCount === poolTotalCount && poolTotalCount > 0;
+      return `
       <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 12px; font-weight: 900; color: #0284c7; text-transform: uppercase;">${poolName}</span>
+          <span style="font-size: 12px; font-weight: 900; color: #0284c7; text-transform: uppercase;">
+            ${poolName} <span style="font-size: 11px; font-weight: 700; color: var(--text-muted, #64748b);">(${poolPlayedCount}/${poolTotalCount} Played)</span> ${isPoolDone ? '✅' : ''}
+          </span>
           <span style="font-size: 11px; font-weight: 800; color: #16a34a;">All Teams Advance to Playoffs</span>
         </div>
 
@@ -6803,6 +6913,7 @@ window.renderTournamentDetail = function() {
         ` : ''}
       </div>
     `;
+    };
 
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 14px;">
@@ -6824,6 +6935,7 @@ window.renderTournamentDetail = function() {
             ` : ''}
           </div>
         ` : `
+          ${renderPoolStatusDashboard()}
           ${renderStandingsTable(poolAName, standingsA, poolAMatches)}
           ${renderStandingsTable(poolBName, standingsB, poolBMatches)}
 
@@ -8194,6 +8306,17 @@ window.openCreateTournamentModal = function() {
   document.getElementById("new-tourn-notes").value = "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.";
   document.querySelectorAll('input[name="tourn-div"]').forEach(cb => cb.checked = true);
 
+  const coHostsSelect = document.getElementById("new-tourn-cohosts");
+  if (coHostsSelect) {
+    const curUserId = state.currentUser?.id;
+    coHostsSelect.innerHTML = (state.players || [])
+      .filter(p => !isSamePlayer(p.id, curUserId))
+      .map(p => {
+        const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+        return `<option value="${p.id}">${name}</option>`;
+      }).join('');
+  }
+
   modal.classList.add("active");
 };
 
@@ -8238,6 +8361,19 @@ window.openEditTournamentModal = function(tournamentId) {
     cb.checked = allowed.includes(cb.value);
   });
 
+  const coHostsSelect = document.getElementById("new-tourn-cohosts");
+  if (coHostsSelect) {
+    const hostId = t.hostPlayerId;
+    const currentCoHosts = t.coHostPlayerIds || [];
+    coHostsSelect.innerHTML = (state.players || [])
+      .filter(p => !isSamePlayer(p.id, hostId))
+      .map(p => {
+        const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+        const isSelected = currentCoHosts.some(id => isSamePlayer(id, p.id));
+        return `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${name}</option>`;
+      }).join('');
+  }
+
   modal.classList.add("active");
 };
 
@@ -8256,6 +8392,8 @@ window.submitCreateTournament = function(e) {
   const notes = document.getElementById("new-tourn-notes")?.value || "";
   const checkedDivs = Array.from(document.querySelectorAll('input[name="tourn-div"]:checked')).map(el => el.value);
   const teamFormat = document.getElementById("new-tourn-format")?.value || "2v2";
+  const coHostsSelect = document.getElementById("new-tourn-cohosts");
+  const selectedCoHostIds = coHostsSelect ? Array.from(coHostsSelect.selectedOptions).map(opt => opt.value) : [];
 
   if (editId) {
     const t = (state.tournaments || []).find(item => item.id === editId);
@@ -8276,6 +8414,7 @@ window.submitCreateTournament = function(e) {
     t.maxTeamsPerDivision = maxTeams;
     t.notes = notes;
     t.teamFormat = teamFormat;
+    t.coHostPlayerIds = selectedCoHostIds;
 
     state.saveLocal();
     saveTournamentToFirestore(t);
@@ -8300,6 +8439,7 @@ window.submitCreateTournament = function(e) {
     status: "registration_open",
     notes,
     hostPlayerId: state.currentUser?.id || null,
+    coHostPlayerIds: selectedCoHostIds,
     teamFormat
   };
 
@@ -8338,6 +8478,157 @@ window.deleteTournament = function(tournamentId) {
 
   showToast(`🗑️ Tournament "${t.title}" deleted.`);
   document.getElementById("tournament-detail-modal")?.classList.remove("active");
+  window.renderTournamentsList();
+};
+
+window.openManageCoHostsModal = function(tournamentId) {
+  const t = (state.tournaments || []).find(item => item.id === tournamentId);
+  if (!t) return;
+
+  const isRoot = isRootUser(state.currentUser);
+  const isPrimaryHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, state.currentUser?.id)) || isRoot;
+  if (!isPrimaryHost) {
+    showToast("Only the tournament host can manage co-hosts.");
+    return;
+  }
+
+  window.activeManageCoHostsTournamentId = tournamentId;
+  window.renderManageCoHostsModal(tournamentId);
+  document.getElementById("manage-cohosts-modal")?.classList.add("active");
+};
+
+window.closeManageCoHostsModal = function() {
+  document.getElementById("manage-cohosts-modal")?.classList.remove("active");
+  window.activeManageCoHostsTournamentId = null;
+};
+
+window.renderManageCoHostsModal = function(tournamentId) {
+  const container = document.getElementById("manage-cohosts-content");
+  if (!container) return;
+
+  const t = (state.tournaments || []).find(item => item.id === tournamentId);
+  if (!t) return;
+
+  const hostPlayer = t.hostPlayerId ? state.getPlayer(t.hostPlayerId) : null;
+  const hostName = hostPlayer ? (window.formatFirstLastInit ? window.formatFirstLastInit(hostPlayer.name) : hostPlayer.name) : "Organizer";
+  const coHostIds = t.coHostPlayerIds || [];
+  const coHosts = coHostIds.map(id => state.getPlayer(id)).filter(Boolean);
+
+  const excludedIds = new Set([t.hostPlayerId, ...coHostIds].filter(Boolean).map(id => String(id).toLowerCase()));
+  const availablePlayers = (state.players || []).filter(p => !excludedIds.has(String(p.id).toLowerCase()));
+
+  container.innerHTML = `
+    <!-- Primary Host Display -->
+    <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 18px;">👑</span>
+        <div>
+          <div style="font-size: 11px; font-weight: 800; color: #ea580c; text-transform: uppercase;">Primary Host</div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">${hostName}</div>
+        </div>
+      </div>
+      <span style="font-size: 10px; font-weight: 800; color: #64748b; background: #e2e8f0; padding: 2px 6px; border-radius: 6px;">Creator</span>
+    </div>
+
+    <!-- Co-Hosts List -->
+    <div>
+      <div style="font-size: 12px; font-weight: 800; color: #0284c7; text-transform: uppercase; margin: 4px 0 8px 0; display: flex; justify-content: space-between;">
+        <span>Assigned Co-Hosts (${coHosts.length})</span>
+      </div>
+      ${coHosts.length === 0 ? `
+        <div style="text-align: center; padding: 18px 12px; background: var(--bg-alt, #f8fafc); border-radius: 10px; color: var(--text-muted, #94a3b8); font-size: 12px; border: 1px dashed var(--border, #cbd5e1);">
+          No co-hosts assigned yet. Add trusted players to help manage pools, scores, and brackets.
+        </div>
+      ` : `
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          ${coHosts.map(p => {
+            const pName = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 8px 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 16px;">👥</span>
+                  <div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">${pName}</div>
+                    <div style="font-size: 11px; color: var(--text-muted, #64748b);">${p.rating || 'Player'}</div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; font-weight: 700; color: #dc2626; border-color: #fca5a5;" onclick="window.removeCoHostFromTournament('${t.id}', '${p.id}')">
+                  Remove
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `}
+    </div>
+
+    <!-- Add Co-Host Section -->
+    <div style="border-top: 1px solid var(--border, #e2e8f0); padding-top: 12px; margin-top: 4px;">
+      <div style="font-size: 12px; font-weight: 800; color: var(--text-main, #0f172a); margin-bottom: 6px;">
+        ➕ Add New Co-Host
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <select id="add-cohost-select" class="form-input" style="flex: 1; padding: 8px 10px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1);">
+          <option value="">Select a player...</option>
+          ${availablePlayers.map(p => {
+            const pName = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+            return `<option value="${p.id}">${pName} (${p.rating || 'Player'})</option>`;
+          }).join('')}
+        </select>
+        <button type="button" class="btn btn-primary" style="padding: 8px 14px; font-size: 12px; font-weight: 700; white-space: nowrap;" onclick="window.addSelectedCoHost('${t.id}')">
+          Add
+        </button>
+      </div>
+    </div>
+  `;
+};
+
+window.addSelectedCoHost = function(tournamentId) {
+  const select = document.getElementById("add-cohost-select");
+  const playerId = select?.value;
+  if (!playerId) {
+    showToast("Please select a player to add as co-host.");
+    return;
+  }
+  window.addCoHostToTournament(tournamentId, playerId);
+};
+
+window.addCoHostToTournament = function(tournamentId, playerId) {
+  const t = (state.tournaments || []).find(item => item.id === tournamentId);
+  if (!t) return;
+
+  t.coHostPlayerIds = t.coHostPlayerIds || [];
+  if (!t.coHostPlayerIds.some(id => isSamePlayer(id, playerId))) {
+    t.coHostPlayerIds.push(playerId);
+  }
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+
+  const player = state.getPlayer(playerId);
+  const pName = player ? (window.formatFirstLastInit ? window.formatFirstLastInit(player.name) : player.name) : "Player";
+  showToast(`👥 Added ${pName} as co-host!`);
+
+  window.renderManageCoHostsModal(tournamentId);
+  window.renderTournamentDetail();
+  window.renderTournamentsList();
+};
+
+window.removeCoHostFromTournament = function(tournamentId, playerId) {
+  const t = (state.tournaments || []).find(item => item.id === tournamentId);
+  if (!t) return;
+
+  t.coHostPlayerIds = (t.coHostPlayerIds || []).filter(id => !isSamePlayer(id, playerId));
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+
+  const player = state.getPlayer(playerId);
+  const pName = player ? (window.formatFirstLastInit ? window.formatFirstLastInit(player.name) : player.name) : "Player";
+  showToast(`Removed ${pName} from co-hosts.`);
+
+  window.renderManageCoHostsModal(tournamentId);
+  window.renderTournamentDetail();
   window.renderTournamentsList();
 };
 

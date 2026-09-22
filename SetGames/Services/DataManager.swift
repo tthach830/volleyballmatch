@@ -2094,13 +2094,15 @@ public class DataManager: ObservableObject {
         allowedDivisions: [TournamentDivisionCategory],
         maxTeamsPerDivision: Int = 8,
         notes: String,
-        teamFormat: TournamentTeamFormat = .doubles2v2
+        teamFormat: TournamentTeamFormat = .doubles2v2,
+        coHostPlayerIds: [UUID] = []
     ) {
         let t = Tournament(
             id: UUID(),
             rawId: UUID().uuidString,
             title: title,
             hostPlayerId: currentUser?.id,
+            coHostPlayerIds: coHostPlayerIds,
             date: date,
             location: location,
             courts: courts,
@@ -2111,6 +2113,7 @@ public class DataManager: ObservableObject {
             matches: [],
             status: "registration_open",
             notes: notes,
+            createdAt: Date(),
             teamFormat: teamFormat
         )
         tournaments.insert(t, at: 0)
@@ -2685,15 +2688,16 @@ public class DataManager: ObservableObject {
         allowedDivisions: [TournamentDivisionCategory],
         maxTeamsPerDivision: Int,
         notes: String,
-        teamFormat: TournamentTeamFormat
+        teamFormat: TournamentTeamFormat,
+        coHostPlayerIds: [UUID]? = nil
     ) -> (success: Bool, message: String) {
         guard let user = currentUser,
               let idx = tournaments.firstIndex(where: { $0.id == id }) else {
             return (false, "Tournament not found.")
         }
-        let isHost = (tournaments[idx].hostPlayerId == user.id) || user.isRoot
+        let isHost = tournaments[idx].isHostOrCoHost(user.id) || user.isRoot
         guard isHost else {
-            return (false, "Only the tournament host or admin can edit this tournament.")
+            return (false, "Only the tournament host, co-host, or admin can edit this tournament.")
         }
         tournaments[idx].title = title
         tournaments[idx].date = date
@@ -2703,9 +2707,49 @@ public class DataManager: ObservableObject {
         tournaments[idx].maxTeamsPerDivision = maxTeamsPerDivision
         tournaments[idx].notes = notes
         tournaments[idx].teamFormat = teamFormat
+        if let coHosts = coHostPlayerIds {
+            tournaments[idx].coHostPlayerIds = coHosts
+        }
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[idx])
         return (true, "Tournament updated successfully.")
+    }
+    
+    @discardableResult
+    public func addCoHost(tournamentId: UUID, playerId: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Tournament not found.")
+        }
+        let canManage = (tournaments[idx].hostPlayerId == user.id) || user.isRoot
+        guard canManage else {
+            return (false, "Only the primary host or admin can add co-hosts.")
+        }
+        guard playerId != tournaments[idx].hostPlayerId else {
+            return (false, "Player is already the tournament host.")
+        }
+        if !tournaments[idx].coHostPlayerIds.contains(playerId) {
+            tournaments[idx].coHostPlayerIds.append(playerId)
+            saveToDisk()
+            FirestoreService.shared.saveTournament(tournaments[idx])
+        }
+        return (true, "Co-host added successfully.")
+    }
+    
+    @discardableResult
+    public func removeCoHost(tournamentId: UUID, playerId: UUID) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Tournament not found.")
+        }
+        let canManage = (tournaments[idx].hostPlayerId == user.id) || user.isRoot
+        guard canManage else {
+            return (false, "Only the primary host or admin can remove co-hosts.")
+        }
+        tournaments[idx].coHostPlayerIds.removeAll { $0 == playerId }
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        return (true, "Co-host removed successfully.")
     }
     
     @discardableResult

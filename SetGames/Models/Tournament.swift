@@ -470,6 +470,7 @@ public struct Tournament: Identifiable, Codable, Hashable {
     public var rawId: String?
     public var title: String
     public var hostPlayerId: UUID?
+    public var coHostPlayerIds: [UUID]
     public var date: Date
     public var location: String
     public var courts: [String]
@@ -488,6 +489,7 @@ public struct Tournament: Identifiable, Codable, Hashable {
         rawId: String? = nil,
         title: String,
         hostPlayerId: UUID? = nil,
+        coHostPlayerIds: [UUID] = [],
         date: Date,
         location: String = "Main Beach",
         courts: [String] = ["Court #1", "Court #2", "Court #3", "Court #4"],
@@ -505,6 +507,7 @@ public struct Tournament: Identifiable, Codable, Hashable {
         self.rawId = rawId ?? id.uuidString
         self.title = title
         self.hostPlayerId = hostPlayerId
+        self.coHostPlayerIds = coHostPlayerIds
         self.date = date
         self.location = location
         self.courts = courts
@@ -520,7 +523,7 @@ public struct Tournament: Identifiable, Codable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, rawId, title, hostPlayerId, date, location, courts, allowedDivisions, maxTeamsPerDivision, teams, freeAgents, matches, status, notes, createdAt, teamFormat
+        case id, rawId, title, hostPlayerId, coHostPlayerIds, date, location, courts, allowedDivisions, maxTeamsPerDivision, teams, freeAgents, matches, status, notes, createdAt, teamFormat
     }
     
     public init(from decoder: Decoder) throws {
@@ -542,6 +545,14 @@ public struct Tournament: Identifiable, Codable, Hashable {
             hostPlayerId = UUID(uuidString: hRaw) ?? SetGame.parseUUID(from: hRaw)
         } else {
             hostPlayerId = try? container.decode(UUID.self, forKey: .hostPlayerId)
+        }
+        
+        if let coHosts = try? container.decode([UUID].self, forKey: .coHostPlayerIds) {
+            coHostPlayerIds = coHosts
+        } else if let strHosts = try? container.decode([String].self, forKey: .coHostPlayerIds) {
+            coHostPlayerIds = strHosts.compactMap { UUID(uuidString: $0) ?? SetGame.parseUUID(from: $0) }
+        } else {
+            coHostPlayerIds = []
         }
         
         if let d = try? container.decode(Date.self, forKey: .date) {
@@ -570,6 +581,24 @@ public struct Tournament: Identifiable, Codable, Hashable {
         }
         
         teamFormat = (try? container.decode(TournamentTeamFormat.self, forKey: .teamFormat)) ?? .doubles2v2
+    }
+    
+    public func isHostOrCoHost(_ playerId: UUID?) -> Bool {
+        guard let pid = playerId else { return false }
+        return (hostPlayerId == pid) || coHostPlayerIds.contains(pid)
+    }
+    
+    public func coHosts(from allPlayers: [Player]) -> [Player] {
+        allPlayers.filter { coHostPlayerIds.contains($0.id) }
+    }
+    
+    public func poolMatchProgress(for division: TournamentDivisionCategory, poolName: String? = nil) -> (played: Int, total: Int, percent: Double) {
+        let poolM = poolMatches(for: division, poolName: poolName)
+        let total = poolM.count
+        guard total > 0 else { return (0, 0, 0.0) }
+        let played = poolM.filter { $0.isCompleted }.count
+        let pct = Double(played) / Double(total)
+        return (played, total, pct)
     }
     
     public var teamSize: Int {

@@ -30,7 +30,7 @@ public struct TournamentHubView: View {
                 .sorted { $0.date < $1.date }
         case .myTournaments:
             guard let uid = currentUserId else { return [] }
-            return dataManager.tournaments.filter { $0.isPlayerRegistered(uid) || $0.hostPlayerId == uid }
+            return dataManager.tournaments.filter { $0.isPlayerRegistered(uid) || $0.isHostOrCoHost(uid) }
                 .sorted { $0.date < $1.date }
         case .past:
             return dataManager.tournaments.filter { $0.status == "completed" || $0.date < now.addingTimeInterval(-86400) }
@@ -91,7 +91,8 @@ public struct TournamentHubView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .contextMenu {
-                                    let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (tournament.hostPlayerId != nil && tournament.hostPlayerId == dataManager.currentUser?.id)
+                                    let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || tournament.isHostOrCoHost(dataManager.currentUser?.id)
+                                    let isPrimaryHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (tournament.hostPlayerId != nil && tournament.hostPlayerId == dataManager.currentUser?.id)
                                     if isHostOrAdmin {
                                         Button {
                                             tournamentToEdit = tournament
@@ -99,10 +100,12 @@ public struct TournamentHubView: View {
                                             Label("Edit Tournament", systemImage: "pencil")
                                         }
                                         
-                                        Button(role: .destructive) {
-                                            tournamentToDelete = tournament
-                                        } label: {
-                                            Label("Delete Tournament", systemImage: "trash")
+                                        if isPrimaryHostOrAdmin {
+                                            Button(role: .destructive) {
+                                                tournamentToDelete = tournament
+                                            } label: {
+                                                Label("Delete Tournament", systemImage: "trash")
+                                            }
                                         }
                                     }
                                 }
@@ -178,6 +181,22 @@ struct TournamentCardView: View {
         return tournament.isPlayerRegistered(user.id)
     }
     
+    private var isUserHost: Bool {
+        guard let user = dataManager.currentUser else { return false }
+        return tournament.hostPlayerId == user.id
+    }
+    
+    private var isUserCoHost: Bool {
+        guard let user = dataManager.currentUser else { return false }
+        return tournament.coHostPlayerIds.contains(user.id)
+    }
+    
+    private var poolStatusBadge: (played: Int, total: Int)? {
+        let poolM = tournament.matches.filter { $0.stage == "pool" }
+        guard !poolM.isEmpty else { return nil }
+        return (poolM.filter { $0.isCompleted }.count, poolM.count)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             
@@ -192,6 +211,22 @@ struct TournamentCardView: View {
                 }
                 Spacer()
                 
+                if isUserHost {
+                    Text("👑 Host")
+                        .font(.system(size: 10, weight: .black))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.yellow.opacity(0.2)))
+                        .foregroundColor(.yellow)
+                } else if isUserCoHost {
+                    Text("👥 Co-Host")
+                        .font(.system(size: 10, weight: .black))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.blue.opacity(0.2)))
+                        .foregroundColor(.cyan)
+                }
+                
                 if isUserRegistered {
                     Text("🟢 Registered")
                         .font(.system(size: 10, weight: .black))
@@ -199,13 +234,15 @@ struct TournamentCardView: View {
                         .padding(.vertical, 3)
                         .background(Capsule().fill(Color.green.opacity(0.2)))
                         .foregroundColor(.green)
-                } else {
-                    Text("Open")
-                        .font(.system(size: 10, weight: .black))
-                        .padding(.horizontal, 8)
+                }
+                
+                if let pool = poolStatusBadge {
+                    Text("\(pool.played)/\(pool.total) Pools")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.orange.opacity(0.2)))
-                        .foregroundColor(.orange)
+                        .background(Capsule().fill(pool.played == pool.total ? Color.green.opacity(0.2) : Color.orange.opacity(0.2)))
+                        .foregroundColor(pool.played == pool.total ? .green : .orange)
                 }
                 
                 Text("\(tournament.teamFormat.icon) \(tournament.teamFormat.displayName)")

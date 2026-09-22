@@ -13,6 +13,8 @@ public struct CreateTournamentSheet: View {
     @State private var selectedDivisions: Set<TournamentDivisionCategory>
     @State private var notes: String
     @State private var selectedTeamFormat: TournamentTeamFormat
+    @State private var selectedCoHostIds: [UUID]
+    @State private var showCoHostPicker: Bool = false
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     
@@ -29,6 +31,7 @@ public struct CreateTournamentSheet: View {
             _selectedDivisions = State(initialValue: Set(t.allowedDivisions))
             _notes = State(initialValue: t.notes)
             _selectedTeamFormat = State(initialValue: t.teamFormat)
+            _selectedCoHostIds = State(initialValue: t.coHostPlayerIds)
         } else {
             _title = State(initialValue: "")
             _location = State(initialValue: "Main Beach")
@@ -38,7 +41,19 @@ public struct CreateTournamentSheet: View {
             _selectedDivisions = State(initialValue: Set(TournamentDivisionCategory.allCases))
             _notes = State(initialValue: "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.")
             _selectedTeamFormat = State(initialValue: .doubles2v2)
+            _selectedCoHostIds = State(initialValue: [])
         }
+    }
+    
+    private var excludedPickerIds: Set<UUID> {
+        var excluded = Set(selectedCoHostIds)
+        if let uid = dataManager.currentUser?.id {
+            _ = excluded.insert(uid)
+        }
+        if let hostId = tournamentToEdit?.hostPlayerId {
+            _ = excluded.insert(hostId)
+        }
+        return excluded
     }
     
     public var body: some View {
@@ -63,6 +78,49 @@ public struct CreateTournamentSheet: View {
                     Stepper("Max Teams per Division: \(maxTeamsPerDivision)", value: $maxTeamsPerDivision, in: 4...32, step: 4)
                 }
                 
+                Section("Co-Hosts (Optional)") {
+                    if selectedCoHostIds.isEmpty {
+                        Text("No co-hosts added. Co-hosts have permission to generate pools, enter match scores, and run the tournament.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(selectedCoHostIds, id: \.self) { coHostId in
+                            if let player = dataManager.players.first(where: { $0.id == coHostId }) {
+                                HStack(spacing: 10) {
+                                    PlayerAvatarView(player: player, dimension: 32)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(player.displayName)
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                        Text("\(player.gender.capitalized) • \(player.homeBeach)")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Button {
+                                        selectedCoHostIds.removeAll { $0 == coHostId }
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                    
+                    Button {
+                        showCoHostPicker = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.badge.plus")
+                            Text("Add Co-Host")
+                                .fontWeight(.medium)
+                        }
+                        .font(.subheadline)
+                        .foregroundColor(.cyan)
+                    }
+                }
 
                 Section("Divisions Offered") {
                     ForEach(TournamentDivisionCategory.allCases) { div in
@@ -105,6 +163,18 @@ public struct CreateTournamentSheet: View {
                     .foregroundColor(.orange)
                 }
             }
+            .sheet(isPresented: $showCoHostPicker) {
+                CoHostPickerSheet(
+                    dataManager: dataManager,
+                    excludedIds: excludedPickerIds,
+                    onSelect: { player in
+                        if !selectedCoHostIds.contains(player.id) {
+                            selectedCoHostIds.append(player.id)
+                        }
+                        showCoHostPicker = false
+                    }
+                )
+            }
             .alert("Notice", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -141,7 +211,8 @@ public struct CreateTournamentSheet: View {
                 allowedDivisions: Array(selectedDivisions),
                 maxTeamsPerDivision: maxTeamsPerDivision,
                 notes: notes,
-                teamFormat: selectedTeamFormat
+                teamFormat: selectedTeamFormat,
+                coHostPlayerIds: selectedCoHostIds
             )
             if !result.success {
                 alertMessage = result.message
@@ -157,10 +228,66 @@ public struct CreateTournamentSheet: View {
                 allowedDivisions: Array(selectedDivisions),
                 maxTeamsPerDivision: maxTeamsPerDivision,
                 notes: notes,
-                teamFormat: selectedTeamFormat
+                teamFormat: selectedTeamFormat,
+                coHostPlayerIds: selectedCoHostIds
             )
         }
         
         dismiss()
+    }
+}
+
+// MARK: - Co-Host Picker Sheet
+public struct CoHostPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var dataManager: DataManager
+    let excludedIds: Set<UUID>
+    let onSelect: (Player) -> Void
+    
+    @State private var searchQuery: String = ""
+    
+    private var eligiblePlayers: [Player] {
+        dataManager.players.filter { player in
+            guard !excludedIds.contains(player.id) else { return false }
+            if !searchQuery.isEmpty {
+                return player.displayName.localizedCaseInsensitiveContains(searchQuery) ||
+                       player.name.localizedCaseInsensitiveContains(searchQuery) ||
+                       player.homeBeach.localizedCaseInsensitiveContains(searchQuery)
+            }
+            return true
+        }
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            List(eligiblePlayers) { player in
+                Button {
+                    onSelect(player)
+                } label: {
+                    HStack(spacing: 12) {
+                        PlayerAvatarView(player: player, dimension: 40)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(player.displayName)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Text("\(player.gender.capitalized) • \(player.homeBeach) • Elo: \(player.eloRating)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        RatingBadge(rating: player.rating)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .searchable(text: $searchQuery, prompt: "Search beach players...")
+            .navigationTitle("Select Co-Host")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
     }
 }

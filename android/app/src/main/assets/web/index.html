@@ -1193,12 +1193,35 @@
           </div>
 
           <div>
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b); display: flex; justify-content: space-between; align-items: center;">
+              <span>Co-Hosts (Optional)</span>
+              <span style="font-size: 10px; font-weight: 400; color: var(--text-muted, #94a3b8);">Hold Ctrl/Cmd to select</span>
+            </label>
+            <select id="new-tourn-cohosts" class="form-input" multiple size="3" style="width: 100%; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px; font-size: 12px;">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <div>
             <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Tournament Notes & Rules</label>
             <textarea id="new-tourn-notes" rows="2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); margin-top: 4px;">Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.</textarea>
           </div>
 
           <button type="submit" id="create-tourn-submit-btn" class="btn btn-primary" style="margin-top: 8px; font-weight: 800; padding: 12px;">Create Tournament</button>
         </form>
+      </div>
+    </div>
+
+    <!-- Manage Co-Hosts Modal -->
+    <div id="manage-cohosts-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeManageCoHostsModal()">
+      <div class="modal-card" style="max-width: 440px; padding: 20px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border, #cbd5e1); padding-bottom: 8px;">
+          <h2 class="modal-title" style="font-size: 16px; font-weight: 800;">👥 Manage Co-Hosts</h2>
+          <button type="button" class="modal-close" onclick="window.closeManageCoHostsModal()">&times;</button>
+        </div>
+        <div id="manage-cohosts-content" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px;">
+          <!-- Populated by JS -->
+        </div>
       </div>
     </div>
 
