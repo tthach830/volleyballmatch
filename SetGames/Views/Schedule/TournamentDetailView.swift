@@ -1996,10 +1996,16 @@ struct ManageCoHostsSheet: View {
                     if let host = dataManager.players.first(where: { $0.id == tournament.hostPlayerId }) {
                         HStack(spacing: 12) {
                             PlayerAvatarView(player: host, dimension: 40)
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 3) {
                                 HStack(spacing: 6) {
-                                    Text(host.displayName)
+                                    Text(host.name)
                                         .font(.headline)
+                                    if !host.nickname.isEmpty && host.nickname.lowercased() != "player" && host.nickname.lowercased() != host.firstName.lowercased() {
+                                        Text("\"\(host.nickname)\"")
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.orange)
+                                    }
                                     Text("👑 Owner")
                                         .font(.system(size: 10, weight: .black))
                                         .padding(.horizontal, 6)
@@ -2007,9 +2013,20 @@ struct ManageCoHostsSheet: View {
                                         .background(Capsule().fill(Color.yellow.opacity(0.2)))
                                         .foregroundColor(.yellow)
                                 }
-                                Text("\(host.gender.capitalized) • \(host.homeBeach)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                HStack(spacing: 8) {
+                                    if !host.phoneNumber.isEmpty {
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "phone.fill")
+                                                .font(.system(size: 9))
+                                            Text(host.formattedPhoneNumber)
+                                        }
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    }
+                                    Text("\(host.gender.capitalized) • \(host.homeBeach)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                         .padding(.vertical, 2)
@@ -2029,12 +2046,31 @@ struct ManageCoHostsSheet: View {
                         ForEach(coHosts) { player in
                             HStack(spacing: 12) {
                                 PlayerAvatarView(player: player, dimension: 40)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(player.displayName)
-                                        .font(.headline)
-                                    Text("\(player.gender.capitalized) • \(player.homeBeach)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 6) {
+                                        Text(player.name)
+                                            .font(.headline)
+                                        if !player.nickname.isEmpty && player.nickname.lowercased() != "player" && player.nickname.lowercased() != player.firstName.lowercased() {
+                                            Text("\"\(player.nickname)\"")
+                                                .font(.subheadline)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.orange)
+                                        }
+                                    }
+                                    HStack(spacing: 8) {
+                                        if !player.phoneNumber.isEmpty {
+                                            HStack(spacing: 3) {
+                                                Image(systemName: "phone.fill")
+                                                    .font(.system(size: 9))
+                                                Text(player.formattedPhoneNumber)
+                                            }
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        }
+                                        Text("\(player.gender.capitalized) • \(player.homeBeach)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                                 Spacer()
                                 Button(role: .destructive) {

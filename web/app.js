@@ -6615,6 +6615,17 @@ window.setTournamentSubTab = function(tabName) {
   window.renderTournamentDetail();
 };
 
+window.formatPhoneNumber = function(phone) {
+  if (!phone) return "";
+  const digits = String(phone).replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  } else if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return phone;
+};
+
 window.formatFirstLastInit = function(fullName) {
   if (!fullName || typeof fullName !== 'string') return '';
   const trimmed = fullName.trim();
@@ -8313,7 +8324,10 @@ window.openCreateTournamentModal = function() {
       .filter(p => !isSamePlayer(p.id, curUserId))
       .map(p => {
         const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
-        return `<option value="${p.id}">${name}</option>`;
+        const firstName = (p.name || "").split(/\s+/)[0] || "";
+        const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== firstName.toLowerCase()) ? ` "${p.nickname}"` : "";
+        const pPhone = p.phoneNumber ? ` • 📞 ${window.formatPhoneNumber(p.phoneNumber)}` : "";
+        return `<option value="${p.id}">${name}${pNick}${pPhone} (${p.rating || 'Player'})</option>`;
       }).join('');
   }
 
@@ -8369,8 +8383,11 @@ window.openEditTournamentModal = function(tournamentId) {
       .filter(p => !isSamePlayer(p.id, hostId))
       .map(p => {
         const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+        const firstName = (p.name || "").split(/\s+/)[0] || "";
+        const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== firstName.toLowerCase()) ? ` "${p.nickname}"` : "";
+        const pPhone = p.phoneNumber ? ` • 📞 ${window.formatPhoneNumber(p.phoneNumber)}` : "";
         const isSelected = currentCoHosts.some(id => isSamePlayer(id, p.id));
-        return `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${name}</option>`;
+        return `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${name}${pNick}${pPhone} (${p.rating || 'Player'})</option>`;
       }).join('');
   }
 
@@ -8511,6 +8528,10 @@ window.renderManageCoHostsModal = function(tournamentId) {
 
   const hostPlayer = t.hostPlayerId ? state.getPlayer(t.hostPlayerId) : null;
   const hostName = hostPlayer ? (window.formatFirstLastInit ? window.formatFirstLastInit(hostPlayer.name) : hostPlayer.name) : "Organizer";
+  const hostFirst = hostPlayer ? (hostPlayer.name || "").split(/\s+/)[0] || "" : "";
+  const hostNick = (hostPlayer && hostPlayer.nickname && hostPlayer.nickname.toLowerCase() !== "player" && hostPlayer.nickname.toLowerCase() !== hostFirst.toLowerCase()) ? hostPlayer.nickname : "";
+  const hostPhone = hostPlayer && hostPlayer.phoneNumber ? window.formatPhoneNumber(hostPlayer.phoneNumber) : "";
+
   const coHostIds = t.coHostPlayerIds || [];
   const coHosts = coHostIds.map(id => state.getPlayer(id)).filter(Boolean);
 
@@ -8524,7 +8545,12 @@ window.renderManageCoHostsModal = function(tournamentId) {
         <span style="font-size: 18px;">👑</span>
         <div>
           <div style="font-size: 11px; font-weight: 800; color: #ea580c; text-transform: uppercase;">Primary Host</div>
-          <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">${hostName}</div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">
+            ${hostName}${hostNick ? ` <span style="color: #ea580c; font-size: 12px; font-weight: 600;">"${hostNick}"</span>` : ''}
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted, #64748b);">
+            ${hostPhone ? `📞 ${hostPhone} • ` : ''}${hostPlayer ? (hostPlayer.homeBeach || 'Main Beach') : 'Beach Host'}
+          </div>
         </div>
       </div>
       <span style="font-size: 10px; font-weight: 800; color: #64748b; background: #e2e8f0; padding: 2px 6px; border-radius: 6px;">Creator</span>
@@ -8537,19 +8563,26 @@ window.renderManageCoHostsModal = function(tournamentId) {
       </div>
       ${coHosts.length === 0 ? `
         <div style="text-align: center; padding: 18px 12px; background: var(--bg-alt, #f8fafc); border-radius: 10px; color: var(--text-muted, #94a3b8); font-size: 12px; border: 1px dashed var(--border, #cbd5e1);">
-          No co-hosts assigned yet. Add trusted players to help manage pools, scores, and brackets.
+          No co-hosts assigned yet. Add trusted players by phone number, name, or nickname to help manage pools, scores, and brackets.
         </div>
       ` : `
         <div style="display: flex; flex-direction: column; gap: 6px;">
           ${coHosts.map(p => {
             const pName = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+            const pFirst = (p.name || "").split(/\s+/)[0] || "";
+            const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== pFirst.toLowerCase()) ? p.nickname : "";
+            const pPhone = p.phoneNumber ? window.formatPhoneNumber(p.phoneNumber) : "";
             return `
               <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 8px 12px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span style="font-size: 16px;">👥</span>
                   <div>
-                    <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">${pName}</div>
-                    <div style="font-size: 11px; color: var(--text-muted, #64748b);">${p.rating || 'Player'}</div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">
+                      ${pName}${pNick ? ` <span style="color: #ea580c; font-size: 12px; font-weight: 600;">"${pNick}"</span>` : ''}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted, #64748b);">
+                      ${pPhone ? `📞 ${pPhone} • ` : ''}${p.rating || 'Player'}${p.homeBeach ? ` • ${p.homeBeach}` : ''}
+                    </div>
                   </div>
                 </div>
                 <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; font-weight: 700; color: #dc2626; border-color: #fca5a5;" onclick="window.removeCoHostFromTournament('${t.id}', '${p.id}')">
@@ -8567,12 +8600,23 @@ window.renderManageCoHostsModal = function(tournamentId) {
       <div style="font-size: 12px; font-weight: 800; color: var(--text-main, #0f172a); margin-bottom: 6px;">
         ➕ Add New Co-Host
       </div>
+      <div style="margin-bottom: 8px;">
+        <input type="text" id="cohost-search-input" class="form-input" 
+          placeholder="🔍 Search by phone #, first name, or nickname..." 
+          style="width: 100%; padding: 8px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1); box-sizing: border-box;"
+          oninput="window.filterCoHostSearch('${t.id}')">
+      </div>
+      <div id="cohost-search-results" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;">
+      </div>
       <div style="display: flex; gap: 8px;">
         <select id="add-cohost-select" class="form-input" style="flex: 1; padding: 8px 10px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1);">
-          <option value="">Select a player...</option>
+          <option value="">Or choose from all players...</option>
           ${availablePlayers.map(p => {
             const pName = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
-            return `<option value="${p.id}">${pName} (${p.rating || 'Player'})</option>`;
+            const pFirst = (p.name || "").split(/\s+/)[0] || "";
+            const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== pFirst.toLowerCase()) ? ` "${p.nickname}"` : "";
+            const pPhone = p.phoneNumber ? ` • 📞 ${window.formatPhoneNumber(p.phoneNumber)}` : "";
+            return `<option value="${p.id}">${pName}${pNick}${pPhone} (${p.rating || 'Player'})</option>`;
           }).join('')}
         </select>
         <button type="button" class="btn btn-primary" style="padding: 8px 14px; font-size: 12px; font-weight: 700; white-space: nowrap;" onclick="window.addSelectedCoHost('${t.id}')">
@@ -8581,6 +8625,79 @@ window.renderManageCoHostsModal = function(tournamentId) {
       </div>
     </div>
   `;
+};
+
+window.filterCoHostSearch = function(tournamentId) {
+  const container = document.getElementById("cohost-search-results");
+  const input = document.getElementById("cohost-search-input");
+  if (!container || !input) return;
+
+  const rawQuery = (input.value || "").trim();
+  const q = rawQuery.toLowerCase();
+  if (!q) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const t = (state.tournaments || []).find(item => item.id === tournamentId);
+  if (!t) return;
+
+  const coHostIds = t.coHostPlayerIds || [];
+  const excludedIds = new Set([t.hostPlayerId, ...coHostIds].filter(Boolean).map(id => String(id).toLowerCase()));
+  const availablePlayers = (state.players || []).filter(p => !excludedIds.has(String(p.id).toLowerCase()));
+
+  const queryDigits = rawQuery.replace(/\D/g, "");
+
+  const matches = availablePlayers.filter(p => {
+    // 1. Phone number match
+    const pDigits = (p.phoneNumber || "").replace(/\D/g, "");
+    if (queryDigits && pDigits.includes(queryDigits)) return true;
+    if (p.phoneNumber && p.phoneNumber.toLowerCase().includes(q)) return true;
+
+    // 2. Nickname match
+    if (p.nickname && p.nickname.toLowerCase().includes(q)) return true;
+
+    // 3. First name or full name match
+    const firstName = (p.name || "").split(/\s+/)[0] || "";
+    if (firstName.toLowerCase().includes(q)) return true;
+    if ((p.name || "").toLowerCase().includes(q)) return true;
+
+    // 4. Home beach match
+    if ((p.homeBeach || "").toLowerCase().includes(q)) return true;
+
+    return false;
+  });
+
+  if (matches.length === 0) {
+    container.innerHTML = `
+      <div style="font-size: 11px; color: var(--text-muted, #94a3b8); text-align: center; padding: 8px; background: var(--bg-alt, #f8fafc); border-radius: 6px;">
+        No players found matching "${rawQuery}".
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = matches.map(p => {
+    const pName = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+    const pFirst = (p.name || "").split(/\s+/)[0] || "";
+    const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== pFirst.toLowerCase()) ? p.nickname : "";
+    const pPhone = p.phoneNumber ? window.formatPhoneNumber(p.phoneNumber) : "";
+    return `
+      <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #cbd5e1); border-radius: 8px; padding: 6px 10px;">
+        <div>
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a);">
+            ${pName}${pNick ? ` <span style="color: #ea580c; font-size: 11px; font-weight: 600;">"${pNick}"</span>` : ''}
+          </div>
+          <div style="font-size: 10px; color: var(--text-muted, #64748b);">
+            ${pPhone ? `📞 ${pPhone} • ` : ''}${p.rating || 'Player'}${p.homeBeach ? ` • ${p.homeBeach}` : ''}
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 6px; white-space: nowrap;" onclick="window.addCoHostToTournament('${t.id}', '${p.id}')">
+          ➕ Add
+        </button>
+      </div>
+    `;
+  }).join('');
 };
 
 window.addSelectedCoHost = function(tournamentId) {

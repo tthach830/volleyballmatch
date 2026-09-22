@@ -247,14 +247,40 @@ public struct CoHostPickerSheet: View {
     @State private var searchQuery: String = ""
     
     private var eligiblePlayers: [Player] {
-        dataManager.players.filter { player in
+        let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let queryDigits = trimmed.filter { $0.isNumber }
+        
+        return dataManager.players.filter { player in
             guard !excludedIds.contains(player.id) else { return false }
-            if !searchQuery.isEmpty {
-                return player.displayName.localizedCaseInsensitiveContains(searchQuery) ||
-                       player.name.localizedCaseInsensitiveContains(searchQuery) ||
-                       player.homeBeach.localizedCaseInsensitiveContains(searchQuery)
+            if trimmed.isEmpty { return true }
+            
+            // 1. Phone number match (digit substring or exact text)
+            let playerDigits = player.phoneNumber.filter { $0.isNumber }
+            if !queryDigits.isEmpty && playerDigits.contains(queryDigits) {
+                return true
             }
-            return true
+            if player.phoneNumber.localizedCaseInsensitiveContains(trimmed) {
+                return true
+            }
+            
+            // 2. Nickname match
+            if !player.nickname.isEmpty && player.nickname.localizedCaseInsensitiveContains(trimmed) {
+                return true
+            }
+            
+            // 3. First name or full name match
+            if player.firstName.localizedCaseInsensitiveContains(trimmed) ||
+               player.name.localizedCaseInsensitiveContains(trimmed) ||
+               player.displayName.localizedCaseInsensitiveContains(trimmed) {
+                return true
+            }
+            
+            // 4. Home beach match
+            if player.homeBeach.localizedCaseInsensitiveContains(trimmed) {
+                return true
+            }
+            
+            return false
         }
     }
     
@@ -265,14 +291,33 @@ public struct CoHostPickerSheet: View {
                     onSelect(player)
                 } label: {
                     HStack(spacing: 12) {
-                        PlayerAvatarView(player: player, dimension: 40)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(player.displayName)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            Text("\(player.gender.capitalized) • \(player.homeBeach) • Elo: \(player.eloRating)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        PlayerAvatarView(player: player, dimension: 42)
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 6) {
+                                Text(player.name)
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                if !player.nickname.isEmpty && player.nickname.lowercased() != "player" && player.nickname.lowercased() != player.firstName.lowercased() {
+                                    Text("\"\(player.nickname)\"")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                            HStack(spacing: 8) {
+                                if !player.phoneNumber.isEmpty {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "phone.fill")
+                                            .font(.system(size: 9))
+                                        Text(player.formattedPhoneNumber)
+                                    }
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                }
+                                Text("\(player.gender.capitalized) • \(player.homeBeach)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         Spacer()
                         RatingBadge(rating: player.rating)
@@ -280,7 +325,7 @@ public struct CoHostPickerSheet: View {
                     .padding(.vertical, 4)
                 }
             }
-            .searchable(text: $searchQuery, prompt: "Search beach players...")
+            .searchable(text: $searchQuery, prompt: "Search by phone #, first name, or nickname...")
             .navigationTitle("Select Co-Host")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

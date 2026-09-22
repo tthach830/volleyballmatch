@@ -35,15 +35,35 @@ public struct Player: Identifiable, Codable, Hashable {
         return cleaned == "4087869405" || id.uuidString.uppercased() == "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
     }
     
+    public var firstName: String {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmedName.split(separator: " ").map(String.init)
+        return parts.first ?? (trimmedName.isEmpty ? "Player" : trimmedName)
+    }
+    
+    public var formattedPhoneNumber: String {
+        let digits = phoneNumber.filter { $0.isNumber }
+        if digits.count == 10 {
+            let area = digits.prefix(3)
+            let mid = digits.dropFirst(3).prefix(3)
+            let last = digits.suffix(4)
+            return "(\(area)) \(mid)-\(last)"
+        } else if digits.count == 11 && digits.first == "1" {
+            let trimmed = digits.dropFirst()
+            let area = trimmed.prefix(3)
+            let mid = trimmed.dropFirst(3).prefix(3)
+            let last = trimmed.suffix(4)
+            return "+1 (\(area)) \(mid)-\(last)"
+        }
+        return phoneNumber
+    }
+    
     public var displayName: String {
         let trimmedNick = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedNick.isEmpty && trimmedNick.caseInsensitiveCompare("Player") != .orderedSame {
             return trimmedNick
         }
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parts = trimmedName.split(separator: " ").map(String.init)
-        let firstName = parts.first ?? (trimmedName.isEmpty ? "Player" : trimmedName)
-        return firstName.isEmpty ? "Player" : firstName
+        return firstName
     }
     
     public var ladderDisplayName: String {
