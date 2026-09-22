@@ -3,10 +3,45 @@ import SwiftUI
 public struct ConfirmedGamesView: View {
     @ObservedObject var dataManager: DataManager
     @ObservedObject private var weatherService = WeatherService.shared
+    public enum ScheduleFeedItem: Identifiable {
+        case game(SetGame)
+        case tournament(Tournament)
+        
+        public var id: String {
+            switch self {
+            case .game(let g): return "game-\(g.id.uuidString)"
+            case .tournament(let t): return "tournament-\(t.id.uuidString)"
+            }
+        }
+        
+        public var date: Date {
+            switch self {
+            case .game(let g): return g.scheduledDate
+            case .tournament(let t): return t.date
+            }
+        }
+    }
+    
+    public enum FullScreenSheet: Identifiable {
+        case createGame
+        case tournaments
+        case createTournament
+        case editTournament(Tournament)
+        
+        public var id: String {
+            switch self {
+            case .createGame: return "createGame"
+            case .tournaments: return "tournaments"
+            case .createTournament: return "createTournament"
+            case .editTournament(let t): return "editTournament-\(t.id.uuidString)"
+            }
+        }
+    }
+    
     @State private var selectedFilter: GameFilter = .all
+    @State private var activeFullScreen: FullScreenSheet? = nil
+    @State private var tournamentToDelete: Tournament? = nil
     @State private var showNotificationsSheet: Bool = false
-    @State private var showCreateMatchSheet: Bool = false
-    @State private var showTournamentsSheet: Bool = false
     @State private var showRandomTeamsSheet: Bool = false
     @State private var addPlayerGameForSheet: SetGame? = nil
     @State private var addPlayerTeamNumber: Int? = nil
@@ -42,11 +77,11 @@ public struct ConfirmedGamesView: View {
                 
                 ScrollView {
                     VStack(spacing: 14) {
-                    // Action Buttons Row: + New Game, 🚀 Quick Play, 🏆 Tournaments
+                    // Action Buttons Row: + New Game, 🏆 Tournaments
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             Button {
-                                showCreateMatchSheet = true
+                                activeFullScreen = .createGame
                             } label: {
                                 HStack(spacing: 5) {
                                     Image(systemName: "plus")
@@ -62,7 +97,7 @@ public struct ConfirmedGamesView: View {
                             }
                             
                             Button {
-                                showTournamentsSheet = true
+                                activeFullScreen = .tournaments
                             } label: {
                                 HStack(spacing: 5) {
                                     Text("🏆")
@@ -109,24 +144,66 @@ public struct ConfirmedGamesView: View {
                     )
                     .padding(.horizontal)
                     
-                    // Filtered Games List
-                    let displayGames = filteredGames
+                    // Filtered Feed Items (Games + Tournaments)
+                    let displayItems = filteredFeedItems
                     
-                    if displayGames.isEmpty {
-                        VStack(spacing: 12) {
+                    if displayItems.isEmpty {
+                        VStack(spacing: 16) {
                             Image(systemName: "figure.volleyball")
-                                .font(.system(size: 40))
-                                .foregroundColor(.secondary)
-                            Text("No games in this view")
-                                .font(.system(size: 16, weight: .bold))
-                            Text("Tap '+ New Game' to host a set game!")
+                                .font(.system(size: 44))
+                                .foregroundColor(.secondary.opacity(0.8))
+                            Text(emptyStateTitle)
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundColor(.white)
+                            Text(emptyStateSubtitle)
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
+                            
+                            VStack(spacing: 10) {
+                                // Host a Game Button
+                                Button {
+                                    activeFullScreen = .createGame
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 15, weight: .bold))
+                                        Text("Host a Game")
+                                            .font(.system(size: 15, weight: .bold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: 240)
+                                    .padding(.vertical, 12)
+                                    .background(Color(red: 0.17, green: 0.43, blue: 0.48))
+                                    .clipShape(Capsule())
+                                    .shadow(color: Color(red: 0.17, green: 0.43, blue: 0.48).opacity(0.4), radius: 6, y: 3)
+                                }
+                                
+                                // Host Tournament Button (below Host a game)
+                                Button {
+                                    activeFullScreen = .createTournament
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Text("🏆")
+                                            .font(.system(size: 15))
+                                        Text("Host Tournament")
+                                            .font(.system(size: 15, weight: .bold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: 240)
+                                    .padding(.vertical, 12)
+                                    .background(Color.orange)
+                                    .clipShape(Capsule())
+                                    .shadow(color: Color.orange.opacity(0.4), radius: 6, y: 3)
+                                }
+                            }
+                            .padding(.top, 6)
                         }
-                        .padding(50)
+                        .padding(40)
                     } else {
                         LazyVStack(spacing: 0) {
-                            ForEach(Array(displayGames.enumerated()), id: \.element.id) { index, game in
+                            ForEach(Array(displayItems.enumerated()), id: \.element.id) { index, item in
                                 if index > 0 {
                                     Rectangle()
                                         .fill(Color.white)
@@ -134,7 +211,34 @@ public struct ConfirmedGamesView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 5))
                                         .padding(.vertical, 8)
                                 }
-                                gameRow(game)
+                                switch item {
+                                case .game(let game):
+                                    gameRow(game)
+                                case .tournament(let tournament):
+                                    NavigationLink(destination: TournamentDetailView(dataManager: dataManager, tournamentId: tournament.id)) {
+                                        TournamentCardView(tournament: tournament, dataManager: dataManager)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .contextMenu {
+                                        let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || tournament.isHostOrCoHost(dataManager.currentUser?.id)
+                                        let isPrimaryHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (tournament.hostPlayerId != nil && tournament.hostPlayerId == dataManager.currentUser?.id)
+                                        if isHostOrAdmin {
+                                            Button {
+                                                activeFullScreen = .editTournament(tournament)
+                                            } label: {
+                                                Label("Edit Tournament", systemImage: "pencil")
+                                            }
+                                            
+                                            if isPrimaryHostOrAdmin {
+                                                Button(role: .destructive) {
+                                                    tournamentToDelete = tournament
+                                                } label: {
+                                                    Label("Delete Tournament", systemImage: "trash")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal)
@@ -154,11 +258,33 @@ public struct ConfirmedGamesView: View {
             .sheet(isPresented: $showUserSwitcher) {
                 UserSwitcherView(dataManager: dataManager)
             }
-            .fullScreenCover(isPresented: $showCreateMatchSheet) {
-                CreateMatchSheet(dataManager: dataManager)
+            .fullScreenCover(item: $activeFullScreen) { sheet in
+                switch sheet {
+                case .createGame:
+                    CreateMatchSheet(dataManager: dataManager)
+                case .tournaments:
+                    TournamentHubView(dataManager: dataManager)
+                case .createTournament:
+                    CreateTournamentSheet(dataManager: dataManager)
+                case .editTournament(let tournament):
+                    CreateTournamentSheet(dataManager: dataManager, tournamentToEdit: tournament)
+                }
             }
-            .fullScreenCover(isPresented: $showTournamentsSheet) {
-                TournamentHubView(dataManager: dataManager)
+            .alert("Delete Tournament?", isPresented: Binding(
+                get: { tournamentToDelete != nil },
+                set: { if !$0 { tournamentToDelete = nil } }
+            )) {
+                Button("Cancel", role: .cancel) { tournamentToDelete = nil }
+                Button("Delete", role: .destructive) {
+                    if let tourn = tournamentToDelete {
+                        dataManager.deleteTournament(id: tourn.id)
+                        tournamentToDelete = nil
+                    }
+                }
+            } message: {
+                if let tourn = tournamentToDelete {
+                    Text("Are you sure you want to delete \"\(tourn.title)\"? This cannot be undone.")
+                }
             }
             .sheet(isPresented: $showRandomTeamsSheet) {
                 RandomTeamGeneratorSheet(dataManager: dataManager)
@@ -322,27 +448,63 @@ public struct ConfirmedGamesView: View {
         return true
     }
     
-    private var filteredGames: [SetGame] {
+    private var filteredFeedItems: [ScheduleFeedItem] {
         let currentUserId = dataManager.currentUser?.id
-        
-        // Auto-expire: games more than 2 hours past their scheduled time move to past
+        let isRoot = dataManager.currentUser?.isRoot == true
         let twoHoursAgo = Date().addingTimeInterval(-2 * 60 * 60)
-        let upcoming = dataManager.games.filter {
-            ($0.status == .scheduled || $0.status == .inProgress) && $0.scheduledDate > twoHoursAgo
-        }
         
-        // Filter by user selection and sort by date and time
         switch selectedFilter {
         case .all:
-            return upcoming.sorted { $0.scheduledDate < $1.scheduledDate }
+            let upcomingGames = dataManager.games.filter {
+                ($0.status == .scheduled || $0.status == .inProgress) && $0.scheduledDate > twoHoursAgo
+            }.map { ScheduleFeedItem.game($0) }
+            
+            let upcomingTournaments = dataManager.tournaments.filter {
+                $0.status != "completed" && $0.date > twoHoursAgo
+            }.map { ScheduleFeedItem.tournament($0) }
+            
+            return (upcomingGames + upcomingTournaments).sorted { $0.date < $1.date }
+            
         case .myGames:
-            guard let currentUserId = currentUserId else { return [] }
-            return dataManager.games
-                .filter { $0.status != .canceled && $0.scheduledDate > twoHoursAgo && ($0.allPlayerIds.contains(currentUserId) || $0.hostPlayerId == currentUserId) }
-                .sorted { $0.scheduledDate < $1.scheduledDate }
+            guard let uid = currentUserId else { return [] }
+            let myGames = dataManager.games.filter {
+                $0.status != .canceled && $0.scheduledDate > twoHoursAgo &&
+                ($0.allPlayerIds.contains(uid) || $0.hostPlayerId == uid || isRoot)
+            }.map { ScheduleFeedItem.game($0) }
+            
+            let myTournaments = dataManager.tournaments.filter {
+                $0.status != "completed" && $0.date > twoHoursAgo &&
+                ($0.isPlayerRegistered(uid) || $0.isHostOrCoHost(uid) || isRoot)
+            }.map { ScheduleFeedItem.tournament($0) }
+            
+            return (myGames + myTournaments).sorted { $0.date < $1.date }
+            
         case .pastGames:
-            let past = dataManager.games.filter { $0.status == .completed || $0.scheduledDate <= twoHoursAgo }
-            return past.sorted { $0.scheduledDate > $1.scheduledDate }
+            let pastGames = dataManager.games.filter {
+                $0.status == .completed || $0.scheduledDate <= twoHoursAgo
+            }.map { ScheduleFeedItem.game($0) }
+            
+            let pastTournaments = dataManager.tournaments.filter {
+                $0.status == "completed" || $0.date <= twoHoursAgo
+            }.map { ScheduleFeedItem.tournament($0) }
+            
+            return (pastGames + pastTournaments).sorted { $0.date > $1.date }
+        }
+    }
+    
+    private var emptyStateTitle: String {
+        switch selectedFilter {
+        case .all: return "No Upcoming Events"
+        case .myGames: return "No Games or Tournaments"
+        case .pastGames: return "No Past Events"
+        }
+    }
+    
+    private var emptyStateSubtitle: String {
+        switch selectedFilter {
+        case .all: return "There are no upcoming games or tournaments scheduled yet."
+        case .myGames: return "You haven't joined or hosted any upcoming games or tournaments."
+        case .pastGames: return "No past games or tournaments found in history."
         }
     }
     

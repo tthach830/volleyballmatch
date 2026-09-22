@@ -201,9 +201,14 @@ public struct TournamentHubView: View {
 }
 
 // Tournament Card Component
-struct TournamentCardView: View {
-    let tournament: Tournament
-    @ObservedObject var dataManager: DataManager
+public struct TournamentCardView: View {
+    public let tournament: Tournament
+    @ObservedObject public var dataManager: DataManager
+    
+    public init(tournament: Tournament, dataManager: DataManager) {
+        self.tournament = tournament
+        self.dataManager = dataManager
+    }
     
     private var isUserRegistered: Bool {
         guard let user = dataManager.currentUser else { return false }
@@ -226,7 +231,7 @@ struct TournamentCardView: View {
         return (poolM.filter { $0.isCompleted }.count, poolM.count)
     }
     
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             
             // Header Row
