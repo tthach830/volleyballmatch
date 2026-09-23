@@ -1337,12 +1337,12 @@ export function renderVolleyballChart(days) {
         <span style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); margin-bottom: 6px;">${day.tempMin}°</span>
 
         <!-- Metrics Chips -->
-        <div style="display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center;">
-          <span style="font-size: 10px; font-weight: 700; color: #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 2px 5px; border-radius: 6px; white-space: nowrap;">
-            💨 ${day.windMax}m
+        <div style="display: flex; flex-direction: column; gap: 3px; width: 100%; align-items: center;">
+          <span style="font-size: 9px; font-weight: 700; color: #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 2px 3px; border-radius: 4px; white-space: nowrap; width: 90%; text-align: center;">
+            💨${day.windMax}m
           </span>
-          <span style="font-size: 10px; font-weight: 700; color: #facc15; background: rgba(250, 204, 21, 0.12); padding: 2px 5px; border-radius: 6px; white-space: nowrap;">
-            ☀️ ${day.uvMax}
+          <span style="font-size: 9px; font-weight: 700; color: #facc15; background: rgba(250, 204, 21, 0.12); padding: 2px 3px; border-radius: 4px; white-space: nowrap; width: 90%; text-align: center;">
+            ☀️${day.uvMax}
           </span>
         </div>
       </div>

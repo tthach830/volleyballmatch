@@ -309,14 +309,13 @@ public struct VolleyballWeatherView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(Array(weeklyDays.enumerated()), id: \.element.id) { index, day in
-                            chartColumn(for: day, index: index)
-                        }
+                HStack(spacing: 4) {
+                    ForEach(Array(weeklyDays.enumerated()), id: \.element.id) { index, day in
+                        chartColumn(for: day, index: index)
                     }
-                    .padding(.vertical, 4)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
             }
         }
         .padding(14)
@@ -325,7 +324,7 @@ public struct VolleyballWeatherView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
     }
     
-    // MARK: - Chart Column for Each Day
+    // MARK: - Chart Column for Each Day (Fits Screen Width)
     private func chartColumn(for day: DailyVolleyballWeather, index: Int) -> some View {
         let eval = criteria.evaluate(day: day)
         let isSelected = index == selectedDayIndex
@@ -336,70 +335,74 @@ public struct VolleyballWeatherView: View {
                 selectedHourIndex = nil
             }
         } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 // Day name & date
                 Text(day.dayName)
-                    .font(.system(size: 11, weight: .black))
+                    .font(.system(size: 10, weight: .black))
                     .foregroundColor(isSelected ? .orange : .white)
+                    .lineLimit(1)
                 Text(day.dateFormatted)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 8, weight: .medium))
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
                 
                 // Suitability Dot with Glow Ring
                 ZStack {
                     Circle()
                         .fill(eval.suitability.dotColor.opacity(0.25))
-                        .frame(width: 22, height: 22)
+                        .frame(width: 18, height: 18)
                     Circle()
                         .fill(eval.suitability.dotColor)
-                        .frame(width: 10, height: 10)
-                        .shadow(color: eval.suitability.dotColor.opacity(0.8), radius: 4)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: eval.suitability.dotColor.opacity(0.8), radius: 3)
                 }
                 
                 // Condition Emoji
                 Text(day.conditionEmoji)
-                    .font(.system(size: 18))
+                    .font(.system(size: 16))
                 
                 // High Temp
                 Text("\(day.tempMax)°")
-                    .font(.system(size: 13, weight: .black))
+                    .font(.system(size: 12, weight: .black))
                     .foregroundColor(.white)
                 
                 // Proportional Temperature Bar
                 RoundedRectangle(cornerRadius: 4)
                     .fill(LinearGradient(colors: [.red, .orange, .blue], startPoint: .top, endPoint: .bottom))
-                    .frame(width: 6, height: max(20, min(65, CGFloat(day.tempMax - 40) * 1.5)))
+                    .frame(width: 5, height: max(18, min(55, CGFloat(day.tempMax - 40) * 1.3)))
                 
                 // Low Temp
                 Text("\(day.tempMin)°")
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundColor(.secondary)
                 
                 // Wind & UV Chips
-                VStack(spacing: 3) {
+                VStack(spacing: 2) {
                     Text("💨\(day.windMax)m")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 8, weight: .bold))
                         .foregroundColor(.cyan)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
+                        .lineLimit(1)
+                        .padding(.horizontal, 2)
+                        .padding(.vertical, 1)
                         .background(Color.cyan.opacity(0.12))
-                        .cornerRadius(4)
+                        .cornerRadius(3)
                     Text("☀️\(String(format: "%.0f", day.uvMax))")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 8, weight: .bold))
                         .foregroundColor(.yellow)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
+                        .lineLimit(1)
+                        .padding(.horizontal, 2)
+                        .padding(.vertical, 1)
                         .background(Color.yellow.opacity(0.12))
-                        .cornerRadius(4)
+                        .cornerRadius(3)
                 }
             }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 8)
-            .frame(width: 68)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 2)
+            .frame(maxWidth: .infinity)
             .background(isSelected ? Color.orange.opacity(0.15) : Color.white.opacity(0.04))
-            .cornerRadius(12)
+            .cornerRadius(10)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 10)
                     .stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
             )
         }
@@ -489,14 +492,12 @@ public struct VolleyballWeatherView: View {
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 60)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(day.daylightHours.enumerated()), id: \.element.id) { hIdx, hour in
-                            hourlyCard(for: hour, index: hIdx)
-                        }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 52), spacing: 6)], spacing: 6) {
+                    ForEach(Array(day.daylightHours.enumerated()), id: \.element.id) { hIdx, hour in
+                        hourlyCard(for: hour, index: hIdx)
                     }
-                    .padding(.vertical, 4)
                 }
+                .padding(.vertical, 4)
             }
             
             // Selected Hour Detail Callout
@@ -510,6 +511,7 @@ public struct VolleyballWeatherView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
     }
     
+    // MARK: - Hourly Card (Fits Screen Width without Horizontal Scroll)
     private func hourlyCard(for hour: HourlyVolleyballWeather, index: Int) -> some View {
         let eval = criteria.evaluate(hour: hour)
         let isSelected = selectedHourIndex == index
@@ -523,20 +525,21 @@ public struct VolleyballWeatherView: View {
                 }
             }
         } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: 4) {
                 // Hour label (e.g., 7 AM)
                 Text(hour.hourLabel)
-                    .font(.system(size: 11, weight: .black))
+                    .font(.system(size: 10, weight: .black))
                     .foregroundColor(isSelected ? .orange : .white)
+                    .lineLimit(1)
                 
                 // Suitability Dot with Glow
                 ZStack {
                     Circle()
                         .fill(eval.suitability.dotColor.opacity(0.25))
-                        .frame(width: 18, height: 18)
+                        .frame(width: 16, height: 16)
                     Circle()
                         .fill(eval.suitability.dotColor)
-                        .frame(width: 8, height: 8)
+                        .frame(width: 7, height: 7)
                         .shadow(color: eval.suitability.dotColor.opacity(0.8), radius: 3)
                 }
                 
@@ -546,30 +549,33 @@ public struct VolleyballWeatherView: View {
                 
                 // Temp
                 Text("\(hour.temp)°")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundColor(hour.temp > criteria.maxTemp ? .red : (hour.temp < criteria.minTemp ? .blue : .white))
+                    .lineLimit(1)
                 
                 // Wind
                 Text("💨\(hour.windMph)")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 8, weight: .bold))
                     .foregroundColor(hour.windMph > criteria.maxWind ? .red : .cyan)
-                    .padding(.horizontal, 3)
+                    .lineLimit(1)
+                    .padding(.horizontal, 2)
                     .padding(.vertical, 1)
                     .background(Color.cyan.opacity(0.12))
                     .cornerRadius(3)
                 
                 // UV
                 Text("☀️\(String(format: "%.0f", hour.uvIndex))")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 8, weight: .bold))
                     .foregroundColor(hour.uvIndex > criteria.maxUV ? .orange : .yellow)
-                    .padding(.horizontal, 3)
+                    .lineLimit(1)
+                    .padding(.horizontal, 2)
                     .padding(.vertical, 1)
                     .background(Color.yellow.opacity(0.12))
                     .cornerRadius(3)
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 6)
-            .frame(width: 60)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 2)
+            .frame(maxWidth: .infinity)
             .background(isSelected ? Color.orange.opacity(0.2) : Color.white.opacity(0.04))
             .cornerRadius(10)
             .overlay(
