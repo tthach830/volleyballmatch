@@ -283,6 +283,43 @@
       border: 1px solid rgba(34, 197, 94, 0.3);
     }
 
+    .widget-sf-bars {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      height: 48px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 10px;
+      gap: 2px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 6px 8px 4px 8px;
+    }
+    .widget-sf-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      cursor: pointer;
+    }
+    .widget-sf-bar {
+      width: 80%;
+      max-width: 12px;
+      background: linear-gradient(to top, #d97706, #fbbf24);
+      border-radius: 3px 3px 1px 1px;
+      box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
+    }
+    .widget-sf-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
+      margin-bottom: 2px;
+    }
+
     .hourly-track {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
@@ -855,6 +892,29 @@
                   <span>Best Time: ${bestWindowText}</span>
                 </div>
               ` : ''}
+            </div>
+
+            <!-- Smart Forecasts Highlight Bars: Bars for conditions met, Dots for off-peak -->
+            <div class="widget-sf-bars">
+              ${daylight.map((h, hIdx) => {
+                const hEval = evaluateHour(h);
+                const isMatch = hEval.status === 'green';
+                const isFair = hEval.status === 'yellow';
+                if (isMatch || isFair) {
+                  const hPct = isMatch ? Math.min(95, Math.max(50, (h.temp - 50) * 2 + 30)) : 40;
+                  return `
+                    <div class="widget-sf-col" onclick="window.selectHour(${hIdx})" title="${h.hourLabel}: Conditions Met">
+                      <div class="widget-sf-bar" style="height: ${hPct}%; ${isFair ? 'background: #facc15;' : ''}"></div>
+                    </div>
+                  `;
+                } else {
+                  return `
+                    <div class="widget-sf-col" onclick="window.selectHour(${hIdx})" title="${h.hourLabel}: Outside Criteria">
+                      <div class="widget-sf-dot"></div>
+                    </div>
+                  `;
+                }
+              }).join('')}
             </div>
 
             <div class="hourly-track">

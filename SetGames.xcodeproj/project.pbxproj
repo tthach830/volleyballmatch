@@ -60,6 +60,7 @@
 		A001000428B47E2001AB0004 /* CreateTournamentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000428B47E2001AB0004 /* CreateTournamentSheet.swift */; };
 		A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000528B47E2001AB0005 /* TournamentHubView.swift */; };
 		A001000628B47E2001AB0006 /* VolleyballWeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */; };
+		A001000728B47E2001AB0007 /* SmartForecastsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000728B47E2001AB0007 /* SmartForecastsSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -115,6 +116,7 @@
 		B001000428B47E2001AB0004 /* CreateTournamentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateTournamentSheet.swift; sourceTree = "<group>"; };
 		B001000528B47E2001AB0005 /* TournamentHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentHubView.swift; sourceTree = "<group>"; };
 		B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolleyballWeatherView.swift; sourceTree = "<group>"; };
+		B001000728B47E2001AB0007 /* SmartForecastsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartForecastsSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -264,6 +266,7 @@
 			isa = PBXGroup;
 			children = (
 				B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */,
+				B001000728B47E2001AB0007 /* SmartForecastsSheet.swift */,
 			);
 			path = Weather;
 			sourceTree = "<group>";
@@ -431,6 +434,7 @@
 				A001000428B47E2001AB0004 /* CreateTournamentSheet.swift in Sources */,
 				A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */,
 				A001000628B47E2001AB0006 /* VolleyballWeatherView.swift in Sources */,
+				A001000728B47E2001AB0007 /* SmartForecastsSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

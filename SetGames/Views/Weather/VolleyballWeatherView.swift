@@ -11,6 +11,7 @@ public struct VolleyballWeatherView: View {
     @State private var isLoading: Bool = true
     @State private var showSettings: Bool = false
     @State private var showEmbedSheet: Bool = false
+    @State private var showSmartForecastsSheet: Bool = false
     
     // User configurable criteria (stored in UserDefaults)
     @AppStorage("vb_min_temp") private var minTemp: Int = 60
@@ -63,7 +64,15 @@ public struct VolleyballWeatherView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 14) {
+                    HStack(spacing: 12) {
+                        Button {
+                            showSmartForecastsSheet = true
+                        } label: {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.yellow)
+                        }
+                        
                         Button {
                             showEmbedSheet = true
                         } label: {
@@ -84,6 +93,15 @@ public struct VolleyballWeatherView: View {
             }
             .sheet(isPresented: $showEmbedSheet) {
                 WidgetEmbedSheet(initialCourt: selectedCourt, criteria: criteria)
+            }
+            .sheet(isPresented: $showSmartForecastsSheet) {
+                SmartForecastsSheet(
+                    minTemp: $minTemp,
+                    maxTemp: $maxTemp,
+                    maxWind: $maxWind,
+                    maxUV: $maxUV,
+                    day: weeklyDays.indices.contains(selectedDayIndex) ? weeklyDays[selectedDayIndex] : weeklyDays.first
+                )
             }
             .task {
                 await loadForecast()
@@ -351,6 +369,94 @@ public struct VolleyballWeatherView: View {
                     RoundedRectangle(cornerRadius: 10)
                         .stroke((bw.isGreen ? Color.green : Color.yellow).opacity(0.3), lineWidth: 1)
                 )
+            }
+            
+            // Smart Highlight Bar vs Muted Dot Timeline Chart
+            if !day.daylightHours.isEmpty {
+                VStack(spacing: 8) {
+                    HStack {
+                        Label("CONDITIONS HIGHLIGHTED", systemImage: "sparkles")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(.yellow)
+                        Spacer()
+                        Button {
+                            showSmartForecastsSheet = true
+                        } label: {
+                            Text("Smart Settings")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.cyan)
+                        }
+                    }
+                    
+                    HStack(alignment: .bottom, spacing: 3) {
+                        ForEach(Array(day.daylightHours.enumerated()), id: \.element.id) { hIdx, hour in
+                            let eval = criteria.evaluate(hour: hour)
+                            let isMatch = eval.suitability == .good
+                            let isFair = eval.suitability == .fair
+                            let isSelected = selectedHourIndex == hIdx
+                            
+                            Button {
+                                withAnimation(.spring(response: 0.25)) {
+                                    selectedHourIndex = hIdx
+                                }
+                            } label: {
+                                VStack {
+                                    Spacer()
+                                    if isMatch || isFair {
+                                        let barHeight: CGFloat = isMatch ? CGFloat(min(56, max(28, (hour.temp - 50) * 2 + 20))) : 22
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(
+                                                isMatch ?
+                                                LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .top, endPoint: .bottom) :
+                                                LinearGradient(colors: [Color.yellow.opacity(0.8), Color.orange.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+                                            )
+                                            .frame(maxWidth: 14, minHeight: barHeight, maxHeight: barHeight)
+                                            .shadow(color: isMatch ? Color.orange.opacity(0.6) : .clear, radius: 3)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 3)
+                                                    .stroke(isSelected ? Color.cyan : Color.clear, lineWidth: 1.5)
+                                            )
+                                    } else {
+                                        Circle()
+                                            .fill(isSelected ? Color.cyan : Color.white.opacity(0.25))
+                                            .frame(width: isSelected ? 7 : 5, height: isSelected ? 7 : 5)
+                                            .padding(.bottom, 2)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: 60)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.bottom, 4)
+                    .overlay(
+                        Rectangle()
+                            .fill(Color.white.opacity(0.1))
+                            .frame(height: 1),
+                        alignment: .bottom
+                    )
+                    
+                    HStack {
+                        Text(day.daylightHours.first?.hourLabel.replacingOccurrences(of: " ", with: "") ?? "7A")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(Color.white.opacity(0.5))
+                        Spacer()
+                        if day.daylightHours.count > 4 {
+                            Text(day.daylightHours[day.daylightHours.count / 2].hourLabel.replacingOccurrences(of: " ", with: ""))
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(Color.white.opacity(0.5))
+                            Spacer()
+                        }
+                        Text(day.daylightHours.last?.hourLabel.replacingOccurrences(of: " ", with: "") ?? "7P")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(Color.white.opacity(0.5))
+                    }
+                    .padding(.horizontal, 2)
+                }
+                .padding(10)
+                .background(Color.black.opacity(0.3))
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.06), lineWidth: 1))
             }
             
             // Hourly horizontal track
@@ -639,10 +745,25 @@ public struct VolleyballWeatherView: View {
                                 .foregroundColor(isIdeal ? .white : Color.white.opacity(0.6))
                                 .lineLimit(1)
                             
-                            Circle()
-                                .fill(hEval.suitability.dotColor)
-                                .frame(width: 6, height: 6)
-                                .shadow(color: hEval.suitability.dotColor.opacity(0.8), radius: 2)
+                            VStack {
+                                Spacer()
+                                if isIdeal {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .top, endPoint: .bottom))
+                                        .frame(width: 7, height: 14)
+                                        .shadow(color: Color.orange.opacity(0.5), radius: 2)
+                                } else if hEval.suitability == .fair {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color.yellow)
+                                        .frame(width: 7, height: 8)
+                                } else {
+                                    Circle()
+                                        .fill(Color.white.opacity(0.25))
+                                        .frame(width: 4, height: 4)
+                                        .padding(.bottom, 2)
+                                }
+                            }
+                            .frame(height: 14)
                             
                             Text("\(hour.temp)°")
                                 .font(.system(size: 7, weight: .semibold))
@@ -651,7 +772,7 @@ public struct VolleyballWeatherView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 3)
-                        .background(isIdeal ? Color.green.opacity(0.15) : Color.white.opacity(0.03))
+                        .background(isIdeal ? Color.yellow.opacity(0.12) : Color.white.opacity(0.03))
                         .cornerRadius(4)
                     }
                 }

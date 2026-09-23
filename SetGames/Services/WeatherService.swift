@@ -33,6 +33,51 @@ public struct VolleyballCriteria: Codable, Equatable {
     
     public static let `default` = VolleyballCriteria(minTemp: 60, maxTemp: 80, maxWind: 10, maxUV: 4.0)
     
+    public static func from(preset: SmartForecastPreset) -> VolleyballCriteria {
+        preset.defaultCriteria
+    }
+}
+
+public enum SmartForecastPreset: String, CaseIterable, Identifiable {
+    case primeDoubles = "Prime Doubles"
+    case casualBeach = "Casual Beach"
+    case windyTolerant = "Windy / Any Game"
+    
+    public var id: String { rawValue }
+    
+    public var icon: String {
+        switch self {
+        case .primeDoubles: return "🏐"
+        case .casualBeach: return "🏖️"
+        case .windyTolerant: return "🌪️"
+        }
+    }
+    
+    public var label: String {
+        "BEACH VOLLEYBALL"
+    }
+    
+    public var subtitle: String {
+        switch self {
+        case .primeDoubles: return "Optimal"
+        case .casualBeach: return "Casual Play"
+        case .windyTolerant: return "Wind Tolerant"
+        }
+    }
+    
+    public var defaultCriteria: VolleyballCriteria {
+        switch self {
+        case .primeDoubles:
+            return VolleyballCriteria(minTemp: 65, maxTemp: 82, maxWind: 10, maxUV: 6.0)
+        case .casualBeach:
+            return VolleyballCriteria(minTemp: 60, maxTemp: 86, maxWind: 14, maxUV: 8.0)
+        case .windyTolerant:
+            return VolleyballCriteria(minTemp: 58, maxTemp: 88, maxWind: 18, maxUV: 9.0)
+        }
+    }
+}
+
+extension VolleyballCriteria {
     public func evaluate(day: DailyVolleyballWeather) -> (suitability: VolleyballSuitability, reason: String, tip: String) {
         var issues: [String] = []
         var warnings: [String] = []

@@ -163,6 +163,10 @@
               <option value="Huntington Beach">🏖️ Huntington Beach</option>
             </select>
             <button type="button" class="btn btn-sm btn-outline" onclick="window.refreshVolleyballWeather()" style="font-size: 13px; padding: 7px 10px; border-radius: 10px;" title="Refresh forecast">🔄</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="window.openSmartForecastsModal()" style="font-size: 13px; padding: 7px 12px; border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="Smart Forecasts: String conditions together and highlight matching windows">
+              <span>✨</span>
+              <span>Smart</span>
+            </button>
             <button type="button" class="btn btn-sm btn-primary" onclick="window.openVolleyballEmbedModal()" style="font-size: 13px; padding: 7px 12px; border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;" title="Embed this widget on your website">
               <span>🔗</span>
               <span>Embed</span>
@@ -1489,6 +1493,152 @@
             </div>
             <textarea id="embed-code-script" readonly rows="3" style="width: 100%; font-family: monospace; font-size: 11px; padding: 10px; border-radius: 8px; background: #0f121d; color: #a7f3d0; border: 1px solid rgba(255,255,255,0.1); resize: none;"></textarea>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Smart Forecasts Modal (Inspired by CARROT / Custom Activity Forecasts) -->
+    <div id="vb-smart-forecasts-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeSmartForecastsModal()">
+      <div class="modal-card sf-modal-card">
+        <!-- Top Nav Bar -->
+        <div class="sf-nav-bar">
+          <button type="button" class="sf-close-btn" onclick="window.closeSmartForecastsModal()">Close</button>
+          <h2 class="sf-modal-title">Beach Volleyball Smart Forecast</h2>
+          <div style="width: 45px;"></div> <!-- Spacer for symmetric centering -->
+        </div>
+
+        <!-- Beach Volleyball Style Presets -->
+        <div class="sf-presets-row">
+          <button type="button" class="sf-preset-chip active" id="sf-preset-prime" onclick="window.selectSmartPreset('prime')">
+            <span>🏐</span> Prime Doubles
+          </button>
+          <button type="button" class="sf-preset-chip" id="sf-preset-casual" onclick="window.selectSmartPreset('casual')">
+            <span>🏖️</span> Casual Sand
+          </button>
+          <button type="button" class="sf-preset-chip" id="sf-preset-windy" onclick="window.selectSmartPreset('windy')">
+            <span>🌪️</span> Windy Tolerant
+          </button>
+        </div>
+
+        <!-- Step 1: String together multiple conditions -->
+        <div class="sf-section">
+          <div class="sf-section-header">
+            <span class="sf-step-num">1</span>
+            <span class="sf-step-title">String together<br>beach volleyball conditions</span>
+          </div>
+
+          <!-- The Condition Equation Row -->
+          <div class="sf-equation-row">
+            <!-- TEMPS CARD -->
+            <div class="sf-card" onclick="window.toggleSmartForecastEditor('temp')">
+              <div class="sf-card-box">
+                <span class="sf-card-icon">🌡️</span>
+              </div>
+              <div class="sf-card-label">TEMPS</div>
+              <div id="sf-val-temp" class="sf-card-val">65° - 82°F</div>
+            </div>
+
+            <span class="sf-operator">+</span>
+
+            <!-- WIND CARD -->
+            <div class="sf-card" onclick="window.toggleSmartForecastEditor('wind')">
+              <div class="sf-card-box">
+                <span class="sf-card-icon">💨</span>
+              </div>
+              <div class="sf-card-label">WIND</div>
+              <div id="sf-val-wind" class="sf-card-val">0 - 10 mph</div>
+            </div>
+
+            <span class="sf-operator">+</span>
+
+            <!-- UV CARD -->
+            <div class="sf-card" onclick="window.toggleSmartForecastEditor('uv')">
+              <div class="sf-card-box">
+                <span class="sf-card-icon">☀️</span>
+              </div>
+              <div class="sf-card-label">UV</div>
+              <div id="sf-val-uv" class="sf-card-val">0 - 6.0</div>
+            </div>
+
+            <span class="sf-operator">=</span>
+
+            <!-- ACTIVITY BADGE -->
+            <div class="sf-activity-badge">
+              <div class="sf-activity-circle">
+                <span id="sf-activity-icon">🏐</span>
+              </div>
+              <div id="sf-activity-name" class="sf-card-label">BEACH VOLLEYBALL</div>
+              <div id="sf-activity-sub" class="sf-card-val" style="color: #38bdf8;">Optimal Play</div>
+            </div>
+          </div>
+
+          <!-- Inline Sliders Editor Drawer -->
+          <div id="sf-sliders-drawer" style="margin-top: 14px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); margin-bottom: 4px;">
+                  <span>🌡️ Temperature Range</span>
+                  <span id="sf-slider-temp-disp" style="color: #fb923c;">60°F – 80°F</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <input type="range" id="sf-slider-temp-min" min="45" max="75" value="60" oninput="window.onSmartSliderChange()" style="flex: 1; accent-color: #38bdf8;">
+                  <input type="range" id="sf-slider-temp-max" min="70" max="95" value="80" oninput="window.onSmartSliderChange()" style="flex: 1; accent-color: #f87171;">
+                </div>
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); margin-bottom: 4px;">
+                  <span>💨 Max Wind Speed</span>
+                  <span id="sf-slider-wind-disp" style="color: #38bdf8;">Below 10 mph</span>
+                </div>
+                <input type="range" id="sf-slider-wind" min="5" max="25" value="10" oninput="window.onSmartSliderChange()" style="width: 100%; accent-color: #38bdf8;">
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); margin-bottom: 4px;">
+                  <span>☀️ Max UV Index</span>
+                  <span id="sf-slider-uv-disp" style="color: #facc15;">Below 4.0</span>
+                </div>
+                <input type="range" id="sf-slider-uv" min="1" max="11" step="0.5" value="4" oninput="window.onSmartSliderChange()" style="width: 100%; accent-color: #facc15;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sf-divider"></div>
+
+        <!-- Step 2: We'll highlight when those conditions are met -->
+        <div class="sf-section">
+          <div class="sf-section-header">
+            <span class="sf-step-num">2</span>
+            <span class="sf-step-title">We’ll <b>highlight</b> when those<br>conditions are met.</span>
+          </div>
+
+          <!-- The Live Highlight Bar vs Muted Dot Timeline Chart -->
+          <div class="sf-chart-wrapper">
+            <div id="sf-timeline-container" class="sf-timeline-bars">
+              <!-- Dynamically populated with highlight bars and muted dots -->
+            </div>
+            <div id="sf-timeline-axis" class="sf-timeline-axis">
+              <!-- Time markers 9, 12, 3, 6, 9, 12 -->
+            </div>
+            <div id="sf-timeline-day-label" class="sf-timeline-day-label">
+              TODAY
+            </div>
+          </div>
+
+          <!-- Highlight Summary Callout -->
+          <div id="sf-highlight-summary" class="sf-highlight-summary">
+            <!-- Summary of highlighted window -->
+          </div>
+        </div>
+
+        <!-- Bottom Footer -->
+        <div class="sf-footer">
+          <p class="sf-footer-text">Personalized weather and wind forecasts for beach volleyball.</p>
+          <button type="button" class="btn btn-primary" onclick="window.applySmartForecastCriteria()" style="width: 100%; padding: 12px; font-weight: 800; border-radius: 12px; font-size: 14px; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: none;">
+            Apply Beach Volleyball Criteria
+          </button>
         </div>
       </div>
     </div>

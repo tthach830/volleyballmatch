@@ -1149,6 +1149,55 @@ export function renderDaytimeHourlyChart(day) {
       ` : ''}
     </div>
 
+    <!-- Smart Forecast Highlight Bar Timeline (Bars for Matches, Dots for Off-Peak) -->
+    <div class="sf-chart-wrapper" style="margin-bottom: 14px; padding: 14px 10px 10px 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.8); display: flex; align-items: center; gap: 5px;">
+          <span>✨</span> CONDITIONS HIGHLIGHTED
+        </span>
+        <button type="button" class="btn btn-sm btn-outline" onclick="window.openSmartForecastsModal()" style="font-size: 10px; padding: 2px 8px; border-radius: 6px; color: #38bdf8; border-color: rgba(56,189,248,0.3);">
+          Edit Conditions
+        </button>
+      </div>
+      <div class="sf-timeline-bars" style="height: 65px;">
+        ${daylightHours.map((h, hIdx) => {
+          const hEval = evaluateHourlySuitability(h, criteria);
+          const isSelected = hIdx === window.selectedVolleyballHourIndex;
+          const isMatch = hEval.status === "green";
+          const isFair = hEval.status === "yellow";
+          if (isMatch || isFair) {
+            const heightPercent = isMatch ? Math.min(95, Math.max(50, (h.temp - 50) * 2 + 30)) : 38;
+            const barColor = isMatch ? "linear-gradient(to top, #d97706, #fbbf24)" : "linear-gradient(to top, #854d0e, #ca8a04)";
+            const glow = isMatch ? "0 0 8px rgba(251, 191, 36, 0.5)" : "none";
+            const border = isSelected ? "2px solid #38bdf8" : "none";
+            return `
+              <div class="sf-col" onclick="window.selectVolleyballHour(${hIdx})" title="${h.hourLabel}: ${hEval.label}">
+                <div class="sf-bar-inner" style="height: ${heightPercent}%; background: ${barColor}; box-shadow: ${glow}; outline: ${border};"></div>
+              </div>
+            `;
+          } else {
+            return `
+              <div class="sf-col" onclick="window.selectVolleyballHour(${hIdx})" title="${h.hourLabel}: ${hEval.label}">
+                <div class="sf-dot-inner" style="${isSelected ? 'background: #38bdf8; transform: scale(1.6);' : ''}"></div>
+              </div>
+            `;
+          }
+        }).join("")}
+      </div>
+      <div class="sf-timeline-axis" style="margin-top: 4px;">
+        ${(() => {
+          const step = Math.max(1, Math.floor(daylightHours.length / 5));
+          const markers = [];
+          for (let i = 0; i < daylightHours.length; i += step) {
+            markers.push(daylightHours[i].hourLabel.replace(' ', ''));
+          }
+          const lastLabel = daylightHours[daylightHours.length - 1].hourLabel.replace(' ', '');
+          if (!markers.includes(lastLabel)) markers.push(lastLabel);
+          return markers.map(m => `<span>${m}</span>`).join("");
+        })()}
+      </div>
+    </div>
+
     <!-- Scrollable Hourly Track (Sunrise to Sunset) -->
     <div class="vb-hourly-track" style="margin-bottom: 12px;">
       ${hourlyCardsHtml}
@@ -1456,12 +1505,20 @@ export function renderVolleyballDaysList(days) {
     if (daylight.length > 0) {
       const hourChips = daylight.map(h => {
         const hEval = evaluateHourlySuitability(h, criteria);
-        const dotColor = hEval.status === "green" ? "#22c55e" : (hEval.status === "yellow" ? "#eab308" : "#ef4444");
         const isIdeal = hEval.status === "green";
+        const isFair = hEval.status === "yellow";
         return `
           <div class="vb-timeline-hour ${isIdeal ? 'is-ideal' : ''}" title="${h.hourLabel}: ${hEval.label} (${h.temp}°, ${h.windMph} mph, UV ${h.uvIndex})">
             <span class="vb-timeline-hour-text">${h.hourLabel.replace(' ', '')}</span>
-            <span style="width: 7px; height: 7px; border-radius: 50%; background: ${dotColor}; box-shadow: 0 0 5px ${dotColor};"></span>
+            <div style="height: 16px; display: flex; align-items: flex-end; justify-content: center; width: 100%;">
+              ${isIdeal ? `
+                <span style="width: 8px; height: 16px; border-radius: 3px; background: linear-gradient(to top, #d97706, #fbbf24); box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);"></span>
+              ` : (isFair ? `
+                <span style="width: 8px; height: 9px; border-radius: 2px; background: #facc15;"></span>
+              ` : `
+                <span style="width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.25); margin-bottom: 2px;"></span>
+              `)}
+            </div>
             <span class="vb-timeline-hour-temp">${h.temp}°</span>
           </div>
         `;
@@ -1693,6 +1750,289 @@ window.copyEmbedCode = async function(type) {
     textarea.select();
     showToast("Selected code: Press Cmd+C to copy");
   }
+};
+
+// ==========================================
+// SMART FORECASTS SYSTEM (CARROT-INSPIRED)
+// ==========================================
+
+export const SMART_FORECAST_PRESETS = {
+  prime: {
+    name: "Prime Doubles",
+    icon: "🏐",
+    label: "BEACH VOLLEYBALL",
+    sub: "Prime Doubles",
+    minTemp: 65,
+    maxTemp: 82,
+    maxWind: 10,
+    maxUV: 6.0
+  },
+  casual: {
+    name: "Casual Sand",
+    icon: "🏖️",
+    label: "BEACH VOLLEYBALL",
+    sub: "Casual Play",
+    minTemp: 60,
+    maxTemp: 86,
+    maxWind: 14,
+    maxUV: 8.0
+  },
+  windy: {
+    name: "Windy Tolerant",
+    icon: "🌪️",
+    label: "BEACH VOLLEYBALL",
+    sub: "Windy Ok",
+    minTemp: 58,
+    maxTemp: 88,
+    maxWind: 18,
+    maxUV: 9.0
+  }
+};
+
+window.activeSmartPreset = "prime";
+
+window.openSmartForecastsModal = function() {
+  const modal = document.getElementById("vb-smart-forecasts-modal");
+  if (!modal) return;
+
+  // Initialize values from current criteria
+  const crit = window.volleyballCriteria || { minTemp: 65, maxTemp: 82, maxWind: 10, maxUV: 6.0 };
+  
+  // Set slider values
+  const minTempInput = document.getElementById("sf-slider-temp-min");
+  const maxTempInput = document.getElementById("sf-slider-temp-max");
+  const windInput = document.getElementById("sf-slider-wind");
+  const uvInput = document.getElementById("sf-slider-uv");
+
+  if (minTempInput) minTempInput.value = crit.minTemp;
+  if (maxTempInput) maxTempInput.value = crit.maxTemp;
+  if (windInput) windInput.value = crit.maxWind;
+  if (uvInput) uvInput.value = crit.maxUV;
+
+  window.syncSmartForecastDisplays(crit);
+  window.renderSmartTimelinePreview();
+  modal.classList.add("active");
+};
+
+window.closeSmartForecastsModal = function() {
+  const modal = document.getElementById("vb-smart-forecasts-modal");
+  if (modal) modal.classList.remove("active");
+};
+
+window.selectSmartPreset = function(presetKey) {
+  const preset = SMART_FORECAST_PRESETS[presetKey];
+  if (!preset) return;
+
+  window.activeSmartPreset = presetKey;
+
+  // Update preset buttons active state
+  document.querySelectorAll(".sf-preset-chip").forEach(chip => {
+    chip.classList.toggle("active", chip.id === `sf-preset-${presetKey}`);
+  });
+
+  // Update activity badge in equation row
+  const iconEl = document.getElementById("sf-activity-icon");
+  const nameEl = document.getElementById("sf-activity-name");
+  const subEl = document.getElementById("sf-activity-sub");
+  if (iconEl) iconEl.innerText = preset.icon;
+  if (nameEl) nameEl.innerText = preset.label;
+  if (subEl) subEl.innerText = preset.sub;
+
+  // Update sliders
+  const minTempInput = document.getElementById("sf-slider-temp-min");
+  const maxTempInput = document.getElementById("sf-slider-temp-max");
+  const windInput = document.getElementById("sf-slider-wind");
+  const uvInput = document.getElementById("sf-slider-uv");
+
+  if (minTempInput) minTempInput.value = preset.minTemp;
+  if (maxTempInput) maxTempInput.value = preset.maxTemp;
+  if (windInput) windInput.value = preset.maxWind;
+  if (uvInput) uvInput.value = preset.maxUV;
+
+  window.syncSmartForecastDisplays(preset);
+  window.renderSmartTimelinePreview();
+};
+
+window.syncSmartForecastDisplays = function(crit) {
+  // Update card value labels
+  const tempVal = document.getElementById("sf-val-temp");
+  const windVal = document.getElementById("sf-val-wind");
+  const uvVal = document.getElementById("sf-val-uv");
+  if (tempVal) tempVal.innerText = `${crit.minTemp}° - ${crit.maxTemp}°F`;
+  if (windVal) windVal.innerText = `0 - ${crit.maxWind} mph`;
+  if (uvVal) uvVal.innerText = `0 - ${Number(crit.maxUV).toFixed(1)}`;
+
+  // Update slider displays
+  const sTempDisp = document.getElementById("sf-slider-temp-disp");
+  const sWindDisp = document.getElementById("sf-slider-wind-disp");
+  const sUvDisp = document.getElementById("sf-slider-uv-disp");
+  if (sTempDisp) sTempDisp.innerText = `${crit.minTemp}°F – ${crit.maxTemp}°F`;
+  if (sWindDisp) sWindDisp.innerText = `Below ${crit.maxWind} mph`;
+  if (sUvDisp) sUvDisp.innerText = `Below ${Number(crit.maxUV).toFixed(1)}`;
+};
+
+window.onSmartSliderChange = function() {
+  const minTempInput = document.getElementById("sf-slider-temp-min");
+  const maxTempInput = document.getElementById("sf-slider-temp-max");
+  const windInput = document.getElementById("sf-slider-wind");
+  const uvInput = document.getElementById("sf-slider-uv");
+
+  let minT = Number(minTempInput?.value ?? 60);
+  let maxT = Number(maxTempInput?.value ?? 80);
+  if (minT > maxT) {
+    minT = maxT - 2;
+    if (minTempInput) minTempInput.value = minT;
+  }
+
+  const crit = {
+    minTemp: minT,
+    maxTemp: maxT,
+    maxWind: Number(windInput?.value ?? 10),
+    maxUV: Number(uvInput?.value ?? 4.0)
+  };
+
+  window.syncSmartForecastDisplays(crit);
+  window.renderSmartTimelinePreview();
+};
+
+window.toggleSmartForecastEditor = function(field) {
+  const drawer = document.getElementById("sf-sliders-drawer");
+  if (drawer) {
+    drawer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+};
+
+window.renderSmartTimelinePreview = function() {
+  const container = document.getElementById("sf-timeline-container");
+  const axis = document.getElementById("sf-timeline-axis");
+  const dayLabel = document.getElementById("sf-timeline-day-label");
+  const summaryEl = document.getElementById("sf-highlight-summary");
+  if (!container) return;
+
+  const minTempInput = document.getElementById("sf-slider-temp-min");
+  const maxTempInput = document.getElementById("sf-slider-temp-max");
+  const windInput = document.getElementById("sf-slider-wind");
+  const uvInput = document.getElementById("sf-slider-uv");
+
+  const criteria = {
+    minTemp: Number(minTempInput?.value ?? 60),
+    maxTemp: Number(maxTempInput?.value ?? 80),
+    maxWind: Number(windInput?.value ?? 10),
+    maxUV: Number(uvInput?.value ?? 4.0)
+  };
+
+  const days = window.currentVolleyballWeeklyData || [];
+  const selectedDay = days[window.selectedVolleyballDayIndex || 0] || days[0];
+
+  if (!selectedDay || !selectedDay.daylightHours || selectedDay.daylightHours.length === 0) {
+    container.innerHTML = `<div style="padding: 10px; color: rgba(255,255,255,0.5); font-size: 11px;">Select a day to view timeline</div>`;
+    return;
+  }
+
+  if (dayLabel) {
+    dayLabel.innerText = selectedDay.dayName === "Today" ? "TODAY" : selectedDay.fullDayTitle.toUpperCase();
+  }
+
+  const daylight = selectedDay.daylightHours;
+  let matchingCount = 0;
+  let highlightedWindow = calculateBestPlayingWindow(daylight, criteria);
+
+  // Render bars vs dots
+  const colsHtml = daylight.map((hour, idx) => {
+    const evalRes = evaluateHourlySuitability(hour, criteria);
+    const isMatch = evalRes.status === "green";
+    const isFair = evalRes.status === "yellow";
+
+    if (isMatch) matchingCount++;
+
+    if (isMatch || isFair) {
+      // Calculate vertical bar height (40% to 95%)
+      const heightPercent = isMatch ? Math.min(95, Math.max(50, (hour.temp - 50) * 2 + 30)) : 38;
+      const barColor = isMatch ? "linear-gradient(to top, #d97706, #fbbf24)" : "linear-gradient(to top, #854d0e, #ca8a04)";
+      const glow = isMatch ? "0 0 8px rgba(251, 191, 36, 0.5)" : "none";
+
+      return `
+        <div class="sf-col" title="${hour.hourLabel}: Met conditions (${hour.temp}°F, ${hour.windMph} mph, UV ${hour.uvIndex})">
+          <div class="sf-bar-inner" style="height: ${heightPercent}%; background: ${barColor}; box-shadow: ${glow};"></div>
+        </div>
+      `;
+    } else {
+      // Muted dot
+      return `
+        <div class="sf-col" title="${hour.hourLabel}: Outside conditions (${hour.temp}°F, ${hour.windMph} mph, UV ${hour.uvIndex})">
+          <div class="sf-dot-inner"></div>
+        </div>
+      `;
+    }
+  }).join("");
+
+  container.innerHTML = colsHtml;
+
+  // Render axis markers (e.g. 7, 9, 12, 3, 6, 7)
+  if (axis && daylight.length > 0) {
+    const step = Math.max(1, Math.floor(daylight.length / 5));
+    const markers = [];
+    for (let i = 0; i < daylight.length; i += step) {
+      markers.push(daylight[i].hourLabel.replace(' ', ''));
+    }
+    const lastLabel = daylight[daylight.length - 1].hourLabel.replace(' ', '');
+    if (!markers.includes(lastLabel)) markers.push(lastLabel);
+
+    axis.innerHTML = markers.map(m => `<span>${m}</span>`).join("");
+  }
+
+  // Update summary
+  if (summaryEl) {
+    if (highlightedWindow && highlightedWindow.status !== "red") {
+      summaryEl.style.display = "flex";
+      summaryEl.innerHTML = `
+        <span>🌟</span>
+        <span><b>Highlighted Window:</b> ${highlightedWindow.windowText} • ${highlightedWindow.summaryText}</span>
+      `;
+    } else {
+      summaryEl.style.display = "flex";
+      summaryEl.innerHTML = `
+        <span>⚠️</span>
+        <span>Conditions not met on this day. Try adjusting temperature or wind sliders.</span>
+      `;
+    }
+  }
+};
+
+window.applySmartForecastCriteria = function() {
+  const minTempInput = document.getElementById("sf-slider-temp-min");
+  const maxTempInput = document.getElementById("sf-slider-temp-max");
+  const windInput = document.getElementById("sf-slider-wind");
+  const uvInput = document.getElementById("sf-slider-uv");
+
+  let minT = Number(minTempInput?.value ?? 60);
+  let maxT = Number(maxTempInput?.value ?? 80);
+  if (minT > maxT) {
+    minT = maxT - 2;
+  }
+
+  window.volleyballCriteria = {
+    minTemp: minT,
+    maxTemp: maxT,
+    maxWind: Number(windInput?.value ?? 10),
+    maxUV: Number(uvInput?.value ?? 4.0)
+  };
+
+  saveVolleyballCriteria();
+  syncVolleyballCriteriaToUI();
+
+  if (window.currentVolleyballWeeklyData && window.currentVolleyballWeeklyData.length > 0) {
+    renderVolleyballChart(window.currentVolleyballWeeklyData);
+    renderVolleyballDaysList(window.currentVolleyballWeeklyData);
+    updateVolleyballOverallPill(window.currentVolleyballWeeklyData);
+    const selDay = window.currentVolleyballWeeklyData[window.selectedVolleyballDayIndex || 0] || window.currentVolleyballWeeklyData[0];
+    renderDaytimeHourlyChart(selDay);
+  }
+
+  window.closeSmartForecastsModal();
+  const preset = SMART_FORECAST_PRESETS[window.activeSmartPreset];
+  const name = preset ? preset.name : "Custom";
+  showToast(`✨ Beach Volleyball criteria applied (${name})!`);
 };
 
 export function renderWeatherLine(game) {
