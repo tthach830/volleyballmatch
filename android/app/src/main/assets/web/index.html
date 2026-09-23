@@ -141,7 +141,135 @@
       </div>
     </main>
 
-    <!-- TAB 5: PROFILE & SETTINGS -->
+    <!-- TAB 3: VOLLEYBALL? (Weekly Weather Forecast & Suitability Chart) -->
+    <main id="tab-volleyball" class="tab-content">
+      <div class="ios-view-header">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h1 class="ios-large-title" style="margin-bottom: 0;">Volleyball?</h1>
+              <span id="vb-overall-pill" class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 999px;">☀️ Forecast</span>
+            </div>
+            <div class="ios-subtitle">Weekly weather & beach playing conditions</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <select id="vb-beach-select" class="form-input" style="padding: 7px 12px; font-size: 13px; font-weight: 700; border-radius: 10px; width: auto; background: var(--bg-alt, #1e2434); color: var(--text-main, #ffffff); border: 1px solid var(--border, rgba(255,255,255,0.15));" onchange="window.onVolleyballBeachChange()">
+              <option value="Main Beach">🏖️ Main Beach (Santa Cruz)</option>
+              <option value="Harbor Beach">⛵ Harbor Beach</option>
+              <option value="Capitola Beach">🌴 Capitola Beach</option>
+              <option value="Seabright Beach">🌊 Seabright Beach</option>
+              <option value="Manhattan Beach">🏐 Manhattan Beach</option>
+              <option value="Hermosa Beach">🏄 Hermosa Beach</option>
+              <option value="Huntington Beach">🏖️ Huntington Beach</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-outline" onclick="window.refreshVolleyballWeather()" style="font-size: 13px; padding: 7px 10px; border-radius: 10px;" title="Refresh forecast">🔄</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Threshold Preferences Card (User Configurable) -->
+      <div class="game-details-card" style="margin-bottom: 16px; padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="window.toggleVolleyballSettings()">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 16px;">⚙️</span>
+            <span style="font-size: 14px; font-weight: 800; color: #ffffff;">Your Ideal Playing Conditions</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="vb-settings-summary" style="font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.65);">60-80°F • &lt;10 mph • UV &lt;4</span>
+            <span id="vb-settings-chevron" style="font-size: 12px; color: rgba(255, 255, 255, 0.5); transition: transform 0.2s ease;">▼</span>
+          </div>
+        </div>
+
+        <div id="vb-settings-body" style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+          <div style="display: grid; grid-template-columns: 1fr; gap: 14px;">
+            <!-- Temperature Range -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.7);">🌡️ Temperature Range (°F)</label>
+                <span id="vb-temp-val-display" style="font-size: 12px; font-weight: 800; color: #fb923c;">60°F – 80°F</span>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <div style="flex: 1;">
+                  <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5); font-weight: 700;">MIN TEMP</span>
+                  <input type="range" id="vb-temp-min" min="45" max="75" step="1" value="60" oninput="window.updateVolleyballCriteriaFromUI()" style="width: 100%; accent-color: #38bdf8;">
+                </div>
+                <div style="flex: 1;">
+                  <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5); font-weight: 700;">MAX TEMP</span>
+                  <input type="range" id="vb-temp-max" min="70" max="95" step="1" value="80" oninput="window.updateVolleyballCriteriaFromUI()" style="width: 100%; accent-color: #f87171;">
+                </div>
+              </div>
+            </div>
+
+            <!-- Wind Limit -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.7);">💨 Max Wind Speed</label>
+                <span id="vb-wind-val-display" style="font-size: 12px; font-weight: 800; color: #38bdf8;">Below 10 mph</span>
+              </div>
+              <input type="range" id="vb-wind-max" min="5" max="25" step="1" value="10" oninput="window.updateVolleyballCriteriaFromUI()" style="width: 100%; accent-color: #38bdf8;">
+              <div style="display: flex; justify-content: space-between; font-size: 10px; color: rgba(255, 255, 255, 0.4); margin-top: 2px;">
+                <span>5 mph (Calm)</span>
+                <span>10 mph (Default)</span>
+                <span>25 mph (Gale)</span>
+              </div>
+            </div>
+
+            <!-- UV Index Limit -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.7);">☀️ Max UV Index</label>
+                <span id="vb-uv-val-display" style="font-size: 12px; font-weight: 800; color: #facc15;">Below 4.0</span>
+              </div>
+              <input type="range" id="vb-uv-max" min="1" max="11" step="0.5" value="4" oninput="window.updateVolleyballCriteriaFromUI()" style="width: 100%; accent-color: #facc15;">
+              <div style="display: flex; justify-content: space-between; font-size: 10px; color: rgba(255, 255, 255, 0.4); margin-top: 2px;">
+                <span>1 (Low)</span>
+                <span>4 (Default: Moderate)</span>
+                <span>11 (Extreme)</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="window.resetVolleyballCriteria()" style="font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 8px;">
+              Reset to Defaults
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7-Day Chart with Colored Suitability Dots -->
+      <div class="game-details-card" style="margin-bottom: 16px; padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 16px;">📊</span>
+            <span style="font-size: 14px; font-weight: 800; color: #ffffff;">7-Day Suitability Chart</span>
+          </div>
+          <!-- Legend: Green / Yellow / Red -->
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700;">
+            <span style="display: inline-flex; align-items: center; gap: 4px; color: #4ade80;"><span class="vb-dot vb-dot-green"></span> Good</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; color: #facc15;"><span class="vb-dot vb-dot-yellow"></span> Fair</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; color: #f87171;"><span class="vb-dot vb-dot-red"></span> Poor</span>
+          </div>
+        </div>
+
+        <!-- Scrollable Chart Container -->
+        <div id="vb-chart-container" style="overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch;">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- Weekly Forecast Cards List -->
+      <div style="margin-bottom: 12px;">
+        <div style="font-size: 12px; font-weight: 800; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+          📅 Daily Breakdown & Volleyball Tips
+        </div>
+        <div id="vb-days-list" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+    </main>
+
+    <!-- TAB 4: PROFILE & SETTINGS -->
     <main id="tab-profile" class="tab-content">
       <div class="section-header">
         <div>
@@ -1298,7 +1426,7 @@
       <span id="toast-msg">Notification</span>
     </div>
 
-    <!-- Bottom Navigation Bar (Matches iOS TabView: Set Games, Ladders, Profile) -->
+    <!-- Bottom Navigation Bar (Matches iOS TabView: Set Games, Ladders, Volleyball?, Profile) -->
     <nav id="bottom-nav">
       <button type="button" class="nav-item" id="nav-matches" data-tab="matches" onclick="window.switchTab('matches')">
         <span class="nav-icon">🏐</span>
@@ -1307,6 +1435,10 @@
       <button type="button" class="nav-item active" id="nav-ladders" data-tab="ladders" onclick="window.switchTab('ladders')">
         <span class="nav-icon">🏆</span>
         <span class="nav-label">Ladders</span>
+      </button>
+      <button type="button" class="nav-item" id="nav-volleyball" data-tab="volleyball" onclick="window.switchTab('volleyball')">
+        <span class="nav-icon">☀️</span>
+        <span class="nav-label">Volleyball?</span>
       </button>
       <button type="button" class="nav-item" id="nav-profile" data-tab="profile" onclick="window.switchTab('profile')">
         <span class="nav-icon">👤</span>

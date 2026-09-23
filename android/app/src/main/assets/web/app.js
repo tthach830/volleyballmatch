@@ -627,9 +627,518 @@ export const weatherService = {
     if (wind < 12) return "Gentle ocean breeze • Mild ball drift; favor tighter setting.";
     if (wind < 18) return "Noticeable wind • Ball floats quickly; adjust approach and deep passes.";
     return "High coastal gusts • Tough passing; keep sets low and aggressive.";
+  },
+
+  async getWeeklyForecast(court) {
+    const coords = this.getCoordinates(court);
+    const cleanCourt = String(court || "Main Beach").trim().toLowerCase().replace(/\s+/g, "-");
+    const cacheKey = `weekly_${cleanCourt}`;
+    try {
+      const stored = sessionStorage.getItem(`wb_weather_${cacheKey}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Date.now() - (parsed._fetchedAt || 0) < 30 * 60 * 1000) {
+          return parsed.days;
+        }
+      }
+    } catch (_) {}
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,wind_speed_10m_max&hourly=temperature_2m,uv_index,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7`;
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      const days = this.parseWeeklyResponse(data, court);
+      try {
+        sessionStorage.setItem(`wb_weather_${cacheKey}`, JSON.stringify({ days, _fetchedAt: Date.now() }));
+      } catch (_) {}
+      return days;
+    } catch (err) {
+      console.warn("Failed to fetch weekly forecast, using fallback:", err);
+      return this.getWeeklyFallback(court);
+    }
+  },
+
+  parseWeeklyResponse(data, court) {
+    const daily = data.daily || {};
+    const times = daily.time || [];
+    const days = [];
+
+    for (let i = 0; i < times.length && i < 7; i++) {
+      const dateStr = times[i];
+      const [year, month, dayNum] = dateStr.split("-").map(Number);
+      const d = new Date(year, month - 1, dayNum, 12, 0, 0);
+
+      const dayName = i === 0 ? "Today" : (i === 1 ? "Tomorrow" : d.toLocaleDateString("en-US", { weekday: "short" }));
+      const dateFormatted = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const fullDayTitle = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+
+      const tempMax = Math.round(daily.temperature_2m_max?.[i] ?? 74);
+      const tempMin = Math.round(daily.temperature_2m_min?.[i] ?? 56);
+      const tempAvg = Math.round((tempMax + tempMin) / 2);
+      const windMax = Math.round(daily.wind_speed_10m_max?.[i] ?? 8);
+      const uvMax = Math.round((daily.uv_index_max?.[i] ?? 4.0) * 10) / 10;
+      const code = daily.weather_code?.[i] ?? 0;
+      const { emoji, text } = this.interpretWeatherCode(code);
+
+      days.push({
+        courtLocation: court,
+        dateIndex: i,
+        dateStr,
+        dayName,
+        dateFormatted,
+        fullDayTitle,
+        tempMax,
+        tempMin,
+        tempAvg,
+        windMax,
+        uvMax,
+        conditionEmoji: emoji,
+        conditionText: text
+      });
+    }
+
+    if (days.length === 0) return this.getWeeklyFallback(court);
+    return days;
+  },
+
+  getWeeklyFallback(court) {
+    const days = [];
+    const baseTemps = [72, 70, 75, 78, 82, 69, 71];
+    const baseWinds = [7, 9, 8, 12, 16, 6, 8];
+    const baseUVs = [3.8, 4.2, 3.5, 4.8, 5.2, 3.2, 3.9];
+    const emojis = ["☀️", "🌤️", "☀️", "🌤️", "💨", "☀️", "🌤️"];
+    const texts = ["Sunny", "Mostly Sunny", "Clear", "Partly Cloudy", "Breezy & Sunny", "Clear", "Sunny"];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const tMax = baseTemps[i];
+      const tMin = tMax - 16;
+      days.push({
+        courtLocation: court,
+        dateIndex: i,
+        dateStr: d.toISOString().split("T")[0],
+        dayName: i === 0 ? "Today" : (i === 1 ? "Tomorrow" : d.toLocaleDateString("en-US", { weekday: "short" })),
+        dateFormatted: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        fullDayTitle: d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
+        tempMax: tMax,
+        tempMin: tMin,
+        tempAvg: Math.round((tMax + tMin) / 2),
+        windMax: baseWinds[i],
+        uvMax: baseUVs[i],
+        conditionEmoji: emojis[i],
+        conditionText: texts[i]
+      });
+    }
+    return days;
   }
 };
 window.weatherService = weatherService;
+
+// ==========================================
+// VOLLEYBALL? WEATHER & SUITABILITY MODULE
+// ==========================================
+
+window.volleyballCriteria = {
+  minTemp: 60,
+  maxTemp: 80,
+  maxWind: 10,
+  maxUV: 4.0
+};
+
+window.selectedVolleyballDayIndex = 0;
+window.currentVolleyballWeeklyData = [];
+
+export function loadVolleyballCriteria() {
+  try {
+    const saved = localStorage.getItem("vb_weather_criteria");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.minTemp !== undefined) window.volleyballCriteria.minTemp = Number(parsed.minTemp);
+      if (parsed.maxTemp !== undefined) window.volleyballCriteria.maxTemp = Number(parsed.maxTemp);
+      if (parsed.maxWind !== undefined) window.volleyballCriteria.maxWind = Number(parsed.maxWind);
+      if (parsed.maxUV !== undefined) window.volleyballCriteria.maxUV = Number(parsed.maxUV);
+    }
+  } catch (e) {}
+}
+
+export function saveVolleyballCriteria() {
+  try {
+    localStorage.setItem("vb_weather_criteria", JSON.stringify(window.volleyballCriteria));
+  } catch (e) {}
+}
+
+export function evaluateVolleyballSuitability(day, criteria = window.volleyballCriteria) {
+  const issues = [];
+  const warnings = [];
+
+  // Wind speed check
+  if (day.windMax > criteria.maxWind + 3) {
+    issues.push(`Too windy (${day.windMax} mph)`);
+  } else if (day.windMax > criteria.maxWind) {
+    warnings.push(`Breezy (${day.windMax} mph)`);
+  }
+
+  // Temperature check
+  if (day.tempMax > criteria.maxTemp) {
+    issues.push(`Too hot (${day.tempMax}°F)`);
+  } else if (day.tempAvg < criteria.minTemp - 6) {
+    issues.push(`Too cold (${day.tempAvg}°F)`);
+  } else if (day.tempAvg < criteria.minTemp) {
+    warnings.push(`Chilly (${day.tempAvg}°F)`);
+  }
+
+  // UV index check
+  if (day.uvMax > criteria.maxUV + 2.5) {
+    warnings.push(`High UV (${day.uvMax})`);
+  } else if (day.uvMax > criteria.maxUV) {
+    warnings.push(`Elevated UV (${day.uvMax})`);
+  }
+
+  // Severe weather
+  const textLower = (day.conditionText || "").toLowerCase();
+  if (textLower.includes("rain") || textLower.includes("storm") || textLower.includes("drizzle")) {
+    issues.push(`Rain (${day.conditionText})`);
+  }
+
+  let status = "good";
+  let statusText = "Good for Volleyball";
+  let statusEmoji = "🟢";
+  let badgeClass = "ok";
+  let summaryTip = "Prime beach conditions: Low wind drift, comfortable temperatures, and great ball control.";
+
+  if (issues.length > 0) {
+    status = "poor";
+    statusEmoji = "🔴";
+    statusText = issues.join(" • ");
+    badgeClass = "bad";
+    if (issues.some(i => i.toLowerCase().includes("wind"))) {
+      summaryTip = "High wind: Ball floats quickly off coastal gusts. Focus on low, aggressive sets.";
+    } else if (issues.some(i => i.toLowerCase().includes("hot"))) {
+      summaryTip = "Hot sand alert: Sand socks and plenty of electrolytes recommended.";
+    } else if (issues.some(i => i.toLowerCase().includes("rain"))) {
+      summaryTip = "Inclement weather: Slick volleyballs and wet courts.";
+    } else {
+      summaryTip = "Cold conditions: Warm up thoroughly and wear windbreaker/thermal layers.";
+    }
+  } else if (warnings.length > 0) {
+    status = "fair";
+    statusEmoji = "🟡";
+    statusText = warnings.join(" • ");
+    badgeClass = "warn";
+    if (warnings.some(w => w.toLowerCase().includes("breezy") || w.toLowerCase().includes("wind"))) {
+      summaryTip = "Moderate ocean breeze: Slight ball drift on deep float serves.";
+    } else if (warnings.some(w => w.toLowerCase().includes("uv"))) {
+      summaryTip = "Sun safety: Apply SPF 30+ sunscreen and wear UV-rated sunglasses.";
+    } else {
+      summaryTip = "Fair playing conditions: Crisp sets possible with minor adjustments.";
+    }
+  }
+
+  return {
+    status,
+    statusEmoji,
+    statusText,
+    badgeClass,
+    issues,
+    warnings,
+    summaryTip
+  };
+}
+
+export function syncVolleyballCriteriaToUI() {
+  const c = window.volleyballCriteria;
+  const tempMinInput = document.getElementById("vb-temp-min");
+  const tempMaxInput = document.getElementById("vb-temp-max");
+  const windMaxInput = document.getElementById("vb-wind-max");
+  const uvMaxInput = document.getElementById("vb-uv-max");
+
+  if (tempMinInput) tempMinInput.value = c.minTemp;
+  if (tempMaxInput) tempMaxInput.value = c.maxTemp;
+  if (windMaxInput) windMaxInput.value = c.maxWind;
+  if (uvMaxInput) uvMaxInput.value = c.maxUV;
+
+  const tempDisplay = document.getElementById("vb-temp-val-display");
+  const windDisplay = document.getElementById("vb-wind-val-display");
+  const uvDisplay = document.getElementById("vb-uv-val-display");
+  const summaryDisplay = document.getElementById("vb-settings-summary");
+
+  if (tempDisplay) tempDisplay.innerText = `${c.minTemp}°F – ${c.maxTemp}°F`;
+  if (windDisplay) windDisplay.innerText = `Below ${c.maxWind} mph`;
+  if (uvDisplay) uvDisplay.innerText = `Below ${Number(c.maxUV).toFixed(1)}`;
+  if (summaryDisplay) summaryDisplay.innerText = `${c.minTemp}-${c.maxTemp}°F • <${c.maxWind} mph • UV <${c.maxUV}`;
+}
+
+window.updateVolleyballCriteriaFromUI = function() {
+  const tempMinInput = document.getElementById("vb-temp-min");
+  const tempMaxInput = document.getElementById("vb-temp-max");
+  const windMaxInput = document.getElementById("vb-wind-max");
+  const uvMaxInput = document.getElementById("vb-uv-max");
+
+  let minT = Number(tempMinInput?.value ?? 60);
+  let maxT = Number(tempMaxInput?.value ?? 80);
+  if (minT > maxT) {
+    minT = maxT - 2;
+    if (tempMinInput) tempMinInput.value = minT;
+  }
+
+  window.volleyballCriteria = {
+    minTemp: minT,
+    maxTemp: maxT,
+    maxWind: Number(windMaxInput?.value ?? 10),
+    maxUV: Number(uvMaxInput?.value ?? 4.0)
+  };
+
+  saveVolleyballCriteria();
+  syncVolleyballCriteriaToUI();
+
+  if (window.currentVolleyballWeeklyData && window.currentVolleyballWeeklyData.length > 0) {
+    renderVolleyballChart(window.currentVolleyballWeeklyData);
+    renderVolleyballDaysList(window.currentVolleyballWeeklyData);
+    updateVolleyballOverallPill(window.currentVolleyballWeeklyData);
+  }
+};
+
+window.resetVolleyballCriteria = function() {
+  window.volleyballCriteria = {
+    minTemp: 60,
+    maxTemp: 80,
+    maxWind: 10,
+    maxUV: 4.0
+  };
+  saveVolleyballCriteria();
+  syncVolleyballCriteriaToUI();
+
+  if (window.currentVolleyballWeeklyData && window.currentVolleyballWeeklyData.length > 0) {
+    renderVolleyballChart(window.currentVolleyballWeeklyData);
+    renderVolleyballDaysList(window.currentVolleyballWeeklyData);
+    updateVolleyballOverallPill(window.currentVolleyballWeeklyData);
+  }
+};
+
+window.toggleVolleyballSettings = function() {
+  const body = document.getElementById("vb-settings-body");
+  const chevron = document.getElementById("vb-settings-chevron");
+  if (!body) return;
+  const isHidden = body.style.display === "none" || !body.style.display;
+  body.style.display = isHidden ? "block" : "none";
+  if (chevron) {
+    chevron.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
+  }
+};
+
+window.onVolleyballBeachChange = function() {
+  window.renderVolleyballTab();
+};
+
+window.refreshVolleyballWeather = function() {
+  const beachSelect = document.getElementById("vb-beach-select");
+  const selectedBeach = beachSelect ? beachSelect.value : "Main Beach";
+  const cleanCourt = String(selectedBeach).trim().toLowerCase().replace(/\s+/g, "-");
+  try {
+    sessionStorage.removeItem(`wb_weather_weekly_${cleanCourt}`);
+  } catch (_) {}
+  window.renderVolleyballTab();
+};
+
+window.selectVolleyballDay = function(index) {
+  window.selectedVolleyballDayIndex = index;
+  if (window.currentVolleyballWeeklyData && window.currentVolleyballWeeklyData.length > 0) {
+    renderVolleyballChart(window.currentVolleyballWeeklyData);
+    renderVolleyballDaysList(window.currentVolleyballWeeklyData);
+  }
+  const targetCard = document.getElementById(`vb-day-card-${index}`);
+  if (targetCard) {
+    targetCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+};
+
+export function renderVolleyballChart(days) {
+  const container = document.getElementById("vb-chart-container");
+  if (!container) return;
+
+  const minTempAll = Math.min(...days.map(d => d.tempMin), 45);
+  const maxTempAll = Math.max(...days.map(d => d.tempMax), 85);
+  const tempRange = Math.max(1, maxTempAll - minTempAll);
+
+  const colsHtml = days.map((day, idx) => {
+    const evalRes = evaluateVolleyballSuitability(day);
+    const isSelected = idx === window.selectedVolleyballDayIndex;
+
+    let dotRingClass = "good";
+    let dotClass = "vb-dot-green";
+    if (evalRes.status === "fair") {
+      dotRingClass = "fair";
+      dotClass = "vb-dot-yellow";
+    } else if (evalRes.status === "poor") {
+      dotRingClass = "poor";
+      dotClass = "vb-dot-red";
+    }
+
+    // Bar height between 24px and 70px proportional to temp
+    const barHeight = Math.max(24, Math.round(((day.tempMax - minTempAll) / tempRange) * 70));
+
+    return `
+      <div class="vb-chart-col ${isSelected ? 'selected' : ''}" onclick="window.selectVolleyballDay(${idx})" title="${day.fullDayTitle}: ${evalRes.statusText}">
+        <!-- Day Name -->
+        <span style="font-size: 11px; font-weight: 800; color: ${isSelected ? '#ea580c' : '#ffffff'}; margin-bottom: 2px;">
+          ${day.dayName}
+        </span>
+        <span style="font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 6px;">
+          ${day.dateFormatted}
+        </span>
+
+        <!-- Suitability Dot Ring -->
+        <div class="vb-chart-dot-ring ${dotRingClass}">
+          <span class="vb-dot ${dotClass}"></span>
+        </div>
+
+        <!-- Weather Condition Emoji -->
+        <span style="font-size: 18px; margin-bottom: 4px;">${day.conditionEmoji}</span>
+
+        <!-- Temp High -->
+        <span style="font-size: 13px; font-weight: 800; color: #ffffff;">${day.tempMax}°</span>
+
+        <!-- Temperature Proportional Bar -->
+        <div class="vb-chart-temp-bar" style="height: ${barHeight}px;"></div>
+
+        <!-- Temp Low -->
+        <span style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); margin-bottom: 6px;">${day.tempMin}°</span>
+
+        <!-- Metrics Chips -->
+        <div style="display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center;">
+          <span style="font-size: 10px; font-weight: 700; color: #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 2px 5px; border-radius: 6px; white-space: nowrap;">
+            💨 ${day.windMax}m
+          </span>
+          <span style="font-size: 10px; font-weight: 700; color: #facc15; background: rgba(250, 204, 21, 0.12); padding: 2px 5px; border-radius: 6px; white-space: nowrap;">
+            ☀️ ${day.uvMax}
+          </span>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="vb-chart-track">
+      ${colsHtml}
+    </div>
+  `;
+}
+
+export function renderVolleyballDaysList(days) {
+  const container = document.getElementById("vb-days-list");
+  if (!container) return;
+
+  const criteria = window.volleyballCriteria;
+
+  container.innerHTML = days.map((day, idx) => {
+    const evalRes = evaluateVolleyballSuitability(day, criteria);
+    const isSelected = idx === window.selectedVolleyballDayIndex;
+
+    const windOk = day.windMax <= criteria.maxWind;
+    const windBad = day.windMax > criteria.maxWind + 3;
+    const windChipClass = windOk ? "ok" : (windBad ? "bad" : "warn");
+
+    const uvOk = day.uvMax <= criteria.maxUV;
+    const uvBad = day.uvMax > criteria.maxUV + 2.5;
+    const uvChipClass = uvOk ? "ok" : (uvBad ? "bad" : "warn");
+
+    const tempOk = day.tempMax <= criteria.maxTemp && day.tempAvg >= criteria.minTemp;
+    const tempBad = day.tempMax > criteria.maxTemp || day.tempAvg < criteria.minTemp - 6;
+    const tempChipClass = tempOk ? "ok" : (tempBad ? "bad" : "warn");
+
+    return `
+      <div id="vb-day-card-${idx}" class="vb-day-card ${isSelected ? 'selected' : ''}" onclick="window.selectVolleyballDay(${idx})">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 18px;">${day.conditionEmoji}</span>
+              <span style="font-size: 15px; font-weight: 800; color: #ffffff;">${day.fullDayTitle}</span>
+            </div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.65); margin-top: 2px;">
+              ${day.conditionText} • High ${day.tempMax}°F, Low ${day.tempMin}°F
+            </div>
+          </div>
+
+          <!-- Status Badge -->
+          <div style="display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: ${evalRes.status === 'good' ? 'rgba(34, 197, 94, 0.15)' : evalRes.status === 'fair' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; border: 1px solid ${evalRes.status === 'good' ? 'rgba(34, 197, 94, 0.3)' : evalRes.status === 'fair' ? 'rgba(234, 179, 8, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
+            <span class="vb-dot ${evalRes.status === 'good' ? 'vb-dot-green' : evalRes.status === 'fair' ? 'vb-dot-yellow' : 'vb-dot-red'}"></span>
+            <span style="font-size: 12px; font-weight: 800; color: ${evalRes.status === 'good' ? '#4ade80' : evalRes.status === 'fair' ? '#facc15' : '#f87171'};">
+              ${evalRes.statusText}
+            </span>
+          </div>
+        </div>
+
+        <!-- Metrics Chips Row -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+          <span class="vb-metric-chip ${tempChipClass}">
+            🌡️ <b>${day.tempAvg}°F Avg</b> (${day.tempMin}°–${day.tempMax}°)
+          </span>
+          <span class="vb-metric-chip ${windChipClass}">
+            💨 <b>${day.windMax} mph Wind</b> (${weatherService.getWindCategory(day.windMax)})
+          </span>
+          <span class="vb-metric-chip ${uvChipClass}">
+            ☀️ <b>UV ${day.uvMax}</b> (${weatherService.getUvCategory(day.uvMax)})
+          </span>
+        </div>
+
+        <!-- Volleyball Advice Tip Box -->
+        <div style="background: rgba(255, 255, 255, 0.04); border-left: 3px solid ${evalRes.status === 'good' ? '#22c55e' : evalRes.status === 'fair' ? '#eab308' : '#ef4444'}; border-radius: 4px 8px 8px 4px; padding: 8px 12px; font-size: 12px; color: rgba(255, 255, 255, 0.85); line-height: 1.4;">
+          <b>Volleyball Tip:</b> ${evalRes.summaryTip}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+export function updateVolleyballOverallPill(days) {
+  const pill = document.getElementById("vb-overall-pill");
+  if (!pill || days.length === 0) return;
+
+  const today = days[0];
+  const evalRes = evaluateVolleyballSuitability(today);
+
+  if (evalRes.status === "good") {
+    pill.style.background = "rgba(34, 197, 94, 0.2)";
+    pill.style.color = "#4ade80";
+    pill.innerHTML = `🟢 Great Today (${today.tempAvg}°F, 💨${today.windMax}m)`;
+  } else if (evalRes.status === "fair") {
+    pill.style.background = "rgba(234, 179, 8, 0.2)";
+    pill.style.color = "#facc15";
+    pill.innerHTML = `🟡 Fair Today (${today.tempAvg}°F, 💨${today.windMax}m)`;
+  } else {
+    pill.style.background = "rgba(239, 68, 68, 0.2)";
+    pill.style.color = "#f87171";
+    pill.innerHTML = `🔴 Poor Today (${evalRes.statusText})`;
+  }
+}
+
+window.renderVolleyballTab = async function() {
+  loadVolleyballCriteria();
+  syncVolleyballCriteriaToUI();
+
+  const beachSelect = document.getElementById("vb-beach-select");
+  const selectedBeach = beachSelect ? beachSelect.value : "Main Beach";
+
+  const chartContainer = document.getElementById("vb-chart-container");
+  if (chartContainer) {
+    chartContainer.innerHTML = `
+      <div style="text-align: center; padding: 24px; color: rgba(255,255,255,0.6);">
+        <div style="font-size: 28px;">⏳</div>
+        <div style="margin-top: 8px; font-size: 13px; font-weight: 700;">Fetching 7-day coastal forecast...</div>
+      </div>
+    `;
+  }
+
+  const days = await weatherService.getWeeklyForecast(selectedBeach);
+  window.currentVolleyballWeeklyData = days;
+
+  renderVolleyballChart(days);
+  renderVolleyballDaysList(days);
+  updateVolleyballOverallPill(days);
+};
 
 export function renderWeatherLine(game) {
   const cached = weatherService.getCached(game.courtLocation, game.scheduledDate);
@@ -3201,13 +3710,13 @@ setInterval(checkUpcomingMatchReminders, 60000);
 export function switchTab(tabId) {
   const normalizedId = (tabId === "ladder" || tabId === "popular") ? "ladders" : tabId;
 
-  // If player isn't logged in, they cannot access Set games, Auto-Match, or Profile. Only Ladders is visible.
-  if (!state.currentUser && normalizedId !== "ladders") {
+  // If player isn't logged in, they cannot access Set games, Auto-Match, or Profile. Only Ladders and Volleyball are visible.
+  if (!state.currentUser && normalizedId !== "ladders" && normalizedId !== "volleyball") {
     if (typeof window.showAuthModal === "function") {
       window.showAuthModal();
     }
     const activeTab = document.querySelector(".tab-content.active");
-    if (!activeTab || activeTab.id !== "tab-ladders") {
+    if (!activeTab || (activeTab.id !== "tab-ladders" && activeTab.id !== "tab-volleyball")) {
       switchTab("ladders");
     }
     return;
@@ -3237,6 +3746,11 @@ export function switchTab(tabId) {
     if (normalizedId === "ladders") {
       renderLadder();
       renderPopularKids();
+    }
+    if (normalizedId === "volleyball") {
+      if (typeof window.renderVolleyballTab === "function") {
+        window.renderVolleyballTab();
+      }
     }
     if (normalizedId === "profile") renderProfile();
   } catch (e) {

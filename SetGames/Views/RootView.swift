@@ -36,7 +36,14 @@ public struct RootView: View {
                     }
                     .tag(1)
                 
-                // Tab 2: Profile (Gated for non-logged-in users)
+                // Tab 2: Volleyball? (Weekly Weather Forecast & Suitability)
+                VolleyballWeatherView(dataManager: dataManager)
+                    .tabItem {
+                        Label("Volleyball?", systemImage: "sun.max.fill")
+                    }
+                    .tag(2)
+                
+                // Tab 3: Profile (Gated for non-logged-in users)
                 Group {
                     if dataManager.currentUser != nil {
                         ProfileView(dataManager: dataManager)
@@ -52,7 +59,7 @@ public struct RootView: View {
                 .tabItem {
                     Label(dataManager.currentUser != nil ? "Profile" : "Log In", systemImage: "person.crop.circle.fill")
                 }
-                .tag(2)
+                .tag(3)
             }
             .tint(.orange)
             .onAppear {
@@ -115,7 +122,7 @@ public struct RootView: View {
     }
     
     private func logTabScreen(_ tab: Int) {
-        let screens = ["Set Games", "Ladders", "Profile"]
+        let screens = ["Set Games", "Ladders", "Volleyball?", "Profile"]
         if tab >= 0 && tab < screens.count {
             AnalyticsService.shared.logScreenView(screenName: screens[tab])
         }

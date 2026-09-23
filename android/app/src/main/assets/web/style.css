@@ -2168,3 +2168,127 @@ nav#bottom-nav {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
+/* ==========================================================================
+   VOLLEYBALL? WEATHER FORECAST & SUITABILITY CHART STYLES
+   ========================================================================== */
+.vb-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.vb-dot-green {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
+}
+.vb-dot-yellow {
+  background: #eab308;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.7);
+}
+.vb-dot-red {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+}
+
+.vb-chart-track {
+  display: flex;
+  gap: 10px;
+  min-width: 560px;
+  padding: 6px 2px 10px;
+}
+
+.vb-chart-col {
+  flex: 1;
+  min-width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.vb-chart-col:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+.vb-chart-col.selected {
+  background: rgba(234, 88, 12, 0.15);
+  border-color: #ea580c;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
+}
+
+.vb-chart-dot-ring {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.vb-chart-dot-ring.good {
+  background: rgba(34, 197, 94, 0.2);
+}
+.vb-chart-dot-ring.fair {
+  background: rgba(234, 179, 8, 0.2);
+}
+.vb-chart-dot-ring.poor {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.vb-chart-temp-bar {
+  width: 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f87171, #38bdf8);
+  margin: 8px 0;
+  transition: height 0.3s ease;
+}
+
+.vb-day-card {
+  background: var(--surface, #1e2434);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-radius: 14px;
+  padding: 14px;
+  transition: all 0.2s ease;
+}
+.vb-day-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.vb-day-card.selected {
+  border-color: #ea580c;
+  background: rgba(234, 88, 12, 0.06);
+}
+
+.vb-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.vb-metric-chip.ok {
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.1);
+}
+.vb-metric-chip.warn {
+  color: #facc15;
+  border-color: rgba(234, 179, 8, 0.3);
+  background: rgba(234, 179, 8, 0.1);
+}
+.vb-metric-chip.bad {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+

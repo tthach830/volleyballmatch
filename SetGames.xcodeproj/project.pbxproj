@@ -59,6 +59,7 @@
 		A001000328B47E2001AB0003 /* TournamentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000328B47E2001AB0003 /* TournamentDetailView.swift */; };
 		A001000428B47E2001AB0004 /* CreateTournamentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000428B47E2001AB0004 /* CreateTournamentSheet.swift */; };
 		A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000528B47E2001AB0005 /* TournamentHubView.swift */; };
+		A001000628B47E2001AB0006 /* VolleyballWeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -113,6 +114,7 @@
 		B001000328B47E2001AB0003 /* TournamentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentDetailView.swift; sourceTree = "<group>"; };
 		B001000428B47E2001AB0004 /* CreateTournamentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateTournamentSheet.swift; sourceTree = "<group>"; };
 		B001000528B47E2001AB0005 /* TournamentHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentHubView.swift; sourceTree = "<group>"; };
+		B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolleyballWeatherView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -139,6 +141,7 @@
 				46D831EA23CD4E3016F55C24 /* Onboarding */,
 				6625FD7A69DF416768DAC559 /* Profile */,
 				7D5EBAB86A1254CEA0812D5B /* Schedule */,
+				6E4D58EA1D880BE37557D277 /* Weather */,
 				4A490413DB5914515A234DED /* RootView.swift */,
 			);
 			path = Views;
@@ -255,6 +258,14 @@
 				B001000528B47E2001AB0005 /* TournamentHubView.swift */,
 			);
 			path = Schedule;
+			sourceTree = "<group>";
+		};
+		6E4D58EA1D880BE37557D277 /* Weather */ = {
+			isa = PBXGroup;
+			children = (
+				B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */,
+			);
+			path = Weather;
 			sourceTree = "<group>";
 		};
 		93D18A9C6754E8C8443BCB81 /* Models */ = {
@@ -419,6 +430,7 @@
 				A001000328B47E2001AB0003 /* TournamentDetailView.swift in Sources */,
 				A001000428B47E2001AB0004 /* CreateTournamentSheet.swift in Sources */,
 				A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */,
+				A001000628B47E2001AB0006 /* VolleyballWeatherView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
