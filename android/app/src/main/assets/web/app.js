@@ -1451,9 +1451,9 @@ window.renderVolleyballTab = async function() {
   const beachSelect = document.getElementById("vb-beach-select");
   const selectedBeach = beachSelect ? beachSelect.value : "Main Beach";
 
-  const chartContainer = document.getElementById("vb-chart-container");
-  if (chartContainer) {
-    chartContainer.innerHTML = `
+  const daysList = document.getElementById("vb-days-list");
+  if (daysList) {
+    daysList.innerHTML = `
       <div style="text-align: center; padding: 24px; color: rgba(255,255,255,0.6);">
         <div style="font-size: 28px;">⏳</div>
         <div style="margin-top: 8px; font-size: 13px; font-weight: 700;">Fetching 7-day coastal forecast...</div>

@@ -46,15 +46,12 @@ public struct VolleyballWeatherView: View {
                     // User Configurable Preferences Card
                     criteriaSettingsCard
                     
-                    // 7-Day Chart with Colored Suitability Dots
-                    chartSection
-                    
                     // Daytime Hourly Suitability Chart (Sunrise to Sunset)
                     if !weeklyDays.isEmpty, selectedDayIndex < weeklyDays.count {
                         daytimeHourlySection(for: weeklyDays[selectedDayIndex])
                     }
                     
-                    // Detailed Day Breakdown List
+                    // 7-Day Forecast Cards List
                     dailyBreakdownSection
                 }
                 .padding(.horizontal, 16)
@@ -278,135 +275,6 @@ public struct VolleyballWeatherView: View {
         .background(Color(red: 0.12, green: 0.14, blue: 0.20))
         .cornerRadius(16)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
-    }
-    
-    // MARK: - 7-Day Chart Section
-    private var chartSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("7-Day Suitability Chart", systemImage: "chart.bar.xaxis")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                Spacer()
-                // Legend
-                HStack(spacing: 8) {
-                    HStack(spacing: 3) {
-                        Circle().fill(Color.green).frame(width: 7, height: 7)
-                        Text("Good").font(.system(size: 10, weight: .bold)).foregroundColor(.green)
-                    }
-                    HStack(spacing: 3) {
-                        Circle().fill(Color.yellow).frame(width: 7, height: 7)
-                        Text("Fair").font(.system(size: 10, weight: .bold)).foregroundColor(.yellow)
-                    }
-                    HStack(spacing: 3) {
-                        Circle().fill(Color.red).frame(width: 7, height: 7)
-                        Text("Poor").font(.system(size: 10, weight: .bold)).foregroundColor(.red)
-                    }
-                }
-            }
-            
-            if isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, minHeight: 120)
-            } else {
-                HStack(spacing: 4) {
-                    ForEach(Array(weeklyDays.enumerated()), id: \.element.id) { index, day in
-                        chartColumn(for: day, index: index)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
-            }
-        }
-        .padding(14)
-        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
-        .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
-    }
-    
-    // MARK: - Chart Column for Each Day (Fits Screen Width)
-    private func chartColumn(for day: DailyVolleyballWeather, index: Int) -> some View {
-        let eval = criteria.evaluate(day: day)
-        let isSelected = index == selectedDayIndex
-        
-        return Button {
-            withAnimation(.spring(response: 0.25)) {
-                selectedDayIndex = index
-                selectedHourIndex = nil
-            }
-        } label: {
-            VStack(spacing: 5) {
-                // Day name & date
-                Text(day.dayName)
-                    .font(.system(size: 10, weight: .black))
-                    .foregroundColor(isSelected ? .orange : .white)
-                    .lineLimit(1)
-                Text(day.dateFormatted)
-                    .font(.system(size: 8, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                
-                // Suitability Dot with Glow Ring
-                ZStack {
-                    Circle()
-                        .fill(eval.suitability.dotColor.opacity(0.25))
-                        .frame(width: 18, height: 18)
-                    Circle()
-                        .fill(eval.suitability.dotColor)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: eval.suitability.dotColor.opacity(0.8), radius: 3)
-                }
-                
-                // Condition Emoji
-                Text(day.conditionEmoji)
-                    .font(.system(size: 16))
-                
-                // High Temp
-                Text("\(day.tempMax)°")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundColor(.white)
-                
-                // Proportional Temperature Bar
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(LinearGradient(colors: [.red, .orange, .blue], startPoint: .top, endPoint: .bottom))
-                    .frame(width: 5, height: max(18, min(55, CGFloat(day.tempMax - 40) * 1.3)))
-                
-                // Low Temp
-                Text("\(day.tempMin)°")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.secondary)
-                
-                // Wind & UV Chips
-                VStack(spacing: 2) {
-                    Text("💨\(day.windMax)m")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.cyan)
-                        .lineLimit(1)
-                        .padding(.horizontal, 2)
-                        .padding(.vertical, 1)
-                        .background(Color.cyan.opacity(0.12))
-                        .cornerRadius(3)
-                    Text("☀️\(String(format: "%.0f", day.uvMax))")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.yellow)
-                        .lineLimit(1)
-                        .padding(.horizontal, 2)
-                        .padding(.vertical, 1)
-                        .background(Color.yellow.opacity(0.12))
-                        .cornerRadius(3)
-                }
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 2)
-            .frame(maxWidth: .infinity)
-            .background(isSelected ? Color.orange.opacity(0.15) : Color.white.opacity(0.04))
-            .cornerRadius(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
-            )
-        }
-        .buttonStyle(.plain)
     }
     
     // MARK: - Daytime Hourly Suitability Section (Sunrise to Sunset)
@@ -656,9 +524,9 @@ public struct VolleyballWeatherView: View {
     // MARK: - Daily Breakdown Cards
     private var dailyBreakdownSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("DAILY BREAKDOWN & VOLLEYBALL TIPS")
-                .font(.system(size: 11, weight: .black))
-                .foregroundColor(.secondary)
+            Text("7-DAY FORECAST")
+                .font(.system(size: 13, weight: .black))
+                .foregroundColor(.white)
                 .tracking(0.5)
             
             ForEach(Array(weeklyDays.enumerated()), id: \.element.id) { index, day in

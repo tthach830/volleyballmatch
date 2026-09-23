@@ -769,24 +769,18 @@
           <!-- 7-Day Chart -->
           <div class="chart-card">
             <div class="chart-top-bar">
-              <span style="color: var(--text-muted);">7-DAY SUITABILITY</span>
-              <div class="chart-legend">
-                <span class="legend-item" style="color: #4ade80;"><span class="vb-dot vb-dot-green"></span> Good</span>
-                <span class="legend-item" style="color: #facc15;"><span class="vb-dot vb-dot-yellow"></span> Fair</span>
-                <span class="legend-item" style="color: #f87171;"><span class="vb-dot vb-dot-red"></span> Poor</span>
-              </div>
+              <span style="font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">7-DAY FORECAST</span>
             </div>
 
             <div class="chart-grid">
         `;
 
         weeklyData.forEach((day, idx) => {
-          const evalRes = evaluateSuitability(day);
           const isSelected = idx === selectedDayIdx;
           const barHeightPct = Math.min(100, Math.max(25, ((day.tempMax - 45) / (95 - 45)) * 100));
 
           html += `
-            <div class="chart-day-col ${isSelected ? 'selected' : ''}" onclick="window.selectDay(${idx})">
+            <div class="chart-day-col ${isSelected ? 'selected' : ''}" onclick="window.selectDay(${idx})" title="${day.dayName}: High ${day.tempMax}°, Low ${day.tempMin}°">
               <span class="day-name">${day.dayName}</span>
               <span class="day-emoji">${day.conditionEmoji}</span>
               <div class="temp-track">
@@ -794,7 +788,6 @@
               </div>
               <span class="temp-max-label">${day.tempMax}°</span>
               <span class="temp-min-label">${day.tempMin}°</span>
-              <span class="vb-dot vb-dot-${evalRes.status}"></span>
             </div>
           `;
         });
