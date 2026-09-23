@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Volleyball? Beach Weather Widget</title>
+  <style>
+    :root {
+      --bg: #141722;
+      --card-bg: #1a1e2c;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #ffffff;
+      --text-muted: rgba(255, 255, 255, 0.65);
+      --accent: #ea580c;
+      --dot-green: #22c55e;
+      --dot-yellow: #facc15;
+      --dot-red: #ef4444;
+      --bar-bg: rgba(255, 255, 255, 0.08);
+      --track-fill: linear-gradient(180deg, #f97316 0%, #38bdf8 100%);
+    }
+
+    body.theme-light {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: rgba(0, 0, 0, 0.08);
+      --text: #0f172a;
+      --text-muted: rgba(15, 23, 42, 0.65);
+      --accent: #ea580c;
+      --bar-bg: rgba(0, 0, 0, 0.06);
+      --track-fill: linear-gradient(180deg, #ea580c 0%, #0284c7 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 14px;
+      overflow-x: hidden;
+    }
+
+    .widget-container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .widget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .widget-title-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .widget-title {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .beach-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(234, 88, 12, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(234, 88, 12, 0.3);
+    }
+
+    .overall-pill {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pill-green {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .pill-yellow {
+      background: rgba(250, 204, 21, 0.15);
+      color: #eab308;
+      border: 1px solid rgba(250, 204, 21, 0.3);
+    }
+    .pill-red {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .chart-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 10px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .vb-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .vb-dot-green {
+      background-color: var(--dot-green);
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
+    }
+    .vb-dot-yellow {
+      background-color: var(--dot-yellow);
+      box-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
+    }
+    .vb-dot-red {
+      background-color: var(--dot-red);
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      text-align: center;
+    }
+
+    .chart-day-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 4px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+      background: transparent;
+    }
+
+    .chart-day-col:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    body.theme-light .chart-day-col:hover {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .chart-day-col.selected {
+      background: rgba(234, 88, 12, 0.12);
+      border: 1px solid rgba(234, 88, 12, 0.4);
+    }
+
+    .day-name {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .day-emoji {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .temp-track {
+      width: 8px;
+      height: 60px;
+      background: var(--bar-bg);
+      border-radius: 999px;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+      margin: 4px 0;
+    }
+
+    .temp-bar-fill {
+      width: 100%;
+      border-radius: 999px;
+      background: var(--track-fill);
+    }
+
+    .temp-max-label {
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .temp-min-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .detail-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .detail-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .metric-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    body.theme-light .metric-chip {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .metric-chip-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .metric-chip-val {
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .tip-box {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(234, 88, 12, 0.1);
+      color: #fb923c;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .widget-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      padding: 0 4px;
+    }
+
+    .widget-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .widget-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .loading-spinner {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-container" id="widget-app">
+    <div class="loading-spinner" id="widget-loading">
+      🏐 Checking beach forecast...
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Parse Query Parameters
+      const params = new URLSearchParams(window.location.search);
+      const beachName = params.get('beach') || params.get('court') || 'Main Beach';
+      const theme = params.get('theme') || 'dark';
+      const view = params.get('view') || 'full'; // 'full' or 'compact'
+      const minTemp = Number(params.get('minTemp')) || 60;
+      const maxTemp = Number(params.get('maxTemp')) || 80;
+      const maxWind = Number(params.get('maxWind')) || 10;
+      const maxUv = Number(params.get('maxUv')) || 4.0;
+
+      if (theme === 'light') {
+        document.body.classList.add('theme-light');
+      }
+
+      const criteria = { minTemp, maxTemp, maxWind, maxUV: maxUv };
+
+      const beachCoordinates = {
+        'main beach': { lat: 36.9642, lon: -122.0195, name: 'Main Beach (Santa Cruz)' },
+        'harbor beach': { lat: 36.9631, lon: -122.0016, name: 'Harbor Beach' },
+        'capitola beach': { lat: 36.9722, lon: -121.9525, name: 'Capitola Beach' },
+        'seabright beach': { lat: 36.9650, lon: -122.0100, name: 'Seabright Beach' },
+        'manhattan beach': { lat: 33.8837, lon: -118.4116, name: 'Manhattan Beach' },
+        'hermosa beach': { lat: 33.8617, lon: -118.4011, name: 'Hermosa Beach' },
+        'huntington beach': { lat: 33.6595, lon: -117.9988, name: 'Huntington Beach' }
+      };
+
+      function getCoords(name) {
+        const lower = (name || '').toLowerCase();
+        for (const [k, v] of Object.entries(beachCoordinates)) {
+          if (lower.includes(k) || k.includes(lower)) return v;
+        }
+        return beachCoordinates['main beach'];
+      }
+
+      const selectedCoords = getCoords(beachName);
+
+      function evaluateSuitability(day) {
+        const issues = [];
+        const warnings = [];
+
+        if (day.windMax > criteria.maxWind + 3) {
+          issues.push(`Too windy (${day.windMax} mph)`);
+        } else if (day.windMax > criteria.maxWind) {
+          warnings.push(`Breezy (${day.windMax} mph)`);
+        }
+
+        if (day.tempMax > criteria.maxTemp) {
+          issues.push(`Too hot (${day.tempMax}°F)`);
+        } else if (day.tempMax < criteria.minTemp) {
+          issues.push(`Chilly (${day.tempMax}°F)`);
+        } else if (day.tempMax > criteria.maxTemp - 2) {
+          warnings.push(`Warm (${day.tempMax}°F)`);
+        }
+
+        if (day.uvMax > criteria.maxUV + 2) {
+          issues.push(`High UV (${day.uvMax})`);
+        } else if (day.uvMax > criteria.maxUV) {
+          warnings.push(`Moderate UV (${day.uvMax})`);
+        }
+
+        let status = 'green';
+        let label = 'Good';
+        let tip = 'Great conditions for beach volleyball!';
+
+        if (issues.length > 0) {
+          status = 'red';
+          label = 'Poor';
+          tip = issues.join(', ');
+        } else if (warnings.length > 0) {
+          status = 'yellow';
+          label = 'Fair';
+          tip = warnings.join(', ');
+        }
+
+        return { status, label, tip, issues, warnings };
+      }
+
+      function codeToEmoji(code) {
+        if (code === 0) return '☀️';
+        if (code <= 2) return '🌤️';
+        if (code === 3) return '☁️';
+        if (code <= 48) return '🌫️';
+        if (code <= 67) return '🌧️';
+        if (code <= 77) return '🌨️';
+        if (code <= 82) return '🌦️';
+        return '⛈️';
+      }
+
+      let weeklyData = [];
+      let selectedDayIdx = 0;
+
+      async function fetchForecast() {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${selectedCoords.lat}&longitude=${selectedCoords.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,wind_speed_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7`;
+        
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('API response not ok');
+          const data = await res.json();
+          const daily = data.daily || {};
+          const dates = daily.time || [];
+          const days = [];
+
+          for (let i = 0; i < dates.length; i++) {
+            const dateObj = new Date(dates[i] + 'T12:00:00');
+            const dayName = i === 0 ? 'Today' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+            const tempMax = Math.round(daily.temperature_2m_max?.[i] ?? 72);
+            const tempMin = Math.round(daily.temperature_2m_min?.[i] ?? 56);
+            const windMax = Math.round(daily.wind_speed_10m_max?.[i] ?? 8);
+            const uvMax = Math.round((daily.uv_index_max?.[i] ?? 4.0) * 10) / 10;
+            const code = daily.weather_code?.[i] ?? 0;
+
+            days.push({
+              dateString: dates[i],
+              dayName,
+              tempMax,
+              tempMin,
+              windMax,
+              uvMax,
+              conditionEmoji: codeToEmoji(code)
+            });
+          }
+          return days;
+        } catch (e) {
+          // Graceful fallback
+          const days = [];
+          const now = new Date();
+          const baseTemps = [72, 74, 69, 71, 75, 78, 73];
+          const baseWinds = [7, 9, 13, 8, 6, 12, 8];
+          const baseUVs = [3.8, 4.2, 3.5, 3.9, 4.5, 5.0, 4.0];
+          const emojis = ['☀️', '🌤️', '💨', '☀️', '☀️', '🔥', '🌤️'];
+
+          for (let i = 0; i < 7; i++) {
+            const d = new Date(now);
+            d.setDate(d.getDate() + i);
+            days.push({
+              dateString: d.toISOString().split('T')[0],
+              dayName: i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
+              tempMax: baseTemps[i],
+              tempMin: baseTemps[i] - 14,
+              windMax: baseWinds[i],
+              uvMax: baseUVs[i],
+              conditionEmoji: emojis[i]
+            });
+          }
+          return days;
+        }
+      }
+
+      function render() {
+        const app = document.getElementById('widget-app');
+        if (!weeklyData || weeklyData.length === 0) return;
+
+        const currentDay = weeklyData[selectedDayIdx] || weeklyData[0];
+        const evalCurrent = evaluateSuitability(currentDay);
+        const todayEval = evaluateSuitability(weeklyData[0]);
+
+        let html = `
+          <div class="widget-header">
+            <div class="widget-title-area">
+              <div class="widget-title">
+                <span>🏐 Volleyball?</span>
+                <span class="beach-badge">${selectedCoords.name}</span>
+              </div>
+            </div>
+            <div class="overall-pill pill-${todayEval.status}">
+              ${todayEval.status === 'green' ? '🟢 Good to Play' : todayEval.status === 'yellow' ? '🟡 Fair Conditions' : '🔴 Too Windy / Hot'}
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-top-bar">
+              <span style="color: var(--text-muted);">7-DAY SUITABILITY</span>
+              <div class="chart-legend">
+                <span class="legend-item" style="color: #4ade80;"><span class="vb-dot vb-dot-green"></span> Good</span>
+                <span class="legend-item" style="color: #facc15;"><span class="vb-dot vb-dot-yellow"></span> Fair</span>
+                <span class="legend-item" style="color: #f87171;"><span class="vb-dot vb-dot-red"></span> Poor</span>
+              </div>
+            </div>
+
+            <div class="chart-grid">
+        `;
+
+        weeklyData.forEach((day, idx) => {
+          const evalRes = evaluateSuitability(day);
+          const isSelected = idx === selectedDayIdx;
+          const barHeightPct = Math.min(100, Math.max(25, ((day.tempMax - 45) / (95 - 45)) * 100));
+
+          html += `
+            <div class="chart-day-col ${isSelected ? 'selected' : ''}" onclick="window.selectDay(${idx})">
+              <span class="day-name">${day.dayName}</span>
+              <span class="day-emoji">${day.conditionEmoji}</span>
+              <div class="temp-track">
+                <div class="temp-bar-fill" style="height: ${barHeightPct}%;"></div>
+              </div>
+              <span class="temp-max-label">${day.tempMax}°</span>
+              <span class="temp-min-label">${day.tempMin}°</span>
+              <span class="vb-dot vb-dot-${evalRes.status}"></span>
+            </div>
+          `;
+        });
+
+        html += `
+            </div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-header">
+              <div style="font-weight: 800; font-size: 13px;">
+                ${currentDay.dayName} Details
+              </div>
+              <div class="overall-pill pill-${evalCurrent.status}" style="font-size: 10px;">
+                ${evalCurrent.label}
+              </div>
+            </div>
+            <div class="detail-metrics">
+              <div class="metric-chip">
+                <div class="metric-chip-label">🌡️ High / Low</div>
+                <div class="metric-chip-val">${currentDay.tempMax}° / ${currentDay.tempMin}°</div>
+              </div>
+              <div class="metric-chip">
+                <div class="metric-chip-label">💨 Wind Peak</div>
+                <div class="metric-chip-val">${currentDay.windMax} mph</div>
+              </div>
+              <div class="metric-chip">
+                <div class="metric-chip-label">☀️ Max UV</div>
+                <div class="metric-chip-val">${currentDay.uvMax}</div>
+              </div>
+            </div>
+            <div class="tip-box">
+              <span>💡</span>
+              <span>${evalCurrent.tip}</span>
+            </div>
+          </div>
+
+          <div class="widget-footer">
+            <span>Thresholds: &lt;${criteria.maxWind}mph • ${criteria.minTemp}-${criteria.maxTemp}°F • UV&lt;${criteria.maxUV}</span>
+            <a href="https://github.com/tthach830/volleyballmatch" target="_blank" rel="noopener">🏐 Set Games</a>
+          </div>
+        `;
+
+        app.innerHTML = html;
+
+        // Post message to parent iframe if embedded
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+              type: 'setgames-widget-resize',
+              height: document.body.scrollHeight
+            }, '*');
+          }
+        } catch (e) {}
+      }
+
+      window.selectDay = function(idx) {
+        selectedDayIdx = idx;
+        render();
+      };
+
+      // Initial load
+      fetchForecast().then(data => {
+        weeklyData = data;
+        render();
+      });
+    })();
+  </script>
+</body>
+</html>

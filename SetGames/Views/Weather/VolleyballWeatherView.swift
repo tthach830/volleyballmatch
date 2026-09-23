@@ -9,6 +9,7 @@ public struct VolleyballWeatherView: View {
     @State private var selectedDayIndex: Int = 0
     @State private var isLoading: Bool = true
     @State private var showSettings: Bool = false
+    @State private var showEmbedSheet: Bool = false
     
     // User configurable criteria (stored in UserDefaults)
     @AppStorage("vb_min_temp") private var minTemp: Int = 60
@@ -59,14 +60,27 @@ public struct VolleyballWeatherView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        Task { await loadForecast() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.orange)
+                    HStack(spacing: 14) {
+                        Button {
+                            showEmbedSheet = true
+                        } label: {
+                            Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.cyan)
+                        }
+                        
+                        Button {
+                            Task { await loadForecast() }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.orange)
+                        }
                     }
                 }
+            }
+            .sheet(isPresented: $showEmbedSheet) {
+                WidgetEmbedSheet(initialCourt: selectedCourt, criteria: criteria)
             }
             .task {
                 await loadForecast()
@@ -522,3 +536,180 @@ public struct VolleyballWeatherView: View {
         }
     }
 }
+
+// MARK: - Widget Embed Sheet
+public struct WidgetEmbedSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedCourt: String
+    @State private var selectedTheme: String = "dark"
+    @State private var selectedView: String = "full"
+    @State private var copiedType: String? = nil
+    
+    let criteria: VolleyballCriteria
+    let courts = [
+        "Main Beach",
+        "Harbor Beach",
+        "Capitola Beach",
+        "Seabright Beach",
+        "Manhattan Beach",
+        "Hermosa Beach",
+        "Huntington Beach"
+    ]
+    
+    public init(initialCourt: String, criteria: VolleyballCriteria) {
+        self._selectedCourt = State(initialValue: initialCourt)
+        self.criteria = criteria
+    }
+    
+    private var baseUrl: String {
+        "https://setgames.app"
+    }
+    
+    private var encodedCourt: String {
+        selectedCourt.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? selectedCourt
+    }
+    
+    private var iframeCode: String {
+        let height = selectedView == "compact" ? "340" : "520"
+        let url = "\(baseUrl)/widget.html?beach=\(encodedCourt)&theme=\(selectedTheme)&view=\(selectedView)&minTemp=\(criteria.minTemp)&maxTemp=\(criteria.maxTemp)&maxWind=\(criteria.maxWind)&maxUv=\(String(format: "%.1f", criteria.maxUV))"
+        return "<iframe src=\"\(url)\" width=\"100%\" height=\"\(height)\" style=\"border:none; border-radius:16px; overflow:hidden;\" loading=\"lazy\"></iframe>"
+    }
+    
+    private var scriptCode: String {
+        let snippet = "<div id=\"volleyball-weather-widget\" data-beach=\"\(selectedCourt)\" data-theme=\"\(selectedTheme)\" data-view=\"\(selectedView)\" data-min-temp=\"\(criteria.minTemp)\" data-max-temp=\"\(criteria.maxTemp)\" data-max-wind=\"\(criteria.maxWind)\" data-max-uv=\"\(String(format: "%.1f", criteria.maxUV))\"></div>\n<script src=\"\(baseUrl)/widget.js\" async></script>"
+        return snippet
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    // Intro
+                    HStack(spacing: 12) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 26))
+                            .foregroundColor(.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Embed on Any Website")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            Text("Works on Squarespace, WordPress, Wix, or custom websites")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(red: 0.12, green: 0.14, blue: 0.19))
+                    .cornerRadius(12)
+                    
+                    // Options
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("WIDGET SETTINGS")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.secondary)
+                        
+                        // Beach Selector
+                        Picker("Beach", selection: $selectedCourt) {
+                            ForEach(courts, id: \.self) { court in
+                                Text(court).tag(court)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(red: 0.14, green: 0.16, blue: 0.22))
+                        .cornerRadius(10)
+                        
+                        // Theme & View Pickers
+                        HStack(spacing: 10) {
+                            Picker("Theme", selection: $selectedTheme) {
+                                Text("Dark Theme").tag("dark")
+                                Text("Light Theme").tag("light")
+                            }
+                            .pickerStyle(.segmented)
+                            
+                            Picker("Layout", selection: $selectedView) {
+                                Text("Full").tag("full")
+                                Text("Compact").tag("compact")
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
+                    
+                    // Option 1: iframe
+                    codeSnippetCard(
+                        title: "Option 1: <iframe> Embed (Recommended)",
+                        code: iframeCode,
+                        type: "iframe"
+                    )
+                    
+                    // Option 2: Script
+                    codeSnippetCard(
+                        title: "Option 2: Drop-in <script> Tag",
+                        code: scriptCode,
+                        type: "script"
+                    )
+                }
+                .padding(16)
+            }
+            .background(Color(red: 0.08, green: 0.09, blue: 0.13).ignoresSafeArea())
+            .navigationTitle("Website Widget")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.orange)
+                    .fontWeight(.bold)
+                }
+            }
+        }
+    }
+    
+    private func codeSnippetCard(title: String, code: String, type: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                    .font(.footnote)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                Spacer()
+                Button {
+                    UIPasteboard.general.string = code
+                    copiedType = type
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        if copiedType == type { copiedType = nil }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: copiedType == type ? "checkmark" : "doc.on.doc")
+                        Text(copiedType == type ? "Copied!" : "Copy")
+                    }
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundColor(copiedType == type ? .white : .orange)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(copiedType == type ? Color.green : Color.orange.opacity(0.15))
+                    .cornerRadius(8)
+                }
+            }
+            
+            Text(code)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.cyan)
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(red: 0.05, green: 0.06, blue: 0.09))
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        }
+        .padding(12)
+        .background(Color(red: 0.12, green: 0.14, blue: 0.19))
+        .cornerRadius(12)
+    }
+}
+

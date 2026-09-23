@@ -163,6 +163,10 @@
               <option value="Huntington Beach">🏖️ Huntington Beach</option>
             </select>
             <button type="button" class="btn btn-sm btn-outline" onclick="window.refreshVolleyballWeather()" style="font-size: 13px; padding: 7px 10px; border-radius: 10px;" title="Refresh forecast">🔄</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="window.openVolleyballEmbedModal()" style="font-size: 13px; padding: 7px 12px; border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;" title="Embed this widget on your website">
+              <span>🔗</span>
+              <span>Embed</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1416,6 +1420,91 @@
         </div>
         <div id="notifications-modal-list" style="display: flex; flex-direction: column; gap: 10px;">
           <!-- Injected via JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Embed Volleyball? Widget Modal -->
+    <div id="vb-embed-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeVolleyballEmbedModal()">
+      <div class="modal-card" style="max-width: 600px; padding: 22px; max-height: 90vh; overflow-y: auto; background: var(--bg-card, #1a1e2c); border: 1px solid rgba(255,255,255,0.12); border-radius: 18px;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">🔗</span>
+            <h2 class="modal-title" style="font-size: 17px; font-weight: 800; margin: 0; color: var(--text-primary, #ffffff);">Embed "Volleyball?" Widget</h2>
+          </div>
+          <button type="button" class="modal-close" onclick="window.closeVolleyballEmbedModal()" style="background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted, #94a3b8); line-height: 1;">&times;</button>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted, #94a3b8); margin-bottom: 16px; line-height: 1.5;">
+          Add this live 7-day beach volleyball forecast and suitability chart to any website or blog. Compatible with Squarespace, WordPress, Wix, static HTML, or custom web apps.
+        </p>
+
+        <!-- Widget Customizer Controls -->
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 14px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted, rgba(255,255,255,0.65)); text-transform: uppercase;">🏖️ Beach Location</label>
+            <select id="embed-beach-select" class="form-input" style="width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 12px; font-weight: 700; border-radius: 8px;" onchange="window.updateEmbedCodePreview()">
+              <option value="Main Beach">Main Beach (Santa Cruz)</option>
+              <option value="Harbor Beach">Harbor Beach</option>
+              <option value="Capitola Beach">Capitola Beach</option>
+              <option value="Seabright Beach">Seabright Beach</option>
+              <option value="Manhattan Beach">Manhattan Beach</option>
+              <option value="Hermosa Beach">Hermosa Beach</option>
+              <option value="Huntington Beach">Huntington Beach</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted, rgba(255,255,255,0.65)); text-transform: uppercase;">🎨 Color Theme</label>
+            <select id="embed-theme-select" class="form-input" style="width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 12px; font-weight: 700; border-radius: 8px;" onchange="window.updateEmbedCodePreview()">
+              <option value="dark">Dark Theme (Default)</option>
+              <option value="light">Light Theme</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted, rgba(255,255,255,0.65)); text-transform: uppercase;">📐 Layout Mode</label>
+            <select id="embed-view-select" class="form-input" style="width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 12px; font-weight: 700; border-radius: 8px;" onchange="window.updateEmbedCodePreview()">
+              <option value="full">Full (Chart + Daily Breakdown)</option>
+              <option value="compact">Compact (Chart only)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Live Widget Preview -->
+        <div style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="font-size: 12px; font-weight: 800; color: var(--text-primary, #ffffff);">Live Preview</label>
+            <span style="font-size: 11px; color: var(--text-muted, #94a3b8);">Updates automatically</span>
+          </div>
+          <div style="border-radius: 14px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); background: #0b0d14;">
+            <iframe id="embed-live-iframe" src="widget.html" style="width: 100%; height: 380px; border: none; display: block;" loading="lazy"></iframe>
+          </div>
+        </div>
+
+        <!-- Embed Code Snippets -->
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Option 1: iframe -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="font-size: 12px; font-weight: 800; color: var(--text-primary, #ffffff);">Option 1: &lt;iframe&gt; Embed (Recommended)</label>
+              <button type="button" class="btn btn-sm btn-primary" onclick="window.copyEmbedCode('iframe')" id="copy-btn-iframe" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
+                📋 Copy Code
+              </button>
+            </div>
+            <textarea id="embed-code-iframe" readonly rows="3" style="width: 100%; font-family: monospace; font-size: 11px; padding: 10px; border-radius: 8px; background: #0f121d; color: #38bdf8; border: 1px solid rgba(255,255,255,0.1); resize: none;"></textarea>
+          </div>
+
+          <!-- Option 2: Script Tag -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="font-size: 12px; font-weight: 800; color: var(--text-primary, #ffffff);">Option 2: Drop-in &lt;script&gt; Embed</label>
+              <button type="button" class="btn btn-sm btn-outline" onclick="window.copyEmbedCode('script')" id="copy-btn-script" style="font-size: 11px; padding: 4px 10px; font-weight: 700;">
+                📋 Copy Code
+              </button>
+            </div>
+            <textarea id="embed-code-script" readonly rows="3" style="width: 100%; font-family: monospace; font-size: 11px; padding: 10px; border-radius: 8px; background: #0f121d; color: #a7f3d0; border: 1px solid rgba(255,255,255,0.1); resize: none;"></textarea>
+          </div>
         </div>
       </div>
     </div>

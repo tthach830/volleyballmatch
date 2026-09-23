@@ -1140,6 +1140,117 @@ window.renderVolleyballTab = async function() {
   updateVolleyballOverallPill(days);
 };
 
+// ==========================================
+// VOLLEYBALL? EMBEDDABLE WIDGET GENERATOR
+// ==========================================
+
+window.openVolleyballEmbedModal = function() {
+  const modal = document.getElementById("vb-embed-modal");
+  if (!modal) return;
+
+  // Sync beach from main selector if available
+  const beachSelect = document.getElementById("vb-beach-select");
+  const embedBeachSelect = document.getElementById("embed-beach-select");
+  if (beachSelect && embedBeachSelect) {
+    embedBeachSelect.value = beachSelect.value;
+  }
+
+  window.updateEmbedCodePreview();
+  modal.classList.add("active");
+};
+
+window.closeVolleyballEmbedModal = function() {
+  const modal = document.getElementById("vb-embed-modal");
+  if (modal) modal.classList.remove("active");
+};
+
+window.updateEmbedCodePreview = function() {
+  const beachSelect = document.getElementById("embed-beach-select");
+  const themeSelect = document.getElementById("embed-theme-select");
+  const viewSelect = document.getElementById("embed-view-select");
+
+  const beach = beachSelect ? beachSelect.value : "Main Beach";
+  const theme = themeSelect ? themeSelect.value : "dark";
+  const view = viewSelect ? viewSelect.value : "full";
+
+  const minTemp = window.volleyballCriteria?.minTemp ?? 60;
+  const maxTemp = window.volleyballCriteria?.maxTemp ?? 80;
+  const maxWind = window.volleyballCriteria?.maxWind ?? 10;
+  const maxUv = window.volleyballCriteria?.maxUV ?? 4.0;
+
+  const origin = window.location.origin && window.location.origin !== "null" ? window.location.origin : "https://setgames.app";
+  let pathname = window.location.pathname || "/";
+  if (!pathname.endsWith("/")) {
+    pathname = pathname.substring(0, pathname.lastIndexOf("/") + 1);
+  }
+  const baseWidgetUrl = `${origin}${pathname}widget.html`;
+  const baseScriptUrl = `${origin}${pathname}widget.js`;
+
+  const queryParams = new URLSearchParams({
+    beach,
+    theme,
+    view,
+    minTemp,
+    maxTemp,
+    maxWind,
+    maxUv
+  });
+
+  const widgetUrl = `${baseWidgetUrl}?${queryParams.toString()}`;
+
+  // Update live preview iframe
+  const iframePreview = document.getElementById("embed-live-iframe");
+  if (iframePreview) {
+    iframePreview.src = `widget.html?${queryParams.toString()}`;
+    iframePreview.style.height = view === "compact" ? "320px" : "380px";
+  }
+
+  // Update iframe embed snippet
+  const iframeText = document.getElementById("embed-code-iframe");
+  if (iframeText) {
+    iframeText.value = `<iframe src="${widgetUrl}" width="100%" height="${view === 'compact' ? '340' : '520'}" style="border:none; border-radius:16px; overflow:hidden;" loading="lazy"></iframe>`;
+  }
+
+  // Update script embed snippet
+  const scriptText = document.getElementById("embed-code-script");
+  if (scriptText) {
+    scriptText.value = `<div id="volleyball-weather-widget" data-beach="${beach}" data-theme="${theme}" data-view="${view}" data-min-temp="${minTemp}" data-max-temp="${maxTemp}" data-max-wind="${maxWind}" data-max-uv="${maxUv}"></div>\n<script src="${baseScriptUrl}" async></script>`;
+  }
+};
+
+window.copyEmbedCode = async function(type) {
+  const textarea = document.getElementById(type === "iframe" ? "embed-code-iframe" : "embed-code-script");
+  const btn = document.getElementById(type === "iframe" ? "copy-btn-iframe" : "copy-btn-script");
+  if (!textarea) return;
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(textarea.value);
+    } else {
+      textarea.select();
+      document.execCommand("copy");
+    }
+
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = "✅ Copied!";
+      btn.style.background = "#22c55e";
+      btn.style.borderColor = "#22c55e";
+      btn.style.color = "#ffffff";
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.style.background = "";
+        btn.style.borderColor = "";
+        btn.style.color = "";
+      }, 2000);
+    }
+    showToast("Widget embed code copied to clipboard!");
+  } catch (err) {
+    textarea.select();
+    showToast("Selected code: Press Cmd+C to copy");
+  }
+};
+
 export function renderWeatherLine(game) {
   const cached = weatherService.getCached(game.courtLocation, game.scheduledDate);
   if (cached) {
