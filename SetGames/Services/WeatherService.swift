@@ -88,6 +88,134 @@ public struct VolleyballCriteria: Codable, Equatable {
             return (.good, "Good for Volleyball", "Prime beach conditions: Low wind drift, comfortable temp, crisp sets.")
         }
     }
+    
+    public func evaluate(hour: HourlyVolleyballWeather) -> (suitability: VolleyballSuitability, label: String, tip: String) {
+        var issues: [String] = []
+        var warnings: [String] = []
+        
+        // Wind speed check
+        if hour.windMph > maxWind + 3 {
+            issues.append("Too windy (\(hour.windMph) mph)")
+        } else if hour.windMph > maxWind {
+            warnings.append("Breezy (\(hour.windMph) mph)")
+        }
+        
+        // Temperature check
+        if hour.temp > maxTemp {
+            issues.append("Too hot (\(hour.temp)°F)")
+        } else if hour.temp < minTemp - 4 {
+            issues.append("Too cold (\(hour.temp)°F)")
+        } else if hour.temp < minTemp {
+            warnings.append("Chilly (\(hour.temp)°F)")
+        } else if hour.temp > maxTemp - 2 {
+            warnings.append("Warm (\(hour.temp)°F)")
+        }
+        
+        // UV index check
+        if hour.uvIndex > maxUV + 2.5 {
+            issues.append("High UV (\(String(format: "%.1f", hour.uvIndex)))")
+        } else if hour.uvIndex > maxUV {
+            warnings.append("Moderate UV (\(String(format: "%.1f", hour.uvIndex)))")
+        }
+        
+        let textLower = hour.conditionText.lowercased()
+        if textLower.contains("rain") || textLower.contains("storm") {
+            issues.append("Rain")
+        }
+        
+        if !issues.isEmpty {
+            return (.poor, issues.first ?? "Poor", issues.joined(separator: " • "))
+        } else if !warnings.isEmpty {
+            return (.fair, warnings.first ?? "Fair", warnings.joined(separator: " • "))
+        } else {
+            return (.good, "Good to Play", "Prime conditions: Low wind drift, comfortable temp, crisp sets.")
+        }
+    }
+    
+    public func calculateBestPlayingWindow(daylightHours: [HourlyVolleyballWeather]) -> (windowText: String, isGreen: Bool)? {
+        guard !daylightHours.isEmpty else { return nil }
+        
+        let evaluated = daylightHours.map { (hour: $0, eval: evaluate(hour: $0)) }
+        
+        var bestStart = -1
+        var bestLen = 0
+        var curStart = -1
+        var curLen = 0
+        
+        for i in 0..<evaluated.count {
+            if evaluated[i].eval.suitability == .good {
+                if curStart == -1 { curStart = i }
+                curLen += 1
+                if curLen > bestLen {
+                    bestLen = curLen
+                    bestStart = curStart
+                }
+            } else {
+                curStart = -1
+                curLen = 0
+            }
+        }
+        
+        if bestLen >= 2 {
+            let startH = evaluated[bestStart].hour
+            let endH = evaluated[bestStart + bestLen - 1].hour
+            return ("\(startH.hourLabel) – \(endH.hourLabel)", true)
+        }
+        
+        for i in 0..<evaluated.count {
+            if evaluated[i].eval.suitability != .poor {
+                if curStart == -1 { curStart = i }
+                curLen += 1
+                if curLen > bestLen {
+                    bestLen = curLen
+                    bestStart = curStart
+                }
+            } else {
+                curStart = -1
+                curLen = 0
+            }
+        }
+        
+        if bestLen >= 1 {
+            let startH = evaluated[bestStart].hour
+            let endH = evaluated[bestStart + bestLen - 1].hour
+            return ("\(startH.hourLabel) – \(endH.hourLabel)", false)
+        }
+        
+        return nil
+    }
+}
+
+public struct HourlyVolleyballWeather: Identifiable, Codable, Hashable {
+    public var id: String { timeStr }
+    public let timeStr: String
+    public let hourLabel: String
+    public let hour24: Int
+    public let temp: Int
+    public let windMph: Int
+    public let uvIndex: Double
+    public let conditionEmoji: String
+    public let conditionText: String
+    
+    public init(
+        timeStr: String,
+        hourLabel: String,
+        hour24: Int,
+        temp: Int,
+        windMph: Int,
+        uvIndex: Double,
+        conditionEmoji: String,
+        conditionText: String
+    ) {
+        self.timeStr = timeStr
+        self.hourLabel = hourLabel
+        self.hour24 = hour24
+        self.temp = temp
+        self.windMph = windMph
+        self.uvIndex = uvIndex
+        self.conditionEmoji = conditionEmoji
+        self.conditionText = conditionText
+    }
 }
 
 public struct DailyVolleyballWeather: Identifiable, Codable, Hashable {
@@ -105,6 +233,9 @@ public struct DailyVolleyballWeather: Identifiable, Codable, Hashable {
     public let uvMax: Double
     public let conditionEmoji: String
     public let conditionText: String
+    public let sunrise: String
+    public let sunset: String
+    public let daylightHours: [HourlyVolleyballWeather]
     
     public init(
         courtLocation: String,
@@ -119,7 +250,10 @@ public struct DailyVolleyballWeather: Identifiable, Codable, Hashable {
         windMax: Int,
         uvMax: Double,
         conditionEmoji: String,
-        conditionText: String
+        conditionText: String,
+        sunrise: String = "6:56 AM",
+        sunset: String = "7:04 PM",
+        daylightHours: [HourlyVolleyballWeather] = []
     ) {
         self.courtLocation = courtLocation
         self.dateIndex = dateIndex
@@ -134,6 +268,9 @@ public struct DailyVolleyballWeather: Identifiable, Codable, Hashable {
         self.uvMax = uvMax
         self.conditionEmoji = conditionEmoji
         self.conditionText = conditionText
+        self.sunrise = sunrise
+        self.sunset = sunset
+        self.daylightHours = daylightHours
     }
 }
 
@@ -324,7 +461,7 @@ public class WeatherService: ObservableObject {
         }
         
         let coords = Self.coordinates(for: court)
-        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(coords.lat)&longitude=\(coords.lon)&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,wind_speed_10m_max&hourly=temperature_2m,uv_index,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7"
+        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(coords.lat)&longitude=\(coords.lon)&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,wind_speed_10m_max,sunrise,sunset&hourly=temperature_2m,uv_index,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7"
         
         guard let url = URL(string: urlString) else {
             return fallbackWeeklyForecast(for: court)
@@ -366,6 +503,21 @@ public class WeatherService: ObservableObject {
         fullFormatter.dateFormat = "EEEE, MMM d"
         fullFormatter.timeZone = TimeZone(identifier: "America/Los_Angeles") ?? .current
         
+        let isoTimeFormatter = DateFormatter()
+        isoTimeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        isoTimeFormatter.timeZone = TimeZone(identifier: "America/Los_Angeles") ?? .current
+        
+        let sunTimeFormatter = DateFormatter()
+        sunTimeFormatter.dateFormat = "h:mm a"
+        sunTimeFormatter.timeZone = TimeZone(identifier: "America/Los_Angeles") ?? .current
+        
+        let hourLabelFormatter = DateFormatter()
+        hourLabelFormatter.dateFormat = "h a"
+        hourLabelFormatter.timeZone = TimeZone(identifier: "America/Los_Angeles") ?? .current
+        
+        let hourly = response.hourly
+        let hTimes = hourly?.time ?? []
+        
         for (i, dateStr) in times.prefix(7).enumerated() {
             let d = isoFormatter.date(from: dateStr) ?? Date()
             let dayName: String
@@ -384,6 +536,54 @@ public class WeatherService: ObservableObject {
             let code = (i < (daily.weather_code?.count ?? 0)) ? daily.weather_code![i] : 0
             let (emoji, text) = weatherCodeInterpretation(code)
             
+            // Sunrise and Sunset parsing
+            let rawSunrise = (i < (daily.sunrise?.count ?? 0)) ? (daily.sunrise?[i] ?? "") : ""
+            let rawSunset = (i < (daily.sunset?.count ?? 0)) ? (daily.sunset?[i] ?? "") : ""
+            
+            let sunriseDate = isoTimeFormatter.date(from: rawSunrise)
+            let sunsetDate = isoTimeFormatter.date(from: rawSunset)
+            
+            let sunriseStr = sunriseDate != nil ? sunTimeFormatter.string(from: sunriseDate!) : "6:56 AM"
+            let sunsetStr = sunsetDate != nil ? sunTimeFormatter.string(from: sunsetDate!) : "7:04 PM"
+            
+            var startHour = 7
+            var endHour = 19
+            if let sr = sunriseDate {
+                startHour = max(5, min(8, Calendar.current.component(.hour, from: sr)))
+            }
+            if let ss = sunsetDate {
+                endHour = max(17, min(21, Calendar.current.component(.hour, from: ss)))
+            }
+            
+            var daylightHours: [HourlyVolleyballWeather] = []
+            if let h = hourly {
+                for (hIdx, hTimeStr) in hTimes.enumerated() {
+                    guard hTimeStr.hasPrefix(dateStr) else { continue }
+                    if let hDate = isoTimeFormatter.date(from: hTimeStr) {
+                        let hour24 = Calendar.current.component(.hour, from: hDate)
+                        if hour24 >= startHour && hour24 <= endHour {
+                            let hTemp = (hIdx < h.temperature_2m.count) ? Int(h.temperature_2m[hIdx].rounded()) : tAvg
+                            let hWind = (hIdx < h.wind_speed_10m.count) ? Int(h.wind_speed_10m[hIdx].rounded()) : 6
+                            let hUv = (hIdx < h.uv_index.count) ? h.uv_index[hIdx] : 2.0
+                            let hCode = (hIdx < h.weather_code.count) ? h.weather_code[hIdx] : code
+                            let (hEmoji, hText) = weatherCodeInterpretation(hCode)
+                            let hLabel = hourLabelFormatter.string(from: hDate)
+                            
+                            daylightHours.append(HourlyVolleyballWeather(
+                                timeStr: hTimeStr,
+                                hourLabel: hLabel,
+                                hour24: hour24,
+                                temp: hTemp,
+                                windMph: hWind,
+                                uvIndex: hUv,
+                                conditionEmoji: hEmoji,
+                                conditionText: hText
+                            ))
+                        }
+                    }
+                }
+            }
+            
             days.append(DailyVolleyballWeather(
                 courtLocation: court,
                 dateIndex: i,
@@ -397,7 +597,10 @@ public class WeatherService: ObservableObject {
                 windMax: wMax,
                 uvMax: uvMax,
                 conditionEmoji: emoji,
-                conditionText: text
+                conditionText: text,
+                sunrise: sunriseStr,
+                sunset: sunsetStr,
+                daylightHours: daylightHours
             ))
         }
         
@@ -420,6 +623,11 @@ public class WeatherService: ObservableObject {
         let fullFormatter = DateFormatter()
         fullFormatter.dateFormat = "EEEE, MMM d"
         
+        let sampleTemps = [60, 63, 67, 70, 72, 74, 75, 76, 74, 72, 70, 67, 63]
+        let sampleWinds = [4, 5, 6, 7, 8, 9, 10, 11, 12, 10, 8, 6, 5]
+        let sampleUvs = [0.5, 1.2, 2.2, 3.4, 4.2, 4.8, 5.0, 4.5, 3.5, 2.5, 1.5, 0.6, 0.1]
+        let sampleHours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+        
         for i in 0..<7 {
             let d = calendar.date(byAdding: .day, value: i, to: Date()) ?? Date()
             let dayName = i == 0 ? "Today" : (i == 1 ? "Tomorrow" : weekdayFormatter.string(from: d))
@@ -427,6 +635,23 @@ public class WeatherService: ObservableObject {
             let fullTitle = fullFormatter.string(from: d)
             let tMax = baseTemps[i]
             let tMin = tMax - 16
+            
+            var daylightHours: [HourlyVolleyballWeather] = []
+            for hIdx in 0..<sampleHours.count {
+                let h24 = sampleHours[hIdx]
+                let ampm = h24 >= 12 ? "PM" : "AM"
+                let h12 = h24 % 12 == 0 ? 12 : h24 % 12
+                daylightHours.append(HourlyVolleyballWeather(
+                    timeStr: "day-\(i)-h\(h24)",
+                    hourLabel: "\(h12) \(ampm)",
+                    hour24: h24,
+                    temp: sampleTemps[hIdx],
+                    windMph: min(baseWinds[i] + (sampleWinds[hIdx] - 8), 20),
+                    uvIndex: sampleUvs[hIdx],
+                    conditionEmoji: sampleWinds[hIdx] > 11 ? "💨" : (h24 == 19 ? "🌅" : emojis[i]),
+                    conditionText: sampleWinds[hIdx] > 11 ? "Breezy" : (h24 == 19 ? "Sunset" : texts[i])
+                ))
+            }
             
             days.append(DailyVolleyballWeather(
                 courtLocation: court,
@@ -441,7 +666,10 @@ public class WeatherService: ObservableObject {
                 windMax: baseWinds[i],
                 uvMax: baseUVs[i],
                 conditionEmoji: emojis[i],
-                conditionText: texts[i]
+                conditionText: texts[i],
+                sunrise: "6:56 AM",
+                sunset: "7:04 PM",
+                daylightHours: daylightHours
             ))
         }
         return days
@@ -563,6 +791,8 @@ fileprivate struct OpenMeteoDaily: Decodable {
     let temperature_2m_min: [Double]?
     let uv_index_max: [Double]?
     let wind_speed_10m_max: [Double]?
+    let sunrise: [String]?
+    let sunset: [String]?
 }
 
 fileprivate struct OpenMeteoHourly: Decodable {

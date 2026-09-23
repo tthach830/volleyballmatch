@@ -7,6 +7,7 @@ public struct VolleyballWeatherView: View {
     @State private var selectedCourt: String = "Main Beach"
     @State private var weeklyDays: [DailyVolleyballWeather] = []
     @State private var selectedDayIndex: Int = 0
+    @State private var selectedHourIndex: Int? = nil
     @State private var isLoading: Bool = true
     @State private var showSettings: Bool = false
     @State private var showEmbedSheet: Bool = false
@@ -47,6 +48,11 @@ public struct VolleyballWeatherView: View {
                     
                     // 7-Day Chart with Colored Suitability Dots
                     chartSection
+                    
+                    // Daytime Hourly Suitability Chart (Sunrise to Sunset)
+                    if !weeklyDays.isEmpty, selectedDayIndex < weeklyDays.count {
+                        daytimeHourlySection(for: weeklyDays[selectedDayIndex])
+                    }
                     
                     // Detailed Day Breakdown List
                     dailyBreakdownSection
@@ -327,6 +333,7 @@ public struct VolleyballWeatherView: View {
         return Button {
             withAnimation(.spring(response: 0.25)) {
                 selectedDayIndex = index
+                selectedHourIndex = nil
             }
         } label: {
             VStack(spacing: 6) {
@@ -397,6 +404,247 @@ public struct VolleyballWeatherView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+    
+    // MARK: - Daytime Hourly Suitability Section (Sunrise to Sunset)
+    private func daytimeHourlySection(for day: DailyVolleyballWeather) -> some View {
+        let bestWindow = criteria.calculateBestPlayingWindow(daylightHours: day.daylightHours)
+        
+        return VStack(alignment: .leading, spacing: 12) {
+            // Header: Title & Sunrise/Sunset
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center) {
+                    Label("\(day.dayName) Daytime Hours", systemImage: "sun.and.horizon.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    // Sunrise & Sunset chips
+                    HStack(spacing: 6) {
+                        HStack(spacing: 3) {
+                            Text("🌅")
+                                .font(.system(size: 10))
+                            Text(day.sunrise)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.orange.opacity(0.12))
+                        .cornerRadius(6)
+                        
+                        HStack(spacing: 3) {
+                            Text("🌇")
+                                .font(.system(size: 10))
+                            Text(day.sunset)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.pink)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.pink.opacity(0.12))
+                        .cornerRadius(6)
+                    }
+                }
+                
+                Text("Daytime playing conditions from sunrise to sunset. Tap an hour for details.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            // Best window badge (if found)
+            if let bw = bestWindow {
+                HStack(spacing: 8) {
+                    Text("🌟")
+                        .font(.system(size: 13))
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 6) {
+                            Text("Best Window to Play:")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.white)
+                            Text(bw.windowText)
+                                .font(.system(size: 12, weight: .black))
+                                .foregroundColor(bw.isGreen ? .green : .yellow)
+                        }
+                        Text(bw.isGreen ? "Optimal wind, UV, and comfortable temperatures." : "Playable conditions with manageable breeze.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(10)
+                .background((bw.isGreen ? Color.green : Color.yellow).opacity(0.12))
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke((bw.isGreen ? Color.green : Color.yellow).opacity(0.3), lineWidth: 1)
+                )
+            }
+            
+            // Hourly horizontal track
+            if day.daylightHours.isEmpty {
+                Text("No daytime hourly data available for this day.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 60)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(day.daylightHours.enumerated()), id: \.element.id) { hIdx, hour in
+                            hourlyCard(for: hour, index: hIdx)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            
+            // Selected Hour Detail Callout
+            if let hIdx = selectedHourIndex, hIdx < day.daylightHours.count {
+                selectedHourDetailCard(for: day.daylightHours[hIdx])
+            }
+        }
+        .padding(14)
+        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
+    }
+    
+    private func hourlyCard(for hour: HourlyVolleyballWeather, index: Int) -> some View {
+        let eval = criteria.evaluate(hour: hour)
+        let isSelected = selectedHourIndex == index
+        
+        return Button {
+            withAnimation(.spring(response: 0.25)) {
+                if selectedHourIndex == index {
+                    selectedHourIndex = nil
+                } else {
+                    selectedHourIndex = index
+                }
+            }
+        } label: {
+            VStack(spacing: 5) {
+                // Hour label (e.g., 7 AM)
+                Text(hour.hourLabel)
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundColor(isSelected ? .orange : .white)
+                
+                // Suitability Dot with Glow
+                ZStack {
+                    Circle()
+                        .fill(eval.suitability.dotColor.opacity(0.25))
+                        .frame(width: 18, height: 18)
+                    Circle()
+                        .fill(eval.suitability.dotColor)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: eval.suitability.dotColor.opacity(0.8), radius: 3)
+                }
+                
+                // Condition emoji
+                Text(hour.conditionEmoji)
+                    .font(.system(size: 15))
+                
+                // Temp
+                Text("\(hour.temp)°")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(hour.temp > criteria.maxTemp ? .red : (hour.temp < criteria.minTemp ? .blue : .white))
+                
+                // Wind
+                Text("💨\(hour.windMph)")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(hour.windMph > criteria.maxWind ? .red : .cyan)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(Color.cyan.opacity(0.12))
+                    .cornerRadius(3)
+                
+                // UV
+                Text("☀️\(String(format: "%.0f", hour.uvIndex))")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(hour.uvIndex > criteria.maxUV ? .orange : .yellow)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(Color.yellow.opacity(0.12))
+                    .cornerRadius(3)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 6)
+            .frame(width: 60)
+            .background(isSelected ? Color.orange.opacity(0.2) : Color.white.opacity(0.04))
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func selectedHourDetailCard(for hour: HourlyVolleyballWeather) -> some View {
+        let eval = criteria.evaluate(hour: hour)
+        
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("\(hour.hourLabel) Conditions & Suitability")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(eval.suitability.dotColor)
+                        .frame(width: 6, height: 6)
+                    Text(eval.label)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(eval.suitability.dotColor)
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(eval.suitability.dotColor.opacity(0.15))
+                .cornerRadius(6)
+            }
+            
+            HStack(spacing: 8) {
+                metricChip(
+                    icon: "thermometer.medium",
+                    title: "\(hour.temp)°F",
+                    subtitle: hour.temp >= criteria.minTemp && hour.temp <= criteria.maxTemp ? "Ideal" : (hour.temp > criteria.maxTemp ? "Hot" : "Cold"),
+                    color: hour.temp > criteria.maxTemp ? .red : (hour.temp < criteria.minTemp ? .blue : .orange)
+                )
+                metricChip(
+                    icon: "wind",
+                    title: "\(hour.windMph) mph",
+                    subtitle: hour.windMph <= criteria.maxWind ? "Calm" : "Breezy/Windy",
+                    color: hour.windMph > criteria.maxWind ? .red : .cyan
+                )
+                metricChip(
+                    icon: "sun.max.fill",
+                    title: "UV \(String(format: "%.1f", hour.uvIndex))",
+                    subtitle: hour.uvIndex <= criteria.maxUV ? "Safe" : "High",
+                    color: hour.uvIndex > criteria.maxUV ? .red : .yellow
+                )
+            }
+            
+            HStack(spacing: 6) {
+                Text("🏐")
+                    .font(.system(size: 11))
+                Text(eval.tip)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.white.opacity(0.9))
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.04))
+            .cornerRadius(6)
+        }
+        .padding(10)
+        .background(Color(red: 0.15, green: 0.17, blue: 0.24))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(eval.suitability.dotColor.opacity(0.4), lineWidth: 1)
+        )
     }
     
     // MARK: - Daily Breakdown Cards
@@ -501,6 +749,7 @@ public struct VolleyballWeatherView: View {
         .onTapGesture {
             withAnimation(.spring(response: 0.25)) {
                 selectedDayIndex = index
+                selectedHourIndex = nil
             }
         }
     }

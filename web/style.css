@@ -2291,4 +2291,107 @@ nav#bottom-nav {
   background: rgba(239, 68, 68, 0.1);
 }
 
+/* Hourly Daytime Chart Styles */
+.vb-hourly-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 4px 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vb-hour-card {
+  flex: 0 0 76px;
+  min-width: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.vb-hour-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+.vb-hour-card.selected {
+  background: rgba(234, 88, 12, 0.15);
+  border-color: #ea580c;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
+.vb-hour-card.status-green {
+  border-bottom: 3px solid #22c55e;
+}
+.vb-hour-card.status-yellow {
+  border-bottom: 3px solid #eab308;
+}
+.vb-hour-card.status-red {
+  border-bottom: 3px solid #ef4444;
+}
+
+.vb-hour-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+  text-transform: uppercase;
+}
+
+.vb-hour-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.vb-hour-temp {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.vb-hour-wind {
+  font-size: 10px;
+  font-weight: 700;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.vb-hour-uv {
+  font-size: 9px;
+  font-weight: 700;
+  color: #facc15;
+}
+
+.sun-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.best-window-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
 

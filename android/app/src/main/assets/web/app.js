@@ -643,7 +643,7 @@ export const weatherService = {
       }
     } catch (_) {}
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,wind_speed_10m_max&hourly=temperature_2m,uv_index,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,wind_speed_10m_max,sunrise,sunset&hourly=temperature_2m,uv_index,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7`;
 
     try {
       const res = await fetch(url);
@@ -660,9 +660,28 @@ export const weatherService = {
     }
   },
 
+  formatTimeLabel(isoStr, fallback = "7:00 AM") {
+    if (!isoStr) return fallback;
+    try {
+      const timePart = isoStr.split("T")[1];
+      if (!timePart) return fallback;
+      const [hStr, mStr] = timePart.split(":");
+      let h = parseInt(hStr, 10);
+      const m = mStr || "00";
+      if (isNaN(h)) return fallback;
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      return `${h}:${m} ${ampm}`;
+    } catch (_) {
+      return fallback;
+    }
+  },
+
   parseWeeklyResponse(data, court) {
     const daily = data.daily || {};
     const times = daily.time || [];
+    const hourly = data.hourly || {};
+    const hTimes = hourly.time || [];
     const days = [];
 
     for (let i = 0; i < times.length && i < 7; i++) {
@@ -682,6 +701,53 @@ export const weatherService = {
       const code = daily.weather_code?.[i] ?? 0;
       const { emoji, text } = this.interpretWeatherCode(code);
 
+      // Sunrise & Sunset Parsing
+      const rawSunrise = daily.sunrise?.[i] || "";
+      const rawSunset = daily.sunset?.[i] || "";
+      const sunriseTime = this.formatTimeLabel(rawSunrise, "6:56 AM");
+      const sunsetTime = this.formatTimeLabel(rawSunset, "7:04 PM");
+
+      // Daytime hourly window: sunrise hour to sunset hour
+      let startHour = 7;
+      let endHour = 19;
+      if (rawSunrise && rawSunrise.includes("T")) {
+        const sh = parseInt(rawSunrise.split("T")[1]?.split(":")[0], 10);
+        if (!isNaN(sh)) startHour = Math.max(5, Math.min(8, sh));
+      }
+      if (rawSunset && rawSunset.includes("T")) {
+        const eh = parseInt(rawSunset.split("T")[1]?.split(":")[0], 10);
+        if (!isNaN(eh)) endHour = Math.max(17, Math.min(21, eh));
+      }
+
+      const daylightHours = [];
+      for (let hIdx = 0; hIdx < hTimes.length; hIdx++) {
+        const hTimeStr = hTimes[hIdx];
+        if (!hTimeStr.startsWith(dateStr)) continue;
+        const hourPart = parseInt(hTimeStr.split("T")[1]?.split(":")[0], 10);
+        if (isNaN(hourPart)) continue;
+
+        if (hourPart >= startHour && hourPart <= endHour) {
+          const hTemp = Math.round(hourly.temperature_2m?.[hIdx] ?? tempAvg);
+          const hWind = Math.round(hourly.wind_speed_10m?.[hIdx] ?? 6);
+          const hUv = Math.round((hourly.uv_index?.[hIdx] ?? 2.0) * 10) / 10;
+          const hCode = hourly.weather_code?.[hIdx] ?? code;
+          const hInterp = this.interpretWeatherCode(hCode);
+          const ampm = hourPart >= 12 ? "PM" : "AM";
+          const hour12 = hourPart % 12 || 12;
+
+          daylightHours.push({
+            timeStr: hTimeStr,
+            hour24: hourPart,
+            hourLabel: `${hour12} ${ampm}`,
+            temp: hTemp,
+            windMph: hWind,
+            uvIndex: hUv,
+            conditionEmoji: hInterp.emoji,
+            conditionText: hInterp.text
+          });
+        }
+      }
+
       days.push({
         courtLocation: court,
         dateIndex: i,
@@ -695,7 +761,10 @@ export const weatherService = {
         windMax,
         uvMax,
         conditionEmoji: emoji,
-        conditionText: text
+        conditionText: text,
+        sunrise: sunriseTime,
+        sunset: sunsetTime,
+        daylightHours
       });
     }
 
@@ -714,12 +783,37 @@ export const weatherService = {
     for (let i = 0; i < 7; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split("T")[0];
       const tMax = baseTemps[i];
       const tMin = tMax - 16;
+
+      // Realistic daylight hourly curve: 7 AM to 7 PM
+      const daylightHours = [];
+      const sampleTemps = [60, 63, 67, 70, 72, 74, 75, 76, 74, 72, 70, 67, 63];
+      const sampleWinds = [4, 5, 6, 7, 8, 9, 10, 11, 12, 10, 8, 6, 5];
+      const sampleUvs = [0.5, 1.2, 2.2, 3.4, 4.2, 4.8, 5.0, 4.5, 3.5, 2.5, 1.5, 0.6, 0.1];
+      const hours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+
+      for (let h = 0; h < hours.length; h++) {
+        const hour24 = hours[h];
+        const ampm = hour24 >= 12 ? "PM" : "AM";
+        const hour12 = hour24 % 12 || 12;
+        daylightHours.push({
+          timeStr: `${dateStr}T${String(hour24).padStart(2, '0')}:00`,
+          hour24,
+          hourLabel: `${hour12} ${ampm}`,
+          temp: sampleTemps[h],
+          windMph: Math.min(baseWinds[i] + (sampleWinds[h] - 8), 20),
+          uvIndex: Math.round(sampleUvs[h] * 10) / 10,
+          conditionEmoji: sampleWinds[h] > 11 ? "💨" : (hour24 === 19 ? "🌅" : emojis[i]),
+          conditionText: sampleWinds[h] > 11 ? "Breezy" : (hour24 === 19 ? "Sunset" : texts[i])
+        });
+      }
+
       days.push({
         courtLocation: court,
         dateIndex: i,
-        dateStr: d.toISOString().split("T")[0],
+        dateStr,
         dayName: i === 0 ? "Today" : (i === 1 ? "Tomorrow" : d.toLocaleDateString("en-US", { weekday: "short" })),
         dateFormatted: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         fullDayTitle: d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
@@ -729,7 +823,10 @@ export const weatherService = {
         windMax: baseWinds[i],
         uvMax: baseUVs[i],
         conditionEmoji: emojis[i],
-        conditionText: texts[i]
+        conditionText: texts[i],
+        sunrise: "6:56 AM",
+        sunset: "7:04 PM",
+        daylightHours
       });
     }
     return days;
@@ -848,6 +945,232 @@ export function evaluateVolleyballSuitability(day, criteria = window.volleyballC
   };
 }
 
+export function evaluateHourlySuitability(hour, criteria = window.volleyballCriteria) {
+  const issues = [];
+  const warnings = [];
+
+  // Wind speed check
+  if (hour.windMph > criteria.maxWind + 3) {
+    issues.push(`Too windy (${hour.windMph} mph)`);
+  } else if (hour.windMph > criteria.maxWind) {
+    warnings.push(`Breezy (${hour.windMph} mph)`);
+  }
+
+  // Temperature check
+  if (hour.temp > criteria.maxTemp) {
+    issues.push(`Too hot (${hour.temp}°F)`);
+  } else if (hour.temp < criteria.minTemp - 4) {
+    issues.push(`Too cold (${hour.temp}°F)`);
+  } else if (hour.temp < criteria.minTemp) {
+    warnings.push(`Chilly (${hour.temp}°F)`);
+  } else if (hour.temp > criteria.maxTemp - 2) {
+    warnings.push(`Warm (${hour.temp}°F)`);
+  }
+
+  // UV index check
+  if (hour.uvIndex > criteria.maxUV + 2.5) {
+    issues.push(`High UV (${hour.uvIndex})`);
+  } else if (hour.uvIndex > criteria.maxUV) {
+    warnings.push(`Moderate UV (${hour.uvIndex})`);
+  }
+
+  // Weather condition check
+  const textLower = (hour.conditionText || "").toLowerCase();
+  if (textLower.includes("rain") || textLower.includes("storm") || textLower.includes("drizzle")) {
+    issues.push(`Rain`);
+  }
+
+  let status = "green";
+  let label = "Good to Play";
+  let tip = "Optimal conditions: Low wind drift, comfortable temp, crisp sets.";
+
+  if (issues.length > 0) {
+    status = "red";
+    label = issues[0];
+    tip = issues.join(" • ");
+  } else if (warnings.length > 0) {
+    status = "yellow";
+    label = warnings[0];
+    tip = warnings.join(" • ");
+  }
+
+  return { status, label, tip, issues, warnings };
+}
+
+export function calculateBestPlayingWindow(daylightHours, criteria = window.volleyballCriteria) {
+  if (!daylightHours || daylightHours.length === 0) return null;
+
+  const evaluated = daylightHours.map(h => ({
+    hour: h,
+    eval: evaluateHourlySuitability(h, criteria)
+  }));
+
+  // Find longest contiguous run of green hours
+  let bestStart = -1;
+  let bestLen = 0;
+  let curStart = -1;
+  let curLen = 0;
+
+  for (let i = 0; i < evaluated.length; i++) {
+    if (evaluated[i].eval.status === "green") {
+      if (curStart === -1) curStart = i;
+      curLen++;
+      if (curLen > bestLen) {
+        bestLen = curLen;
+        bestStart = curStart;
+      }
+    } else {
+      curStart = -1;
+      curLen = 0;
+    }
+  }
+
+  if (bestLen >= 2) {
+    const startH = evaluated[bestStart].hour;
+    const endH = evaluated[bestStart + bestLen - 1].hour;
+    return {
+      windowText: `${startH.hourLabel} – ${endH.hourLabel}`,
+      status: "green"
+    };
+  }
+
+  // Look for green or yellow
+  for (let i = 0; i < evaluated.length; i++) {
+    if (evaluated[i].eval.status !== "red") {
+      if (curStart === -1) curStart = i;
+      curLen++;
+      if (curLen > bestLen) {
+        bestLen = curLen;
+        bestStart = curStart;
+      }
+    } else {
+      curStart = -1;
+      curLen = 0;
+    }
+  }
+
+  if (bestLen >= 1) {
+    const startH = evaluated[bestStart].hour;
+    const endH = evaluated[bestStart + bestLen - 1].hour;
+    return {
+      windowText: `${startH.hourLabel} – ${endH.hourLabel}`,
+      status: "yellow"
+    };
+  }
+
+  return {
+    windowText: "Limited window",
+    status: "red"
+  };
+}
+
+window.selectedVolleyballHourIndex = null;
+
+export function renderDaytimeHourlyChart(day) {
+  const container = document.getElementById("vb-hourly-section");
+  if (!container || !day) return;
+
+  const criteria = window.volleyballCriteria;
+  const daylightHours = day.daylightHours || [];
+  const bestWindow = calculateBestPlayingWindow(daylightHours, criteria);
+
+  if (window.selectedVolleyballHourIndex === null || window.selectedVolleyballHourIndex >= daylightHours.length) {
+    const idealIdx = daylightHours.findIndex(h => evaluateHourlySuitability(h, criteria).status === "green");
+    window.selectedVolleyballHourIndex = idealIdx >= 0 ? idealIdx : 0;
+  }
+
+  const selectedHour = daylightHours[window.selectedVolleyballHourIndex] || daylightHours[0];
+  const evalSelected = selectedHour ? evaluateHourlySuitability(selectedHour, criteria) : null;
+
+  let hourlyCardsHtml = "";
+  if (daylightHours.length === 0) {
+    hourlyCardsHtml = `<div style="padding: 16px; color: rgba(255,255,255,0.6); font-size: 13px;">No daylight hours recorded for this day.</div>`;
+  } else {
+    hourlyCardsHtml = daylightHours.map((h, hIdx) => {
+      const hEval = evaluateHourlySuitability(h, criteria);
+      const isSelected = hIdx === window.selectedVolleyballHourIndex;
+      const dotClass = hEval.status === "green" ? "vb-dot-green" : (hEval.status === "yellow" ? "vb-dot-yellow" : "vb-dot-red");
+
+      return `
+        <div class="vb-hour-card status-${hEval.status} ${isSelected ? 'selected' : ''}" onclick="window.selectVolleyballHour(${hIdx})" title="${h.hourLabel}: ${hEval.label} (${h.temp}°F, ${h.windMph} mph, UV ${h.uvIndex})">
+          <span class="vb-hour-label">${h.hourLabel}</span>
+          <span class="vb-hour-emoji">${h.conditionEmoji}</span>
+          <span class="vb-dot ${dotClass}"></span>
+          <span class="vb-hour-temp">${h.temp}°</span>
+          <span class="vb-hour-wind">💨 ${h.windMph}m</span>
+          <span class="vb-hour-uv">UV ${h.uvIndex}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  container.innerHTML = `
+    <!-- Header with Sunrise / Sunset & Best Time Window -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">⏱️</span>
+          <span style="font-size: 14px; font-weight: 800; color: #ffffff;">${day.fullDayTitle} • Sunrise to Sunset</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+          <span class="sun-summary-chip">🌅 Sunrise ${day.sunrise || "6:56 AM"}</span>
+          <span class="sun-summary-chip">🌇 Sunset ${day.sunset || "7:04 PM"}</span>
+        </div>
+      </div>
+
+      <!-- Best Playing Window Callout -->
+      ${bestWindow ? `
+        <div class="best-window-pill" style="border-color: ${bestWindow.status === 'green' ? 'rgba(34, 197, 94, 0.4)' : (bestWindow.status === 'yellow' ? 'rgba(234, 179, 8, 0.4)' : 'rgba(239, 68, 68, 0.4)')}; color: ${bestWindow.status === 'green' ? '#4ade80' : (bestWindow.status === 'yellow' ? '#facc15' : '#f87171')}; background: ${bestWindow.status === 'green' ? 'rgba(34, 197, 94, 0.15)' : (bestWindow.status === 'yellow' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(239, 68, 68, 0.15)')};">
+          <span>🌟</span>
+          <span><b>Best Time:</b> ${bestWindow.windowText}</span>
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Scrollable Hourly Track (Sunrise to Sunset) -->
+    <div class="vb-hourly-track" style="margin-bottom: 12px;">
+      ${hourlyCardsHtml}
+    </div>
+
+    <!-- Selected Hour Detail Callout -->
+    ${selectedHour && evalSelected ? `
+      <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 26px;">${selectedHour.conditionEmoji}</span>
+          <div>
+            <div style="font-size: 13px; font-weight: 800; color: #ffffff;">
+              ${selectedHour.hourLabel}: <span style="color: ${evalSelected.status === 'green' ? '#4ade80' : (evalSelected.status === 'yellow' ? '#facc15' : '#f87171')}">${evalSelected.status === 'green' ? '🟢 Great for Volleyball' : (evalSelected.status === 'yellow' ? '🟡 Fair Playing Window' : '🔴 Unfavorable (' + evalSelected.label + ')')}</span>
+            </div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-top: 2px;">
+              ${evalSelected.tip}
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span class="vb-metric-chip ${selectedHour.temp >= criteria.minTemp && selectedHour.temp <= criteria.maxTemp ? 'ok' : 'bad'}">
+            🌡️ <b>${selectedHour.temp}°F</b>
+          </span>
+          <span class="vb-metric-chip ${selectedHour.windMph <= criteria.maxWind ? 'ok' : (selectedHour.windMph <= criteria.maxWind + 3 ? 'warn' : 'bad')}">
+            💨 <b>${selectedHour.windMph} mph</b>
+          </span>
+          <span class="vb-metric-chip ${selectedHour.uvIndex <= criteria.maxUV ? 'ok' : 'warn'}">
+            ☀️ <b>UV ${selectedHour.uvIndex}</b>
+          </span>
+        </div>
+      </div>
+    ` : ''}
+  `;
+}
+
+window.selectVolleyballHour = function(hIdx) {
+  window.selectedVolleyballHourIndex = hIdx;
+  const currentDay = window.currentVolleyballWeeklyData?.[window.selectedVolleyballDayIndex || 0];
+  if (currentDay) {
+    renderDaytimeHourlyChart(currentDay);
+  }
+};
+
 export function syncVolleyballCriteriaToUI() {
   const c = window.volleyballCriteria;
   const tempMinInput = document.getElementById("vb-temp-min");
@@ -898,6 +1221,8 @@ window.updateVolleyballCriteriaFromUI = function() {
     renderVolleyballChart(window.currentVolleyballWeeklyData);
     renderVolleyballDaysList(window.currentVolleyballWeeklyData);
     updateVolleyballOverallPill(window.currentVolleyballWeeklyData);
+    const selDay = window.currentVolleyballWeeklyData[window.selectedVolleyballDayIndex || 0] || window.currentVolleyballWeeklyData[0];
+    renderDaytimeHourlyChart(selDay);
   }
 };
 
@@ -915,6 +1240,8 @@ window.resetVolleyballCriteria = function() {
     renderVolleyballChart(window.currentVolleyballWeeklyData);
     renderVolleyballDaysList(window.currentVolleyballWeeklyData);
     updateVolleyballOverallPill(window.currentVolleyballWeeklyData);
+    const selDay = window.currentVolleyballWeeklyData[window.selectedVolleyballDayIndex || 0] || window.currentVolleyballWeeklyData[0];
+    renderDaytimeHourlyChart(selDay);
   }
 };
 
@@ -945,13 +1272,15 @@ window.refreshVolleyballWeather = function() {
 
 window.selectVolleyballDay = function(index) {
   window.selectedVolleyballDayIndex = index;
+  window.selectedVolleyballHourIndex = null;
   if (window.currentVolleyballWeeklyData && window.currentVolleyballWeeklyData.length > 0) {
     renderVolleyballChart(window.currentVolleyballWeeklyData);
     renderVolleyballDaysList(window.currentVolleyballWeeklyData);
+    renderDaytimeHourlyChart(window.currentVolleyballWeeklyData[index]);
   }
-  const targetCard = document.getElementById(`vb-day-card-${index}`);
-  if (targetCard) {
-    targetCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const targetSection = document.getElementById("vb-hourly-section");
+  if (targetSection) {
+    targetSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 };
 
@@ -1138,6 +1467,8 @@ window.renderVolleyballTab = async function() {
   renderVolleyballChart(days);
   renderVolleyballDaysList(days);
   updateVolleyballOverallPill(days);
+  const selectedDay = days[window.selectedVolleyballDayIndex || 0] || days[0];
+  renderDaytimeHourlyChart(selectedDay);
 };
 
 // ==========================================
