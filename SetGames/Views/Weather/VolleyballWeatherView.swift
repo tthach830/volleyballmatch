@@ -8,6 +8,7 @@ public struct VolleyballWeatherView: View {
     @State private var weeklyDays: [DailyVolleyballWeather] = []
     @State private var selectedDayIndex: Int = 0
     @State private var selectedHourIndex: Int? = nil
+    @State private var selectedDayHourMap: [Int: Int] = [:]
     @State private var isLoading: Bool = true
     @State private var showSettings: Bool = false
     @State private var showEmbedSheet: Bool = false
@@ -40,20 +41,20 @@ public struct VolleyballWeatherView: View {
     public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 18) {
                     // Header & Beach Selector
                     headerSection
                     
-                    // User Configurable Preferences Card
-                    criteriaSettingsCard
-                    
-                    // Daytime Hourly Suitability Chart (Sunrise to Sunset)
-                    if !weeklyDays.isEmpty, selectedDayIndex < weeklyDays.count {
-                        daytimeHourlySection(for: weeklyDays[selectedDayIndex])
+                    if isLoading {
+                        ProgressView("Fetching 7-day coastal forecast...")
+                            .frame(maxWidth: .infinity, minHeight: 120)
+                            .foregroundColor(.secondary)
+                    } else {
+                        // 7-Day Daytime Forecast (Full Daytime Card for Each Day)
+                        ForEach(Array(weeklyDays.enumerated()), id: \.element.id) { index, day in
+                            daytimeHourlySection(for: day, dayIndex: index)
+                        }
                     }
-                    
-                    // 7-Day Forecast Cards List
-                    dailyBreakdownSection
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
@@ -295,17 +296,44 @@ public struct VolleyballWeatherView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
     }
     
+    private func activeHourIndex(for day: DailyVolleyballWeather, dayIndex: Int) -> Int? {
+        if let chosen = selectedDayHourMap[dayIndex], chosen < day.daylightHours.count {
+            return chosen
+        }
+        if let idealIdx = day.daylightHours.firstIndex(where: { criteria.evaluate(hour: $0).suitability == .good }) {
+            return idealIdx
+        }
+        if let fairIdx = day.daylightHours.firstIndex(where: { criteria.evaluate(hour: $0).suitability == .fair }) {
+            return fairIdx
+        }
+        return day.daylightHours.isEmpty ? nil : 0
+    }
+    
     // MARK: - Daytime Hourly Suitability Section (Sunrise to Sunset)
-    private func daytimeHourlySection(for day: DailyVolleyballWeather) -> some View {
+    private func daytimeHourlySection(for day: DailyVolleyballWeather, dayIndex: Int) -> some View {
         let bestWindow = criteria.calculateBestPlayingWindow(daylightHours: day.daylightHours)
+        let activeHIdx = activeHourIndex(for: day, dayIndex: dayIndex)
         
         return VStack(alignment: .leading, spacing: 12) {
             // Header: Title & Sunrise/Sunset
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center) {
-                    Label("\(day.dayName) Daytime Hours", systemImage: "sun.and.horizon.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
+                    HStack(spacing: 6) {
+                        Text("⏱️")
+                            .font(.system(size: 14))
+                        Text("\(day.fullDayTitle) • Sunrise to Sunset")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                        if dayIndex == 0 {
+                            Text("TODAY")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.orange)
+                                .cornerRadius(4)
+                        }
+                    }
                     
                     Spacer()
                     
@@ -336,10 +364,6 @@ public struct VolleyballWeatherView: View {
                         .cornerRadius(6)
                     }
                 }
-                
-                Text("Daytime playing conditions from sunrise to sunset. Tap an hour for details.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
             }
             
             // Best window badge (if found)
@@ -382,7 +406,7 @@ public struct VolleyballWeatherView: View {
                         Button {
                             showSmartForecastsSheet = true
                         } label: {
-                            Text("Smart Settings")
+                            Text("Edit Conditions")
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(.cyan)
                         }
@@ -393,11 +417,11 @@ public struct VolleyballWeatherView: View {
                             let eval = criteria.evaluate(hour: hour)
                             let isMatch = eval.suitability == .good
                             let isFair = eval.suitability == .fair
-                            let isSelected = selectedHourIndex == hIdx
+                            let isSelected = activeHIdx == hIdx
                             
                             Button {
                                 withAnimation(.spring(response: 0.25)) {
-                                    selectedHourIndex = hIdx
+                                    selectedDayHourMap[dayIndex] = hIdx
                                 }
                             } label: {
                                 VStack {
@@ -468,35 +492,32 @@ public struct VolleyballWeatherView: View {
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 52), spacing: 6)], spacing: 6) {
                     ForEach(Array(day.daylightHours.enumerated()), id: \.element.id) { hIdx, hour in
-                        hourlyCard(for: hour, index: hIdx)
+                        hourlyCard(for: hour, index: hIdx, isSelected: activeHIdx == hIdx) {
+                            selectedDayHourMap[dayIndex] = hIdx
+                        }
                     }
                 }
                 .padding(.vertical, 4)
             }
             
             // Selected Hour Detail Callout
-            if let hIdx = selectedHourIndex, hIdx < day.daylightHours.count {
+            if let hIdx = activeHIdx, hIdx < day.daylightHours.count {
                 selectedHourDetailCard(for: day.daylightHours[hIdx])
             }
         }
         .padding(14)
-        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+        .background(Color(red: 0.09, green: 0.11, blue: 0.15))
         .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0.16, green: 0.19, blue: 0.26), lineWidth: 1))
     }
     
     // MARK: - Hourly Card (Fits Screen Width without Horizontal Scroll)
-    private func hourlyCard(for hour: HourlyVolleyballWeather, index: Int) -> some View {
+    private func hourlyCard(for hour: HourlyVolleyballWeather, index: Int, isSelected: Bool, onSelect: @escaping () -> Void) -> some View {
         let eval = criteria.evaluate(hour: hour)
-        let isSelected = selectedHourIndex == index
         
         return Button {
             withAnimation(.spring(response: 0.25)) {
-                if selectedHourIndex == index {
-                    selectedHourIndex = nil
-                } else {
-                    selectedHourIndex = index
-                }
+                onSelect()
             }
         } label: {
             VStack(spacing: 4) {

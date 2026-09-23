@@ -175,89 +175,9 @@
         </div>
       </div>
 
-      <!-- Threshold Preferences Card (User Configurable) -->
-      <div class="game-details-card" style="margin-bottom: 16px; padding: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="window.toggleVolleyballSettings()">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 16px;">⚙️</span>
-            <span style="font-size: 14px; font-weight: 800; color: #ffffff;">Your Ideal Playing Conditions</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span id="vb-settings-summary" style="font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.65);">60-80°F • &lt;10 mph • UV &lt;4</span>
-            <span id="vb-settings-chevron" style="font-size: 12px; color: rgba(255, 255, 255, 0.5); transition: transform 0.2s ease;">▼</span>
-          </div>
-        </div>
-
-        <div id="vb-settings-body" style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-          <div style="display: grid; grid-template-columns: 1fr; gap: 14px;">
-            <!-- Temperature Range -->
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <label style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.7);">🌡️ Temperature Range (°F)</label>
-                <span id="vb-temp-val-display" style="font-size: 12px; font-weight: 800; color: #fb923c;">60°F – 80°F</span>
-              </div>
-              <div style="display: flex; gap: 10px; align-items: center;">
-                <div style="flex: 1;">
-                  <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5); font-weight: 700;">MIN TEMP</span>
-                  <input type="range" id="vb-temp-min" min="45" max="75" step="1" value="60" oninput="window.updateVolleyballCriteriaFromUI()" style="width: 100%; accent-color: #38bdf8;">
-                </div>
-                <div style="flex: 1;">
-                  <span style="font-size: 10px; color: rgba(255, 255, 255, 0.5); font-weight: 700;">MAX TEMP</span>
-                  <input type="range" id="vb-temp-max" min="70" max="95" step="1" value="80" oninput="window.updateVolleyballCriteriaFromUI()" style="width: 100%; accent-color: #f87171;">
-                </div>
-              </div>
-            </div>
-
-            <!-- Wind Limit -->
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <label style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.7);">💨 Max Wind Speed</label>
-                <span id="vb-wind-val-display" style="font-size: 12px; font-weight: 800; color: #38bdf8;">Below 10 mph</span>
-              </div>
-              <input type="range" id="vb-wind-max" min="5" max="25" step="1" value="10" oninput="window.updateVolleyballCriteriaFromUI()" style="width: 100%; accent-color: #38bdf8;">
-              <div style="display: flex; justify-content: space-between; font-size: 10px; color: rgba(255, 255, 255, 0.4); margin-top: 2px;">
-                <span>5 mph (Calm)</span>
-                <span>10 mph (Default)</span>
-                <span>25 mph (Gale)</span>
-              </div>
-            </div>
-
-            <!-- UV Index Limit -->
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <label style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.7);">☀️ Max UV Index</label>
-                <span id="vb-uv-val-display" style="font-size: 12px; font-weight: 800; color: #facc15;">Below 4.0</span>
-              </div>
-              <input type="range" id="vb-uv-max" min="1" max="11" step="0.5" value="4" oninput="window.updateVolleyballCriteriaFromUI()" style="width: 100%; accent-color: #facc15;">
-              <div style="display: flex; justify-content: space-between; font-size: 10px; color: rgba(255, 255, 255, 0.4); margin-top: 2px;">
-                <span>1 (Low)</span>
-                <span>4 (Default: Moderate)</span>
-                <span>11 (Extreme)</span>
-              </div>
-            </div>
-          </div>
-
-          <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
-            <button type="button" class="btn btn-outline btn-sm" onclick="window.resetVolleyballCriteria()" style="font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 8px;">
-              Reset to Defaults
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Daytime Hourly Suitability Chart (Sunrise to Sunset) -->
-      <div id="vb-hourly-section" class="game-details-card" style="margin-bottom: 16px; padding: 16px;">
-        <!-- Injected via JavaScript based on selected day -->
-      </div>
-
-      <!-- 7-Day Forecast Cards List -->
-      <div style="margin-bottom: 12px;">
-        <div style="font-size: 13px; font-weight: 900; color: #0f172a; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.6px; display: flex; align-items: center; gap: 6px;">
-          <span>📅</span> 7-Day Forecast
-        </div>
-        <div id="vb-days-list" style="display: flex; flex-direction: column; gap: 10px;">
-          <!-- Injected via JavaScript -->
-        </div>
+      <!-- 7-Day Daytime Forecast List (Each Day Rendered as a Full Rich Card) -->
+      <div id="vb-days-list" style="display: flex; flex-direction: column; gap: 18px; margin-top: 14px; margin-bottom: 24px;">
+        <!-- Injected via JavaScript -->
       </div>
     </main>
 

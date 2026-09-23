@@ -2407,6 +2407,26 @@ nav#bottom-nav {
   color: rgba(255, 255, 255, 0.85);
 }
 
+.vb-full-day-card {
+  background: #181c26;
+  border: 1px solid #283042;
+  border-radius: 18px;
+  padding: 16px 16px 18px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  margin-bottom: 20px;
+  transition: border-color 0.2s ease;
+}
+
+.vb-hour-callout-box {
+  background: #111520;
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+
 .best-window-pill {
   display: inline-flex;
   align-items: center;
@@ -2418,6 +2438,24 @@ nav#bottom-nav {
   background: rgba(34, 197, 94, 0.15);
   color: #4ade80;
   border: 1px solid rgba(34, 197, 94, 0.35);
+}
+.best-window-pill.status-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+}
+.best-window-pill.status-yellow {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.2);
+}
+.best-window-pill.status-red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
 }
 
 /* Quick Glance Weekly Highlight Card */

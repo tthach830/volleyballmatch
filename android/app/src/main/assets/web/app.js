@@ -1088,158 +1088,212 @@ export function calculateBestPlayingWindow(daylightHours, criteria = window.voll
 
 window.selectedVolleyballHourIndex = null;
 
-export function renderDaytimeHourlyChart(day) {
-  const container = document.getElementById("vb-hourly-section");
-  if (!container || !day) return;
+window.selectedDayHourlyIndices = window.selectedDayHourlyIndices || {};
 
-  const criteria = window.volleyballCriteria;
+export function renderSingleDayCardHtml(day, dayIdx, criteria = window.volleyballCriteria) {
+  if (!day) return "";
   const daylightHours = day.daylightHours || [];
-  const bestWindow = calculateBestPlayingWindow(daylightHours, criteria);
+  const bestWindow = calculateBestPlayingWindow(daylightHours, criteria) || {
+    windowText: "Poor All Day",
+    status: "red",
+    score: 0,
+    summaryText: "High wind or extreme temps",
+    badgeTitle: "Not Recommended"
+  };
 
-  if (window.selectedVolleyballHourIndex === null || window.selectedVolleyballHourIndex >= daylightHours.length) {
+  // Determine selected hour index for this day
+  window.selectedDayHourlyIndices = window.selectedDayHourlyIndices || {};
+  let selectedHourIdx = window.selectedDayHourlyIndices[dayIdx];
+  if (selectedHourIdx === undefined || selectedHourIdx === null || selectedHourIdx >= daylightHours.length) {
     const idealIdx = daylightHours.findIndex(h => evaluateHourlySuitability(h, criteria).status === "green");
-    window.selectedVolleyballHourIndex = idealIdx >= 0 ? idealIdx : 0;
+    if (idealIdx >= 0) {
+      selectedHourIdx = idealIdx;
+    } else {
+      const fairIdx = daylightHours.findIndex(h => evaluateHourlySuitability(h, criteria).status === "yellow");
+      selectedHourIdx = fairIdx >= 0 ? fairIdx : 0;
+    }
+    window.selectedDayHourlyIndices[dayIdx] = selectedHourIdx;
   }
 
-  const selectedHour = daylightHours[window.selectedVolleyballHourIndex] || daylightHours[0];
+  const selectedHour = daylightHours[selectedHourIdx] || daylightHours[0];
   const evalSelected = selectedHour ? evaluateHourlySuitability(selectedHour, criteria) : null;
 
-  let hourlyCardsHtml = "";
-  if (daylightHours.length === 0) {
-    hourlyCardsHtml = `<div style="padding: 16px; color: rgba(255,255,255,0.6); font-size: 13px;">No daylight hours recorded for this day.</div>`;
-  } else {
-    hourlyCardsHtml = daylightHours.map((h, hIdx) => {
-      const hEval = evaluateHourlySuitability(h, criteria);
-      const isSelected = hIdx === window.selectedVolleyballHourIndex;
-      const dotClass = hEval.status === "green" ? "vb-dot-green" : (hEval.status === "yellow" ? "vb-dot-yellow" : "vb-dot-red");
+  // 1. Highlight Bar Chart HTML
+  const barsHtml = daylightHours.map((h, hIdx) => {
+    const hEval = evaluateHourlySuitability(h, criteria);
+    const isSelected = hIdx === selectedHourIdx;
+    const isMatch = hEval.status === "green";
+    const isFair = hEval.status === "yellow";
 
+    if (isMatch || isFair) {
+      const heightPercent = isMatch ? Math.min(96, Math.max(48, (h.temp - 50) * 2.2 + 30)) : 38;
+      const barColor = isMatch ? "linear-gradient(to top, #d97706, #fbbf24)" : "linear-gradient(to top, #854d0e, #ca8a04)";
+      const glow = isMatch ? "0 0 10px rgba(251, 191, 36, 0.5)" : "none";
+      const borderStyle = isSelected ? "outline: 2.5px solid #38bdf8; box-shadow: 0 0 12px rgba(56, 189, 248, 0.85);" : "";
       return `
-        <div class="vb-hour-card status-${hEval.status} ${isSelected ? 'selected' : ''}" onclick="window.selectVolleyballHour(${hIdx})" title="${h.hourLabel}: ${hEval.label} (${h.temp}°F, ${h.windMph} mph, UV ${h.uvIndex})">
-          <span class="vb-hour-label">${h.hourLabel}</span>
-          <span class="vb-hour-emoji">${h.conditionEmoji}</span>
-          <span class="vb-dot ${dotClass}"></span>
-          <span class="vb-hour-temp">${h.temp}°</span>
-          <span class="vb-hour-wind">💨 ${h.windMph}m</span>
-          <span class="vb-hour-uv">UV ${h.uvIndex}</span>
+        <div class="sf-col" onclick="window.selectDayHourlyCard(${dayIdx}, ${hIdx})" title="${h.hourLabel}: ${hEval.label}">
+          <div class="sf-bar-inner" style="height: ${heightPercent}%; background: ${barColor}; box-shadow: ${glow}; ${borderStyle}"></div>
         </div>
       `;
-    }).join("");
+    } else {
+      const dotStyle = isSelected ? "background: #38bdf8; transform: scale(1.6); box-shadow: 0 0 8px #38bdf8;" : "";
+      return `
+        <div class="sf-col" onclick="window.selectDayHourlyCard(${dayIdx}, ${hIdx})" title="${h.hourLabel}: ${hEval.label}">
+          <div class="sf-dot-inner" style="${dotStyle}"></div>
+        </div>
+      `;
+    }
+  }).join("");
+
+  // Axis markers
+  const axisStep = Math.max(1, Math.floor(daylightHours.length / 6));
+  const markers = [];
+  for (let i = 0; i < daylightHours.length; i += axisStep) {
+    markers.push(daylightHours[i].hourLabel.replace(' ', ''));
   }
+  const lastHourStr = daylightHours.length > 0 ? daylightHours[daylightHours.length - 1].hourLabel.replace(' ', '') : '';
+  if (lastHourStr && !markers.includes(lastHourStr)) {
+    markers.push(lastHourStr);
+  }
+  const axisHtml = markers.map(m => `<span>${m}</span>`).join("");
 
-  container.innerHTML = `
-    <!-- Header with Sunrise / Sunset & Best Time Window -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-      <div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 16px;">⏱️</span>
-          <span style="font-size: 14px; font-weight: 800; color: #ffffff;">${day.fullDayTitle} • Sunrise to Sunset</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
-          <span class="sun-summary-chip">🌅 Sunrise ${day.sunrise || "6:56 AM"}</span>
-          <span class="sun-summary-chip">🌇 Sunset ${day.sunset || "7:04 PM"}</span>
-        </div>
+  // 2. Daylight Hourly Grid Cards HTML
+  const hourlyCardsHtml = daylightHours.map((h, hIdx) => {
+    const hEval = evaluateHourlySuitability(h, criteria);
+    const isSelected = hIdx === selectedHourIdx;
+    const dotClass = hEval.status === "green" ? "vb-dot-green" : (hEval.status === "yellow" ? "vb-dot-yellow" : "vb-dot-red");
+
+    return `
+      <div class="vb-hour-card status-${hEval.status} ${isSelected ? 'selected' : ''}" onclick="window.selectDayHourlyCard(${dayIdx}, ${hIdx})" title="${h.hourLabel}: ${hEval.label} (${h.temp}°F, ${h.windMph} mph, UV ${h.uvIndex})">
+        <span class="vb-hour-label">${h.hourLabel}</span>
+        <span class="vb-hour-emoji">${h.conditionEmoji}</span>
+        <span class="vb-dot ${dotClass}"></span>
+        <span class="vb-hour-temp">${h.temp}°</span>
+        <span class="vb-hour-wind">💨 ${h.windMph}m</span>
+        <span class="vb-hour-uv">UV ${h.uvIndex}</span>
       </div>
+    `;
+  }).join("");
 
-      <!-- Best Playing Window Callout -->
-      ${bestWindow ? `
-        <div class="best-window-pill" style="border-color: ${bestWindow.status === 'green' ? 'rgba(34, 197, 94, 0.4)' : (bestWindow.status === 'yellow' ? 'rgba(234, 179, 8, 0.4)' : 'rgba(239, 68, 68, 0.4)')}; color: ${bestWindow.status === 'green' ? '#4ade80' : (bestWindow.status === 'yellow' ? '#facc15' : '#f87171')}; background: ${bestWindow.status === 'green' ? 'rgba(34, 197, 94, 0.15)' : (bestWindow.status === 'yellow' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(239, 68, 68, 0.15)')};">
-          <span>🌟</span>
-          <span><b>Best Time:</b> ${bestWindow.windowText}</span>
-        </div>
-      ` : ''}
-    </div>
+  // 3. Selected Hour Callout HTML
+  let calloutHtml = "";
+  if (selectedHour && evalSelected) {
+    const statusText = evalSelected.status === "green"
+      ? "Great for Volleyball"
+      : (evalSelected.status === "yellow" ? "Fair Playing Window" : "Unfavorable (" + evalSelected.label + ")");
+    const dotEmoji = evalSelected.status === "green" ? "🟢" : (evalSelected.status === "yellow" ? "🟡" : "🔴");
+    const statusColor = evalSelected.status === "green" ? "#4ade80" : (evalSelected.status === "yellow" ? "#facc15" : "#f87171");
 
-    <!-- Smart Forecast Highlight Bar Timeline (Bars for Matches, Dots for Off-Peak) -->
-    <div class="sf-chart-wrapper" style="margin-bottom: 14px; padding: 14px 10px 10px 10px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span style="font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.8); display: flex; align-items: center; gap: 5px;">
-          <span>✨</span> CONDITIONS HIGHLIGHTED
-        </span>
-        <button type="button" class="btn btn-sm btn-outline" onclick="window.openSmartForecastsModal()" style="font-size: 10px; padding: 2px 8px; border-radius: 6px; color: #38bdf8; border-color: rgba(56,189,248,0.3);">
-          Edit Conditions
-        </button>
-      </div>
-      <div class="sf-timeline-bars" style="height: 65px;">
-        ${daylightHours.map((h, hIdx) => {
-          const hEval = evaluateHourlySuitability(h, criteria);
-          const isSelected = hIdx === window.selectedVolleyballHourIndex;
-          const isMatch = hEval.status === "green";
-          const isFair = hEval.status === "yellow";
-          if (isMatch || isFair) {
-            const heightPercent = isMatch ? Math.min(95, Math.max(50, (h.temp - 50) * 2 + 30)) : 38;
-            const barColor = isMatch ? "linear-gradient(to top, #d97706, #fbbf24)" : "linear-gradient(to top, #854d0e, #ca8a04)";
-            const glow = isMatch ? "0 0 8px rgba(251, 191, 36, 0.5)" : "none";
-            const border = isSelected ? "2px solid #38bdf8" : "none";
-            return `
-              <div class="sf-col" onclick="window.selectVolleyballHour(${hIdx})" title="${h.hourLabel}: ${hEval.label}">
-                <div class="sf-bar-inner" style="height: ${heightPercent}%; background: ${barColor}; box-shadow: ${glow}; outline: ${border};"></div>
-              </div>
-            `;
-          } else {
-            return `
-              <div class="sf-col" onclick="window.selectVolleyballHour(${hIdx})" title="${h.hourLabel}: ${hEval.label}">
-                <div class="sf-dot-inner" style="${isSelected ? 'background: #38bdf8; transform: scale(1.6);' : ''}"></div>
-              </div>
-            `;
-          }
-        }).join("")}
-      </div>
-      <div class="sf-timeline-axis" style="margin-top: 4px;">
-        ${(() => {
-          const step = Math.max(1, Math.floor(daylightHours.length / 5));
-          const markers = [];
-          for (let i = 0; i < daylightHours.length; i += step) {
-            markers.push(daylightHours[i].hourLabel.replace(' ', ''));
-          }
-          const lastLabel = daylightHours[daylightHours.length - 1].hourLabel.replace(' ', '');
-          if (!markers.includes(lastLabel)) markers.push(lastLabel);
-          return markers.map(m => `<span>${m}</span>`).join("");
-        })()}
-      </div>
-    </div>
+    const tempClass = selectedHour.temp >= criteria.minTemp && selectedHour.temp <= criteria.maxTemp ? "ok" : "bad";
+    const windClass = selectedHour.windMph <= criteria.maxWind ? "ok" : (selectedHour.windMph <= criteria.maxWind + 3 ? "warn" : "bad");
+    const uvClass = selectedHour.uvIndex <= criteria.maxUV ? "ok" : "warn";
 
-    <!-- Scrollable Hourly Track (Sunrise to Sunset) -->
-    <div class="vb-hourly-track" style="margin-bottom: 12px;">
-      ${hourlyCardsHtml}
-    </div>
-
-    <!-- Selected Hour Detail Callout -->
-    ${selectedHour && evalSelected ? `
-      <div style="background: #111520; border-radius: 12px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 26px;">${selectedHour.conditionEmoji}</span>
-          <div>
-            <div style="font-size: 13px; font-weight: 800; color: #ffffff;">
-              ${selectedHour.hourLabel}: <span style="color: ${evalSelected.status === 'green' ? '#4ade80' : (evalSelected.status === 'yellow' ? '#facc15' : '#f87171')}">${evalSelected.status === 'green' ? '🟢 Great for Volleyball' : (evalSelected.status === 'yellow' ? '🟡 Fair Playing Window' : '🔴 Unfavorable (' + evalSelected.label + ')')}</span>
+    calloutHtml = `
+      <div class="vb-hour-callout-box">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <span style="font-size: 32px; line-height: 1;">${selectedHour.conditionEmoji}</span>
+          <div style="flex: 1;">
+            <div style="font-size: 14px; font-weight: 800; color: #ffffff;">
+              ${selectedHour.hourLabel}: <span style="color: ${statusColor}; font-weight: 800;">${dotEmoji} ${statusText}</span>
             </div>
-            <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">
+            <div style="font-size: 12px; color: #cbd5e1; margin-top: 3px; font-weight: 500; line-height: 1.4;">
               ${evalSelected.tip}
             </div>
           </div>
         </div>
 
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <span class="vb-metric-chip ${selectedHour.temp >= criteria.minTemp && selectedHour.temp <= criteria.maxTemp ? 'ok' : 'bad'}">
+          <span class="vb-metric-chip ${tempClass}">
             🌡️ <b>${selectedHour.temp}°F</b>
           </span>
-          <span class="vb-metric-chip ${selectedHour.windMph <= criteria.maxWind ? 'ok' : (selectedHour.windMph <= criteria.maxWind + 3 ? 'warn' : 'bad')}">
+          <span class="vb-metric-chip ${windClass}">
             💨 <b>${selectedHour.windMph} mph</b>
           </span>
-          <span class="vb-metric-chip ${selectedHour.uvIndex <= criteria.maxUV ? 'ok' : 'warn'}">
+          <span class="vb-metric-chip ${uvClass}">
             ☀️ <b>UV ${selectedHour.uvIndex}</b>
           </span>
         </div>
       </div>
-    ` : ''}
+    `;
+  }
+
+  return `
+    <div id="vb-full-day-${dayIdx}" class="vb-full-day-card">
+      <!-- Header with Sunrise / Sunset & Best Time Window -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 17px;">⏱️</span>
+            <span style="font-size: 15px; font-weight: 800; color: #ffffff;">${day.fullDayTitle} • Sunrise to Sunset</span>
+            ${dayIdx === 0 ? '<span style="font-size: 10px; font-weight: 900; background: #ea580c; color: #ffffff; padding: 2px 7px; border-radius: 6px; letter-spacing: 0.5px;">TODAY</span>' : ''}
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+            <span class="sun-summary-chip">🌅 Sunrise ${day.sunrise || "6:56 AM"}</span>
+            <span class="sun-summary-chip">🌇 Sunset ${day.sunset || "7:03 PM"}</span>
+          </div>
+        </div>
+
+        <!-- Best Playing Window Callout -->
+        ${bestWindow ? `
+          <div class="best-window-pill status-${bestWindow.status}">
+            <span>🌟</span>
+            <span><b>Best Time:</b> ${bestWindow.windowText}</span>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- CONDITIONS HIGHLIGHTED Section -->
+      <div class="sf-chart-wrapper" style="margin-bottom: 14px; padding: 14px 10px 10px 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.85); display: flex; align-items: center; gap: 5px; letter-spacing: 0.5px;">
+            <span>✨</span> CONDITIONS HIGHLIGHTED
+          </span>
+          <button type="button" class="btn btn-sm btn-outline" onclick="window.openSmartForecastsModal()" style="font-size: 10px; padding: 2px 8px; border-radius: 6px; color: #38bdf8; border-color: rgba(56,189,248,0.3); font-weight: 700; background: rgba(56,189,248,0.06);">
+            Edit Conditions
+          </button>
+        </div>
+        <div class="sf-timeline-bars" style="height: 65px;">
+          ${barsHtml}
+        </div>
+        <div class="sf-timeline-axis" style="margin-top: 4px;">
+          ${axisHtml}
+        </div>
+      </div>
+
+      <!-- Daylight Hourly Cards Grid (Sunrise to Sunset) -->
+      <div class="vb-hourly-track" style="margin-bottom: 12px;">
+        ${hourlyCardsHtml}
+      </div>
+
+      <!-- Selected Hour Detail Callout -->
+      ${calloutHtml}
+    </div>
   `;
 }
 
-window.selectVolleyballHour = function(hIdx) {
-  window.selectedVolleyballHourIndex = hIdx;
-  const currentDay = window.currentVolleyballWeeklyData?.[window.selectedVolleyballDayIndex || 0];
-  if (currentDay) {
-    renderDaytimeHourlyChart(currentDay);
+window.selectDayHourlyCard = function(dayIdx, hIdx) {
+  window.selectedDayHourlyIndices = window.selectedDayHourlyIndices || {};
+  window.selectedDayHourlyIndices[dayIdx] = hIdx;
+  const day = window.currentVolleyballWeeklyData?.[dayIdx];
+  if (day) {
+    const cardEl = document.getElementById(`vb-full-day-${dayIdx}`);
+    if (cardEl) {
+      cardEl.outerHTML = renderSingleDayCardHtml(day, dayIdx, window.volleyballCriteria);
+      return;
+    }
   }
+  if (window.currentVolleyballWeeklyData) {
+    renderVolleyballDaysList(window.currentVolleyballWeeklyData);
+  }
+};
+
+export function renderDaytimeHourlyChart(day) {
+  // Maintained for backward compatibility; full cards are rendered in 7-day list
+}
+
+window.selectVolleyballHour = function(hIdx) {
+  const dayIdx = window.selectedVolleyballDayIndex || 0;
+  window.selectDayHourlyCard(dayIdx, hIdx);
 };
 
 export function syncVolleyballCriteriaToUI() {
@@ -1343,253 +1397,22 @@ window.refreshVolleyballWeather = function() {
 
 window.selectVolleyballDay = function(index) {
   window.selectedVolleyballDayIndex = index;
-  window.selectedVolleyballHourIndex = null;
-  if (window.currentVolleyballWeeklyData && window.currentVolleyballWeeklyData.length > 0) {
-    renderVolleyballChart(window.currentVolleyballWeeklyData);
-    renderVolleyballDaysList(window.currentVolleyballWeeklyData);
-    renderDaytimeHourlyChart(window.currentVolleyballWeeklyData[index]);
-  }
-  const targetSection = document.getElementById("vb-hourly-section");
-  if (targetSection) {
-    targetSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const targetCard = document.getElementById(`vb-full-day-${index}`);
+  if (targetCard) {
+    targetCard.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 };
 
 export function renderVolleyballChart(days) {
-  const container = document.getElementById("vb-chart-container");
-  if (!container) return;
-
-  const minTempAll = Math.min(...days.map(d => d.tempMin), 45);
-  const maxTempAll = Math.max(...days.map(d => d.tempMax), 85);
-  const tempRange = Math.max(1, maxTempAll - minTempAll);
-
-  const colsHtml = days.map((day, idx) => {
-    const evalRes = evaluateVolleyballSuitability(day);
-    const isSelected = idx === window.selectedVolleyballDayIndex;
-
-    let dotRingClass = "good";
-    let dotClass = "vb-dot-green";
-    if (evalRes.status === "fair") {
-      dotRingClass = "fair";
-      dotClass = "vb-dot-yellow";
-    } else if (evalRes.status === "poor") {
-      dotRingClass = "poor";
-      dotClass = "vb-dot-red";
-    }
-
-    // Bar height between 24px and 70px proportional to temp
-    const barHeight = Math.max(24, Math.round(((day.tempMax - minTempAll) / tempRange) * 70));
-
-    return `
-      <div class="vb-chart-col ${isSelected ? 'selected' : ''}" onclick="window.selectVolleyballDay(${idx})" title="${day.fullDayTitle}: ${evalRes.statusText}">
-        <!-- Day Name -->
-        <span style="font-size: 11px; font-weight: 800; color: ${isSelected ? '#ea580c' : '#ffffff'}; margin-bottom: 2px;">
-          ${day.dayName}
-        </span>
-        <span style="font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 6px;">
-          ${day.dateFormatted}
-        </span>
-
-        <!-- Suitability Dot Ring -->
-        <div class="vb-chart-dot-ring ${dotRingClass}">
-          <span class="vb-dot ${dotClass}"></span>
-        </div>
-
-        <!-- Weather Condition Emoji -->
-        <span style="font-size: 18px; margin-bottom: 4px;">${day.conditionEmoji}</span>
-
-        <!-- Temp High -->
-        <span style="font-size: 13px; font-weight: 800; color: #ffffff;">${day.tempMax}°</span>
-
-        <!-- Temperature Proportional Bar -->
-        <div class="vb-chart-temp-bar" style="height: ${barHeight}px;"></div>
-
-        <!-- Temp Low -->
-        <span style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); margin-bottom: 6px;">${day.tempMin}°</span>
-
-        <!-- Metrics Chips -->
-        <div style="display: flex; flex-direction: column; gap: 3px; width: 100%; align-items: center;">
-          <span style="font-size: 9px; font-weight: 700; color: #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 2px 3px; border-radius: 4px; white-space: nowrap; width: 90%; text-align: center;">
-            💨${day.windMax}m
-          </span>
-          <span style="font-size: 9px; font-weight: 700; color: #facc15; background: rgba(250, 204, 21, 0.12); padding: 2px 3px; border-radius: 4px; white-space: nowrap; width: 90%; text-align: center;">
-            ☀️${day.uvMax}
-          </span>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  container.innerHTML = `
-    <div class="vb-chart-track">
-      ${colsHtml}
-    </div>
-  `;
+  // Maintained for compatibility
 }
 
 export function renderVolleyballDaysList(days) {
   const container = document.getElementById("vb-days-list");
-  if (!container) return;
+  if (!container || !days) return;
 
   const criteria = window.volleyballCriteria;
-
-  // Calculate best window for each day
-  const daysWithWindows = days.map((day, idx) => {
-    const bestWindow = calculateBestPlayingWindow(day.daylightHours, criteria) || {
-      windowText: "Poor All Day",
-      status: "red",
-      score: 0,
-      summaryText: "High wind or extreme temps",
-      badgeTitle: "Not Recommended"
-    };
-    const evalRes = evaluateVolleyballSuitability(day, criteria);
-    return { day, idx, bestWindow, evalRes };
-  });
-
-  // Top recommended playing windows this week (sorted by score)
-  const topWindows = [...daysWithWindows]
-    .filter(d => d.bestWindow.status === "green" || d.bestWindow.status === "yellow")
-    .sort((a, b) => b.bestWindow.score - a.bestWindow.score)
-    .slice(0, 3);
-
-  let highlightsHtml = "";
-  if (topWindows.length > 0) {
-    const medals = ["🥇", "🥈", "🥉"];
-    const pillsHtml = topWindows.map((tw, tIdx) => `
-      <div class="vb-highlight-pill" onclick="window.selectVolleyballDay(${tw.idx})" title="Click to view ${tw.day.fullDayTitle}">
-        <span style="font-size: 14px;">${medals[tIdx] || '🏐'}</span>
-        <div>
-          <div style="font-size: 11px; font-weight: 800; color: #ffffff;">
-            ${tw.day.dayName}: <span style="color: ${tw.bestWindow.status === 'green' ? '#4ade80' : '#facc15'}; text-shadow: 0 0 6px ${tw.bestWindow.status === 'green' ? 'rgba(74,222,128,0.4)' : 'rgba(250,204,21,0.4)'};">${tw.bestWindow.windowText}</span>
-          </div>
-          <div style="font-size: 10px; color: #cbd5e1; font-weight: 600; margin-top: 1px;">
-            ${tw.bestWindow.summaryText}
-          </div>
-        </div>
-      </div>
-    `).join("");
-
-    highlightsHtml = `
-      <div class="vb-week-highlight-card">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-          <span style="font-size: 12px; font-weight: 900; color: #fbbf24; display: flex; align-items: center; gap: 6px; letter-spacing: 0.4px;">
-            <span>🏆</span> TOP PLAYING TIMES THIS WEEK (AT A GLANCE)
-          </span>
-          <span style="font-size: 10px; color: #94a3b8; font-weight: 700;">Tap day for hourly details</span>
-        </div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          ${pillsHtml}
-        </div>
-      </div>
-    `;
-  }
-
-  const cardsHtml = daysWithWindows.map(({ day, idx, bestWindow, evalRes }) => {
-    const isSelected = idx === window.selectedVolleyballDayIndex;
-
-    const windOk = day.windMax <= criteria.maxWind;
-    const windBad = day.windMax > criteria.maxWind + 3;
-    const windChipClass = windOk ? "ok" : (windBad ? "bad" : "warn");
-
-    const uvOk = day.uvMax <= criteria.maxUV;
-    const uvBad = day.uvMax > criteria.maxUV + 2.5;
-    const uvChipClass = uvOk ? "ok" : (uvBad ? "bad" : "warn");
-
-    const tempOk = day.tempMax <= criteria.maxTemp && day.tempAvg >= criteria.minTemp;
-    const tempBad = day.tempMax > criteria.maxTemp || day.tempAvg < criteria.minTemp - 6;
-    const tempChipClass = tempOk ? "ok" : (tempBad ? "bad" : "warn");
-
-    // Mini Daytime Timeline (Sunrise to Sunset)
-    const daylight = day.daylightHours || [];
-    let timelineHtml = "";
-    if (daylight.length > 0) {
-      const hourChips = daylight.map(h => {
-        const hEval = evaluateHourlySuitability(h, criteria);
-        const isIdeal = hEval.status === "green";
-        const isFair = hEval.status === "yellow";
-        return `
-          <div class="vb-timeline-hour ${isIdeal ? 'is-ideal' : ''}" title="${h.hourLabel}: ${hEval.label} (${h.temp}°, ${h.windMph} mph, UV ${h.uvIndex})">
-            <span class="vb-timeline-hour-text">${h.hourLabel.replace(' ', '')}</span>
-            <div style="height: 16px; display: flex; align-items: flex-end; justify-content: center; width: 100%;">
-              ${isIdeal ? `
-                <span style="width: 8px; height: 16px; border-radius: 3px; background: linear-gradient(to top, #ea580c, #fbbf24); box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);"></span>
-              ` : (isFair ? `
-                <span style="width: 8px; height: 9px; border-radius: 2px; background: #facc15;"></span>
-              ` : `
-                <span style="width: 6px; height: 6px; border-radius: 50%; background: #64748b; margin-bottom: 2px;"></span>
-              `)}
-            </div>
-            <span class="vb-timeline-hour-temp">${h.temp}°</span>
-          </div>
-        `;
-      }).join("");
-
-      timelineHtml = `
-        <div class="vb-timeline-container">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 10px; font-weight: 700; color: #f1f5f9;">
-            <span>🌅 ${day.sunrise || '6:56 AM'}</span>
-            <span style="letter-spacing: 0.6px; text-transform: uppercase; color: #94a3b8; font-weight: 800;">Daytime Hours • Sunrise to Sunset</span>
-            <span>🌇 ${day.sunset || '7:04 PM'}</span>
-          </div>
-          <div class="vb-timeline-track">
-            ${hourChips}
-          </div>
-        </div>
-      `;
-    }
-
-    return `
-      <div id="vb-day-card-${idx}" class="vb-day-card ${isSelected ? 'selected' : ''}" onclick="window.selectVolleyballDay(${idx})">
-        <!-- Header with Day Summary & Prominent Best Time to Play Pill -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-          <div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="vb-dot ${evalRes.status === 'good' ? 'vb-dot-green' : evalRes.status === 'fair' ? 'vb-dot-yellow' : 'vb-dot-red'}"></span>
-              <span style="font-size: 17px; font-weight: 800; color: #ffffff;">${day.fullDayTitle}</span>
-              ${idx === 0 ? '<span style="font-size: 10px; font-weight: 900; background: #ea580c; color: #ffffff; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.5px;">TODAY</span>' : ''}
-            </div>
-            <div style="font-size: 12px; color: #cbd5e1; margin-top: 3px; font-weight: 500;">
-              ${day.conditionEmoji} ${day.conditionText} • High <b style="color: #ffffff;">${day.tempMax}°F</b>, Low <b style="color: #94a3b8;">${day.tempMin}°F</b>
-            </div>
-          </div>
-
-          <!-- Prominent Best Time Badge (Glanceable!) -->
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 3px;">
-            <div class="vb-best-badge status-${bestWindow.status}">
-              <span>🌟</span>
-              <span><b>Best Time:</b> ${bestWindow.windowText}</span>
-            </div>
-            <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">
-              ${bestWindow.summaryText}
-            </span>
-          </div>
-        </div>
-
-        <!-- Mini Daytime Timeline Track (Sunrise to Sunset) -->
-        ${timelineHtml}
-
-        <!-- Metrics Chips Row -->
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; margin-bottom: 10px;">
-          <span class="vb-metric-chip ${tempChipClass}">
-            🌡️ <b style="color: #ffffff;">${day.tempAvg}°F Avg</b> <span style="color: #94a3b8;">(${day.tempMin}°–${day.tempMax}°)</span>
-          </span>
-          <span class="vb-metric-chip ${windChipClass}">
-            💨 <b style="color: #ffffff;">${day.windMax} mph Wind</b> <span style="color: #94a3b8;">(${weatherService.getWindCategory(day.windMax)})</span>
-          </span>
-          <span class="vb-metric-chip ${uvChipClass}">
-            ☀️ <b style="color: #ffffff;">UV ${day.uvMax}</b> <span style="color: #94a3b8;">(${weatherService.getUvCategory(day.uvMax)})</span>
-          </span>
-        </div>
-
-        <!-- Volleyball Advice Tip Box -->
-        <div style="background: #111520; border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3.5px solid ${evalRes.status === 'good' ? '#22c55e' : evalRes.status === 'fair' ? '#eab308' : '#ef4444'}; border-radius: 8px; padding: 9px 12px; font-size: 11px; color: #cbd5e1; line-height: 1.45;">
-          <b style="color: ${evalRes.status === 'good' ? '#4ade80' : evalRes.status === 'fair' ? '#facc15' : '#f87171'};">Beach Tip:</b> ${evalRes.summaryTip}
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  container.innerHTML = highlightsHtml + cardsHtml;
+  container.innerHTML = days.map((day, idx) => renderSingleDayCardHtml(day, idx, criteria)).join("");
 }
 
 export function updateVolleyballOverallPill(days) {
