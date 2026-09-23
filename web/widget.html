@@ -769,7 +769,8 @@
           <!-- 7-Day Chart -->
           <div class="chart-card">
             <div class="chart-top-bar">
-              <span style="font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">7-DAY FORECAST</span>
+              <span style="font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">7-DAY FORECAST (GLANCEABLE BEST TIMES)</span>
+              <span style="font-size: 10px; color: var(--text-muted);">Tap a day for hourly view</span>
             </div>
 
             <div class="chart-grid">
@@ -779,10 +780,50 @@
           const isSelected = idx === selectedDayIdx;
           const barHeightPct = Math.min(100, Math.max(25, ((day.tempMax - 45) / (95 - 45)) * 100));
 
+          const dDaylight = day.daylightHours || [];
+          let dStart = -1, dLen = 0, cStart = -1, cLen = 0;
+          dDaylight.forEach((h, hidx) => {
+            if (evaluateHour(h).status === 'green') {
+              if (cStart === -1) cStart = hidx;
+              cLen++;
+              if (cLen > dLen) { dLen = cLen; dStart = cStart; }
+            } else {
+              cStart = -1; cLen = 0;
+            }
+          });
+
+          let dWindowText = '';
+          let dStatus = 'red';
+          if (dLen >= 2) {
+            dWindowText = `${dDaylight[dStart].hourLabel.replace(' ', '')}–${dDaylight[dStart + dLen - 1].hourLabel.replace(' ', '')}`;
+            dStatus = 'green';
+          } else {
+            cStart = -1; cLen = 0;
+            dDaylight.forEach((h, hidx) => {
+              if (evaluateHour(h).status !== 'red') {
+                if (cStart === -1) cStart = hidx;
+                cLen++;
+                if (cLen > dLen) { dLen = cLen; dStart = cStart; }
+              } else {
+                cStart = -1; cLen = 0;
+              }
+            });
+            if (dLen >= 1) {
+              dWindowText = `${dDaylight[dStart].hourLabel.replace(' ', '')}–${dDaylight[dStart + dLen - 1].hourLabel.replace(' ', '')}`;
+              dStatus = 'yellow';
+            } else {
+              dWindowText = 'Poor';
+              dStatus = 'red';
+            }
+          }
+
           html += `
-            <div class="chart-day-col ${isSelected ? 'selected' : ''}" onclick="window.selectDay(${idx})" title="${day.dayName}: High ${day.tempMax}°, Low ${day.tempMin}°">
+            <div class="chart-day-col ${isSelected ? 'selected' : ''}" onclick="window.selectDay(${idx})" title="${day.dayName}: Best Time ${dWindowText}">
               <span class="day-name">${day.dayName}</span>
               <span class="day-emoji">${day.conditionEmoji}</span>
+              <span style="font-size: 8px; font-weight: 800; padding: 2px 3px; border-radius: 4px; background: ${dStatus === 'green' ? 'rgba(34, 197, 94, 0.2)' : (dStatus === 'yellow' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)')}; color: ${dStatus === 'green' ? '#4ade80' : (dStatus === 'yellow' ? '#facc15' : '#f87171')}; width: 92%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${dWindowText}
+              </span>
               <div class="temp-track">
                 <div class="temp-bar-fill" style="height: ${barHeightPct}%;"></div>
               </div>

@@ -132,8 +132,10 @@ public struct VolleyballCriteria: Codable, Equatable {
         }
     }
     
-    public func calculateBestPlayingWindow(daylightHours: [HourlyVolleyballWeather]) -> (windowText: String, isGreen: Bool)? {
-        guard !daylightHours.isEmpty else { return nil }
+    public func calculateBestPlayingWindowDetails(daylightHours: [HourlyVolleyballWeather]) -> BestPlayingWindowInfo {
+        guard !daylightHours.isEmpty else {
+            return BestPlayingWindowInfo(windowText: "No Data", suitability: .poor, summaryText: "Unavailable", score: 0)
+        }
         
         let evaluated = daylightHours.map { (hour: $0, eval: evaluate(hour: $0)) }
         
@@ -157,9 +159,19 @@ public struct VolleyballCriteria: Codable, Equatable {
         }
         
         if bestLen >= 2 {
-            let startH = evaluated[bestStart].hour
-            let endH = evaluated[bestStart + bestLen - 1].hour
-            return ("\(startH.hourLabel) – \(endH.hourLabel)", true)
+            let slice = evaluated[bestStart..<(bestStart + bestLen)].map { $0.hour }
+            let startH = slice.first!
+            let endH = slice.last!
+            let avgTemp = slice.reduce(0) { $0 + $1.temp } / slice.count
+            let maxWind = slice.map { $0.windMph }.max() ?? 8
+            let maxUv = slice.map { $0.uvIndex }.max() ?? 3.0
+            let score = bestLen * 10 + (25 - maxWind)
+            return BestPlayingWindowInfo(
+                windowText: "\(startH.hourLabel) – \(endH.hourLabel)",
+                suitability: .good,
+                summaryText: "\(avgTemp)°F • 💨 \(maxWind) mph • ☀️ UV \(String(format: "%.1f", maxUv))",
+                score: score
+            )
         }
         
         for i in 0..<evaluated.count {
@@ -177,12 +189,45 @@ public struct VolleyballCriteria: Codable, Equatable {
         }
         
         if bestLen >= 1 {
-            let startH = evaluated[bestStart].hour
-            let endH = evaluated[bestStart + bestLen - 1].hour
-            return ("\(startH.hourLabel) – \(endH.hourLabel)", false)
+            let slice = evaluated[bestStart..<(bestStart + bestLen)].map { $0.hour }
+            let startH = slice.first!
+            let endH = slice.last!
+            let avgTemp = slice.reduce(0) { $0 + $1.temp } / slice.count
+            let maxWind = slice.map { $0.windMph }.max() ?? 10
+            return BestPlayingWindowInfo(
+                windowText: "\(startH.hourLabel) – \(endH.hourLabel)",
+                suitability: .fair,
+                summaryText: "\(avgTemp)°F • 💨 \(maxWind) mph (Breeze)",
+                score: bestLen * 5
+            )
         }
         
-        return nil
+        return BestPlayingWindowInfo(
+            windowText: "Poor All Day",
+            suitability: .poor,
+            summaryText: "Challenging wind, heat, or rain",
+            score: 0
+        )
+    }
+    
+    public func calculateBestPlayingWindow(daylightHours: [HourlyVolleyballWeather]) -> (windowText: String, isGreen: Bool)? {
+        let details = calculateBestPlayingWindowDetails(daylightHours: daylightHours)
+        if details.suitability == .poor { return nil }
+        return (details.windowText, details.suitability == .good)
+    }
+}
+
+public struct BestPlayingWindowInfo: Equatable {
+    public let windowText: String
+    public let suitability: VolleyballSuitability
+    public let summaryText: String
+    public let score: Int
+    
+    public init(windowText: String, suitability: VolleyballSuitability, summaryText: String, score: Int = 0) {
+        self.windowText = windowText
+        self.suitability = suitability
+        self.summaryText = summaryText
+        self.score = score
     }
 }
 

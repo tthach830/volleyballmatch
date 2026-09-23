@@ -521,13 +521,158 @@ public struct VolleyballWeatherView: View {
         )
     }
     
+    // MARK: - Weekly Highlights Banner (Top Playing Times at a Glance)
+    @ViewBuilder
+    private var weeklyHighlightsBanner: some View {
+        let ranked: [(index: Int, day: DailyVolleyballWeather, info: BestPlayingWindowInfo)] = weeklyDays.enumerated().compactMap { (index, day) in
+            let info = criteria.calculateBestPlayingWindowDetails(daylightHours: day.daylightHours)
+            if info.suitability == .poor { return nil }
+            return (index, day, info)
+        }
+        .sorted { $0.info.score > $1.info.score }
+        
+        let topWindows = Array(ranked.prefix(3))
+        
+        if !topWindows.isEmpty {
+            let medals = ["🥇", "🥈", "🥉"]
+            
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label("TOP PLAYING TIMES THIS WEEK", systemImage: "trophy.fill")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(.yellow)
+                        .tracking(0.5)
+                    Spacer()
+                    Text("Tap to view day")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                
+                VStack(spacing: 6) {
+                    ForEach(Array(topWindows.enumerated()), id: \.element.index) { medalIdx, item in
+                        Button {
+                            withAnimation(.spring(response: 0.25)) {
+                                selectedDayIndex = item.index
+                                selectedHourIndex = nil
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(medalIdx < medals.count ? medals[medalIdx] : "🏐")
+                                    .font(.system(size: 14))
+                                
+                                VStack(alignment: .leading, spacing: 1) {
+                                    HStack(spacing: 4) {
+                                        Text("\(item.day.dayName):")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(.white)
+                                        Text(item.info.windowText)
+                                            .font(.system(size: 11, weight: .black))
+                                            .foregroundColor(item.info.suitability == .good ? .green : .yellow)
+                                    }
+                                    Text(item.info.summaryText)
+                                        .font(.system(size: 9))
+                                        .foregroundColor(Color.white.opacity(0.65))
+                                        .lineLimit(1)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(Color.white.opacity(0.4))
+                            }
+                            .padding(8)
+                            .background(Color.white.opacity(0.05))
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke((item.info.suitability == .good ? Color.green : Color.yellow).opacity(0.25), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(12)
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.16, green: 0.13, blue: 0.08), Color(red: 0.12, green: 0.14, blue: 0.20)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .cornerRadius(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+            )
+        }
+    }
+    
+    // MARK: - Mini Daytime Timeline (Sunrise to Sunset)
+    @ViewBuilder
+    private func miniTimelineView(for day: DailyVolleyballWeather) -> some View {
+        if !day.daylightHours.isEmpty {
+            VStack(spacing: 5) {
+                HStack {
+                    Text("🌅 \(day.sunrise)")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.orange)
+                    Spacer()
+                    Text("DAYTIME HOURS • SUNRISE TO SUNSET")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundColor(Color.white.opacity(0.5))
+                        .tracking(0.5)
+                    Spacer()
+                    Text("🌇 \(day.sunset)")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.pink)
+                }
+                
+                HStack(spacing: 2) {
+                    ForEach(day.daylightHours, id: \.id) { hour in
+                        let hEval = criteria.evaluate(hour: hour)
+                        let isIdeal = hEval.suitability == .good
+                        VStack(spacing: 2) {
+                            Text(hour.hourLabel.replacingOccurrences(of: " ", with: ""))
+                                .font(.system(size: 8, weight: .heavy))
+                                .foregroundColor(isIdeal ? .white : Color.white.opacity(0.6))
+                                .lineLimit(1)
+                            
+                            Circle()
+                                .fill(hEval.suitability.dotColor)
+                                .frame(width: 6, height: 6)
+                                .shadow(color: hEval.suitability.dotColor.opacity(0.8), radius: 2)
+                            
+                            Text("\(hour.temp)°")
+                                .font(.system(size: 7, weight: .semibold))
+                                .foregroundColor(Color.white.opacity(0.7))
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 3)
+                        .background(isIdeal ? Color.green.opacity(0.15) : Color.white.opacity(0.03))
+                        .cornerRadius(4)
+                    }
+                }
+            }
+            .padding(7)
+            .background(Color.black.opacity(0.3))
+            .cornerRadius(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.06), lineWidth: 1))
+        }
+    }
+
     // MARK: - Daily Breakdown Cards
     private var dailyBreakdownSection: some View {
         VStack(alignment: .leading, spacing: 10) {
+            weeklyHighlightsBanner
+            
             Text("7-DAY FORECAST")
                 .font(.system(size: 13, weight: .black))
                 .foregroundColor(.white)
                 .tracking(0.5)
+                .padding(.top, 4)
             
             ForEach(Array(weeklyDays.enumerated()), id: \.element.id) { index, day in
                 dailyCard(for: day, index: index)
@@ -538,17 +683,32 @@ public struct VolleyballWeatherView: View {
     private func dailyCard(for day: DailyVolleyballWeather, index: Int) -> some View {
         let eval = criteria.evaluate(day: day)
         let isSelected = index == selectedDayIndex
+        let windowInfo = criteria.calculateBestPlayingWindowDetails(daylightHours: day.daylightHours)
         
         return VStack(alignment: .leading, spacing: 10) {
+            // Header with Day Summary & Prominent Best Playing Time Badge
             HStack(alignment: .top) {
                 HStack(spacing: 8) {
-                    Text(day.conditionEmoji)
-                        .font(.system(size: 24))
+                    Circle()
+                        .fill(eval.suitability.dotColor)
+                        .frame(width: 8, height: 8)
+                    
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(day.fullDayTitle)
-                            .font(.system(size: 15, weight: .black))
-                            .foregroundColor(.white)
-                        Text("\(day.conditionText) • High \(day.tempMax)°F, Low \(day.tempMin)°F")
+                        HStack(spacing: 6) {
+                            Text(day.fullDayTitle)
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundColor(.white)
+                            if index == 0 {
+                                Text("TODAY")
+                                    .font(.system(size: 9, weight: .black))
+                                    .foregroundColor(.orange)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.orange.opacity(0.2))
+                                    .cornerRadius(4)
+                            }
+                        }
+                        Text("\(day.conditionEmoji) \(day.conditionText) • High \(day.tempMax)°F, Low \(day.tempMin)°F")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
@@ -556,22 +716,33 @@ public struct VolleyballWeatherView: View {
                 
                 Spacer()
                 
-                // Suitability Status Pill
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(eval.suitability.dotColor)
-                        .frame(width: 7, height: 7)
-                    Text(eval.reason)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(eval.suitability.dotColor)
+                // Prominent Best Time Badge (Glanceable!)
+                VStack(alignment: .trailing, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text(windowInfo.suitability == .poor ? "⚠️" : "🌟")
+                            .font(.system(size: 10))
+                        Text(windowInfo.suitability == .poor ? "Poor All Day" : "Best: \(windowInfo.windowText)")
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundColor(windowInfo.suitability.dotColor)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(windowInfo.suitability.dotColor.opacity(0.12))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(windowInfo.suitability.dotColor.opacity(0.35), lineWidth: 1)
+                    )
+                    
+                    Text(windowInfo.summaryText)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(Color.white.opacity(0.65))
                         .lineLimit(1)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(eval.suitability.dotColor.opacity(0.12))
-                .cornerRadius(999)
-                .overlay(RoundedRectangle(cornerRadius: 999).stroke(eval.suitability.dotColor.opacity(0.3), lineWidth: 1))
             }
+            
+            // Mini Daytime Timeline Track (Sunrise to Sunset)
+            miniTimelineView(for: day)
             
             // Metrics Chips Row
             HStack(spacing: 8) {
@@ -595,16 +766,16 @@ public struct VolleyballWeatherView: View {
                 )
             }
             
-            // Volleyball Tip Box
+            // Beach Tip Box
             HStack(alignment: .top, spacing: 8) {
                 Text("🏐")
                     .font(.system(size: 13))
                 Text(eval.tip)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundColor(Color.white.opacity(0.85))
                     .lineSpacing(2)
             }
-            .padding(10)
+            .padding(9)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.white.opacity(0.04))
             .cornerRadius(8)
@@ -613,7 +784,7 @@ public struct VolleyballWeatherView: View {
                     .stroke(eval.suitability.dotColor.opacity(0.3), lineWidth: 1)
             )
         }
-        .padding(14)
+        .padding(12)
         .background(isSelected ? Color.orange.opacity(0.08) : Color(red: 0.12, green: 0.14, blue: 0.20))
         .cornerRadius(14)
         .overlay(
