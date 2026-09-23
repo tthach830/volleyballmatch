@@ -58,7 +58,7 @@ public struct VolleyballWeatherView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
-                .padding(.bottom, 32)
+                .padding(.bottom, 90)
             }
             .background(Color(red: 0.08, green: 0.09, blue: 0.13).ignoresSafeArea())
             .navigationTitle("Volleyball?")
@@ -115,29 +115,37 @@ public struct VolleyballWeatherView: View {
     
     // MARK: - Header Section
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Volleyball?")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                
-                if let today = weeklyDays.first {
-                    let eval = criteria.evaluate(day: today)
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(eval.suitability.dotColor)
-                            .frame(width: 8, height: 8)
-                        Text(eval.suitability == .good ? "Great Today" : (eval.suitability == .fair ? "Fair Today" : "Poor Today"))
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(eval.suitability.dotColor)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text("Volleyball?")
+                            .font(.system(size: 26, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                        
+                        if let today = weeklyDays.first {
+                            let eval = criteria.evaluate(day: today)
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(eval.suitability.dotColor)
+                                    .frame(width: 7, height: 7)
+                                Text(eval.suitability == .good ? "Great Today" : (eval.suitability == .fair ? "Fair Today" : "Poor Today"))
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(eval.suitability.dotColor)
+                            }
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3.5)
+                            .background(eval.suitability.dotColor.opacity(0.15))
+                            .cornerRadius(999)
+                        }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(eval.suitability.dotColor.opacity(0.15))
-                    .cornerRadius(999)
+                    
+                    Text("Weekly weather forecast & beach playing suitability")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
                 
-                Spacer()
+                Spacer(minLength: 8)
                 
                 // Beach selector menu
                 Menu {
@@ -155,25 +163,22 @@ public struct VolleyballWeatherView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Image(systemName: "mappin.and.ellipse")
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                         Text(selectedCourt)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
+                            .lineLimit(1)
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                     }
                     .foregroundColor(.cyan)
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(Color.cyan.opacity(0.12))
                     .cornerRadius(10)
                 }
             }
-            
-            Text("Weekly weather forecast & beach playing suitability")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
         }
     }
     
@@ -318,24 +323,27 @@ public struct VolleyballWeatherView: View {
             // Header: Title & Sunrise/Sunset
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center) {
-                    HStack(spacing: 6) {
-                        Text("⏱️")
-                            .font(.system(size: 14))
-                        Text("\(day.fullDayTitle) • Sunrise to Sunset")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                        if dayIndex == 0 {
-                            Text("TODAY")
-                                .font(.system(size: 9, weight: .black))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(day.fullDayTitle)
+                                .font(.system(size: 15, weight: .bold))
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.orange)
-                                .cornerRadius(4)
+                            if dayIndex == 0 {
+                                Text("TODAY")
+                                    .font(.system(size: 9, weight: .black))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.orange)
+                                    .cornerRadius(4)
+                            }
                         }
+                        Text("Sunrise to Sunset")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color.white.opacity(0.65))
                     }
                     
-                    Spacer()
+                    Spacer(minLength: 4)
                     
                     // Sunrise & Sunset chips
                     HStack(spacing: 6) {
@@ -371,7 +379,7 @@ public struct VolleyballWeatherView: View {
                 HStack(spacing: 8) {
                     Text("🌟")
                         .font(.system(size: 13))
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
                             Text("Best Window to Play:")
                                 .font(.system(size: 11, weight: .bold))
@@ -381,8 +389,8 @@ public struct VolleyballWeatherView: View {
                                 .foregroundColor(bw.isGreen ? .green : .yellow)
                         }
                         Text(bw.isGreen ? "Optimal wind, UV, and comfortable temperatures." : "Playable conditions with manageable breeze.")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(Color.white.opacity(0.8))
                     }
                     Spacer()
                 }

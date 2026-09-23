@@ -1044,6 +1044,10 @@ export function calculateBestPlayingWindow(daylightHours, criteria = window.voll
   }
 
   // Look for green or yellow
+  bestStart = -1;
+  bestLen = 0;
+  curStart = -1;
+  curLen = 0;
   for (let i = 0; i < evaluated.length; i++) {
     if (evaluated[i].eval.status !== "red") {
       if (curStart === -1) curStart = i;

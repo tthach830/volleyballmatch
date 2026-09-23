@@ -184,67 +184,61 @@ extension VolleyballCriteria {
         
         let evaluated = daylightHours.map { (hour: $0, eval: evaluate(hour: $0)) }
         
-        var bestStart = -1
-        var bestLen = 0
-        var curStart = -1
-        var curLen = 0
-        
-        for i in 0..<evaluated.count {
-            if evaluated[i].eval.suitability == .good {
-                if curStart == -1 { curStart = i }
-                curLen += 1
-                if curLen > bestLen {
-                    bestLen = curLen
-                    bestStart = curStart
+        // Helper to find the longest contiguous block matching a condition
+        func findLongestStreak(predicate: (VolleyballSuitability) -> Bool) -> (start: Int, length: Int) {
+            var bestStart = -1
+            var bestLen = 0
+            var curStart = -1
+            var curLen = 0
+            
+            for (i, item) in evaluated.enumerated() {
+                if predicate(item.eval.suitability) {
+                    if curStart == -1 { curStart = i }
+                    curLen += 1
+                    if curLen > bestLen {
+                        bestLen = curLen
+                        bestStart = curStart
+                    }
+                } else {
+                    curStart = -1
+                    curLen = 0
                 }
-            } else {
-                curStart = -1
-                curLen = 0
+            }
+            return (bestStart, bestLen)
+        }
+        
+        // 1. Contiguous block of "good" hours (at least 2 hours)
+        let (goodStart, goodLen) = findLongestStreak { $0 == .good }
+        if goodLen >= 2 && goodStart >= 0 && goodStart + goodLen <= evaluated.count {
+            let slice = Array(evaluated[goodStart..<(goodStart + goodLen)].map { $0.hour })
+            if let startH = slice.first, let endH = slice.last {
+                let avgTemp = slice.reduce(0) { $0 + $1.temp } / max(1, slice.count)
+                let maxWind = slice.map { $0.windMph }.max() ?? 8
+                let maxUv = slice.map { $0.uvIndex }.max() ?? 3.0
+                let score = goodLen * 10 + (25 - maxWind)
+                return BestPlayingWindowInfo(
+                    windowText: "\(startH.hourLabel) – \(endH.hourLabel)",
+                    suitability: .good,
+                    summaryText: "\(avgTemp)°F • 💨 \(maxWind) mph • ☀️ UV \(String(format: "%.1f", maxUv))",
+                    score: score
+                )
             }
         }
         
-        if bestLen >= 2 {
-            let slice = evaluated[bestStart..<(bestStart + bestLen)].map { $0.hour }
-            let startH = slice.first!
-            let endH = slice.last!
-            let avgTemp = slice.reduce(0) { $0 + $1.temp } / slice.count
-            let maxWind = slice.map { $0.windMph }.max() ?? 8
-            let maxUv = slice.map { $0.uvIndex }.max() ?? 3.0
-            let score = bestLen * 10 + (25 - maxWind)
-            return BestPlayingWindowInfo(
-                windowText: "\(startH.hourLabel) – \(endH.hourLabel)",
-                suitability: .good,
-                summaryText: "\(avgTemp)°F • 💨 \(maxWind) mph • ☀️ UV \(String(format: "%.1f", maxUv))",
-                score: score
-            )
-        }
-        
-        for i in 0..<evaluated.count {
-            if evaluated[i].eval.suitability != .poor {
-                if curStart == -1 { curStart = i }
-                curLen += 1
-                if curLen > bestLen {
-                    bestLen = curLen
-                    bestStart = curStart
-                }
-            } else {
-                curStart = -1
-                curLen = 0
+        // 2. Contiguous block of playable ("good" or "fair") hours (at least 1 hour)
+        let (fairStart, fairLen) = findLongestStreak { $0 != .poor }
+        if fairLen >= 1 && fairStart >= 0 && fairStart + fairLen <= evaluated.count {
+            let slice = Array(evaluated[fairStart..<(fairStart + fairLen)].map { $0.hour })
+            if let startH = slice.first, let endH = slice.last {
+                let avgTemp = slice.reduce(0) { $0 + $1.temp } / max(1, slice.count)
+                let maxWind = slice.map { $0.windMph }.max() ?? 10
+                return BestPlayingWindowInfo(
+                    windowText: "\(startH.hourLabel) – \(endH.hourLabel)",
+                    suitability: .fair,
+                    summaryText: "\(avgTemp)°F • 💨 \(maxWind) mph (Breeze)",
+                    score: fairLen * 5
+                )
             }
-        }
-        
-        if bestLen >= 1 {
-            let slice = evaluated[bestStart..<(bestStart + bestLen)].map { $0.hour }
-            let startH = slice.first!
-            let endH = slice.last!
-            let avgTemp = slice.reduce(0) { $0 + $1.temp } / slice.count
-            let maxWind = slice.map { $0.windMph }.max() ?? 10
-            return BestPlayingWindowInfo(
-                windowText: "\(startH.hourLabel) – \(endH.hourLabel)",
-                suitability: .fair,
-                summaryText: "\(avgTemp)°F • 💨 \(maxWind) mph (Breeze)",
-                score: bestLen * 5
-            )
         }
         
         return BestPlayingWindowInfo(
