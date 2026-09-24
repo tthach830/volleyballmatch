@@ -1401,22 +1401,72 @@ window.refreshVolleyballWeather = function() {
 
 window.selectVolleyballDay = function(index) {
   window.selectedVolleyballDayIndex = index;
-  const targetCard = document.getElementById(`vb-full-day-${index}`);
-  if (targetCard) {
-    targetCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (window.currentVolleyballWeeklyData && window.currentVolleyballWeeklyData.length > 0) {
+    renderVolleyballGlanceableCard(window.currentVolleyballWeeklyData);
+    renderVolleyballDaysList(window.currentVolleyballWeeklyData);
   }
 };
 
+export function renderVolleyballGlanceableCard(days) {
+  const grid = document.getElementById("vb-glanceable-grid");
+  if (!grid || !days || days.length === 0) return;
+
+  const criteria = window.volleyballCriteria;
+  const selIdx = window.selectedVolleyballDayIndex || 0;
+  const minTempAll = Math.min(...days.map(d => d.tempMin), 45);
+  const maxTempAll = Math.max(...days.map(d => d.tempMax), 95);
+  const tempRange = Math.max(1, maxTempAll - minTempAll);
+
+  grid.innerHTML = days.map((day, idx) => {
+    const isSelected = idx === selIdx;
+    const windowInfo = calculateBestPlayingWindow(day.daylightHours, criteria) || {
+      windowText: "Poor",
+      status: "red"
+    };
+
+    let pillText = windowInfo.windowText || "Poor";
+    if (pillText.includes(" – ")) {
+      const parts = pillText.split(" – ");
+      pillText = `${parts[0].replace(/\s+/g, '')}–${parts[1].replace(/\s+/g, '')}`;
+    }
+
+    const barHeightPct = Math.min(100, Math.max(25, ((day.tempMax - minTempAll) / tempRange) * 100));
+
+    const colDayName = idx === 0 ? 'TODAY' : (day.fullDayTitle ? day.fullDayTitle.split(',')[0].slice(0, 3).toUpperCase() : (day.dateStr ? new Date(day.dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() : day.dayName.slice(0, 3).toUpperCase()));
+
+    return `
+      <div class="vb-glanceable-col ${isSelected ? 'selected' : ''}" onclick="window.selectVolleyballDay(${idx})" title="${day.fullDayTitle || day.dayName}">
+        <span style="font-size: 10px; font-weight: 800; color: ${isSelected ? '#ea580c' : '#ffffff'}; text-transform: uppercase;">
+          ${colDayName}
+        </span>
+        <span style="font-size: 16px; line-height: 1;">${day.conditionEmoji}</span>
+        <span class="vb-glanceable-pill ${windowInfo.status === 'green' ? 'good' : (windowInfo.status === 'yellow' ? 'fair' : 'poor')}">
+          ${pillText}
+        </span>
+        <div class="vb-temp-track">
+          <div class="vb-temp-bar-fill" style="height: ${barHeightPct}%;"></div>
+        </div>
+        <span style="font-size: 12px; font-weight: 800; color: #ffffff;">${day.tempMax}°</span>
+        <span style="font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.55);">${day.tempMin}°</span>
+      </div>
+    `;
+  }).join("");
+}
+
 export function renderVolleyballChart(days) {
-  // Maintained for compatibility
+  renderVolleyballGlanceableCard(days);
 }
 
 export function renderVolleyballDaysList(days) {
   const container = document.getElementById("vb-days-list");
-  if (!container || !days) return;
+  if (!container || !days || days.length === 0) return;
 
   const criteria = window.volleyballCriteria;
-  container.innerHTML = days.map((day, idx) => renderSingleDayCardHtml(day, idx, criteria)).join("");
+  const selIdx = window.selectedVolleyballDayIndex || 0;
+  const selectedDay = days[selIdx] || days[0];
+
+  // ONLY show the day that is selected from the 7-day glanceable card!
+  container.innerHTML = renderSingleDayCardHtml(selectedDay, selIdx, criteria);
 }
 
 export function updateVolleyballOverallPill(days) {
@@ -1461,11 +1511,9 @@ window.renderVolleyballTab = async function() {
   const days = await weatherService.getWeeklyForecast(selectedBeach);
   window.currentVolleyballWeeklyData = days;
 
-  renderVolleyballChart(days);
+  renderVolleyballGlanceableCard(days);
   renderVolleyballDaysList(days);
   updateVolleyballOverallPill(days);
-  const selectedDay = days[window.selectedVolleyballDayIndex || 0] || days[0];
-  renderDaytimeHourlyChart(selectedDay);
 };
 
 // ==========================================

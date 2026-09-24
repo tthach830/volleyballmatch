@@ -175,7 +175,18 @@
         </div>
       </div>
 
-      <!-- 7-Day Daytime Forecast List (Each Day Rendered as a Full Rich Card) -->
+      <!-- 7-Day Forecast (Glanceable Best Times) Card -->
+      <div id="vb-glanceable-card" class="match-card" style="margin-top: 14px; padding: 14px; background: #171b26; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 12px; font-weight: 800; color: #ffffff; letter-spacing: 0.3px;">7-DAY FORECAST (GLANCEABLE BEST TIMES)</span>
+          <span style="font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.55);">Tap a day for hourly view</span>
+        </div>
+        <div id="vb-glanceable-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- Selected Day Daytime Forecast (Only Selected Day Rendered) -->
       <div id="vb-days-list" style="display: flex; flex-direction: column; gap: 18px; margin-top: 14px; margin-bottom: 24px;">
         <!-- Injected via JavaScript -->
       </div>

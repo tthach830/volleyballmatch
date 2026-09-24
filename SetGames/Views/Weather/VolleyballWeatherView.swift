@@ -50,9 +50,12 @@ public struct VolleyballWeatherView: View {
                             .frame(maxWidth: .infinity, minHeight: 120)
                             .foregroundColor(.secondary)
                     } else {
-                        // 7-Day Daytime Forecast (Full Daytime Card for Each Day)
-                        ForEach(Array(weeklyDays.enumerated()), id: \.element.id) { index, day in
-                            daytimeHourlySection(for: day, dayIndex: index)
+                        // 7-Day Glanceable Best Times Forecast Card
+                        glanceableWeeklyForecastCard
+                        
+                        // Daytime Hourly Forecast (ONLY for the selected day!)
+                        if weeklyDays.indices.contains(selectedDayIndex) {
+                            daytimeHourlySection(for: weeklyDays[selectedDayIndex], dayIndex: selectedDayIndex)
                         }
                     }
                 }
@@ -180,6 +183,129 @@ public struct VolleyballWeatherView: View {
                 }
             }
         }
+    }
+    
+    // MARK: - 7-Day Glanceable Best Times Forecast Card
+    private var glanceableWeeklyForecastCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header: Title & Subtitle
+            HStack(alignment: .center) {
+                Text("7-DAY FORECAST (GLANCEABLE BEST TIMES)")
+                    .font(.system(size: 12, weight: .heavy))
+                    .foregroundColor(.white)
+                    .tracking(0.3)
+                
+                Spacer()
+                
+                Text("Tap a day for hourly view")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color.white.opacity(0.55))
+            }
+            
+            // 7 Days Columns Row
+            HStack(alignment: .top, spacing: 3) {
+                ForEach(Array(weeklyDays.enumerated()), id: \.element.id) { index, day in
+                    let isSelected = index == selectedDayIndex
+                    let windowInfo = criteria.calculateBestPlayingWindowDetails(daylightHours: day.daylightHours)
+                    let minTempAll = weeklyDays.map { $0.tempMin }.min() ?? 45
+                    let maxTempAll = weeklyDays.map { $0.tempMax }.max() ?? 95
+                    let tempRange = max(1, maxTempAll - minTempAll)
+                    let barHeightPct = max(0.25, min(1.0, Double(day.tempMax - minTempAll) / Double(tempRange)))
+                    
+                    let pillText: String = {
+                        if windowInfo.suitability == .poor { return "Poor" }
+                        let parts = windowInfo.windowText.components(separatedBy: " – ")
+                        if parts.count == 2 {
+                            let s1 = parts[0].replacingOccurrences(of: " ", with: "")
+                            let s2 = parts[1].replacingOccurrences(of: " ", with: "")
+                            return "\(s1)–\(s2)"
+                        }
+                        return windowInfo.windowText
+                    }()
+                    
+                    let colDayName: String = {
+                        if index == 0 { return "TODAY" }
+                        if let commaIdx = day.fullDayTitle.firstIndex(of: ",") {
+                            return String(day.fullDayTitle[..<commaIdx].prefix(3)).uppercased()
+                        }
+                        return String(day.dayName.prefix(3)).uppercased()
+                    }()
+                    
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                            selectedDayIndex = index
+                        }
+                    } label: {
+                        VStack(spacing: 5) {
+                            // Day Name (e.g. TODAY, THU, FRI)
+                            Text(colDayName)
+                                .font(.system(size: 10, weight: .heavy))
+                                .foregroundColor(isSelected ? .orange : Color.white.opacity(0.85))
+                                .lineLimit(1)
+                            
+                            // Weather Emoji
+                            Text(day.conditionEmoji)
+                                .font(.system(size: 16))
+                            
+                            // Best Time Pill
+                            Text(pillText)
+                                .font(.system(size: 8, weight: .heavy))
+                                .foregroundColor(windowInfo.suitability == .good ? Color(red: 0.29, green: 0.87, blue: 0.5) : (windowInfo.suitability == .fair ? Color(red: 0.98, green: 0.8, blue: 0.08) : Color(red: 0.97, green: 0.44, blue: 0.44)))
+                                .padding(.horizontal, 3)
+                                .padding(.vertical, 2)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    (windowInfo.suitability == .good ? Color.green : (windowInfo.suitability == .fair ? Color.yellow : Color.red)).opacity(0.18)
+                                )
+                                .cornerRadius(4)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                            
+                            // Vertical Thermometer Bar
+                            ZStack(alignment: .bottom) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.white.opacity(0.08))
+                                    .frame(width: 8, height: 50)
+                                
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color.orange, Color.cyan],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .frame(width: 8, height: CGFloat(50 * barHeightPct))
+                            }
+                            
+                            // Max Temp
+                            Text("\(day.tempMax)°")
+                                .font(.system(size: 12, weight: .heavy))
+                                .foregroundColor(.white)
+                            
+                            // Min Temp
+                            Text("\(day.tempMin)°")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(Color.white.opacity(0.55))
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 2)
+                        .frame(maxWidth: .infinity)
+                        .background(isSelected ? Color(red: 0.22, green: 0.14, blue: 0.12) : Color.clear)
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(isSelected ? Color(red: 0.9, green: 0.45, blue: 0.25) : Color.clear, lineWidth: 1.5)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(Color(red: 0.09, green: 0.11, blue: 0.15))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0.16, green: 0.19, blue: 0.26), lineWidth: 1))
     }
     
     // MARK: - Customizable Criteria Card
