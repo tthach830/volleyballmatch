@@ -87,6 +87,56 @@ public struct LaddersView: View {
                     } else {
                         PopularKidsLadderView(dataManager: dataManager, timeframe: selectedTimeframe)
                     }
+                    
+                    // Community Beach Webcams & Conditions Card
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("COMMUNITY BEACH WEBCAMS")
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundColor(.secondary)
+                        
+                        Link(destination: URL(string: "https://www.cityofcapitola.gov/851/Beach-Web-Cam")!) {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.cyan.opacity(0.15))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "video.fill")
+                                        .foregroundColor(.cyan)
+                                        .font(.system(size: 16))
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text("Capitola Jetty & Beach")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(.primary)
+                                        Text("LIVE CAM")
+                                            .font(.system(size: 9, weight: .black))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.red)
+                                            .clipShape(Capsule())
+                                    }
+                                    Text("Check live sand, tide, and court conditions")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(14)
+                            .background(Color(UIColor.secondarySystemGroupedBackground))
+                            .cornerRadius(14)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 10)
                 }
                 .padding(.bottom, 30)
             }

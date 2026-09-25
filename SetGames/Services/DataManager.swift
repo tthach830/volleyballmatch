@@ -17,7 +17,7 @@ public class DataManager: ObservableObject {
     @Published public var tournaments: [Tournament] = []
     @Published public var availabilitySlots: [AvailabilitySlot] = []
     @Published public var pickupQueue: [Player] = []
-    @Published public var beachPickupQueues: [String: [Player]] = ["Main Beach": [], "Harbor Beach": []]
+    @Published public var beachPickupQueues: [String: [Player]] = ["Main Beach": [], "Harbor Beach": [], "Capitola Jetty & Beach": []]
     @Published public var notifications: [AppNotification] = []
     @Published public var isDemoModeEnabled: Bool = false
     private var hasCompletedInitialGamesSync: Bool = false

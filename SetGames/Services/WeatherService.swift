@@ -462,6 +462,8 @@ public class WeatherService: ObservableObject {
         
         if clean.contains("harbor") {
             return (36.9631, -122.0016) // Santa Cruz Harbor Beach
+        } else if clean.contains("capitola") {
+            return (36.9722, -121.9525) // Capitola Jetty & Beach
         } else if clean.contains("4th") || clean.contains("seabright") {
             return (36.9650, -122.0100) // 4th Ave / Seabright Beach
         } else if clean.contains("manhattan") {

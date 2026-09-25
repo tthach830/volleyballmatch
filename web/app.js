@@ -406,6 +406,8 @@ export const weatherService = {
     const clean = String(court || "").trim().toLowerCase();
     if (clean.includes("harbor")) {
       return { lat: 36.9631, lon: -122.0016 }; // Santa Cruz Harbor Beach
+    } else if (clean.includes("capitola")) {
+      return { lat: 36.9722, lon: -121.9525 }; // Capitola Jetty & Beach
     } else if (clean.includes("4th") || clean.includes("seabright")) {
       return { lat: 36.9650, lon: -122.0100 }; // 4th Ave / Seabright Beach
     } else if (clean.includes("manhattan")) {
@@ -1514,6 +1516,21 @@ window.renderVolleyballTab = async function() {
   renderVolleyballGlanceableCard(days);
   renderVolleyballDaysList(days);
   updateVolleyballOverallPill(days);
+
+  // Update dynamic Live Beach Web Cam banner
+  const cleanBeach = String(selectedBeach || "").toLowerCase();
+  const webcamCard = document.getElementById("vb-webcam-card");
+  if (webcamCard) {
+    if (cleanBeach.includes("capitola")) {
+      webcamCard.style.display = "block";
+      const link = document.getElementById("vb-webcam-link");
+      if (link) link.href = "https://www.cityofcapitola.gov/851/Beach-Web-Cam";
+      const title = document.getElementById("vb-webcam-title");
+      if (title) title.textContent = `${selectedBeach} Web Cam`;
+    } else {
+      webcamCard.style.display = "none";
+    }
+  }
 };
 
 // ==========================================

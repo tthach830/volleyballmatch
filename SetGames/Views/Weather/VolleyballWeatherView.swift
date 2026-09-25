@@ -23,7 +23,7 @@ public struct VolleyballWeatherView: View {
     let courts = [
         "Main Beach",
         "Harbor Beach",
-        "Capitola Beach",
+        "Capitola Jetty & Beach",
         "Seabright Beach",
         "Manhattan Beach",
         "Hermosa Beach",
@@ -69,6 +69,14 @@ public struct VolleyballWeatherView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 12) {
+                        if let webcamURL = CourtLocations.webcamURL(for: selectedCourt) {
+                            Link(destination: webcamURL) {
+                                Image(systemName: "video.fill")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.cyan)
+                            }
+                        }
+                        
                         Button {
                             showSmartForecastsSheet = true
                         } label: {
@@ -118,7 +126,7 @@ public struct VolleyballWeatherView: View {
     
     // MARK: - Header Section
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
@@ -181,6 +189,58 @@ public struct VolleyballWeatherView: View {
                     .background(Color.cyan.opacity(0.12))
                     .cornerRadius(10)
                 }
+            }
+            
+            // Live Beach Web Cam Link
+            if let webcamURL = CourtLocations.webcamURL(for: selectedCourt) {
+                Link(destination: webcamURL) {
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.cyan.opacity(0.2))
+                                .frame(width: 32, height: 32)
+                            Image(systemName: "video.fill")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.cyan)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text("\(selectedCourt) Web Cam")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white)
+                                Text("LIVE")
+                                    .font(.system(size: 9, weight: .black))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 1.5)
+                                    .background(Color.red)
+                                    .clipShape(Capsule())
+                            }
+                            Text("Tap to check real-time waves, sand, tide, and courts")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.white.opacity(0.7))
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "arrow.up.right.square.fill")
+                            .font(.system(size: 15))
+                            .foregroundColor(.cyan)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 0.11, green: 0.16, blue: 0.25), Color(red: 0.08, green: 0.12, blue: 0.19)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.cyan.opacity(0.35), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -1119,7 +1179,7 @@ public struct WidgetEmbedSheet: View {
     let courts = [
         "Main Beach",
         "Harbor Beach",
-        "Capitola Beach",
+        "Capitola Jetty & Beach",
         "Seabright Beach",
         "Manhattan Beach",
         "Hermosa Beach",
