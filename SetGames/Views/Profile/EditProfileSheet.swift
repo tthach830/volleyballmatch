@@ -19,7 +19,7 @@ public struct EditProfileSheet: View {
     ]
     
     private let availableBeaches: [String] = [
-        "Main Beach", "Harbor Beach", "4th Street", "Seabright Beach"
+        "Main Beach", "Dream Inn", "Harbor Beach", "4th Street", "Capitola Beach", "Seabright Beach"
     ]
     
     public init(dataManager: DataManager) {

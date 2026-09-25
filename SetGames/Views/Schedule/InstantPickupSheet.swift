@@ -81,30 +81,10 @@ public struct InstantPickupSheet: View {
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 4)
                         
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                beachPill(name: "Main Beach", icon: "beach.umbrella.fill")
-                                beachPill(name: "Harbor Beach", icon: "sailboat.fill")
-                                beachPill(name: "Capitola Jetty & Beach", icon: "video.fill")
-                            }
-                        }
-                        
-                        if let webcamURL = CourtLocations.webcamURL(for: selectedBeach) {
-                            Link(destination: webcamURL) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "video.fill")
-                                        .font(.system(size: 11))
-                                    Text("View Live Beach Cam")
-                                        .font(.system(size: 12, weight: .bold))
-                                    Image(systemName: "arrow.up.right")
-                                        .font(.system(size: 10))
-                                }
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Color.cyan.opacity(0.12))
-                                .cornerRadius(8)
-                            }
+                        HStack(spacing: 8) {
+                            beachPill(name: "Main Beach", icon: "beach.umbrella.fill")
+                            beachPill(name: "Dream Inn", icon: "building.2.fill")
+                            beachPill(name: "Harbor Beach", icon: "sailboat.fill")
                         }
                     }
                     .padding(.horizontal)

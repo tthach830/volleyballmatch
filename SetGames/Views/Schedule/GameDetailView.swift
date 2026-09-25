@@ -1574,28 +1574,6 @@ public struct GameDetailView: View {
                 }
                 .padding(.vertical, 6)
             }
-            
-            if let webcamURL = CourtLocations.webcamURL(for: game.courtLocation) {
-                Link(destination: webcamURL) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "video.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.cyan)
-                        Text("View Live Beach Cam")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.cyan)
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.cyan)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.cyan.opacity(0.12))
-                    .cornerRadius(10)
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding(14)
         .background(Color(UIColor.secondarySystemGroupedBackground))

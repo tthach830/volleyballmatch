@@ -64,6 +64,7 @@ public struct CreateTournamentSheet: View {
                     
                     Picker("Beach Location", selection: $location) {
                         Text("Main Beach (Santa Cruz)").tag("Main Beach")
+                        Text("Dream Inn (Santa Cruz)").tag("Dream Inn")
                         Text("Harbor Beach (Santa Cruz)").tag("Harbor Beach")
                         Text("Capitola Beach").tag("Capitola Beach")
                         Text("Twin Lakes Beach").tag("Twin Lakes Beach")

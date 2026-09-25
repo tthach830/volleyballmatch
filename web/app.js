@@ -404,10 +404,12 @@ export const weatherService = {
 
   getCoordinates(court) {
     const clean = String(court || "").trim().toLowerCase();
-    if (clean.includes("harbor")) {
+    if (clean.includes("dream")) {
+      return { lat: 36.9619, lon: -122.0248 }; // Santa Cruz Dream Inn / Cowell Beach
+    } else if (clean.includes("harbor")) {
       return { lat: 36.9631, lon: -122.0016 }; // Santa Cruz Harbor Beach
     } else if (clean.includes("capitola")) {
-      return { lat: 36.9722, lon: -121.9525 }; // Capitola Jetty & Beach
+      return { lat: 36.9722, lon: -121.9525 }; // Capitola Beach
     } else if (clean.includes("4th") || clean.includes("seabright")) {
       return { lat: 36.9650, lon: -122.0100 }; // 4th Ave / Seabright Beach
     } else if (clean.includes("manhattan")) {
@@ -1516,21 +1518,6 @@ window.renderVolleyballTab = async function() {
   renderVolleyballGlanceableCard(days);
   renderVolleyballDaysList(days);
   updateVolleyballOverallPill(days);
-
-  // Update dynamic Live Beach Web Cam banner
-  const cleanBeach = String(selectedBeach || "").toLowerCase();
-  const webcamCard = document.getElementById("vb-webcam-card");
-  if (webcamCard) {
-    if (cleanBeach.includes("capitola")) {
-      webcamCard.style.display = "block";
-      const link = document.getElementById("vb-webcam-link");
-      if (link) link.href = "https://www.cityofcapitola.gov/851/Beach-Web-Cam";
-      const title = document.getElementById("vb-webcam-title");
-      if (title) title.textContent = `${selectedBeach} Web Cam`;
-    } else {
-      webcamCard.style.display = "none";
-    }
-  }
 };
 
 // ==========================================
@@ -6219,7 +6206,7 @@ window.closeAddAvailabilityModal = () => {
 // INSTANT PICKUP LOBBY (Matches iOS InstantPickupSheet.swift)
 // ==========================================================================
 state.selectedPickupBeach = state.selectedPickupBeach || "Main Beach";
-state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Dream Inn": [], "Harbor Beach": [] };
 
 window.openInstantPickupModal = () => {
   const modal = document.getElementById("instant-pickup-modal");
@@ -6241,7 +6228,7 @@ window.switchPickupBeach = (beach) => {
 
 window.renderInstantPickupModal = () => {
   const beach = state.selectedPickupBeach || "Main Beach";
-  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Dream Inn": [], "Harbor Beach": [] };
   const queue = state.beachPickupQueues[beach] || [];
 
   // Update beach selector pills
@@ -6365,7 +6352,7 @@ window.renderInstantPickupModal = () => {
 
 window.handleInstantPickupSpotClick = (index) => {
   const beach = state.selectedPickupBeach || "Main Beach";
-  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Dream Inn": [], "Harbor Beach": [] };
   const queue = state.beachPickupQueues[beach] || [];
 
   if (!state.currentUser) {
@@ -6404,7 +6391,7 @@ window.handleInstantPickupSpotClick = (index) => {
 
 window.removeInstantPickupPlayer = (index) => {
   const beach = state.selectedPickupBeach || "Main Beach";
-  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Dream Inn": [], "Harbor Beach": [] };
   const queue = state.beachPickupQueues[beach] || [];
   if (index >= 0 && index < queue.length) {
     const removedId = queue.splice(index, 1)[0];
@@ -6422,7 +6409,7 @@ window.toggleInstantPickupQueue = () => {
     return;
   }
   const beach = state.selectedPickupBeach || "Main Beach";
-  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Dream Inn": [], "Harbor Beach": [] };
   const queue = state.beachPickupQueues[beach] || [];
   const uid = state.currentUser.id;
   const inQueue = queue.includes(uid);
@@ -6449,7 +6436,7 @@ window.fillInstantPickupQueue = () => {
     return;
   }
   const beach = state.selectedPickupBeach || "Main Beach";
-  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Harbor Beach": [] };
+  state.beachPickupQueues = state.beachPickupQueues || { "Main Beach": [], "Dream Inn": [], "Harbor Beach": [] };
   const queue = state.beachPickupQueues[beach] || [];
 
   if (state.currentUser && !queue.includes(state.currentUser.id)) {
