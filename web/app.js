@@ -1501,63 +1501,6 @@ export const initialCommunityTournaments = [
     freeAgents: [],
     matches: [],
     createdAt: "2026-10-02T22:02:32Z"
-  },
-  {
-    id: "B1E9A6C0-1234-4567-89AB-CDEF01234567",
-    rawId: "B1E9A6C0-1234-4567-89AB-CDEF01234567",
-    title: "Santa Cruz Fall Classic",
-    teamFormat: "2v2",
-    allowedDivisions: ["2v2 Coed Novice", "2v2 Coed Intermediate"],
-    location: "Main Beach",
-    courts: ["Court #1", "Court #2"],
-    date: "2026-11-14T17:00:00Z",
-    status: "registration_open",
-    maxTeamsPerDivision: 8,
-    teams: [],
-    freeAgents: [],
-    matches: [],
-    coHostPlayerIds: [],
-    notes: "2v2 doubles tournament at Main Beach.",
-    hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
-    createdAt: "2026-09-20T17:00:00Z"
-  },
-  {
-    id: "12A68DA6-1D90-4ECA-8FA1-353F15FA1ECC",
-    rawId: "12A68DA6-1D90-4ECA-8FA1-353F15FA1ECC",
-    title: "testing",
-    location: "Main Beach",
-    date: "2026-10-10T16:00:00Z",
-    courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
-    allowedDivisions: ["2v2 Coed Novice", "2v2 Coed Intermediate", "4v4 Coed", "2v2 Men's Intermediate"],
-    maxTeamsPerDivision: 8,
-    teams: [],
-    freeAgents: [],
-    matches: [],
-    status: "registration_open",
-    notes: "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.",
-    createdAt: "2026-10-05T16:40:04.956Z",
-    hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
-    coHostPlayerIds: [],
-    teamFormat: "2v2"
-  },
-  {
-    id: "A1E6E2EA-2E61-45C5-98D3-7C38AB944750",
-    rawId: "90E2BA36-5589-4BED-A653-D317646799DC",
-    title: "Test",
-    location: "Main Beach",
-    date: "2026-10-08T16:23:56Z",
-    courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
-    allowedDivisions: ["2v2 Coed Intermediate", "2v2 Men's Intermediate", "4v4 Coed", "2v2 Coed Novice"],
-    maxTeamsPerDivision: 8,
-    teams: [],
-    freeAgents: [],
-    matches: [],
-    status: "registration_open",
-    notes: "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.",
-    createdAt: "2026-10-05T16:24:29Z",
-    hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
-    coHostPlayerIds: [],
-    teamFormat: "2v2"
   }
 ];
 window.initialCommunityTournaments = initialCommunityTournaments;
@@ -11996,17 +11939,7 @@ function initApp() {
       const filtered = remoteTournaments.filter(t => 
         !state.isTournamentDeleted(t)
       );
-      const remoteTitles = new Set(filtered.map(t => (t.title || "").toLowerCase().trim()));
-      const remoteIds = new Set(filtered.map(t => String(t.id || "").toLowerCase()).concat(filtered.map(t => String(t.rawId || "").toLowerCase())).filter(Boolean));
-      const localPending = (state.tournaments || []).filter(t => {
-        if (!t || state.isTournamentDeleted(t)) return false;
-        const id1 = String(t.id || "").toLowerCase();
-        const id2 = String(t.rawId || "").toLowerCase();
-        const title = (t.title || "").toLowerCase().trim();
-        return !remoteTitles.has(title) && !remoteIds.has(id1) && (!id2 || !remoteIds.has(id2));
-      });
-      const combined = [...filtered, ...localPending];
-      state.tournaments = deduplicateTournaments(combined).filter(t => !state.isTournamentDeleted(t));
+      state.tournaments = deduplicateTournaments(filtered).filter(t => !state.isTournamentDeleted(t));
       state.saveLocal();
       renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {

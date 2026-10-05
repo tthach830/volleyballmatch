@@ -1767,21 +1767,10 @@ public class DataManager: ObservableObject {
                 let validRemotes = remoteTournaments.filter { r in
                     !self.isTournamentDeleted(id: r.id.uuidString, rawId: r.rawId, title: r.title)
                 }
-                let remoteIds = Set(validRemotes.map { $0.id.uuidString } + validRemotes.compactMap { $0.rawId })
-                let remoteTitles = Set(validRemotes.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
-                let localPending = self.tournaments.filter { local in
-                    !self.isTournamentDeleted(id: local.id.uuidString, rawId: local.rawId, title: local.title) &&
-                    !remoteIds.contains(local.id.uuidString) &&
-                    !(local.rawId != nil && remoteIds.contains(local.rawId!)) &&
-                    !remoteTitles.contains(local.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
-                }
-                let combined = self.deduplicateTournaments(validRemotes + localPending).filter {
+                let combined = self.deduplicateTournaments(validRemotes).filter {
                     !self.isTournamentDeleted(id: $0.id.uuidString, rawId: $0.rawId, title: $0.title)
                 }
                 self.tournaments = combined
-                for pending in localPending {
-                    FirestoreService.shared.saveTournament(pending)
-                }
                 self.saveToDisk()
             }
         )
@@ -1791,9 +1780,6 @@ public class DataManager: ObservableObject {
             initialGames: self.games,
             initialSlots: self.availabilitySlots
         )
-        for t in self.tournaments {
-            FirestoreService.shared.saveTournament(t)
-        }
     }
     
     // MARK: - Mock Initial Community Data
@@ -2205,7 +2191,7 @@ public class DataManager: ObservableObject {
             teamFormat: .doubles2v2
         )
         
-        return [halloweenTournament, fallClassicTournament, testingTournament, testTournament]
+        return [halloweenTournament]
     }
     
     // MARK: - Local Device Persistence
