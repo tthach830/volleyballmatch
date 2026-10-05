@@ -1447,6 +1447,36 @@ export const initialCommunityGames = [
     "setScores": [],
     "messages": [],
     "subMatches": []
+  },
+  {
+    "id": "0D71F7B9-0025-4A6F-940D-2B85F15993B1",
+    "title": "Tuesday COED 10/6/26 12AM",
+    "targetRating": "Intermediate",
+    "allowedRatings": [
+      "Intermediate"
+    ],
+    "genderCategory": "COED",
+    "format": "Best of 3 Sets (21-21-15)",
+    "isLevelLocked": true,
+    "hostPlayerId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+    "courtLocation": "Harbor Beach",
+    "courtNumber": "Court #1",
+    "scheduledDate": "2026-10-06T07:00:00Z",
+    "status": "scheduled",
+    "maxPlayers": 4,
+    "isAutoMatched": false,
+    "isPrivate": false,
+    "matchedOptionName": "Community Open Match",
+    "notes": "Bring an official Wilson or Molten beach volleyball!",
+    "team1PlayerIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "team2PlayerIds": [],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [],
+    "subMatches": []
   }
 ];
 window.initialCommunityGames = initialCommunityGames;
@@ -11707,11 +11737,54 @@ function initApp() {
   // Prune deleted Winter Wonderland from Firestore
   deleteTournamentFromFirestore("26B299D3-A7EA-4BF9-B415-14F9E80EE967").catch(() => {});
 
-  // Ensure Wednesday COED 10/7/26 5PM is pushed to Firestore
+  // Ensure Tuesday and Wednesday games are synced
+  const tuesGame = (state.games || []).find(g => (g.title || "").toLowerCase().includes("tuesday coed 10/6/26 12am")) || initialCommunityGames.find(g => (g.title || "").toLowerCase().includes("tuesday coed 10/6/26 12am"));
+  if (tuesGame) {
+    saveGameToFirestore(tuesGame).catch(() => {});
+  }
+
   const wedGame = (state.games || []).find(g => (g.title || "").toLowerCase().includes("wednesday coed 10/7/26 5pm")) || initialCommunityGames.find(g => (g.title || "").toLowerCase().includes("wednesday coed 10/7/26 5pm"));
   if (wedGame) {
     saveGameToFirestore(wedGame).catch(() => {});
   }
+
+  // Device sync bridge: Pull latest games/tournaments directly from connected physical iPhone if available
+  fetch("/api/sync/device-data")
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data) return;
+      let dirty = false;
+      if (Array.isArray(data.games) && data.games.length > 0) {
+        const idSet = new Set((state.games || []).map(g => String(g.id || g.rawId || "").toLowerCase()));
+        const titleSet = new Set((state.games || []).map(g => (g.title || "").toLowerCase().trim()));
+        for (const dg of data.games) {
+          const dgId = String(dg.id || dg.rawId || "").toLowerCase();
+          const dgTitle = (dg.title || "").toLowerCase().trim();
+          if (!idSet.has(dgId) && !titleSet.has(dgTitle)) {
+            state.games.unshift(dg);
+            idSet.add(dgId);
+            titleSet.add(dgTitle);
+            dirty = true;
+          }
+        }
+      }
+      if (Array.isArray(data.tournaments) && data.tournaments.length > 0) {
+        const tIdSet = new Set((state.tournaments || []).map(t => String(t.id || t.rawId || "").toLowerCase()));
+        for (const dt of data.tournaments) {
+          const dtId = String(dt.id || dt.rawId || "").toLowerCase();
+          if (!tIdSet.has(dtId) && !dt.title?.toLowerCase().includes("winter wonderland")) {
+            state.tournaments.unshift(dt);
+            tIdSet.add(dtId);
+            dirty = true;
+          }
+        }
+      }
+      if (dirty) {
+        state.saveLocal();
+        renderMatches();
+      }
+    })
+    .catch(() => {});
 
   // Handle incoming deep link or game route from QR scan
   handleIncomingGameRoute();

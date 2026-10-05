@@ -1,4 +1,4 @@
-import { initializeApp } from "./vendor/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { 
   getFirestore, 
   collection, 
@@ -6,12 +6,12 @@ import {
   setDoc, 
   deleteDoc, 
   onSnapshot 
-} from "./vendor/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 import { 
   getAnalytics, 
   isSupported, 
   logEvent 
-} from "./vendor/firebase-analytics.js";
+} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZZo-WxBBrfU-ctKyWDM0MP-ErTDt1QBg",

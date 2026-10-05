@@ -4,6 +4,7 @@ const https = require("https");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const { exec } = require("child_process");
 
 const PORT = parseInt(process.argv[2] || process.env.PORT || "8080", 10);
 const WEB_DIR = path.join(__dirname, "web");
@@ -136,6 +137,53 @@ const MIME_TYPES = {
   ".ttf": "font/ttf"
 };
 
+// =======================================================
+// DEVICE SYNC BRIDGE (Reads directly from connected iPhone)
+// =======================================================
+let cachedDeviceData = { games: [], tournaments: [] };
+let lastDeviceFetchTime = 0;
+let isDeviceFetching = false;
+
+try {
+  if (fs.existsSync("/tmp/iphone_games.json")) {
+    cachedDeviceData.games = JSON.parse(fs.readFileSync("/tmp/iphone_games.json", "utf8"));
+  }
+  if (fs.existsSync("/tmp/iphone_tournaments.json")) {
+    cachedDeviceData.tournaments = JSON.parse(fs.readFileSync("/tmp/iphone_tournaments.json", "utf8"));
+  }
+} catch (e) {}
+
+function fetchLatestDeviceData() {
+  const now = Date.now();
+  if (now - lastDeviceFetchTime < 10000 || isDeviceFetching) {
+    return Promise.resolve(cachedDeviceData);
+  }
+
+  isDeviceFetching = true;
+  return new Promise((resolve) => {
+    const cmdGames = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy from --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source Documents/setgames_games.json --destination /tmp/iphone_games.json`;
+    const cmdTourns = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy from --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source Documents/setgames_tournaments.json --destination /tmp/iphone_tournaments.json`;
+
+    exec(cmdGames, { timeout: 8000 }, (err) => {
+      if (!err && fs.existsSync("/tmp/iphone_games.json")) {
+        try {
+          cachedDeviceData.games = JSON.parse(fs.readFileSync("/tmp/iphone_games.json", "utf8"));
+        } catch (e) {}
+      }
+      exec(cmdTourns, { timeout: 8000 }, (err2) => {
+        if (!err2 && fs.existsSync("/tmp/iphone_tournaments.json")) {
+          try {
+            cachedDeviceData.tournaments = JSON.parse(fs.readFileSync("/tmp/iphone_tournaments.json", "utf8"));
+          } catch (e) {}
+        }
+        lastDeviceFetchTime = Date.now();
+        isDeviceFetching = false;
+        resolve(cachedDeviceData);
+      });
+    });
+  });
+}
+
 const server = http.createServer((req, res) => {
   // Enable CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -210,6 +258,18 @@ const server = http.createServer((req, res) => {
   if (pathname === "/api/health") {
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ status: "ok", apnsLoaded: !!privateKey }));
+  }
+
+  // API: Device Sync (pulls live games and tournaments directly from connected iPhone)
+  if (pathname === "/api/sync/device-data") {
+    fetchLatestDeviceData().then(data => {
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-cache" });
+      res.end(JSON.stringify(data));
+    }).catch(err => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ games: cachedDeviceData.games, tournaments: cachedDeviceData.tournaments, error: err.message }));
+    });
+    return;
   }
 
   // Static File Serving
