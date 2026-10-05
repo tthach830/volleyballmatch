@@ -1567,6 +1567,12 @@ export function deterministicUUID(str) {
 }
 window.deterministicUUID = deterministicUUID;
 
+export function isValidUUID(str) {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(str).trim());
+}
+window.isValidUUID = isValidUUID;
+
 export function isSamePlayer(id1, id2) {
   if (!id1 || !id2) return false;
   const s1 = String(id1).trim().toLowerCase();
@@ -11217,7 +11223,14 @@ window.openCreateTournamentModal = function() {
 
   document.getElementById("new-tourn-title").value = "";
   document.getElementById("new-tourn-location").value = "Main Beach";
-  document.getElementById("new-tourn-date").value = "";
+
+  const nextSat = new Date();
+  nextSat.setDate(nextSat.getDate() + ((6 - nextSat.getDay() + 7) % 7 || 7));
+  nextSat.setHours(9, 0, 0, 0);
+  const pad = n => String(n).padStart(2, '0');
+  const defaultDateStr = `${nextSat.getFullYear()}-${pad(nextSat.getMonth()+1)}-${pad(nextSat.getDate())}T${pad(nextSat.getHours())}:${pad(nextSat.getMinutes())}`;
+  document.getElementById("new-tourn-date").value = defaultDateStr;
+
   document.getElementById("new-tourn-courts").value = "Court #1, Court #2, Court #3, Court #4";
   document.getElementById("new-tourn-max-teams").value = "8";
   const formatEl = document.getElementById("new-tourn-format");
@@ -11327,90 +11340,105 @@ window.closeCreateTournamentModal = function() {
 };
 
 window.submitCreateTournament = function(e) {
-  e.preventDefault();
-  const editId = document.getElementById("edit-tourn-id")?.value;
-  const title = document.getElementById("new-tourn-title")?.value.trim();
-  const location = document.getElementById("new-tourn-location")?.value;
-  const dateVal = document.getElementById("new-tourn-date")?.value;
-  const courtsStr = document.getElementById("new-tourn-courts")?.value || "Court #1, Court #2";
-  const maxTeams = parseInt(document.getElementById("new-tourn-max-teams")?.value) || 8;
-  const notes = document.getElementById("new-tourn-notes")?.value || "";
-  const checkedDivs = Array.from(document.querySelectorAll('input[name="tourn-div"]:checked')).map(el => el.value);
-  const teamFormat = document.getElementById("new-tourn-format")?.value || "2v2";
-  const coHostsSelect = document.getElementById("new-tourn-cohosts");
-  const selectedCoHostIds = coHostsSelect ? Array.from(coHostsSelect.selectedOptions).map(opt => opt.value) : [];
+  if (e && e.preventDefault) e.preventDefault();
+  try {
+    const editId = document.getElementById("edit-tourn-id")?.value;
+    const title = document.getElementById("new-tourn-title")?.value?.trim();
+    if (!title) {
+      showToast("⚠️ Please enter a tournament title!");
+      document.getElementById("new-tourn-title")?.focus();
+      return;
+    }
+    const location = document.getElementById("new-tourn-location")?.value || "Main Beach";
+    const dateVal = document.getElementById("new-tourn-date")?.value;
+    const courtsStr = document.getElementById("new-tourn-courts")?.value || "Court #1, Court #2";
+    const maxTeams = parseInt(document.getElementById("new-tourn-max-teams")?.value) || 8;
+    const notes = document.getElementById("new-tourn-notes")?.value || "";
+    const checkedDivs = Array.from(document.querySelectorAll('input[name="tourn-div"]:checked')).map(el => el.value);
+    const teamFormat = document.getElementById("new-tourn-format")?.value || "2v2";
+    const coHostsSelect = document.getElementById("new-tourn-cohosts");
+    const selectedCoHostIds = coHostsSelect ? Array.from(coHostsSelect.selectedOptions).map(opt => opt.value) : [];
 
-  if (editId) {
-    const t = (state.tournaments || []).find(item => item.id === editId);
-    if (!t) return;
+    if (editId) {
+      const t = (state.tournaments || []).find(item => item.id === editId);
+      if (!t) return;
 
-    const isRoot = isRootUser(state.currentUser);
-    const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, state.currentUser?.id)) || isRoot;
-    if (!isHost) {
-      showToast("Only the tournament host or admin can edit this tournament.");
+      const isRoot = isRootUser(state.currentUser);
+      const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, state.currentUser?.id)) || isRoot;
+      if (!isHost) {
+        showToast("Only the tournament host or admin can edit this tournament.");
+        return;
+      }
+
+      t.title = title;
+      t.location = location;
+      if (dateVal) {
+        try {
+          const d = new Date(dateVal);
+          if (!isNaN(d.getTime())) t.date = d.toISOString();
+        } catch (e) {}
+      }
+      t.courts = courtsStr.split(",").map(c => c.trim()).filter(Boolean);
+      t.allowedDivisions = checkedDivs.length > 0 ? checkedDivs : DIVISION_CONFIG.map(d => d.name);
+      t.maxTeamsPerDivision = maxTeams;
+      t.notes = notes;
+      t.teamFormat = teamFormat;
+      t.coHostPlayerIds = selectedCoHostIds;
+
+      state.saveLocal();
+      saveTournamentToFirestore(t);
+      pushTournamentsToDevice();
+      showToast(`✅ Tournament "${title}" updated!`);
+      window.closeCreateTournamentModal();
+      window.renderTournamentDetail();
+      window.renderTournamentsList();
       return;
     }
 
-    t.title = title;
-    t.location = location;
-    if (dateVal) t.date = new Date(dateVal).toISOString();
-    t.courts = courtsStr.split(",").map(c => c.trim()).filter(Boolean);
-    t.allowedDivisions = checkedDivs.length > 0 ? checkedDivs : DIVISION_CONFIG.map(d => d.name);
-    t.maxTeamsPerDivision = maxTeams;
-    t.notes = notes;
-    t.teamFormat = teamFormat;
-    t.coHostPlayerIds = selectedCoHostIds;
+    const tournUUID = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID().toUpperCase() : ("tourn-" + Date.now());
+    const hostId = (state.currentUser?.id && isValidUUID(state.currentUser.id)) ? state.currentUser.id : (state.players?.[0]?.id || "47519EF2-207D-4C20-B9A6-BFEDA40FE581");
 
+    let finalDateISO;
+    try {
+      const d = dateVal ? new Date(dateVal) : new Date(Date.now() + 86400000 * 3);
+      finalDateISO = (!isNaN(d.getTime())) ? d.toISOString() : new Date(Date.now() + 86400000 * 3).toISOString();
+    } catch (e) {
+      finalDateISO = new Date(Date.now() + 86400000 * 3).toISOString();
+    }
+
+    const newTourn = {
+      id: tournUUID,
+      rawId: tournUUID,
+      title,
+      location,
+      date: finalDateISO,
+      courts: courtsStr.split(",").map(c => c.trim()).filter(Boolean),
+      allowedDivisions: checkedDivs.length > 0 ? checkedDivs : DIVISION_CONFIG.map(d => d.name),
+      maxTeamsPerDivision: maxTeams,
+      teams: [],
+      freeAgents: [],
+      matches: [],
+      status: "registration_open",
+      notes,
+      createdAt: new Date().toISOString(),
+      hostPlayerId: hostId,
+      coHostPlayerIds: selectedCoHostIds,
+      teamFormat
+    };
+
+    state.tournaments = state.tournaments || [];
+    state.tournaments.unshift(newTourn);
     state.saveLocal();
-    saveTournamentToFirestore(t);
+    saveTournamentToFirestore(newTourn);
     pushTournamentsToDevice();
-    showToast(`✅ Tournament "${title}" updated!`);
+
+    showToast(`🏆 Hosted new tournament: ${title}!`);
     window.closeCreateTournamentModal();
-    window.renderTournamentDetail();
     window.renderTournamentsList();
-    return;
+  } catch (err) {
+    console.error("Error creating tournament:", err);
+    showToast("⚠️ Could not create tournament: " + err.message);
   }
-
-  const tournUUID = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID().toUpperCase() : ("tourn-" + Date.now());
-  const hostId = (state.currentUser?.id && isValidUUID(state.currentUser.id)) ? state.currentUser.id : (state.players?.[0]?.id || "47519EF2-207D-4C20-B9A6-BFEDA40FE581");
-
-  let finalDateISO;
-  try {
-    const d = dateVal ? new Date(dateVal) : new Date(Date.now() + 86400000 * 3);
-    finalDateISO = (!isNaN(d.getTime())) ? d.toISOString() : new Date(Date.now() + 86400000 * 3).toISOString();
-  } catch (e) {
-    finalDateISO = new Date(Date.now() + 86400000 * 3).toISOString();
-  }
-
-  const newTourn = {
-    id: tournUUID,
-    rawId: tournUUID,
-    title,
-    location,
-    date: finalDateISO,
-    courts: courtsStr.split(",").map(c => c.trim()).filter(Boolean),
-    allowedDivisions: checkedDivs.length > 0 ? checkedDivs : DIVISION_CONFIG.map(d => d.name),
-    maxTeamsPerDivision: maxTeams,
-    teams: [],
-    freeAgents: [],
-    matches: [],
-    status: "registration_open",
-    notes,
-    createdAt: new Date().toISOString(),
-    hostPlayerId: hostId,
-    coHostPlayerIds: selectedCoHostIds,
-    teamFormat
-  };
-
-  state.tournaments = state.tournaments || [];
-  state.tournaments.unshift(newTourn);
-  state.saveLocal();
-  saveTournamentToFirestore(newTourn);
-  pushTournamentsToDevice();
-
-  showToast(`🏆 Hosted new tournament: ${title}!`);
-  window.closeCreateTournamentModal();
-  window.renderTournamentsList();
 };
 
 window.deleteTournament = function(tournamentId) {

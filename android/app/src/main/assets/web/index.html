@@ -1220,11 +1220,11 @@
           <button type="button" class="modal-close" onclick="window.closeCreateTournamentModal()">&times;</button>
         </div>
 
-        <form id="create-tournament-form" onsubmit="window.submitCreateTournament(event)" style="display: flex; flex-direction: column; gap: 12px;">
+        <form id="create-tournament-form" novalidate onsubmit="window.submitCreateTournament(event); return false;" style="display: flex; flex-direction: column; gap: 12px;">
           <input type="hidden" id="edit-tourn-id" value="">
           <div>
             <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Tournament Title</label>
-            <input type="text" id="new-tourn-title" placeholder="e.g. Santa Cruz Beach Open" class="form-input" required style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+            <input type="text" id="new-tourn-title" placeholder="e.g. Santa Cruz Beach Open" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
           </div>
 
           <div>
@@ -1242,7 +1242,7 @@
 
           <div>
             <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Date & Time</label>
-            <input type="datetime-local" id="new-tourn-date" class="form-input" required style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+            <input type="datetime-local" id="new-tourn-date" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
           </div>
 
           <div>
@@ -1252,7 +1252,7 @@
 
           <div>
             <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Max Teams Per Division</label>
-            <input type="number" id="new-tourn-max-teams" value="8" min="4" max="32" step="4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+            <input type="number" id="new-tourn-max-teams" value="8" min="4" max="32" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
           </div>
 
           <!-- Team Format (2v2 Doubles vs 4v4 Quads) -->
@@ -1290,7 +1290,7 @@
             <textarea id="new-tourn-notes" rows="2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.</textarea>
           </div>
 
-          <button type="submit" id="create-tourn-submit-btn" class="btn btn-primary" style="margin-top: 8px; font-weight: 800; padding: 12px; background: #ea580c; border: none;">Create Tournament</button>
+          <button type="button" id="create-tourn-submit-btn" onclick="window.submitCreateTournament(event)" class="btn btn-primary" style="margin-top: 8px; font-weight: 800; padding: 12px; background: #ea580c; border: none; cursor: pointer;">Create Tournament</button>
         </form>
       </div>
     </div>
