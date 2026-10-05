@@ -1720,7 +1720,23 @@ public class DataManager: ObservableObject {
                     !(r.rawId == "26B299D3-A7EA-4BF9-B415-14F9E80EE967") &&
                     !r.title.localizedCaseInsensitiveContains("winter wonderland")
                 }
-                self.tournaments = self.deduplicateTournaments(validRemotes)
+                let remoteIds = Set(validRemotes.map { $0.id.uuidString } + validRemotes.compactMap { $0.rawId })
+                let remoteTitles = Set(validRemotes.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
+                let localPending = self.tournaments.filter { local in
+                    !remoteIds.contains(local.id.uuidString) &&
+                    !(local.rawId != nil && remoteIds.contains(local.rawId!)) &&
+                    !remoteTitles.contains(local.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
+                }
+                let defaults = self.seedDefaultTournaments().filter { dt in
+                    !remoteIds.contains(dt.id.uuidString) &&
+                    !(dt.rawId != nil && remoteIds.contains(dt.rawId!)) &&
+                    !remoteTitles.contains(dt.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
+                }
+                let combined = self.deduplicateTournaments(validRemotes + localPending + defaults)
+                self.tournaments = combined
+                for pending in (localPending + defaults) {
+                    FirestoreService.shared.saveTournament(pending)
+                }
                 self.saveToDisk()
             }
         )
@@ -1730,6 +1746,9 @@ public class DataManager: ObservableObject {
             initialGames: self.games,
             initialSlots: self.availabilitySlots
         )
+        for t in self.tournaments {
+            FirestoreService.shared.saveTournament(t)
+        }
     }
     
     // MARK: - Mock Initial Community Data
@@ -2057,7 +2076,91 @@ public class DataManager: ObservableObject {
             teamFormat: .quads4v4
         )
         
-        return [halloweenTournament]
+        var fallClassicComponents = DateComponents()
+        fallClassicComponents.year = 2026
+        fallClassicComponents.month = 11
+        fallClassicComponents.day = 14
+        fallClassicComponents.hour = 10
+        fallClassicComponents.minute = 0
+        let fallClassicDate = cal.date(from: fallClassicComponents) ?? Date()
+        
+        let fallClassicTournament = Tournament(
+            id: UUID(uuidString: "B1E9A6C0-1234-4567-89AB-CDEF01234567") ?? UUID(),
+            rawId: "B1E9A6C0-1234-4567-89AB-CDEF01234567",
+            title: "Santa Cruz Fall Classic",
+            hostPlayerId: p1Id,
+            coHostPlayerIds: [],
+            date: fallClassicDate,
+            location: "Main Beach",
+            courts: ["Court #1", "Court #2"],
+            allowedDivisions: [.coedNovice2v2, .coedIntermediate2v2],
+            maxTeamsPerDivision: 8,
+            teams: [],
+            freeAgents: [],
+            matches: [],
+            status: "registration_open",
+            notes: "2v2 doubles tournament at Main Beach.",
+            createdAt: Date(),
+            teamFormat: .doubles2v2
+        )
+        
+        var testingComponents = DateComponents()
+        testingComponents.year = 2026
+        testingComponents.month = 10
+        testingComponents.day = 10
+        testingComponents.hour = 9
+        testingComponents.minute = 0
+        let testingDate = cal.date(from: testingComponents) ?? Date()
+        
+        let testingTournament = Tournament(
+            id: UUID(uuidString: "12A68DA6-1D90-4ECA-8FA1-353F15FA1ECC") ?? UUID(),
+            rawId: "12A68DA6-1D90-4ECA-8FA1-353F15FA1ECC",
+            title: "testing",
+            hostPlayerId: p1Id,
+            coHostPlayerIds: [],
+            date: testingDate,
+            location: "Main Beach",
+            courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
+            allowedDivisions: [.coedNovice2v2, .coedIntermediate2v2, .coed4v4, .mensIntermediate2v2],
+            maxTeamsPerDivision: 8,
+            teams: [],
+            freeAgents: [],
+            matches: [],
+            status: "registration_open",
+            notes: "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.",
+            createdAt: Date(),
+            teamFormat: .doubles2v2
+        )
+        
+        var testComponents = DateComponents()
+        testComponents.year = 2026
+        testComponents.month = 10
+        testComponents.day = 8
+        testComponents.hour = 9
+        testComponents.minute = 23
+        let testDate = cal.date(from: testComponents) ?? Date()
+        
+        let testTournament = Tournament(
+            id: UUID(uuidString: "A1E6E2EA-2E61-45C5-98D3-7C38AB944750") ?? UUID(),
+            rawId: "90E2BA36-5589-4BED-A653-D317646799DC",
+            title: "Test",
+            hostPlayerId: p1Id,
+            coHostPlayerIds: [],
+            date: testDate,
+            location: "Main Beach",
+            courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
+            allowedDivisions: [.coedIntermediate2v2, .mensIntermediate2v2, .coed4v4, .coedNovice2v2],
+            maxTeamsPerDivision: 8,
+            teams: [],
+            freeAgents: [],
+            matches: [],
+            status: "registration_open",
+            notes: "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.",
+            createdAt: Date(),
+            teamFormat: .doubles2v2
+        )
+        
+        return [halloweenTournament, fallClassicTournament, testingTournament, testTournament]
     }
     
     // MARK: - Local Device Persistence
@@ -2855,7 +2958,13 @@ public class DataManager: ObservableObject {
         return (true, "Tournament deleted successfully.")
     }
     
+    private var isSavingToDisk = false
+    
     public func saveToDisk() {
+        guard !isSavingToDisk else { return }
+        isSavingToDisk = true
+        defer { isSavingToDisk = false }
+        
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         encoder.dateEncodingStrategy = .iso8601
@@ -2902,8 +3011,10 @@ public class DataManager: ObservableObject {
         )
         
         source.setEventHandler { [weak self] in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                _ = self?.loadFromDisk()
+            guard let self = self, !self.isSavingToDisk else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self = self, !self.isSavingToDisk else { return }
+                _ = self.loadFromDisk()
             }
         }
         
@@ -2917,6 +3028,12 @@ public class DataManager: ObservableObject {
     
     @discardableResult
     public func loadFromDisk() -> Bool {
+        guard Thread.isMainThread else {
+            return DispatchQueue.main.sync {
+                self.loadFromDisk()
+            }
+        }
+        
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let pData = try? Data(contentsOf: playersFileURL),
@@ -2925,14 +3042,68 @@ public class DataManager: ObservableObject {
             return false
         }
         
-        updateOnMain(\.players, value: loadedPlayers)
+        self.players = loadedPlayers
         
         if let gData = try? Data(contentsOf: gamesFileURL),
            let loadedGames = try? decoder.decode([SetGame].self, from: gData) {
-            let active = loadedGames.filter { $0.status != .canceled }
-            updateOnMain(\.games, value: active)
+            var active = loadedGames.filter { $0.status != .canceled }
+            let existingTitles = Set(active.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
+            let existingIds = Set(active.map { $0.id.uuidString } + active.compactMap { $0.rawId })
+            
+            // Tuesday COED 10/6/26 12AM
+            if !existingTitles.contains("tuesday coed 10/6/26 12am") && !existingIds.contains("0D71F7B9-0025-4A6F-940D-2B85F15993B1") {
+                let tuesdayDate = ISO8601DateFormatter().date(from: "2026-10-06T07:00:00Z") ?? Date()
+                let tuesGame = SetGame(
+                    id: UUID(uuidString: "0D71F7B9-0025-4A6F-940D-2B85F15993B1") ?? UUID(),
+                    rawId: "0D71F7B9-0025-4A6F-940D-2B85F15993B1",
+                    title: "Tuesday COED 10/6/26 12AM",
+                    targetRating: .intermediate,
+                    allowedRatings: [.intermediate],
+                    genderCategory: .coed,
+                    format: .bestOfThree,
+                    status: .scheduled,
+                    scheduledDate: tuesdayDate,
+                    courtLocation: "Harbor Beach",
+                    courtNumber: "Court #1",
+                    team1PlayerIds: [UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581") ?? UUID()],
+                    team2PlayerIds: [],
+                    notes: "Bring an official Wilson or Molten beach volleyball!",
+                    hostPlayerId: UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581") ?? UUID(),
+                    isLevelLocked: true,
+                    matchedOptionName: "Community Open Match"
+                )
+                active.append(tuesGame)
+            }
+            
+            // Wednesday COED 10/7/26 5PM
+            if !existingTitles.contains("wednesday coed 10/7/26 5pm") && !existingIds.contains("game-wednesday-coed-10-7-26") {
+                let wednesdayDate = ISO8601DateFormatter().date(from: "2026-10-08T00:00:00Z") ?? Date()
+                let wedGame = SetGame(
+                    id: SetGame.parseUUID(from: "game-wednesday-coed-10-7-26") ?? UUID(),
+                    rawId: "game-wednesday-coed-10-7-26",
+                    title: "Wednesday COED 10/7/26 5PM",
+                    targetRating: .b,
+                    allowedRatings: [.novice, .intermediate, .b, .a, .aa, .open],
+                    genderCategory: .coed,
+                    format: .bestOfThree,
+                    status: .scheduled,
+                    scheduledDate: wednesdayDate,
+                    courtLocation: "Main Beach",
+                    courtNumber: "Court #1",
+                    team1PlayerIds: [UUID(uuidString: "104FAF3C-2420-4F92-8292-B2AB3BF8C572") ?? UUID()],
+                    team2PlayerIds: [],
+                    notes: "Wednesday sunset beach doubles session. 5PM on the sand!",
+                    hostPlayerId: UUID(uuidString: "104FAF3C-2420-4F92-8292-B2AB3BF8C572") ?? UUID(),
+                    isLevelLocked: true,
+                    matchedOptionName: "Smart Availability"
+                )
+                active.append(wedGame)
+            }
+            
+            self.games = active
         }
         
+        let defaults = seedDefaultTournaments()
         if let tData = try? Data(contentsOf: tournamentsFileURL),
            let loadedTournaments = try? decoder.decode([Tournament].self, from: tData) {
             let filtered = loadedTournaments.filter {
@@ -2940,28 +3111,35 @@ public class DataManager: ObservableObject {
                 $0.rawId != "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
                 !$0.title.localizedCaseInsensitiveContains("winter wonderland")
             }
-            let deduped = deduplicateTournaments(filtered)
-            updateOnMain(\.tournaments, value: deduped)
-        }
-        if self.tournaments.isEmpty {
-            updateOnMain(\.tournaments, value: seedDefaultTournaments())
+            let existingTitles = Set(filtered.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
+            let existingIds = Set(filtered.map { $0.id.uuidString } + filtered.compactMap { $0.rawId })
+            let missingDefaults = defaults.filter { dt in
+                !existingTitles.contains(dt.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)) &&
+                !existingIds.contains(dt.id.uuidString) &&
+                !(dt.rawId != nil && existingIds.contains(dt.rawId!))
+            }
+            let deduped = deduplicateTournaments(filtered + missingDefaults)
+            self.tournaments = deduped
+        } else {
+            self.tournaments = defaults
         }
         
         if let sData = try? Data(contentsOf: slotsFileURL),
            let loadedSlots = try? decoder.decode([AvailabilitySlot].self, from: sData) {
-            updateOnMain(\.availabilitySlots, value: loadedSlots)
+            self.availabilitySlots = loadedSlots
         }
         
         if let savedUserIdString = UserDefaults.standard.string(forKey: userSessionKey),
            let savedUUID = UUID(uuidString: savedUserIdString) {
-            updateOnMain(\.currentUser, value: self.players.first(where: { $0.id == savedUUID }))
+            self.currentUser = self.players.first(where: { $0.id == savedUUID })
         }
         
         if self.currentUser?.isRoot != true {
-            updateOnMain(\.isDemoModeEnabled, value: false)
+            self.isDemoModeEnabled = false
             UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
         }
         
+        self.saveToDisk()
         return true
     }
 }
