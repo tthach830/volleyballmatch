@@ -611,14 +611,29 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="create-beach">Beach Location</label>
-            <select id="create-beach" class="form-select">
-              <option value="Main Beach">Main Beach (Santa Cruz)</option>
-              <option value="Dream Inn">Dream Inn</option>
-              <option value="Harbor Beach">Harbor Beach</option>
-              <option value="4th Street">4th Street Courts</option>
-              <option value="Seabright Beach">Seabright Beach</option>
+            <label class="form-label" for="create-format">Match Format</label>
+            <select id="create-format" class="form-select">
+              <option value="Best of 3 Sets (21-21-15)">Best of 3 Sets (21-21-15)</option>
+              <option value="Single Set to 21">Single Set to 21</option>
+              <option value="King of Beach (Rotating 3 Sets)">King of Beach (Rotating 3 Sets)</option>
             </select>
+          </div>
+
+          <div class="form-group" style="display: flex; gap: 10px;">
+            <div style="flex: 2;">
+              <label class="form-label" for="create-beach">Beach Location</label>
+              <select id="create-beach" class="form-select">
+                <option value="Main Beach">Main Beach (Santa Cruz)</option>
+                <option value="Dream Inn">Dream Inn</option>
+                <option value="Harbor Beach">Harbor Beach</option>
+                <option value="4th Street">4th Street Courts</option>
+                <option value="Seabright Beach">Seabright Beach</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label class="form-label" for="create-court">Court #</label>
+              <input type="text" id="create-court" class="form-input" value="Court #1" placeholder="Court #1">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="create-date">Scheduled Time</label>

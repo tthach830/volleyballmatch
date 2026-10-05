@@ -6359,22 +6359,38 @@ window.closeCreateMatchModal = () => {
 
 window.handleCreateMatch = (e) => {
   e.preventDefault();
-  if (!state.currentUser) return;
+  if (!state.currentUser) {
+    showToast("Please log in first to host a game.");
+    window.showAuthModal();
+    return;
+  }
   const checkedBoxes = Array.from(document.querySelectorAll("input[name='create-tier-cb']:checked"));
   const allowedRatings = checkedBoxes.map(cb => cb.value);
   const targetRating = allowedRatings[0] || (state.currentUser?.rating || "B");
-  const isLevelLocked = document.getElementById("create-level-locked").checked;
+  const isLevelLocked = document.getElementById("create-level-locked") ? document.getElementById("create-level-locked").checked : true;
   const isPrivate = document.getElementById("create-is-private") ? document.getElementById("create-is-private").checked : false;
-  const genderCategory = getSelectedDivision("create");
-  const maxPlayers = parseInt(document.getElementById("create-max-players")?.value) || 4;
+  const genderCategory = typeof getSelectedDivision === "function" ? getSelectedDivision("create") : "COED";
+  const maxPlayers = parseInt(document.getElementById("create-max-players")?.value, 10) || 4;
   const format = document.getElementById("create-format")?.value || "Best of 3 Sets (21-21-15)";
-  const courtLocation = document.getElementById("create-beach").value;
-  const courtNumber = document.getElementById("create-court").value.trim() || "Court #1";
-  const scheduledDateInput = document.getElementById("create-date").value;
-  const scheduledDate = new Date(scheduledDateInput).toISOString();
-  const notes = document.getElementById("create-notes").value.trim();
+  const courtLocation = document.getElementById("create-beach")?.value || "Main Beach";
+  const courtNumber = document.getElementById("create-court")?.value?.trim() || "Court #1";
+  const scheduledDateInput = document.getElementById("create-date")?.value;
+  if (!scheduledDateInput) {
+    showToast("Please pick a scheduled date and time.");
+    return;
+  }
+  const dObj = new Date(scheduledDateInput);
+  if (isNaN(dObj.getTime())) {
+    showToast("Invalid scheduled date.");
+    return;
+  }
+  const scheduledDate = dObj.toISOString();
+  const notes = document.getElementById("create-notes")?.value?.trim() || "Bring an official Wilson or Molten beach volleyball!";
 
-  const defaultTitle = formatDefaultGameTitle(new Date(scheduledDateInput), genderCategory);
+  const defaultTitle = typeof formatDefaultGameTitle === "function" 
+    ? formatDefaultGameTitle(dObj, genderCategory)
+    : `Match ${scheduledDateInput}`;
+
   const newGame = {
     id: "game-" + Date.now(),
     title: defaultTitle,
@@ -6391,17 +6407,22 @@ window.handleCreateMatch = (e) => {
     scheduledDate,
     status: "scheduled",
     isAutoMatched: false,
-    matchedOptionName: "Host Scheduled",
+    matchedOptionName: "Community Open Match",
     notes,
     team1PlayerIds: [state.currentUser.id],
     team2PlayerIds: [],
     submittedRatings: {},
-    setScores: []
+    setScores: [],
+    messages: [],
+    subMatches: []
   };
 
   state.games.unshift(newGame);
   state.saveLocal();
-  saveGameToFirestore(newGame);
+  saveGameToFirestore(newGame).catch(() => {});
+  if (typeof window.pushGamesToDevice === "function") {
+    window.pushGamesToDevice();
+  }
   window.closeCreateMatchModal();
   renderMatches();
   showToast(`Game hosted: ${newGame.title}!`);
@@ -6755,7 +6776,10 @@ window.handleSaveMatchEdit = (e) => {
   game.notes = document.getElementById("edit-notes").value.trim();
 
   state.saveLocal();
-  saveGameToFirestore(game);
+  saveGameToFirestore(game).catch(() => {});
+  if (typeof window.pushGamesToDevice === "function") {
+    window.pushGamesToDevice();
+  }
   window.closeEditMatchModal();
   renderMatches();
   showToast("Match preferences updated!");
@@ -6804,7 +6828,10 @@ window.deleteGame = (gameId) => {
 
   state.games = state.games.filter(g => g.id !== gameId);
   state.saveLocal();
-  deleteGameFromFirestore(gameId);
+  deleteGameFromFirestore(gameId).catch(() => {});
+  if (typeof window.pushGamesToDevice === "function") {
+    window.pushGamesToDevice();
+  }
   renderMatches();
   showToast("Match cancelled and deleted.");
 };
