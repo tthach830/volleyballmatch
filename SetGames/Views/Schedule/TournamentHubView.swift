@@ -279,7 +279,7 @@ public struct TournamentCardView: View {
                         .foregroundColor(pool.played == pool.total ? .green : .orange)
                 }
                 
-                Text("\(tournament.teamFormat.icon) \(tournament.teamFormat.displayName)")
+                Text("\(tournament.effectiveTeamFormat.icon) \(tournament.effectiveTeamFormat.displayName)")
                     .font(.system(size: 10, weight: .black))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)

@@ -75,7 +75,7 @@ public struct TournamentDetailView: View {
                                         .foregroundColor(.green)
                                 }
                                 
-                                Text("\(t.teamFormat.icon) \(t.teamFormat.displayName)")
+                                Text("\(t.effectiveTeamFormat.icon) \(t.effectiveTeamFormat.displayName)")
                                     .font(.system(size: 10, weight: .black))
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)

@@ -580,7 +580,31 @@ public struct Tournament: Identifiable, Codable, Hashable {
             createdAt = Date()
         }
         
-        teamFormat = (try? container.decode(TournamentTeamFormat.self, forKey: .teamFormat)) ?? .doubles2v2
+        let decodedFormat = try? container.decode(TournamentTeamFormat.self, forKey: .teamFormat)
+        if let fmt = decodedFormat {
+            if fmt == .doubles2v2 && !allowedDivisions.isEmpty && allowedDivisions.allSatisfy({ $0 == .coed4v4 }) {
+                teamFormat = .quads4v4
+            } else {
+                teamFormat = fmt
+            }
+        } else {
+            if !allowedDivisions.isEmpty && allowedDivisions.allSatisfy({ $0 == .coed4v4 }) {
+                teamFormat = .quads4v4
+            } else {
+                teamFormat = .doubles2v2
+            }
+        }
+    }
+    
+    public var effectiveTeamFormat: TournamentTeamFormat {
+        if teamFormat == .quads4v4 { return .quads4v4 }
+        if !allowedDivisions.isEmpty && allowedDivisions.allSatisfy({ $0 == .coed4v4 }) {
+            return .quads4v4
+        }
+        if title.lowercased().contains("hollao") || title.lowercased().contains("halloween") {
+            return .quads4v4
+        }
+        return teamFormat
     }
     
     public func isHostOrCoHost(_ playerId: UUID?) -> Bool {

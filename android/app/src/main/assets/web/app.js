@@ -232,10 +232,10 @@ export const initialCommunityTournaments = [
     date: "2026-10-31T17:00:00Z",
     location: "Harbor Beach",
     courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
-    allowedDivisions: ["4v4 Coed", "2v2 Coed Intermediate"],
+    allowedDivisions: ["4v4 Coed"],
     maxTeamsPerDivision: 20,
     status: "registration_open",
-    teamFormat: "2v2",
+    teamFormat: "4v4",
     hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
     coHostPlayerIds: ["40545549-6572-4D31-B738-383830393935"],
     notes: "Halloween Beach Volleyball Tournament! Costumes encouraged! Double elimination, rally score to 21, switch sides every 7 points.",
@@ -2994,6 +2994,16 @@ window.setMatchFilter = (filter) => {
   renderMatches();
 };
 
+export function getEffectiveTournamentFormat(t) {
+  if (!t) return "2v2";
+  if (t.teamFormat === "4v4") return "4v4";
+  const divs = Array.isArray(t.allowedDivisions) ? t.allowedDivisions : [];
+  if (divs.length > 0 && divs.every(d => String(d).includes("4v4"))) return "4v4";
+  if (t.title && (t.title.toLowerCase().includes("hollao") || t.title.toLowerCase().includes("halloween"))) return "4v4";
+  return t.teamFormat || "2v2";
+}
+window.getEffectiveTournamentFormat = getEffectiveTournamentFormat;
+
 export function renderTournamentCardHtml(t, currentUserId, index = 0) {
   try {
     const d = parseGameDate(t.date);
@@ -3059,7 +3069,7 @@ export function renderTournamentCardHtml(t, currentUserId, index = 0) {
               </span>
             ` : ''}
             <span style="font-size: 10px; font-weight: 800; background: rgba(8, 145, 178, 0.25); color: #22d3ee; padding: 2px 7px; border-radius: 999px;">
-              ${t.teamFormat === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
+              ${getEffectiveTournamentFormat(t) === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
             </span>
           </div>
         </div>
@@ -7860,6 +7870,8 @@ export function deduplicateTournaments(tournaments) {
     if (!t) continue;
     if (t.title && (t.title.toLowerCase().includes("hollao") || t.title.toLowerCase().includes("halloween"))) {
       t.title = "Hollaoweeen tournament";
+      t.teamFormat = "4v4";
+      t.allowedDivisions = ["4v4 Coed"];
     }
     const tId = t.id ? String(t.id).trim() : "";
     const tRawId = t.rawId ? String(t.rawId).trim() : "";
@@ -7933,8 +7945,10 @@ export function deduplicateTournaments(tournaments) {
       if (t.rawId && !existing.rawId) existing.rawId = t.rawId;
       if (existing.title && (existing.title.toLowerCase().includes("hollao") || existing.title.toLowerCase().includes("halloween"))) {
         existing.title = "Hollaoweeen tournament";
+        existing.teamFormat = "4v4";
+        existing.allowedDivisions = ["4v4 Coed"];
       }
-      if ((!existing.allowedDivisions || existing.allowedDivisions.length <= 1) && Array.isArray(t.allowedDivisions) && t.allowedDivisions.length > 1) {
+      if (!existing.allowedDivisions && Array.isArray(t.allowedDivisions)) {
         existing.allowedDivisions = t.allowedDivisions;
       }
     } else {
@@ -8233,7 +8247,7 @@ window.renderTournamentDetail = function() {
           <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
             <div style="font-size: 11px; font-weight: 800; color: #ea580c; text-transform: uppercase;">BEACH TOURNAMENT</div>
             <div style="font-size: 11px; font-weight: 800; color: #0891b2; background: rgba(8,145,178,0.1); padding: 2px 8px; border-radius: 20px;">
-              ${t.teamFormat === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
+              ${getEffectiveTournamentFormat(t) === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
             </div>
           </div>
           <h2 style="font-size: 18px; font-weight: 800; margin: 2px 0 4px 0; color: var(--text-main, #0f172a);">${t.title}</h2>
@@ -8536,7 +8550,7 @@ window.renderTournamentDetail = function() {
                 const p2 = team.player2Id ? state.players.find(p => p.id === team.player2Id) : null;
                 const p3 = team.player3Id ? state.players.find(p => p.id === team.player3Id) : null;
                 const p4 = team.player4Id ? state.players.find(p => p.id === team.player4Id) : null;
-                const is4v4 = (t.teamFormat === '4v4');
+                const is4v4 = (getEffectiveTournamentFormat(t) === '4v4');
                 const p1Name = p1 ? getPlayerDisplayName(p1) : 'Player 1';
                 const p2Name = p2 ? getPlayerDisplayName(p2) : null;
                 const p3Name = p3 ? getPlayerDisplayName(p3) : null;
@@ -9565,7 +9579,7 @@ window.renderTournamentSignUpBody = function() {
   const currentDiv = window.activeTournamentDivision || "2v2 Coed Novice";
   const user = state.currentUser;
   const divConf = DIVISION_CONFIG.find(c => c.name === currentDiv) || { teamSize: 2 };
-  const is4v4 = (divConf.teamSize === 4 || currentDiv.includes("4v4") || t.teamFormat === "4v4");
+  const is4v4 = (divConf.teamSize === 4 || currentDiv.includes("4v4") || getEffectiveTournamentFormat(t) === "4v4");
   const teamLabel = is4v4 ? "4-Player Team" : "2-Player Team";
   const isNovice = currentDiv.toLowerCase().includes("novice");
 

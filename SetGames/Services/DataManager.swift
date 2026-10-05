@@ -2027,7 +2027,7 @@ public class DataManager: ObservableObject {
             date: halloweenDate,
             location: "Harbor Beach",
             courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
-            allowedDivisions: [.coed4v4, .coedIntermediate2v2],
+            allowedDivisions: [.coed4v4],
             maxTeamsPerDivision: 20,
             teams: [],
             freeAgents: [],
@@ -2035,7 +2035,7 @@ public class DataManager: ObservableObject {
             status: "registration_open",
             notes: "Halloween Beach Volleyball Tournament! Costumes encouraged! Double elimination, rally score to 21, switch sides every 7 points.",
             createdAt: Date(),
-            teamFormat: .doubles2v2
+            teamFormat: .quads4v4
         )
         
         let winterTournament = Tournament(
@@ -2083,6 +2083,8 @@ public class DataManager: ObservableObject {
             var tournamentToAdd = t
             if tournamentToAdd.title.lowercased().contains("hollao") || tournamentToAdd.title.lowercased().contains("halloween") {
                 tournamentToAdd.title = "Hollaoweeen tournament"
+                tournamentToAdd.teamFormat = .quads4v4
+                tournamentToAdd.allowedDivisions = [.coed4v4]
             }
             let tId = tournamentToAdd.id.uuidString
             let tRaw = (tournamentToAdd.rawId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2117,6 +2119,8 @@ public class DataManager: ObservableObject {
                 var existing = result[idx]
                 if existing.title.lowercased().contains("hollao") || existing.title.lowercased().contains("halloween") {
                     existing.title = "Hollaoweeen tournament"
+                    existing.teamFormat = .quads4v4
+                    existing.allowedDivisions = [.coed4v4]
                 }
                 
                 // Merge registered teams without duplicate players
