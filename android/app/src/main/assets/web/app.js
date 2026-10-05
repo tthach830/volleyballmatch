@@ -220,6 +220,28 @@ const initialCommunityGames = [
     team2PlayerIds: [],
     submittedRatings: {},
     setScores: []
+  },
+  {
+    id: "game-wednesday-coed-10-7-26",
+    title: "Wednesday COED 10/7/26 5PM",
+    targetRating: "B",
+    allowedRatings: ["Novice", "Intermediate", "B", "A", "AA", "Open"],
+    genderCategory: "COED",
+    format: "Best of 3 Sets (21-21-15)",
+    isLevelLocked: true,
+    hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+    courtLocation: "Main Beach",
+    courtNumber: "Court #1",
+    scheduledDate: "2026-10-08T00:00:00.000Z",
+    status: "scheduled",
+    maxPlayers: 4,
+    isAutoMatched: false,
+    matchedOptionName: "Community Open Match",
+    notes: "Wednesday sunset beach doubles session. 5PM on the sand!",
+    team1PlayerIds: ["47519EF2-207D-4C20-B9A6-BFEDA40FE581"],
+    team2PlayerIds: [],
+    submittedRatings: {},
+    setScores: []
   }
 ];
 
@@ -2044,8 +2066,10 @@ class AppState {
       console.warn("Storage read warning:", e);
     }
 
-    this.players = (savedPlayers && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
-    this.games = Array.isArray(savedGames) ? savedGames.filter(isUpcomingGame) : [];
+    const loadedGames = Array.isArray(savedGames) ? savedGames.filter(isUpcomingGame) : [];
+    const existingTitles = new Set(loadedGames.map(g => (g.title || "").toLowerCase().trim()));
+    const missingInitial = initialCommunityGames.filter(g => !existingTitles.has((g.title || "").toLowerCase().trim()) && isUpcomingGame(g));
+    this.games = [...loadedGames, ...missingInitial];
     this.availabilitySlots = deduplicateSlots(savedSlots || []);
     const baseTourns = (savedTourns && savedTourns.length > 0) ? savedTourns : initialCommunityTournaments;
     this.tournaments = deduplicateTournaments(baseTourns).filter(t => !t.title?.toLowerCase().includes("winter wonderland") && t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967");
@@ -10421,7 +10445,12 @@ function initApp() {
       const s = String(g.status || "").trim().toLowerCase();
       return s !== "canceled";
     });
-    state.games = validGames;
+    const remoteTitles = new Set(validGames.map(g => (g.title || "").toLowerCase().trim()));
+    const localPending = (state.games || []).filter(g => {
+      const title = (g.title || "").toLowerCase().trim();
+      return isUpcomingGame(g) && !remoteTitles.has(title) && !validGames.some(r => r.id === g.id);
+    });
+    state.games = [...validGames, ...localPending];
     state.saveLocal();
     renderMatches();
     if (window.activeChatGameId) {
@@ -10464,6 +10493,12 @@ function initApp() {
 
   // Prune deleted Winter Wonderland from Firestore
   deleteTournamentFromFirestore("26B299D3-A7EA-4BF9-B415-14F9E80EE967").catch(() => {});
+
+  // Ensure Wednesday COED 10/7/26 5PM is pushed to Firestore
+  const wedGame = (state.games || []).find(g => (g.title || "").toLowerCase().includes("wednesday coed 10/7/26 5pm")) || initialCommunityGames.find(g => (g.title || "").toLowerCase().includes("wednesday coed 10/7/26 5pm"));
+  if (wedGame) {
+    saveGameToFirestore(wedGame).catch(() => {});
+  }
 
   // Handle incoming deep link or game route from QR scan
   handleIncomingGameRoute();

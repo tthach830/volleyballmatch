@@ -70,6 +70,7 @@ public class FirestoreService: ObservableObject {
         gamesListener = db.collection("games").addSnapshotListener { [weak self] snapshot, error in
             guard let self = self, let documents = snapshot?.documents, error == nil else { return }
             let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
             let games: [SetGame] = documents.compactMap { doc in
                 do {
                     var safeDict = (self.sanitizeForJSON(doc.data()) as? [String: Any]) ?? [:]
@@ -170,10 +171,19 @@ public class FirestoreService: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(game),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         
         let docId = game.rawId ?? game.id.uuidString
-        db.collection("games").document(docId).setData(dict, merge: true)
+        if dict["id"] == nil {
+            dict["id"] = docId
+        }
+        db.collection("games").document(docId).setData(dict, merge: true) { error in
+            if let error = error {
+                print("❌ Error saving game \(docId) to Firestore: \(error.localizedDescription)")
+            } else {
+                print("✅ Successfully synced game \(docId) to Firestore")
+            }
+        }
     }
     
     public func deleteGame(id: UUID, rawId: String? = nil) {

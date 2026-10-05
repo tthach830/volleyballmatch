@@ -1671,7 +1671,25 @@ public class DataManager: ObservableObject {
                 }
                 
                 self.hasCompletedInitialGamesSync = true
-                self.games = remoteGames.filter { $0.status != .canceled }
+                let validRemotes = remoteGames.filter { $0.status != .canceled }
+                if !validRemotes.isEmpty {
+                    let remoteIds = Set(validRemotes.map { $0.id.uuidString } + validRemotes.compactMap { $0.rawId })
+                    let remoteTitles = Set(validRemotes.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
+                    let localPending = self.games.filter { local in
+                        local.status != .canceled &&
+                        !remoteIds.contains(local.id.uuidString) &&
+                        !(local.rawId != nil && remoteIds.contains(local.rawId!)) &&
+                        !remoteTitles.contains(local.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
+                    }
+                    self.games = validRemotes + localPending
+                    for pending in localPending {
+                        FirestoreService.shared.saveGame(pending)
+                    }
+                } else if !self.games.isEmpty {
+                    for g in self.games {
+                        FirestoreService.shared.saveGame(g)
+                    }
+                }
                 self.saveToDisk()
                 self.syncMatchReminders()
             },
@@ -2874,6 +2892,38 @@ public class DataManager: ObservableObject {
         if let gData = try? Data(contentsOf: gamesFileURL),
            let loadedGames = try? decoder.decode([SetGame].self, from: gData) {
             self.games = loadedGames.filter { $0.status != .canceled }
+        }
+        let hasWed = self.games.contains { $0.title.localizedCaseInsensitiveContains("wednesday coed 10/7/26 5pm") }
+        if !hasWed {
+            let cal = Calendar.current
+            var components = DateComponents()
+            components.year = 2026
+            components.month = 10
+            components.day = 7
+            components.hour = 17
+            components.minute = 0
+            let wedDate = cal.date(from: components) ?? Date()
+            let hostId = self.players.first?.id ?? UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581")!
+            let wedGame = SetGame(
+                id: UUID(uuidString: "3E1B9A12-70E2-4C1B-8B3E-54A8812E8B99") ?? UUID(),
+                rawId: "game-wednesday-coed-10-7-26",
+                title: "Wednesday COED 10/7/26 5PM",
+                targetRating: .b,
+                allowedRatings: RatingTier.allCases,
+                genderCategory: .coed,
+                format: .bestOfThree,
+                status: .scheduled,
+                scheduledDate: wedDate,
+                courtLocation: "Main Beach",
+                courtNumber: "Court #1",
+                maxPlayers: 4,
+                team1PlayerIds: [hostId],
+                team2PlayerIds: [],
+                notes: "Wednesday sunset beach doubles session. 5PM on the sand!",
+                hostPlayerId: hostId,
+                isLevelLocked: true
+            )
+            self.games.insert(wedGame, at: 0)
         }
         
         if let tData = try? Data(contentsOf: tournamentsFileURL),
