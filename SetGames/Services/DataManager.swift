@@ -34,6 +34,7 @@ public class DataManager: ObservableObject {
             UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
         }
         setupFirestoreSync()
+        setupDocumentsWatcher()
         
         if currentUser != nil {
             NotificationService.shared.requestPermission()
@@ -2878,7 +2879,44 @@ public class DataManager: ObservableObject {
         }
     }
     
-    private func loadFromDisk() -> Bool {
+    private func updateOnMain<T>(_ keyPath: ReferenceWritableKeyPath<DataManager, T>, value: T) {
+        if Thread.isMainThread {
+            self[keyPath: keyPath] = value
+        } else {
+            DispatchQueue.main.async {
+                self[keyPath: keyPath] = value
+            }
+        }
+    }
+    
+    private var fileMonitorSource: DispatchSourceFileSystemObject?
+    
+    private func setupDocumentsWatcher() {
+        let dirFd = open(documentsDirectory.path, O_EVTONLY)
+        guard dirFd >= 0 else { return }
+        
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: dirFd,
+            eventMask: [.write, .extend, .attrib, .link],
+            queue: DispatchQueue.global(qos: .utility)
+        )
+        
+        source.setEventHandler { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                _ = self?.loadFromDisk()
+            }
+        }
+        
+        source.setCancelHandler {
+            close(dirFd)
+        }
+        
+        source.resume()
+        self.fileMonitorSource = source
+    }
+    
+    @discardableResult
+    public func loadFromDisk() -> Bool {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let pData = try? Data(contentsOf: playersFileURL),
@@ -2887,43 +2925,12 @@ public class DataManager: ObservableObject {
             return false
         }
         
-        self.players = loadedPlayers
+        updateOnMain(\.players, value: loadedPlayers)
         
         if let gData = try? Data(contentsOf: gamesFileURL),
            let loadedGames = try? decoder.decode([SetGame].self, from: gData) {
-            self.games = loadedGames.filter { $0.status != .canceled }
-        }
-        let hasWed = self.games.contains { $0.title.localizedCaseInsensitiveContains("wednesday coed 10/7/26 5pm") }
-        if !hasWed {
-            let cal = Calendar.current
-            var components = DateComponents()
-            components.year = 2026
-            components.month = 10
-            components.day = 7
-            components.hour = 17
-            components.minute = 0
-            let wedDate = cal.date(from: components) ?? Date()
-            let hostId = self.players.first?.id ?? UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581")!
-            let wedGame = SetGame(
-                id: UUID(uuidString: "3E1B9A12-70E2-4C1B-8B3E-54A8812E8B99") ?? UUID(),
-                rawId: "game-wednesday-coed-10-7-26",
-                title: "Wednesday COED 10/7/26 5PM",
-                targetRating: .b,
-                allowedRatings: RatingTier.allCases,
-                genderCategory: .coed,
-                format: .bestOfThree,
-                status: .scheduled,
-                scheduledDate: wedDate,
-                courtLocation: "Main Beach",
-                courtNumber: "Court #1",
-                maxPlayers: 4,
-                team1PlayerIds: [hostId],
-                team2PlayerIds: [],
-                notes: "Wednesday sunset beach doubles session. 5PM on the sand!",
-                hostPlayerId: hostId,
-                isLevelLocked: true
-            )
-            self.games.insert(wedGame, at: 0)
+            let active = loadedGames.filter { $0.status != .canceled }
+            updateOnMain(\.games, value: active)
         }
         
         if let tData = try? Data(contentsOf: tournamentsFileURL),
@@ -2933,26 +2940,25 @@ public class DataManager: ObservableObject {
                 $0.rawId != "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
                 !$0.title.localizedCaseInsensitiveContains("winter wonderland")
             }
-            self.tournaments = deduplicateTournaments(filtered)
+            let deduped = deduplicateTournaments(filtered)
+            updateOnMain(\.tournaments, value: deduped)
         }
         if self.tournaments.isEmpty {
-            self.tournaments = seedDefaultTournaments()
+            updateOnMain(\.tournaments, value: seedDefaultTournaments())
         }
         
         if let sData = try? Data(contentsOf: slotsFileURL),
            let loadedSlots = try? decoder.decode([AvailabilitySlot].self, from: sData) {
-            self.availabilitySlots = loadedSlots
+            updateOnMain(\.availabilitySlots, value: loadedSlots)
         }
         
         if let savedUserIdString = UserDefaults.standard.string(forKey: userSessionKey),
            let savedUUID = UUID(uuidString: savedUserIdString) {
-            self.currentUser = self.players.first(where: { $0.id == savedUUID })
-        } else {
-            self.currentUser = nil
+            updateOnMain(\.currentUser, value: self.players.first(where: { $0.id == savedUUID }))
         }
         
         if self.currentUser?.isRoot != true {
-            self.isDemoModeEnabled = false
+            updateOnMain(\.isDemoModeEnabled, value: false)
             UserDefaults.standard.set(false, forKey: "isDemoModeEnabled")
         }
         

@@ -196,6 +196,9 @@ public struct TournamentHubView: View {
                     Text("Are you sure you want to delete \"\(tourn.title)\"? This cannot be undone.")
                 }
             }
+            .onAppear {
+                dataManager.loadFromDisk()
+            }
         }
     }
 }

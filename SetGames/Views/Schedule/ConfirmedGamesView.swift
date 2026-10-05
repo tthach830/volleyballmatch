@@ -350,6 +350,9 @@ public struct ConfirmedGamesView: View {
                     Text("Are you sure you want to remove \(target.player.displayName) from the player pool? If players are on the waitlist, the next player will be auto-promoted.")
                 }
             }
+            .onAppear {
+                dataManager.loadFromDisk()
+            }
         }
     }
     

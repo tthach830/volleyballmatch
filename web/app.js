@@ -11371,8 +11371,12 @@ window.submitCreateTournament = function(e) {
     return;
   }
 
+  const tournUUID = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID().toUpperCase() : ("tourn-" + Date.now());
+  const hostId = (state.currentUser?.id && isValidUUID(state.currentUser.id)) ? state.currentUser.id : (state.players?.[0]?.id || "47519EF2-207D-4C20-B9A6-BFEDA40FE581");
+
   const newTourn = {
-    id: "tourn-" + Date.now(),
+    id: tournUUID,
+    rawId: tournUUID,
     title,
     location,
     date: dateVal ? new Date(dateVal).toISOString() : new Date(Date.now() + 86400000 * 3).toISOString(),
@@ -11384,7 +11388,8 @@ window.submitCreateTournament = function(e) {
     matches: [],
     status: "registration_open",
     notes,
-    hostPlayerId: state.currentUser?.id || null,
+    createdAt: new Date().toISOString(),
+    hostPlayerId: hostId,
     coHostPlayerIds: selectedCoHostIds,
     teamFormat
   };

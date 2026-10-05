@@ -211,7 +211,7 @@ function pushTournamentsToDevice(tournaments) {
       cachedDeviceData.tournaments = cleanTournaments;
 
       const cmd = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy to --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source /tmp/iphone_tournaments.json --destination Documents/setgames_tournaments.json`;
-      exec(cmd, { timeout: 7000 }, (err) => {
+      exec(cmd, { timeout: 14000 }, (err) => {
         if (err) {
           console.warn("⚠️ Device copy to tournaments warning:", err.message);
           return resolve({ success: false, error: err.message });
@@ -233,7 +233,7 @@ function pushGamesToDevice(games) {
       cachedDeviceData.games = games;
 
       const cmd = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy to --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source /tmp/iphone_games.json --destination Documents/setgames_games.json`;
-      exec(cmd, { timeout: 7000 }, (err) => {
+      exec(cmd, { timeout: 14000 }, (err) => {
         if (err) {
           console.warn("⚠️ Device copy to games warning:", err.message);
           return resolve({ success: false, error: err.message });

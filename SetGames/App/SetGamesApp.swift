@@ -65,6 +65,7 @@ struct SetGamesApp: App {
                 NotificationService.shared.beginBackgroundKeepAlive()
             } else if newPhase == .active {
                 NotificationService.shared.endBackgroundKeepAlive()
+                DataManager.shared.loadFromDisk()
             }
         }
     }
