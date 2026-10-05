@@ -1693,7 +1693,7 @@ public class DataManager: ObservableObject {
             },
             onTournamentsUpdate: { [weak self] remoteTournaments in
                 guard let self = self else { return }
-                self.tournaments = self.deduplicateTournaments(remoteTournaments)
+                self.tournaments = self.deduplicateTournaments(self.tournaments + remoteTournaments)
                 self.saveToDisk()
             }
         )
@@ -1991,7 +1991,74 @@ public class DataManager: ObservableObject {
             )
         ]
         
+        self.tournaments = seedDefaultTournaments()
         saveToDisk()
+    }
+    
+    // MARK: - Default Tournaments Seeding
+    
+    public func seedDefaultTournaments() -> [Tournament] {
+        let cal = Calendar.current
+        var halloweenComponents = DateComponents()
+        halloweenComponents.year = 2026
+        halloweenComponents.month = 10
+        halloweenComponents.day = 31
+        halloweenComponents.hour = 10
+        halloweenComponents.minute = 0
+        let halloweenDate = cal.date(from: halloweenComponents) ?? Date()
+        
+        var winterComponents = DateComponents()
+        winterComponents.year = 2026
+        winterComponents.month = 12
+        winterComponents.day = 26
+        winterComponents.hour = 10
+        winterComponents.minute = 0
+        let winterDate = cal.date(from: winterComponents) ?? Date()
+        
+        let p1Id = self.players.first?.id ?? UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581")!
+        let p2Id = (self.players.count > 1 ? self.players[1].id : nil) ?? UUID(uuidString: "40545549-6572-4D31-B738-383830393935")!
+        
+        let halloweenTournament = Tournament(
+            id: UUID(uuidString: "1C1FA419-0CB4-43FB-A30B-F1FD0C3689AA") ?? UUID(),
+            rawId: "1C1FA419-0CB4-43FB-A30B-F1FD0C3689AA",
+            title: "Hollaoweeen tournament",
+            hostPlayerId: p1Id,
+            coHostPlayerIds: [p2Id],
+            date: halloweenDate,
+            location: "Harbor Beach",
+            courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
+            allowedDivisions: [.coed4v4, .coedIntermediate2v2],
+            maxTeamsPerDivision: 20,
+            teams: [],
+            freeAgents: [],
+            matches: [],
+            status: "registration_open",
+            notes: "Halloween Beach Volleyball Tournament! Costumes encouraged! Double elimination, rally score to 21, switch sides every 7 points.",
+            createdAt: Date(),
+            teamFormat: .doubles2v2
+        )
+        
+        let winterTournament = Tournament(
+            id: UUID(uuidString: "26B299D3-A7EA-4BF9-B415-14F9E80EE967") ?? UUID(),
+            rawId: "26B299D3-A7EA-4BF9-B415-14F9E80EE967",
+            title: "Winter Wonderland 4v4",
+            hostPlayerId: p1Id,
+            coHostPlayerIds: [],
+            date: winterDate,
+            location: "Main Beach",
+            courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
+            allowedDivisions: [.coed4v4, .coedIntermediate2v2, .coedNovice2v2],
+            maxTeamsPerDivision: 8,
+            teams: [],
+            freeAgents: [],
+            matches: [],
+            status: "registration_open",
+            notes: "Holiday beach volleyball tournament! 4v4 Coed and 2v2 doubles. Costumes and festive gear welcome!",
+            createdAt: Date(),
+            teamFormat: .quads4v4
+        )
+        
+        return [halloweenTournament, winterTournament]
     }
     
     // MARK: - Local Device Persistence
@@ -2013,9 +2080,13 @@ public class DataManager: ObservableObject {
         let calendar = Calendar.current
         
         for t in list {
-            let tId = t.id.uuidString
-            let tRaw = (t.rawId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let tTitle = t.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            var tournamentToAdd = t
+            if tournamentToAdd.title.lowercased().contains("hollao") || tournamentToAdd.title.lowercased().contains("halloween") {
+                tournamentToAdd.title = "Hollaoweeen tournament"
+            }
+            let tId = tournamentToAdd.id.uuidString
+            let tRaw = (tournamentToAdd.rawId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let tTitle = tournamentToAdd.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             
             let existingIdx = result.firstIndex { e in
                 let eId = e.id.uuidString
@@ -2030,7 +2101,13 @@ public class DataManager: ObservableObject {
                 if !tRaw.isEmpty && tRaw == eId { return true }
                 if !eRaw.isEmpty && eRaw == tId { return true }
                 // 4. Same title and same calendar day
-                if !tTitle.isEmpty && !eTitle.isEmpty && tTitle == eTitle && calendar.isDate(e.date, inSameDayAs: t.date) {
+                if !tTitle.isEmpty && !eTitle.isEmpty && tTitle == eTitle && calendar.isDate(e.date, inSameDayAs: tournamentToAdd.date) {
+                    return true
+                }
+                // 5. Match Halloween tournament on same day even if spelling variation
+                let isTHallow = tTitle.contains("hallow") || tTitle.contains("hollao")
+                let isEHallow = eTitle.contains("hallow") || eTitle.contains("hollao")
+                if isTHallow && isEHallow && calendar.isDate(e.date, inSameDayAs: tournamentToAdd.date) {
                     return true
                 }
                 return false
@@ -2038,6 +2115,9 @@ public class DataManager: ObservableObject {
             
             if let idx = existingIdx {
                 var existing = result[idx]
+                if existing.title.lowercased().contains("hollao") || existing.title.lowercased().contains("halloween") {
+                    existing.title = "Hollaoweeen tournament"
+                }
                 
                 // Merge registered teams without duplicate players
                 for tm in t.teams {
@@ -2811,6 +2891,9 @@ public class DataManager: ObservableObject {
         if let tData = try? Data(contentsOf: tournamentsFileURL),
            let loadedTournaments = try? decoder.decode([Tournament].self, from: tData) {
             self.tournaments = deduplicateTournaments(loadedTournaments)
+        }
+        if self.tournaments.isEmpty {
+            self.tournaments = seedDefaultTournaments()
         }
         
         if let sData = try? Data(contentsOf: slotsFileURL),

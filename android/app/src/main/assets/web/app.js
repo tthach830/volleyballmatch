@@ -223,6 +223,49 @@ const initialCommunityGames = [
   }
 ];
 
+// Initial Santa Cruz Community Tournaments for zero-config startup
+export const initialCommunityTournaments = [
+  {
+    id: "1C1FA419-0CB4-43FB-A30B-F1FD0C3689AA",
+    rawId: "1C1FA419-0CB4-43FB-A30B-F1FD0C3689AA",
+    title: "Hollaoweeen tournament",
+    date: "2026-10-31T17:00:00Z",
+    location: "Harbor Beach",
+    courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
+    allowedDivisions: ["4v4 Coed", "2v2 Coed Intermediate"],
+    maxTeamsPerDivision: 20,
+    status: "registration_open",
+    teamFormat: "2v2",
+    hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+    coHostPlayerIds: ["40545549-6572-4D31-B738-383830393935"],
+    notes: "Halloween Beach Volleyball Tournament! Costumes encouraged! Double elimination, rally score to 21, switch sides every 7 points.",
+    teams: [],
+    freeAgents: [],
+    matches: [],
+    createdAt: "2026-10-02T22:02:32Z"
+  },
+  {
+    id: "26B299D3-A7EA-4BF9-B415-14F9E80EE967",
+    rawId: "26B299D3-A7EA-4BF9-B415-14F9E80EE967",
+    title: "Winter Wonderland 4v4",
+    date: "2026-12-26T17:00:00Z",
+    location: "Main Beach",
+    courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
+    allowedDivisions: ["4v4 Coed", "2v2 Coed Intermediate", "2v2 Coed Novice"],
+    maxTeamsPerDivision: 8,
+    status: "registration_open",
+    teamFormat: "4v4",
+    hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+    coHostPlayerIds: ["445E5341-6572-4D31-B738-383834323637"],
+    notes: "Holiday beach volleyball tournament! 4v4 Coed and 2v2 doubles. Costumes and festive gear welcome!",
+    teams: [],
+    freeAgents: [],
+    matches: [],
+    createdAt: "2026-09-16T07:02:50Z"
+  }
+];
+window.initialCommunityTournaments = initialCommunityTournaments;
+
 // App State
 export function isUpcomingGame(game) {
   if (!game) return false;
@@ -2023,7 +2066,8 @@ class AppState {
     this.players = (savedPlayers && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
     this.games = Array.isArray(savedGames) ? savedGames.filter(isUpcomingGame) : [];
     this.availabilitySlots = deduplicateSlots(savedSlots || []);
-    this.tournaments = deduplicateTournaments(Array.isArray(savedTourns) ? savedTourns : []);
+    const baseTourns = (savedTourns && savedTourns.length > 0) ? savedTourns : [];
+    this.tournaments = deduplicateTournaments([...initialCommunityTournaments, ...baseTourns]);
     this.notifications = Array.isArray(savedNotifs) ? savedNotifs : [
       {
         id: "notif-welcome",
@@ -7814,6 +7858,9 @@ export function deduplicateTournaments(tournaments) {
 
   for (const t of tournaments) {
     if (!t) continue;
+    if (t.title && (t.title.toLowerCase().includes("hollao") || t.title.toLowerCase().includes("halloween"))) {
+      t.title = "Hollaoweeen tournament";
+    }
     const tId = t.id ? String(t.id).trim() : "";
     const tRawId = t.rawId ? String(t.rawId).trim() : "";
     const tTitle = (t.title || "").trim().toLowerCase();
@@ -7835,6 +7882,10 @@ export function deduplicateTournaments(tournaments) {
       if (tRawId && eId && tRawId === eId) return true;
       // 4. Same title and date
       if (tTitle && eTitle && tTitle === eTitle && tDate && eDate && tDate === eDate) return true;
+      // 5. Match Halloween tournament on same date even if spelling varies
+      const isTHallow = tTitle.includes("hallow") || tTitle.includes("hollao");
+      const isEHallow = eTitle.includes("hallow") || eTitle.includes("hollao");
+      if (isTHallow && isEHallow && tDate && eDate && tDate === eDate) return true;
       return false;
     });
 
@@ -7880,6 +7931,12 @@ export function deduplicateTournaments(tournaments) {
       if (!existing.hostPlayerId && t.hostPlayerId) existing.hostPlayerId = t.hostPlayerId;
       if (!existing.teamFormat && t.teamFormat) existing.teamFormat = t.teamFormat;
       if (t.rawId && !existing.rawId) existing.rawId = t.rawId;
+      if (existing.title && (existing.title.toLowerCase().includes("hollao") || existing.title.toLowerCase().includes("halloween"))) {
+        existing.title = "Hollaoweeen tournament";
+      }
+      if ((!existing.allowedDivisions || existing.allowedDivisions.length <= 1) && Array.isArray(t.allowedDivisions) && t.allowedDivisions.length > 1) {
+        existing.allowedDivisions = t.allowedDivisions;
+      }
     } else {
       result.push({ ...t });
     }
@@ -10386,8 +10443,13 @@ function initApp() {
 
   subscribeToTournaments((remoteTournaments) => {
     if (Array.isArray(remoteTournaments)) {
-      state.tournaments = deduplicateTournaments(remoteTournaments);
+      state.tournaments = deduplicateTournaments([
+        ...initialCommunityTournaments,
+        ...(state.tournaments || []),
+        ...remoteTournaments
+      ]);
       state.saveLocal();
+      renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {
         window.renderTournamentsList();
       }
@@ -10396,6 +10458,11 @@ function initApp() {
       }
     }
   });
+
+  // Ensure initial community tournaments exist in Firestore
+  for (const t of initialCommunityTournaments) {
+    saveTournamentToFirestore(t).catch(() => {});
+  }
 
   // Handle incoming deep link or game route from QR scan
   handleIncomingGameRoute();
