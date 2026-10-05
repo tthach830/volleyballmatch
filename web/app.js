@@ -3354,6 +3354,7 @@ class AppState {
     let savedTourns = null;
     let savedNotifs = null;
     let savedUserId = null;
+    let savedDeletedTourns = null;
     try {
       savedPlayers = JSON.parse(localStorage.getItem("setgames_players"));
       savedGames = JSON.parse(localStorage.getItem("setgames_games"));
@@ -3361,9 +3362,12 @@ class AppState {
       savedTourns = JSON.parse(localStorage.getItem("setgames_tournaments"));
       savedNotifs = JSON.parse(localStorage.getItem("setgames_notifications"));
       savedUserId = localStorage.getItem("setgames_current_user_id");
+      savedDeletedTourns = JSON.parse(localStorage.getItem("setgames_deleted_tournament_ids") || "[]");
     } catch (e) {
       console.warn("Storage read warning:", e);
     }
+
+    this.deletedTournamentIds = new Set(Array.isArray(savedDeletedTourns) ? savedDeletedTourns.map(id => String(id).toLowerCase().trim()) : []);
 
     // Players: load from storage or fallback to initialCommunityPlayers
     const loadedPlayers = (Array.isArray(savedPlayers) && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
@@ -3387,8 +3391,12 @@ class AppState {
     );
     this.games = [...loadedGames, ...missingInitial];
     this.availabilitySlots = deduplicateSlots(savedSlots || []);
-    const loadedTourns = Array.isArray(savedTourns) ? savedTourns : [];
-    this.tournaments = deduplicateTournaments([...initialCommunityTournaments, ...loadedTourns]).filter(t => !t.title?.toLowerCase().includes("winter wonderland") && t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967");
+    const loadedTourns = Array.isArray(savedTourns) ? savedTourns : null;
+    if (loadedTourns !== null) {
+      this.tournaments = deduplicateTournaments(loadedTourns).filter(t => !this.isTournamentDeleted(t));
+    } else {
+      this.tournaments = deduplicateTournaments(initialCommunityTournaments).filter(t => !this.isTournamentDeleted(t));
+    }
     this.notifications = Array.isArray(savedNotifs) ? savedNotifs : [
       {
         id: "notif-welcome",
@@ -3441,6 +3449,30 @@ class AppState {
     } catch (e) {
       console.warn("Storage save warning:", e);
     }
+  }
+
+  isTournamentDeleted(t) {
+    if (!t) return false;
+    const id1 = String(t.id || "").toLowerCase().trim();
+    const id2 = String(t.rawId || "").toLowerCase().trim();
+    const title = (t.title || "").toLowerCase().trim();
+    if (title.includes("winter wonderland") || id1 === "26b299d3-a7ea-4bf9-b415-14f9e80ee967" || id2 === "26b299d3-a7ea-4bf9-b415-14f9e80ee967") {
+      return true;
+    }
+    return this.deletedTournamentIds.has(id1) || (id2 && this.deletedTournamentIds.has(id2)) || this.deletedTournamentIds.has(title);
+  }
+
+  markTournamentDeleted(t) {
+    if (!t) return;
+    const id1 = String(t.id || "").toLowerCase().trim();
+    const id2 = String(t.rawId || "").toLowerCase().trim();
+    const title = (t.title || "").toLowerCase().trim();
+    if (id1) this.deletedTournamentIds.add(id1);
+    if (id2) this.deletedTournamentIds.add(id2);
+    if (title) this.deletedTournamentIds.add(title);
+    try {
+      localStorage.setItem("setgames_deleted_tournament_ids", JSON.stringify(Array.from(this.deletedTournamentIds)));
+    } catch (e) {}
   }
 
   getPlayer(id) {
@@ -9346,11 +9378,10 @@ export async function syncDeviceData() {
     // 2. Reconcile Tournaments
     if (Array.isArray(data.tournaments) && data.tournaments.length > 0) {
       const curTourns = (state.tournaments || []).filter(t => 
-        !t.title?.toLowerCase().includes("winter wonderland") &&
-        t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967"
+        !state.isTournamentDeleted(t)
       );
       for (const dt of data.tournaments) {
-        if (dt.title?.toLowerCase().includes("winter wonderland")) continue;
+        if (state.isTournamentDeleted(dt)) continue;
         const dtId = String(dt.id || dt.rawId || "").toLowerCase();
         const dtTitle = (dt.title || "").toLowerCase().trim();
         const idx = curTourns.findIndex(t => 
@@ -9365,7 +9396,7 @@ export async function syncDeviceData() {
           dirty = true;
         }
       }
-      state.tournaments = deduplicateTournaments(curTourns);
+      state.tournaments = deduplicateTournaments(curTourns).filter(t => !state.isTournamentDeleted(t));
     }
 
     if (dirty) {
@@ -9388,10 +9419,7 @@ window.syncDeviceData = syncDeviceData;
 
 export async function pushTournamentsToDevice() {
   try {
-    const list = (state.tournaments || []).filter(t => 
-      !t.title?.toLowerCase().includes("winter wonderland") &&
-      t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967"
-    );
+    const list = (state.tournaments || []).filter(t => !state.isTournamentDeleted(t));
     await fetch("/api/sync/device-tournaments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -11516,7 +11544,13 @@ window.deleteTournament = function(tournamentId) {
   const id1 = t.id;
   const id2 = t.rawId;
 
-  state.tournaments = (state.tournaments || []).filter(item => item.id !== id1 && item.id !== id2 && item.title !== t.title);
+  state.markTournamentDeleted(t);
+  state.tournaments = (state.tournaments || []).filter(item => 
+    !state.isTournamentDeleted(item) &&
+    item.id !== id1 && 
+    item.id !== id2 && 
+    item.title !== t.title
+  );
   state.saveLocal();
   if (id1) deleteTournamentFromFirestore(id1);
   if (id2 && id2 !== id1) deleteTournamentFromFirestore(id2);
@@ -11525,6 +11559,7 @@ window.deleteTournament = function(tournamentId) {
   showToast(`🗑️ Tournament "${t.title}" deleted.`);
   document.getElementById("tournament-detail-modal")?.classList.remove("active");
   window.renderTournamentsList();
+  renderMatches();
 };
 
 window.openManageCoHostsModal = function(tournamentId) {
@@ -11959,19 +11994,19 @@ function initApp() {
   subscribeToTournaments((remoteTournaments) => {
     if (Array.isArray(remoteTournaments)) {
       const filtered = remoteTournaments.filter(t => 
-        !t.title?.toLowerCase().includes("winter wonderland") && 
-        t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
-        t.rawId !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967"
+        !state.isTournamentDeleted(t)
       );
       const remoteTitles = new Set(filtered.map(t => (t.title || "").toLowerCase().trim()));
-      const remoteIds = new Set(filtered.map(t => t.id || t.rawId));
+      const remoteIds = new Set(filtered.map(t => String(t.id || "").toLowerCase()).concat(filtered.map(t => String(t.rawId || "").toLowerCase())).filter(Boolean));
       const localPending = (state.tournaments || []).filter(t => {
-        if (!t || t.title?.toLowerCase().includes("winter wonderland")) return false;
+        if (!t || state.isTournamentDeleted(t)) return false;
+        const id1 = String(t.id || "").toLowerCase();
+        const id2 = String(t.rawId || "").toLowerCase();
         const title = (t.title || "").toLowerCase().trim();
-        return !remoteTitles.has(title) && !remoteIds.has(t.id) && !remoteIds.has(t.rawId);
+        return !remoteTitles.has(title) && !remoteIds.has(id1) && (!id2 || !remoteIds.has(id2));
       });
-      const combined = [...initialCommunityTournaments, ...filtered, ...localPending];
-      state.tournaments = deduplicateTournaments(combined);
+      const combined = [...filtered, ...localPending];
+      state.tournaments = deduplicateTournaments(combined).filter(t => !state.isTournamentDeleted(t));
       state.saveLocal();
       renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {
@@ -11985,11 +12020,6 @@ function initApp() {
 
   // Prune deleted Winter Wonderland from Firestore
   deleteTournamentFromFirestore("26B299D3-A7EA-4BF9-B415-14F9E80EE967").catch(() => {});
-
-  // Ensure all community tournaments are in Firestore
-  for (const t of initialCommunityTournaments) {
-    saveTournamentToFirestore(t).catch(() => {});
-  }
 
   // Ensure Tuesday and Wednesday games are synced
   const tuesGame = (state.games || []).find(g => (g.title || "").toLowerCase().includes("tuesday coed 10/6/26 12am")) || initialCommunityGames.find(g => (g.title || "").toLowerCase().includes("tuesday coed 10/6/26 12am"));

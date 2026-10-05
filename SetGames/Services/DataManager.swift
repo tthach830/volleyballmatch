@@ -22,7 +22,58 @@ public class DataManager: ObservableObject {
     @Published public var isDemoModeEnabled: Bool = false
     private var hasCompletedInitialGamesSync: Bool = false
     private var recentlyDeletedSlotIds = Set<String>()
-    private var recentlyDeletedTournamentIds = Set<String>()
+    
+    private var recentlyDeletedTournamentIds: Set<String> {
+        get {
+            let list = UserDefaults.standard.stringArray(forKey: "setgames_deleted_tournament_ids") ?? []
+            return Set(list)
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: "setgames_deleted_tournament_ids")
+        }
+    }
+    
+    private var recentlyDeletedTournamentTitles: Set<String> {
+        get {
+            let list = UserDefaults.standard.stringArray(forKey: "setgames_deleted_tournament_titles") ?? []
+            return Set(list)
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: "setgames_deleted_tournament_titles")
+        }
+    }
+    
+    public func isTournamentDeleted(id: String, rawId: String? = nil, title: String? = nil) -> Bool {
+        if id == "26B299D3-A7EA-4BF9-B415-14F9E80EE967" || rawId == "26B299D3-A7EA-4BF9-B415-14F9E80EE967" {
+            return true
+        }
+        if let title = title, title.localizedCaseInsensitiveContains("winter wonderland") {
+            return true
+        }
+        if recentlyDeletedTournamentIds.contains(id) {
+            return true
+        }
+        if let rawId = rawId, recentlyDeletedTournamentIds.contains(rawId) {
+            return true
+        }
+        if let title = title, recentlyDeletedTournamentTitles.contains(title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return true
+        }
+        return false
+    }
+    
+    public func markTournamentDeleted(id: String, rawId: String? = nil, title: String? = nil) {
+        var ids = recentlyDeletedTournamentIds
+        ids.insert(id)
+        if let rawId = rawId { ids.insert(rawId) }
+        recentlyDeletedTournamentIds = ids
+        
+        if let title = title {
+            var titles = recentlyDeletedTournamentTitles
+            titles.insert(title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
+            recentlyDeletedTournamentTitles = titles
+        }
+    }
     
     public init() {
         self.isDemoModeEnabled = UserDefaults.standard.bool(forKey: "isDemoModeEnabled")
@@ -1714,27 +1765,21 @@ public class DataManager: ObservableObject {
             onTournamentsUpdate: { [weak self] remoteTournaments in
                 guard let self = self else { return }
                 let validRemotes = remoteTournaments.filter { r in
-                    !self.recentlyDeletedTournamentIds.contains(r.id.uuidString) &&
-                    !(r.rawId != nil && self.recentlyDeletedTournamentIds.contains(r.rawId!)) &&
-                    r.id.uuidString != "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
-                    !(r.rawId == "26B299D3-A7EA-4BF9-B415-14F9E80EE967") &&
-                    !r.title.localizedCaseInsensitiveContains("winter wonderland")
+                    !self.isTournamentDeleted(id: r.id.uuidString, rawId: r.rawId, title: r.title)
                 }
                 let remoteIds = Set(validRemotes.map { $0.id.uuidString } + validRemotes.compactMap { $0.rawId })
                 let remoteTitles = Set(validRemotes.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
                 let localPending = self.tournaments.filter { local in
+                    !self.isTournamentDeleted(id: local.id.uuidString, rawId: local.rawId, title: local.title) &&
                     !remoteIds.contains(local.id.uuidString) &&
                     !(local.rawId != nil && remoteIds.contains(local.rawId!)) &&
                     !remoteTitles.contains(local.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
                 }
-                let defaults = self.seedDefaultTournaments().filter { dt in
-                    !remoteIds.contains(dt.id.uuidString) &&
-                    !(dt.rawId != nil && remoteIds.contains(dt.rawId!)) &&
-                    !remoteTitles.contains(dt.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
+                let combined = self.deduplicateTournaments(validRemotes + localPending).filter {
+                    !self.isTournamentDeleted(id: $0.id.uuidString, rawId: $0.rawId, title: $0.title)
                 }
-                let combined = self.deduplicateTournaments(validRemotes + localPending + defaults)
                 self.tournaments = combined
-                for pending in (localPending + defaults) {
+                for pending in localPending {
                     FirestoreService.shared.saveTournament(pending)
                 }
                 self.saveToDisk()
@@ -2948,11 +2993,8 @@ public class DataManager: ObservableObject {
         guard isHost else {
             return (false, "Only the tournament host or admin can delete this tournament.")
         }
-        recentlyDeletedTournamentIds.insert(id.uuidString)
-        if let rawId = t.rawId {
-            recentlyDeletedTournamentIds.insert(rawId)
-        }
-        tournaments.removeAll { $0.id == id }
+        markTournamentDeleted(id: id.uuidString, rawId: t.rawId, title: t.title)
+        tournaments.removeAll { $0.id == id || ($0.rawId != nil && $0.rawId == t.rawId) || $0.title.lowercased() == t.title.lowercased() }
         saveToDisk()
         FirestoreService.shared.deleteTournament(id: id, rawId: t.rawId)
         return (true, "Tournament deleted successfully.")
@@ -3067,10 +3109,10 @@ public class DataManager: ObservableObject {
                     courtNumber: "Court #1",
                     team1PlayerIds: [UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581") ?? UUID()],
                     team2PlayerIds: [],
+                    matchedOptionName: "Community Open Match",
                     notes: "Bring an official Wilson or Molten beach volleyball!",
                     hostPlayerId: UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581") ?? UUID(),
-                    isLevelLocked: true,
-                    matchedOptionName: "Community Open Match"
+                    isLevelLocked: true
                 )
                 active.append(tuesGame)
             }
@@ -3092,10 +3134,10 @@ public class DataManager: ObservableObject {
                     courtNumber: "Court #1",
                     team1PlayerIds: [UUID(uuidString: "104FAF3C-2420-4F92-8292-B2AB3BF8C572") ?? UUID()],
                     team2PlayerIds: [],
+                    matchedOptionName: "Smart Availability",
                     notes: "Wednesday sunset beach doubles session. 5PM on the sand!",
                     hostPlayerId: UUID(uuidString: "104FAF3C-2420-4F92-8292-B2AB3BF8C572") ?? UUID(),
-                    isLevelLocked: true,
-                    matchedOptionName: "Smart Availability"
+                    isLevelLocked: true
                 )
                 active.append(wedGame)
             }
@@ -3103,24 +3145,17 @@ public class DataManager: ObservableObject {
             self.games = active
         }
         
-        let defaults = seedDefaultTournaments()
         if let tData = try? Data(contentsOf: tournamentsFileURL),
            let loadedTournaments = try? decoder.decode([Tournament].self, from: tData) {
             let filtered = loadedTournaments.filter {
-                $0.id.uuidString != "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
-                $0.rawId != "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
-                !$0.title.localizedCaseInsensitiveContains("winter wonderland")
+                !self.isTournamentDeleted(id: $0.id.uuidString, rawId: $0.rawId, title: $0.title)
             }
-            let existingTitles = Set(filtered.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
-            let existingIds = Set(filtered.map { $0.id.uuidString } + filtered.compactMap { $0.rawId })
-            let missingDefaults = defaults.filter { dt in
-                !existingTitles.contains(dt.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)) &&
-                !existingIds.contains(dt.id.uuidString) &&
-                !(dt.rawId != nil && existingIds.contains(dt.rawId!))
-            }
-            let deduped = deduplicateTournaments(filtered + missingDefaults)
+            let deduped = deduplicateTournaments(filtered)
             self.tournaments = deduped
         } else {
+            let defaults = seedDefaultTournaments().filter {
+                !self.isTournamentDeleted(id: $0.id.uuidString, rawId: $0.rawId, title: $0.title)
+            }
             self.tournaments = defaults
         }
         

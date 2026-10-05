@@ -208,6 +208,12 @@ function pushTournamentsToDevice(tournaments) {
       const cleanTournaments = tournaments.filter(t => !t.title?.toLowerCase().includes("winter wonderland") && t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967");
       const jsonStr = JSON.stringify(cleanTournaments, null, 2);
       fs.writeFileSync("/tmp/iphone_tournaments.json", jsonStr, "utf8");
+      if (fs.existsSync("/tmp/iphone_documents/setgames_tournaments.json")) {
+        try { fs.writeFileSync("/tmp/iphone_documents/setgames_tournaments.json", jsonStr, "utf8"); } catch (e) {}
+      }
+      if (fs.existsSync("/tmp/iphone_documents/Documents/setgames_tournaments.json")) {
+        try { fs.writeFileSync("/tmp/iphone_documents/Documents/setgames_tournaments.json", jsonStr, "utf8"); } catch (e) {}
+      }
       cachedDeviceData.tournaments = cleanTournaments;
 
       const cmd = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy to --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source /tmp/iphone_tournaments.json --destination Documents/setgames_tournaments.json`;
