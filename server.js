@@ -155,32 +155,95 @@ try {
 
 function fetchLatestDeviceData() {
   const now = Date.now();
-  if (now - lastDeviceFetchTime < 10000 || isDeviceFetching) {
+  if (now - lastDeviceFetchTime < 6000 || isDeviceFetching) {
     return Promise.resolve(cachedDeviceData);
   }
 
   isDeviceFetching = true;
   return new Promise((resolve) => {
-    const cmdGames = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy from --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source Documents/setgames_games.json --destination /tmp/iphone_games.json`;
-    const cmdTourns = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy from --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source Documents/setgames_tournaments.json --destination /tmp/iphone_tournaments.json`;
+    if (!fs.existsSync("/tmp/iphone_documents")) {
+      try { fs.mkdirSync("/tmp/iphone_documents", { recursive: true }); } catch (e) {}
+    }
+    const cmdCopyDocs = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy from --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source Documents --destination /tmp/iphone_documents`;
 
-    exec(cmdGames, { timeout: 8000 }, (err) => {
-      if (!err && fs.existsSync("/tmp/iphone_games.json")) {
-        try {
-          cachedDeviceData.games = JSON.parse(fs.readFileSync("/tmp/iphone_games.json", "utf8"));
-        } catch (e) {}
-      }
-      exec(cmdTourns, { timeout: 8000 }, (err2) => {
-        if (!err2 && fs.existsSync("/tmp/iphone_tournaments.json")) {
+    exec(cmdCopyDocs, { timeout: 7000 }, (err) => {
+      const gamesPaths = [
+        "/tmp/iphone_documents/setgames_games.json",
+        "/tmp/iphone_documents/Documents/setgames_games.json",
+        "/tmp/iphone_games.json"
+      ];
+      for (const gp of gamesPaths) {
+        if (fs.existsSync(gp)) {
           try {
-            cachedDeviceData.tournaments = JSON.parse(fs.readFileSync("/tmp/iphone_tournaments.json", "utf8"));
+            cachedDeviceData.games = JSON.parse(fs.readFileSync(gp, "utf8"));
+            break;
           } catch (e) {}
         }
-        lastDeviceFetchTime = Date.now();
-        isDeviceFetching = false;
-        resolve(cachedDeviceData);
-      });
+      }
+
+      const tournsPaths = [
+        "/tmp/iphone_documents/setgames_tournaments.json",
+        "/tmp/iphone_documents/Documents/setgames_tournaments.json",
+        "/tmp/iphone_tournaments.json"
+      ];
+      for (const tp of tournsPaths) {
+        if (fs.existsSync(tp)) {
+          try {
+            cachedDeviceData.tournaments = JSON.parse(fs.readFileSync(tp, "utf8"));
+            break;
+          } catch (e) {}
+        }
+      }
+
+      lastDeviceFetchTime = Date.now();
+      isDeviceFetching = false;
+      resolve(cachedDeviceData);
     });
+  });
+}
+
+function pushTournamentsToDevice(tournaments) {
+  return new Promise((resolve) => {
+    try {
+      const cleanTournaments = tournaments.filter(t => !t.title?.toLowerCase().includes("winter wonderland") && t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967");
+      const jsonStr = JSON.stringify(cleanTournaments, null, 2);
+      fs.writeFileSync("/tmp/iphone_tournaments.json", jsonStr, "utf8");
+      cachedDeviceData.tournaments = cleanTournaments;
+
+      const cmd = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy to --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source /tmp/iphone_tournaments.json --destination Documents/setgames_tournaments.json`;
+      exec(cmd, { timeout: 7000 }, (err) => {
+        if (err) {
+          console.warn("⚠️ Device copy to tournaments warning:", err.message);
+          return resolve({ success: false, error: err.message });
+        }
+        console.log(`✅ Successfully synced ${cleanTournaments.length} tournament(s) to physical iPhone!`);
+        resolve({ success: true, count: cleanTournaments.length });
+      });
+    } catch (e) {
+      resolve({ success: false, error: e.message });
+    }
+  });
+}
+
+function pushGamesToDevice(games) {
+  return new Promise((resolve) => {
+    try {
+      const jsonStr = JSON.stringify(games, null, 2);
+      fs.writeFileSync("/tmp/iphone_games.json", jsonStr, "utf8");
+      cachedDeviceData.games = games;
+
+      const cmd = `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device copy to --device 00008150-000C14D62240401C --domain-type appDataContainer --domain-identifier com.peterthach.SetGames --source /tmp/iphone_games.json --destination Documents/setgames_games.json`;
+      exec(cmd, { timeout: 7000 }, (err) => {
+        if (err) {
+          console.warn("⚠️ Device copy to games warning:", err.message);
+          return resolve({ success: false, error: err.message });
+        }
+        console.log(`✅ Successfully synced ${games.length} game(s) to physical iPhone!`);
+        resolve({ success: true, count: games.length });
+      });
+    } catch (e) {
+      resolve({ success: false, error: e.message });
+    }
   });
 }
 
@@ -268,6 +331,46 @@ const server = http.createServer((req, res) => {
     }).catch(err => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ games: cachedDeviceData.games, tournaments: cachedDeviceData.tournaments, error: err.message }));
+    });
+    return;
+  }
+
+  // API: Push Tournaments to physical iPhone
+  if (req.method === "POST" && pathname === "/api/sync/device-tournaments") {
+    let bodyData = "";
+    req.on("data", chunk => bodyData += chunk);
+    req.on("end", async () => {
+      try {
+        const body = JSON.parse(bodyData || "{}");
+        const tourns = Array.isArray(body.tournaments) ? body.tournaments : [];
+        const result = await pushTournamentsToDevice(tourns);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        console.error("Error in device-tournaments sync:", err);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // API: Push Games to physical iPhone
+  if (req.method === "POST" && pathname === "/api/sync/device-games") {
+    let bodyData = "";
+    req.on("data", chunk => bodyData += chunk);
+    req.on("end", async () => {
+      try {
+        const body = JSON.parse(bodyData || "{}");
+        const gList = Array.isArray(body.games) ? body.games : [];
+        const result = await pushGamesToDevice(gList);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        console.error("Error in device-games sync:", err);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
     });
     return;
   }

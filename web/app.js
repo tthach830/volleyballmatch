@@ -9216,11 +9216,124 @@ export function deduplicateTournaments(tournaments) {
 }
 window.deduplicateTournaments = deduplicateTournaments;
 
+// ==========================================
+// BIDIRECTIONAL PHYSICAL DEVICE SYNC BRIDGE
+// ==========================================
+let isSyncingDevice = false;
+
+export async function syncDeviceData() {
+  if (isSyncingDevice) return;
+  isSyncingDevice = true;
+  try {
+    const res = await fetch("/api/sync/device-data", { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data) return;
+
+    let dirty = false;
+
+    // 1. Reconcile Games
+    if (Array.isArray(data.games) && data.games.length > 0) {
+      const curGames = state.games || [];
+      for (const dg of data.games) {
+        const dgId = String(dg.id || dg.rawId || "").toLowerCase();
+        const dgTitle = (dg.title || "").toLowerCase().trim();
+        const idx = curGames.findIndex(g => 
+          String(g.id || g.rawId || "").toLowerCase() === dgId || 
+          (g.title || "").toLowerCase().trim() === dgTitle
+        );
+        if (idx !== -1) {
+          curGames[idx] = { ...curGames[idx], ...dg };
+          dirty = true;
+        } else {
+          curGames.unshift(dg);
+          dirty = true;
+        }
+      }
+      state.games = curGames;
+    }
+
+    // 2. Reconcile Tournaments
+    if (Array.isArray(data.tournaments) && data.tournaments.length > 0) {
+      const curTourns = (state.tournaments || []).filter(t => 
+        !t.title?.toLowerCase().includes("winter wonderland") &&
+        t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967"
+      );
+      for (const dt of data.tournaments) {
+        if (dt.title?.toLowerCase().includes("winter wonderland")) continue;
+        const dtId = String(dt.id || dt.rawId || "").toLowerCase();
+        const dtTitle = (dt.title || "").toLowerCase().trim();
+        const idx = curTourns.findIndex(t => 
+          String(t.id || t.rawId || "").toLowerCase() === dtId ||
+          (t.title || "").toLowerCase().trim() === dtTitle
+        );
+        if (idx !== -1) {
+          curTourns[idx] = { ...curTourns[idx], ...dt };
+          dirty = true;
+        } else {
+          curTourns.unshift(dt);
+          dirty = true;
+        }
+      }
+      state.tournaments = deduplicateTournaments(curTourns);
+    }
+
+    if (dirty) {
+      state.saveLocal();
+      renderMatches();
+      if (document.getElementById("tournaments-modal")?.classList.contains("active")) {
+        window.renderTournamentsList();
+      }
+      if (document.getElementById("tournament-detail-modal")?.classList.contains("active") && window.activeTournamentId) {
+        window.renderTournamentDetail();
+      }
+    }
+  } catch (err) {
+    console.warn("Device sync notice:", err);
+  } finally {
+    isSyncingDevice = false;
+  }
+}
+window.syncDeviceData = syncDeviceData;
+
+export async function pushTournamentsToDevice() {
+  try {
+    const list = (state.tournaments || []).filter(t => 
+      !t.title?.toLowerCase().includes("winter wonderland") &&
+      t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967"
+    );
+    await fetch("/api/sync/device-tournaments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tournaments: list })
+    });
+  } catch (err) {
+    console.warn("Push tournaments to device notice:", err);
+  }
+}
+window.pushTournamentsToDevice = pushTournamentsToDevice;
+
+export async function pushGamesToDevice() {
+  try {
+    await fetch("/api/sync/device-games", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ games: state.games || [] })
+    });
+  } catch (err) {
+    console.warn("Push games to device notice:", err);
+  }
+}
+window.pushGamesToDevice = pushGamesToDevice;
+
 window.openTournamentsModal = function() {
   const modal = document.getElementById("tournaments-modal");
   if (!modal) return;
   modal.classList.add("active");
   window.renderTournamentsList();
+  if (typeof window.syncDeviceData === "function") {
+    window.syncDeviceData();
+  }
 };
 
 window.closeTournamentsModal = function() {
@@ -9300,6 +9413,9 @@ window.openTournamentDetail = function(tournamentId) {
   if (!modal) return;
   modal.classList.add("active");
   window.renderTournamentDetail();
+  if (typeof window.syncDeviceData === "function") {
+    window.syncDeviceData();
+  }
 };
 
 window.closeTournamentDetailModal = function() {
@@ -10624,6 +10740,7 @@ window.submitTournamentMatchScore = function(tournamentId, matchId, team1Score, 
 
   state.saveLocal();
   saveTournamentToFirestore(t);
+  pushTournamentsToDevice();
   window.closeTournamentScoreModal();
   showToast("✅ Match score submitted! Bracket updated.");
   window.renderTournamentDetail();
@@ -10784,6 +10901,7 @@ window.leaveTournament = function(tournamentId) {
 
   state.saveLocal();
   saveTournamentToFirestore(t);
+  pushTournamentsToDevice();
   showToast("Left tournament.");
   window.renderTournamentDetail();
   window.renderTournamentsList();
@@ -11007,6 +11125,7 @@ window.submitTournamentTeamRegistration = function(e) {
   t.teams.push(newTeam);
   state.saveLocal();
   saveTournamentToFirestore(t);
+  pushTournamentsToDevice();
 
   showToast(`🎉 Registered for ${currentDiv}!`);
   window.closeTournamentSignUpModal();
@@ -11048,6 +11167,7 @@ window.submitTournamentFreeAgentRegistration = function(e) {
 
   state.saveLocal();
   saveTournamentToFirestore(t);
+  pushTournamentsToDevice();
 
   showToast(`🙋 Joined free agent list for ${currentDiv}!`);
   window.closeTournamentSignUpModal();
@@ -11216,6 +11336,7 @@ window.submitCreateTournament = function(e) {
 
     state.saveLocal();
     saveTournamentToFirestore(t);
+    pushTournamentsToDevice();
     showToast(`✅ Tournament "${title}" updated!`);
     window.closeCreateTournamentModal();
     window.renderTournamentDetail();
@@ -11245,6 +11366,7 @@ window.submitCreateTournament = function(e) {
   state.tournaments.unshift(newTourn);
   state.saveLocal();
   saveTournamentToFirestore(newTourn);
+  pushTournamentsToDevice();
 
   showToast(`🏆 Hosted new tournament: ${title}!`);
   window.closeCreateTournamentModal();
@@ -11273,6 +11395,7 @@ window.deleteTournament = function(tournamentId) {
   state.saveLocal();
   if (id1) deleteTournamentFromFirestore(id1);
   if (id2 && id2 !== id1) deleteTournamentFromFirestore(id2);
+  pushTournamentsToDevice();
 
   showToast(`🗑️ Tournament "${t.title}" deleted.`);
   document.getElementById("tournament-detail-modal")?.classList.remove("active");
@@ -11748,43 +11871,13 @@ function initApp() {
     saveGameToFirestore(wedGame).catch(() => {});
   }
 
-  // Device sync bridge: Pull latest games/tournaments directly from connected physical iPhone if available
-  fetch("/api/sync/device-data")
-    .then(r => r.ok ? r.json() : null)
-    .then(data => {
-      if (!data) return;
-      let dirty = false;
-      if (Array.isArray(data.games) && data.games.length > 0) {
-        const idSet = new Set((state.games || []).map(g => String(g.id || g.rawId || "").toLowerCase()));
-        const titleSet = new Set((state.games || []).map(g => (g.title || "").toLowerCase().trim()));
-        for (const dg of data.games) {
-          const dgId = String(dg.id || dg.rawId || "").toLowerCase();
-          const dgTitle = (dg.title || "").toLowerCase().trim();
-          if (!idSet.has(dgId) && !titleSet.has(dgTitle)) {
-            state.games.unshift(dg);
-            idSet.add(dgId);
-            titleSet.add(dgTitle);
-            dirty = true;
-          }
-        }
-      }
-      if (Array.isArray(data.tournaments) && data.tournaments.length > 0) {
-        const tIdSet = new Set((state.tournaments || []).map(t => String(t.id || t.rawId || "").toLowerCase()));
-        for (const dt of data.tournaments) {
-          const dtId = String(dt.id || dt.rawId || "").toLowerCase();
-          if (!tIdSet.has(dtId) && !dt.title?.toLowerCase().includes("winter wonderland")) {
-            state.tournaments.unshift(dt);
-            tIdSet.add(dtId);
-            dirty = true;
-          }
-        }
-      }
-      if (dirty) {
-        state.saveLocal();
-        renderMatches();
-      }
-    })
-    .catch(() => {});
+  // Device sync bridge: Pull latest games and tournaments directly from physical iPhone
+  syncDeviceData();
+  setInterval(() => {
+    if (!document.hidden) {
+      syncDeviceData();
+    }
+  }, 8000);
 
   // Handle incoming deep link or game route from QR scan
   handleIncomingGameRoute();
