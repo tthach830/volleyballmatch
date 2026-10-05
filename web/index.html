@@ -70,7 +70,7 @@
     </header>
 
     <!-- TAB 1: SET GAMES (Matches iOS ConfirmedGamesView.swift) -->
-    <main id="tab-matches" class="tab-content">
+    <main id="tab-matches" class="tab-content active">
       <div style="display: flex; gap: 8px; margin: 8px 16px 12px; flex-wrap: wrap;">
         <button type="button" class="btn-ios-teal" onclick="window.openCreateMatchModal()" title="Host a new game"><span style="font-size:16px; font-weight:900; line-height:1;">+</span> New Game</button>
         <button type="button" class="btn-ios-teal" id="btn-tournaments" onclick="window.openTournamentsModal()" title="Beach Tournaments" style="background: #ea580c;"><span style="font-size:14px;">🏆</span> Tournaments</button>
@@ -91,7 +91,7 @@
     </main>
 
     <!-- TAB 2: LADDERS (Matches iOS LaddersView.swift) -->
-    <main id="tab-ladders" class="tab-content active">
+    <main id="tab-ladders" class="tab-content">
       <div class="ios-view-header">
         <div>
           <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
@@ -1590,11 +1590,11 @@
 
     <!-- Bottom Navigation Bar (Matches iOS TabView: Set Games, Ladders, Volleyball?, Profile) -->
     <nav id="bottom-nav">
-      <button type="button" class="nav-item" id="nav-matches" data-tab="matches" onclick="window.switchTab('matches')">
+      <button type="button" class="nav-item active" id="nav-matches" data-tab="matches" onclick="window.switchTab('matches')">
         <span class="nav-icon">🏐</span>
         <span class="nav-label">Set Games</span>
       </button>
-      <button type="button" class="nav-item active" id="nav-ladders" data-tab="ladders" onclick="window.switchTab('ladders')">
+      <button type="button" class="nav-item" id="nav-ladders" data-tab="ladders" onclick="window.switchTab('ladders')">
         <span class="nav-icon">🏆</span>
         <span class="nav-label">Ladders</span>
       </button>

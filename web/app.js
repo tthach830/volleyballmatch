@@ -25,225 +25,1431 @@ if ("serviceWorker" in navigator) {
 }
 
 // Initial Santa Cruz Mock Community Data for zero-config startup
-const initialCommunityPlayers = [
+export const initialCommunityPlayers = [
   {
-    id: "kai-slug-001",
-    name: "Kai Rodriguez",
-    nickname: "The Jet",
-    avatarEmoji: "🦈",
-    phoneNumber: "8315550101",
-    password: "volleyball123",
-    rating: "AA",
-    eloRating: 2240,
-    homeBeach: "Main Beach",
-    starRatingSum: 24,
-    starRatingCount: 5,
-    wins: 38,
-    losses: 7,
-    streak: 6,
-    pointsScored: 940,
-    pointsAllowed: 610,
-    uniquePartnerIds: ["taylor-slug-002", "maya-slug-003", "carlos-slug-004"],
-    uniqueOpponentIds: ["chloe-slug-005", "lucas-slug-006"]
+    "password": "zoqpat-nigrus-kyvXo9",
+    "gender": "Male",
+    "wins": 2,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Tj",
+    "pointsScored": 45,
+    "phoneNumber": "9255509704",
+    "id": "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+    "streak": 1,
+    "avatarEmoji": "sand_dive",
+    "losses": 3,
+    "pointsAllowed": 70,
+    "recentForm": [
+      false,
+      true,
+      false,
+      false,
+      true
+    ],
+    "uniqueOpponentIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+      "B515658C-66C0-43C8-B625-CE955B003FAA"
+    ],
+    "uniquePartnerIds": [
+      "B515658C-66C0-43C8-B625-CE955B003FAA",
+      "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "deviceToken": "567139a5355ad6a9ebb589a700a958588a4a8a4cc4bdd429cbf1bf927466e265",
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Tj tyrfingsson",
+    "eloRating": 1338
   },
   {
-    id: "taylor-slug-002",
-    name: "Taylor Jenkins",
-    nickname: "Sand Fox",
-    avatarEmoji: "slug", // Banana Slug mascot
-    phoneNumber: "8315550102",
-    password: "volleyball123",
-    rating: "AA",
-    eloRating: 2195,
-    homeBeach: "Main Beach",
-    starRatingSum: 40,
-    starRatingCount: 8,
-    wins: 34,
-    losses: 9,
-    streak: 3,
-    pointsScored: 890,
-    pointsAllowed: 640,
-    uniquePartnerIds: ["kai-slug-001", "maya-slug-003"],
-    uniqueOpponentIds: ["carlos-slug-004", "lucas-slug-006"]
+    "password": "mvdY8b8t",
+    "gender": "Male",
+    "wins": 0,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Wyatt",
+    "pointsScored": 0,
+    "phoneNumber": "7143970453",
+    "id": "109AE3A2-83CB-4860-AE54-35D3220585B9",
+    "streak": 0,
+    "avatarEmoji": "wilson",
+    "losses": 0,
+    "pointsAllowed": 0,
+    "recentForm": [],
+    "uniqueOpponentIds": [],
+    "uniquePartnerIds": [],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Wyatt Pearson",
+    "eloRating": 1350
   },
   {
-    id: "maya-slug-003",
-    name: "Maya Lin",
-    nickname: "Sky High",
-    avatarEmoji: "🦦",
-    phoneNumber: "8315550103",
-    password: "volleyball123",
-    rating: "A",
-    eloRating: 1880,
-    homeBeach: "Harbor Beach",
-    starRatingSum: 34,
-    starRatingCount: 7,
-    wins: 29,
-    losses: 12,
-    streak: 4,
-    pointsScored: 810,
-    pointsAllowed: 690,
-    uniquePartnerIds: ["kai-slug-001", "chloe-slug-005"],
-    uniqueOpponentIds: ["taylor-slug-002"]
+    "password": "Mezlula573!",
+    "gender": "Female",
+    "wins": 0,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Emily",
+    "pointsScored": 0,
+    "phoneNumber": "8318180613",
+    "id": "2A7E6B4F-5A8F-4D46-AF99-3C403697DE11",
+    "streak": 0,
+    "avatarEmoji": "wilson",
+    "losses": 0,
+    "pointsAllowed": 0,
+    "recentForm": [],
+    "uniqueOpponentIds": [],
+    "uniquePartnerIds": [],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "deviceToken": "ca8b24cd70f6eae34963c55392a16f7981891ddb8486efaaf43ba6c34811ed3f",
+    "bio": "",
+    "name": "Emily Lewis",
+    "eloRating": 1350
   },
   {
-    id: "carlos-slug-004",
-    name: "Carlos Mendez",
-    nickname: "Block Party",
-    avatarEmoji: "🐋",
-    phoneNumber: "8315550104",
-    password: "volleyball123",
-    rating: "A",
-    eloRating: 1825,
-    homeBeach: "4th Street",
-    starRatingSum: 28,
-    starRatingCount: 6,
-    wins: 25,
-    losses: 14,
-    streak: -1,
-    pointsScored: 760,
-    pointsAllowed: 710,
-    uniquePartnerIds: ["lucas-slug-006"],
-    uniqueOpponentIds: ["kai-slug-001", "taylor-slug-002"]
+    "password": "pyrjiv-cYxwa8-xyqqew",
+    "gender": "Female",
+    "wins": 4,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "The Rock",
+    "pointsScored": 58,
+    "phoneNumber": "9062215691",
+    "id": "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+    "streak": -1,
+    "avatarEmoji": "net_stuck",
+    "losses": 2,
+    "pointsAllowed": 61,
+    "recentForm": [
+      true,
+      true,
+      false,
+      true,
+      false
+    ],
+    "uniqueOpponentIds": [
+      "5673F249-CEA2-47A8-BA8F-AE7F59BDDC45",
+      "369D84B6-BD33-4C2B-919A-37DBBA5E871D",
+      "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+      "B515658C-66C0-43C8-B625-CE955B003FAA",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "uniquePartnerIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+      "B515658C-66C0-43C8-B625-CE955B003FAA"
+    ],
+    "starRatingSum": 0,
+    "rating": "B",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "deviceToken": "ca8b24cd70f6eae34963c55392a16f7981891ddb8486efaaf43ba6c34811ed3f",
+    "bio": "",
+    "name": "Shannon Drexler",
+    "eloRating": 1606
   },
   {
-    id: "chloe-slug-005",
-    name: "Chloe Dupont",
-    nickname: "Ace",
-    avatarEmoji: "slug", // Banana Slug mascot
-    phoneNumber: "8315550105",
-    password: "volleyball123",
-    rating: "B",
-    eloRating: 1610,
-    homeBeach: "Main Beach",
-    starRatingSum: 29,
-    starRatingCount: 6,
-    wins: 19,
-    losses: 16,
-    streak: 2,
-    pointsScored: 680,
-    pointsAllowed: 670,
-    uniquePartnerIds: ["maya-slug-003"],
-    uniqueOpponentIds: ["kai-slug-001"]
+    "password": "Volleyball!$88!",
+    "gender": "Female",
+    "wins": 0,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Angie",
+    "pointsScored": 54,
+    "phoneNumber": "9496970737",
+    "id": "40545549-6572-4D31-B738-383830393935",
+    "streak": -1,
+    "avatarEmoji": "🦦",
+    "losses": 3,
+    "pointsAllowed": 59,
+    "recentForm": [
+      false,
+      false,
+      false
+    ],
+    "uniqueOpponentIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "4458594B-6572-4D31-B738-383634323931"
+    ],
+    "uniquePartnerIds": [
+      "495A594B-6572-4D31-B738-383634323731"
+    ],
+    "starRatingSum": 0,
+    "rating": "B",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "",
+    "name": "Angie Carreras",
+    "eloRating": 1290
   },
   {
-    id: "lucas-slug-006",
-    name: "Lucas Silva",
-    nickname: "Breeze",
-    avatarEmoji: "🏐",
-    phoneNumber: "8315550106",
-    password: "volleyball123",
-    rating: "Intermediate",
-    eloRating: 1390,
-    homeBeach: "Harbor Beach",
-    starRatingSum: 23,
-    starRatingCount: 5,
-    wins: 14,
-    losses: 18,
-    streak: -2,
-    pointsScored: 590,
-    pointsAllowed: 640,
-    uniquePartnerIds: ["carlos-slug-004"],
-    uniqueOpponentIds: ["kai-slug-001", "taylor-slug-002"]
+    "password": "T0mc@t10",
+    "gender": "Male",
+    "wins": 3,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Harshal",
+    "pointsScored": 85,
+    "phoneNumber": "6692008816",
+    "id": "4059564F-6572-4D31-B738-383537323034",
+    "streak": -1,
+    "avatarEmoji": "🐋",
+    "losses": 1,
+    "pointsAllowed": 81,
+    "recentForm": [
+      true,
+      true,
+      true,
+      false
+    ],
+    "uniqueOpponentIds": [
+      "871EEE45-C9A6-4AF4-821D-489466B849F4",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "D1DE03D3-C131-4171-8EB9-9693A1720DA5"
+    ],
+    "uniquePartnerIds": [
+      "D1DE03D3-C131-4171-8EB9-9693A1720DA5",
+      "871EEE45-C9A6-4AF4-821D-489466B849F4"
+    ],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "deviceToken": "567139a5355ad6a9ebb589a700a958588a4a8a4cc4bdd429cbf1bf927466e265",
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Harshal D",
+    "eloRating": 1402
+  },
+  {
+    "password": "penqo8-faqsac-mEfzyg",
+    "gender": "Female",
+    "wins": 3,
+    "isStatsHidden": true,
+    "homeBeach": "Main Beach",
+    "nickname": "Bri",
+    "pointsScored": 59,
+    "phoneNumber": "9727871332",
+    "id": "4458594B-6572-4D31-B738-383634323931",
+    "streak": 1,
+    "avatarEmoji": "🦦",
+    "losses": 0,
+    "pointsAllowed": 54,
+    "recentForm": [
+      true,
+      true,
+      true
+    ],
+    "uniqueOpponentIds": [
+      "495A594B-6572-4D31-B738-383634323731",
+      "40545549-6572-4D31-B738-383830393935"
+    ],
+    "uniquePartnerIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "starRatingSum": 0,
+    "rating": "B",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "",
+    "name": "Bri stuart",
+    "eloRating": 1622
+  },
+  {
+    "password": "saintj",
+    "gender": "Male",
+    "wins": 1,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Saint",
+    "pointsScored": 21,
+    "phoneNumber": "4082504450",
+    "id": "455D504E-6572-4D31-B738-383632393737",
+    "streak": 1,
+    "avatarEmoji": "slug",
+    "losses": 0,
+    "pointsAllowed": 19,
+    "recentForm": [
+      true
+    ],
+    "uniqueOpponentIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "A8F8F1B4-08F7-48BE-A859-D4607345F203"
+    ],
+    "uniquePartnerIds": [
+      "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E"
+    ],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Saint Jerome",
+    "eloRating": 1374
+  },
+  {
+    "password": "",
+    "gender": "Male",
+    "wins": 8,
+    "isStatsHidden": true,
+    "homeBeach": "Harbor Beach",
+    "nickname": "RunWild",
+    "pointsScored": 276,
+    "phoneNumber": "4087869405",
+    "id": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+    "streak": 2,
+    "avatarEmoji": "derp_ball",
+    "losses": 6,
+    "pointsAllowed": 242,
+    "recentForm": [
+      false,
+      true,
+      true,
+      false,
+      true
+    ],
+    "uniqueOpponentIds": [],
+    "uniquePartnerIds": [],
+    "starRatingSum": 25,
+    "rating": "Intermediate",
+    "starRatingCount": 5,
+    "consecutiveBackouts": 0,
+    "deviceToken": "567139a5355ad6a9ebb589a700a958588a4a8a4cc4bdd429cbf1bf927466e265",
+    "bio": "Beach volleyball enthusiast & creator of Volleyball Match!",
+    "name": "Peter T",
+    "eloRating": 1422
+  },
+  {
+    "password": "Unblessed1-Giant3",
+    "gender": "Male",
+    "wins": 2,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Connor",
+    "pointsScored": 63,
+    "phoneNumber": "91632663",
+    "id": "495A594B-6572-4D31-B738-383634323731",
+    "streak": -1,
+    "avatarEmoji": "slug",
+    "losses": 1,
+    "pointsAllowed": 50,
+    "recentForm": [
+      true,
+      true,
+      false
+    ],
+    "uniqueOpponentIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "4458594B-6572-4D31-B738-383634323931"
+    ],
+    "uniquePartnerIds": [
+      "40545549-6572-4D31-B738-383830393935"
+    ],
+    "starRatingSum": 0,
+    "rating": "A",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Connor Dunham",
+    "eloRating": 1828
+  },
+  {
+    "password": "km662212",
+    "gender": "Male",
+    "wins": 0,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Karsten",
+    "pointsScored": 0,
+    "phoneNumber": "8313595631",
+    "id": "63CA3D1E-263A-48B5-BBF5-A1C489A10A60",
+    "streak": 0,
+    "avatarEmoji": "🐎",
+    "losses": 0,
+    "pointsAllowed": 0,
+    "recentForm": [],
+    "uniqueOpponentIds": [],
+    "uniquePartnerIds": [],
+    "starRatingSum": 0,
+    "rating": "B",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "deviceToken": "ca8b24cd70f6eae34963c55392a16f7981891ddb8486efaaf43ba6c34811ed3f",
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Karsten Mueller",
+    "eloRating": 1550
+  },
+  {
+    "password": "witriB-1raqny-camzir",
+    "eloRating": 1350,
+    "wins": 0,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Harmony",
+    "pointsScored": 0,
+    "phoneNumber": "5102051333",
+    "id": "682CA966-87E6-4191-B849-4792EE264FBB",
+    "streak": 0,
+    "avatarEmoji": "slug",
+    "losses": 0,
+    "pointsAllowed": 0,
+    "recentForm": [],
+    "uniqueOpponentIds": [],
+    "uniquePartnerIds": [],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Harmony Ma",
+    "gender": "Female"
+  },
+  {
+    "password": "xomgUk-rigfor-bimxy3",
+    "eloRating": 1514,
+    "wins": 1,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Cayt",
+    "pointsScored": 81,
+    "phoneNumber": "4089089208",
+    "id": "871EEE45-C9A6-4AF4-821D-489466B849F4",
+    "streak": -1,
+    "avatarEmoji": "🦦",
+    "losses": 3,
+    "pointsAllowed": 85,
+    "recentForm": [
+      false,
+      false,
+      true,
+      false
+    ],
+    "uniqueOpponentIds": [
+      "4059564F-6572-4D31-B738-383537323034",
+      "D1DE03D3-C131-4171-8EB9-9693A1720DA5",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "uniquePartnerIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "4059564F-6572-4D31-B738-383537323034"
+    ],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "deviceToken": "ca8b24cd70f6eae34963c55392a16f7981891ddb8486efaaf43ba6c34811ed3f",
+    "bio": "",
+    "name": "Cayt Sloane",
+    "gender": "Male"
+  },
+  {
+    "password": "mickey",
+    "eloRating": 1330,
+    "wins": 0,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Jess",
+    "pointsScored": 19,
+    "phoneNumber": "9786607330",
+    "id": "A8F8F1B4-08F7-48BE-A859-D4607345F203",
+    "streak": -1,
+    "avatarEmoji": "🦦",
+    "losses": 1,
+    "pointsAllowed": 21,
+    "recentForm": [
+      false
+    ],
+    "uniqueOpponentIds": [
+      "455D504E-6572-4D31-B738-383632393737",
+      "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E"
+    ],
+    "uniquePartnerIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 1,
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Jess",
+    "gender": "Female"
+  },
+  {
+    "password": "pyhHe4-fohqun-pivgiz",
+    "eloRating": 1338,
+    "wins": 2,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Chris",
+    "pointsScored": 50,
+    "phoneNumber": "7603491074",
+    "id": "B515658C-66C0-43C8-B625-CE955B003FAA",
+    "streak": -1,
+    "avatarEmoji": "wilson",
+    "losses": 3,
+    "pointsAllowed": 47,
+    "recentForm": [
+      false,
+      false,
+      true,
+      true,
+      false
+    ],
+    "uniqueOpponentIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+      "104FAF3C-2420-4F92-8292-B2AB3BF8C572"
+    ],
+    "uniquePartnerIds": [
+      "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "3C69FDBA-B9FF-4177-A43C-6ECF5F169770"
+    ],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Chris Maxwell",
+    "gender": "Male"
+  },
+  {
+    "password": "Lc091597$",
+    "eloRating": 1374,
+    "wins": 1,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Lilly",
+    "pointsScored": 21,
+    "phoneNumber": "7074990550",
+    "id": "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E",
+    "streak": 1,
+    "avatarEmoji": "slug",
+    "losses": 0,
+    "pointsAllowed": 19,
+    "recentForm": [
+      true
+    ],
+    "uniqueOpponentIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "A8F8F1B4-08F7-48BE-A859-D4607345F203"
+    ],
+    "uniquePartnerIds": [
+      "455D504E-6572-4D31-B738-383632393737"
+    ],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "deviceToken": "ca8b24cd70f6eae34963c55392a16f7981891ddb8486efaaf43ba6c34811ed3f",
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Lilly Cetrangolo",
+    "gender": "Female"
+  },
+  {
+    "password": "godisgood",
+    "eloRating": 1402,
+    "wins": 3,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Alicia",
+    "pointsScored": 85,
+    "phoneNumber": "(205) 533-0187",
+    "id": "D1DE03D3-C131-4171-8EB9-9693A1720DA5",
+    "streak": 1,
+    "avatarEmoji": "🦈",
+    "losses": 1,
+    "pointsAllowed": 81,
+    "recentForm": [
+      true,
+      true,
+      false,
+      true
+    ],
+    "uniqueOpponentIds": [
+      "871EEE45-C9A6-4AF4-821D-489466B849F4",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "4059564F-6572-4D31-B738-383537323034"
+    ],
+    "uniquePartnerIds": [
+      "4059564F-6572-4D31-B738-383537323034",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 1,
+    "deviceToken": "ca8b24cd70f6eae34963c55392a16f7981891ddb8486efaaf43ba6c34811ed3f",
+    "bio": "Ready to bump, set, and spike on the sand!",
+    "name": "Alicia",
+    "gender": "Female"
+  },
+  {
+    "password": "$Phu8628",
+    "eloRating": 1350,
+    "wins": 0,
+    "isStatsHidden": false,
+    "homeBeach": "Main Beach",
+    "nickname": "Billy",
+    "pointsScored": 0,
+    "phoneNumber": "5109130790",
+    "id": "D97858F9-506B-4507-8C69-39936CFD6624",
+    "streak": 0,
+    "avatarEmoji": "slug",
+    "losses": 0,
+    "pointsAllowed": 0,
+    "recentForm": [],
+    "uniqueOpponentIds": [],
+    "uniquePartnerIds": [],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "Beach volleyball enthusiast!",
+    "name": "Billy Luu",
+    "gender": "Male"
+  },
+  {
+    "password": "Boomer12345!",
+    "eloRating": 1800,
+    "wins": 0,
+    "isStatsHidden": false,
+    "homeBeach": "Harbor Beach",
+    "nickname": "Gina",
+    "pointsScored": 0,
+    "phoneNumber": "6474054462",
+    "id": "F81D15B7-0190-48D5-98BB-DE92CF55CDD2",
+    "streak": 0,
+    "avatarEmoji": "🏐",
+    "losses": 0,
+    "pointsAllowed": 0,
+    "recentForm": [],
+    "uniqueOpponentIds": [],
+    "uniquePartnerIds": [],
+    "starRatingSum": 0,
+    "rating": "A",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "",
+    "name": "Gina Fiorini",
+    "gender": "Female"
+  },
+  {
+    "password": "godisgood",
+    "eloRating": 1350,
+    "wins": 0,
+    "isStatsHidden": true,
+    "homeBeach": "Main Beach",
+    "nickname": "RunWild",
+    "pointsScored": 0,
+    "phoneNumber": "4087686300",
+    "id": "445E5341-6572-4D31-B738-383834323637",
+    "streak": 0,
+    "avatarEmoji": "slug",
+    "losses": 0,
+    "pointsAllowed": 0,
+    "recentForm": [],
+    "uniqueOpponentIds": [],
+    "uniquePartnerIds": [],
+    "starRatingSum": 0,
+    "rating": "Intermediate",
+    "starRatingCount": 0,
+    "consecutiveBackouts": 0,
+    "bio": "",
+    "name": "RunWild",
+    "gender": "Male"
   }
 ];
+window.initialCommunityPlayers = initialCommunityPlayers;
 
-const initialCommunityGames = [
+export const initialCommunityGames = [
   {
-    id: "game-001",
-    title: "Saturday Morning AA Doubles",
-    targetRating: "AA",
-    isLevelLocked: true,
-    hostPlayerId: "kai-slug-001",
-    courtLocation: "Main Beach",
-    courtNumber: "Court #1",
-    scheduledDate: new Date(Date.now() + 86400000).toISOString(),
-    status: "scheduled",
-    isAutoMatched: false,
-    matchedOptionName: "Host Scheduled",
-    notes: "Tournament AA practice. High intensity.",
-    team1PlayerIds: ["kai-slug-001"],
-    team2PlayerIds: ["taylor-slug-002"],
-    submittedRatings: {},
-    setScores: []
+    "id": "43B4C029-5CCC-491C-9D3D-35835AE2EF90",
+    "title": "Thursday 9/10/26 4:45",
+    "targetRating": "Intermediate",
+    "allowedRatings": [
+      "Intermediate",
+      "B"
+    ],
+    "genderCategory": "COED",
+    "format": "Single Set to 21",
+    "isLevelLocked": true,
+    "hostPlayerId": "4059564F-6572-4D31-B738-383537323034",
+    "courtLocation": "Main Beach",
+    "courtNumber": "Court #1",
+    "scheduledDate": "2026-09-10T23:45:00Z",
+    "status": "completed",
+    "maxPlayers": 4,
+    "isAutoMatched": false,
+    "isPrivate": false,
+    "matchedOptionName": "Community Open Match",
+    "notes": "Bring an official Wilson or Molten beach volleyball!",
+    "team1PlayerIds": [
+      "4059564F-6572-4D31-B738-383537323034",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "team2PlayerIds": [
+      "871EEE45-C9A6-4AF4-821D-489466B849F4",
+      "D1DE03D3-C131-4171-8EB9-9693A1720DA5"
+    ],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [
+      {
+        "text": "See you guys at main today",
+        "date": "2026-09-10T16:17:44Z",
+        "origin": "ios",
+        "senderId": "4059564F-6572-4D31-B738-383537323034",
+        "senderName": "Harshal",
+        "id": "3928C217-4BDD-4896-8C30-B1A76C37ACFA"
+      }
+    ],
+    "subMatches": [
+      {
+        "appliedStatsWinner": 1,
+        "team2Score": 22,
+        "setNumber": 1,
+        "courtNumber": "Court #8",
+        "id": "D9BEF22B-9766-40F8-8DEE-0179B3B72ECC",
+        "team1PlayerIds": [
+          "D1DE03D3-C131-4171-8EB9-9693A1720DA5",
+          "4059564F-6572-4D31-B738-383537323034"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 24,
+        "isCompleted": true,
+        "matchNumber": 1,
+        "team2PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "871EEE45-C9A6-4AF4-821D-489466B849F4"
+        ],
+        "winningTeam": 1
+      },
+      {
+        "appliedStatsWinner": 1,
+        "team2Score": 19,
+        "setNumber": 2,
+        "courtNumber": "Court #8",
+        "id": "38BE06B5-6BAD-4D5D-90BB-35890E8603C6",
+        "team1PlayerIds": [
+          "D1DE03D3-C131-4171-8EB9-9693A1720DA5",
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 21,
+        "isCompleted": true,
+        "matchNumber": 2,
+        "team2PlayerIds": [
+          "4059564F-6572-4D31-B738-383537323034",
+          "871EEE45-C9A6-4AF4-821D-489466B849F4"
+        ],
+        "winningTeam": 1
+      },
+      {
+        "appliedStatsWinner": 2,
+        "team2Score": 21,
+        "setNumber": 3,
+        "courtNumber": "Court #8",
+        "id": "0196D3A6-16FA-46AE-AF1D-F1B320BC39DE",
+        "team1PlayerIds": [
+          "D1DE03D3-C131-4171-8EB9-9693A1720DA5",
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 19,
+        "isCompleted": true,
+        "matchNumber": 3,
+        "team2PlayerIds": [
+          "4059564F-6572-4D31-B738-383537323034",
+          "871EEE45-C9A6-4AF4-821D-489466B849F4"
+        ],
+        "winningTeam": 2
+      },
+      {
+        "appliedStatsWinner": 1,
+        "team2Score": 19,
+        "setNumber": 4,
+        "courtNumber": "Court #8",
+        "id": "F0AC1EE2-95A1-471E-ADFD-32C6AA7DF99B",
+        "team1PlayerIds": [
+          "D1DE03D3-C131-4171-8EB9-9693A1720DA5",
+          "4059564F-6572-4D31-B738-383537323034"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 21,
+        "isCompleted": true,
+        "matchNumber": 4,
+        "team2PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "871EEE45-C9A6-4AF4-821D-489466B849F4"
+        ],
+        "winningTeam": 1
+      }
+    ]
   },
   {
-    id: "game-002",
-    title: "A Level Sunset Clash",
-    targetRating: "A",
-    isLevelLocked: true,
-    hostPlayerId: "maya-slug-003",
-    courtLocation: "4th Street",
-    courtNumber: "Court #2",
-    scheduledDate: new Date(Date.now() + 172800000).toISOString(),
-    status: "scheduled",
-    isAutoMatched: false,
-    matchedOptionName: "Host Scheduled",
-    notes: "Sideout rallies & cut-shot drills.",
-    team1PlayerIds: ["maya-slug-003"],
-    team2PlayerIds: ["carlos-slug-004"],
-    submittedRatings: {},
-    setScores: []
+    "id": "9C7054C7-A87D-45FA-8B96-FFA59E0539D3",
+    "title": "Friday 9/11/26 4PM Pickup",
+    "targetRating": "Novice",
+    "allowedRatings": [
+      "Novice",
+      "Intermediate",
+      "B",
+      "A"
+    ],
+    "genderCategory": "COED",
+    "format": "King of Beach (Rotating 3 Sets)",
+    "isLevelLocked": false,
+    "hostPlayerId": "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E",
+    "courtLocation": "Main Beach",
+    "courtNumber": "4 courts",
+    "scheduledDate": "2026-09-11T23:00:00Z",
+    "status": "scheduled",
+    "maxPlayers": 16,
+    "isAutoMatched": false,
+    "isPrivate": false,
+    "matchedOptionName": "Community Open Match",
+    "notes": "Bring an official Wilson or Molten beach volleyball!",
+    "team1PlayerIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "team2PlayerIds": [
+      "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E"
+    ],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [],
+    "subMatches": [
+      {
+        "isCompleted": false,
+        "setNumber": 1,
+        "courtNumber": "Court #4",
+        "id": "412A525F-3137-4839-B130-333730393130",
+        "team1PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "67756573-745F-406C-A179-657233000000"
+        ],
+        "restingPlayerIds": [],
+        "matchNumber": 1,
+        "team2PlayerIds": [
+          "67756573-745F-406C-A179-657234000000",
+          "67756573-745F-406C-A179-657232000000"
+        ]
+      },
+      {
+        "isCompleted": false,
+        "setNumber": 2,
+        "courtNumber": "Court #4",
+        "id": "412A535F-3137-4839-B130-333730393130",
+        "team1PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "67756573-745F-406C-A179-657234000000"
+        ],
+        "restingPlayerIds": [],
+        "matchNumber": 2,
+        "team2PlayerIds": [
+          "67756573-745F-406C-A179-657233000000",
+          "67756573-745F-406C-A179-657232000000"
+        ]
+      },
+      {
+        "isCompleted": false,
+        "setNumber": 3,
+        "courtNumber": "Court #4",
+        "id": "412A505F-3137-4839-B130-333730393130",
+        "team1PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "67756573-745F-406C-A179-657232000000"
+        ],
+        "restingPlayerIds": [],
+        "matchNumber": 3,
+        "team2PlayerIds": [
+          "67756573-745F-406C-A179-657233000000",
+          "67756573-745F-406C-A179-657234000000"
+        ]
+      }
+    ]
   },
   {
-    id: "game-003",
-    title: "Harbor B Doubles (Need 1)",
-    targetRating: "B",
-    isLevelLocked: true,
-    hostPlayerId: "chloe-slug-005",
-    courtLocation: "Harbor Beach",
-    courtNumber: "Court #1",
-    scheduledDate: new Date(Date.now() + 86400000).toISOString(),
-    status: "scheduled",
-    isAutoMatched: false,
-    matchedOptionName: "Host Scheduled",
-    notes: "Need 1 more solid B player for 3 sets to 21.",
-    team1PlayerIds: ["chloe-slug-005"],
-    team2PlayerIds: ["carlos-slug-004"],
-    submittedRatings: {},
-    setScores: []
+    "id": "B3E4BB9A-3960-468C-9190-1988EA8EF2B7",
+    "title": "Instant Pickup 2v2",
+    "targetRating": "Intermediate",
+    "allowedRatings": [
+      "Intermediate"
+    ],
+    "genderCategory": "COED",
+    "format": "Single Set to 21",
+    "isLevelLocked": true,
+    "hostPlayerId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+    "courtLocation": "Main Beach",
+    "courtNumber": "Court #1",
+    "scheduledDate": "2026-09-11T23:49:40Z",
+    "status": "scheduled",
+    "maxPlayers": 4,
+    "isAutoMatched": true,
+    "isPrivate": false,
+    "matchedOptionName": "Quick-Play Lobby",
+    "notes": "Bring an official Molten or Wilson beach ball!",
+    "team1PlayerIds": [
+      "455D504E-6572-4D31-B738-383632393737"
+    ],
+    "team2PlayerIds": [
+      "A8F8F1B4-08F7-48BE-A859-D4607345F203",
+      "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E"
+    ],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [],
+    "subMatches": [
+      {
+        "team2Score": 21,
+        "setNumber": 1,
+        "courtNumber": "Court #1",
+        "id": "236A4C09-DB0D-4F4B-BFC7-FB5EF6396E5D",
+        "team1PlayerIds": [
+          "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E",
+          "455D504E-6572-4D31-B738-383632393737"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 17,
+        "isCompleted": true,
+        "matchNumber": 1,
+        "team2PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "A8F8F1B4-08F7-48BE-A859-D4607345F203"
+        ],
+        "winningTeam": 2
+      },
+      {
+        "appliedStatsWinner": 1,
+        "team2Score": 19,
+        "setNumber": 2,
+        "courtNumber": "Court #1",
+        "id": "3E683004-5279-49CE-8477-4317CB2E0128",
+        "team1PlayerIds": [
+          "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E",
+          "455D504E-6572-4D31-B738-383632393737"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 21,
+        "isCompleted": true,
+        "matchNumber": 2,
+        "team2PlayerIds": [
+          "A8F8F1B4-08F7-48BE-A859-D4607345F203",
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+        ],
+        "winningTeam": 1
+      }
+    ]
   },
   {
-    id: "game-004",
-    title: "Sunday Intermediate Fun Sets",
-    targetRating: "Intermediate",
-    isLevelLocked: true,
-    hostPlayerId: "lucas-slug-006",
-    courtLocation: "Seabright Beach",
-    courtNumber: "Court #1",
-    scheduledDate: new Date(Date.now() + 259200000).toISOString(),
-    status: "scheduled",
-    isAutoMatched: false,
-    matchedOptionName: "Host Scheduled",
-    notes: "Friendly pickup doubles, learning handsets.",
-    team1PlayerIds: ["lucas-slug-006"],
-    team2PlayerIds: [],
-    submittedRatings: {},
-    setScores: []
+    "id": "B4A7B518-4BD5-4021-97AA-C6E53003E25D",
+    "title": "Tuesday 9/8/26 3:45PM",
+    "targetRating": "A",
+    "allowedRatings": [
+      "A",
+      "B",
+      "Intermediate"
+    ],
+    "genderCategory": "COED",
+    "format": "King of Beach (Rotating 3 Sets)",
+    "isLevelLocked": true,
+    "hostPlayerId": "495A594B-6572-4D31-B738-383634323731",
+    "courtLocation": "Harbor Beach",
+    "courtNumber": "1",
+    "scheduledDate": "2026-09-08T22:45:00Z",
+    "status": "completed",
+    "maxPlayers": 4,
+    "isAutoMatched": false,
+    "isPrivate": false,
+    "matchedOptionName": "Community Open Match",
+    "notes": "Bring an official Wilson or Molten beach volleyball!",
+    "team1PlayerIds": [
+      "495A594B-6572-4D31-B738-383634323731",
+      "2501690C-B0EB-461E-B92A-9BCC22F7F42E"
+    ],
+    "team2PlayerIds": [
+      "4458594B-6572-4D31-B738-383634323931",
+      "40545549-6572-4D31-B738-383830393935"
+    ],
+    "waitlistPlayerIds": [
+      "09A4B8E0-DF27-48A3-BBC9-E328DFFDB630"
+    ],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [
+      {
+        "text": "Got a court",
+        "date": "2026-09-05T17:38:30Z",
+        "origin": "ios",
+        "senderId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+        "senderName": "Runwild",
+        "id": "3CB4C506-CEA2-4900-A358-FAE84D3B7DCD"
+      },
+      {
+        "text": "Waiting for Angie to join",
+        "date": "2026-09-06T22:19:03Z",
+        "origin": "ios",
+        "senderId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+        "senderName": "Peter",
+        "id": "C34F669C-1002-48E4-8464-D894548579ED"
+      },
+      {
+        "text": "See yall tomorrow at 3:45pm at harbor.",
+        "date": "2026-09-08T00:27:51Z",
+        "origin": "ios",
+        "senderId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+        "senderName": "Peter",
+        "id": "9B0935E6-76AC-46CF-9F78-932B440024A6"
+      },
+      {
+        "text": "Sounds good! See you all tomorrow! Excited to play :)",
+        "date": "2026-09-08T03:24:46Z",
+        "origin": "ios",
+        "senderId": "40545549-6572-4D31-B738-383830393935",
+        "senderName": "Angie",
+        "id": "1F52B51C-9E52-4B01-AAF0-377FE609EAE9"
+      },
+      {
+        "text": "omw",
+        "date": "2026-09-08T22:26:50Z",
+        "origin": "ios",
+        "senderId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+        "senderName": "Peter",
+        "id": "3AC9E8EC-1F01-40C8-8538-76CA6A62EF1E"
+      }
+    ],
+    "subMatches": [
+      {
+        "appliedStatsWinner": 1,
+        "team2Score": 17,
+        "setNumber": 1,
+        "courtNumber": "Court #1",
+        "id": "08E18C97-C702-4BEB-B0A6-9A9B85D42548",
+        "team1PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "4458594B-6572-4D31-B738-383634323931"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 21,
+        "isCompleted": true,
+        "matchNumber": 1,
+        "team2PlayerIds": [
+          "495A594B-6572-4D31-B738-383634323731",
+          "40545549-6572-4D31-B738-383830393935"
+        ],
+        "winningTeam": 1
+      },
+      {
+        "appliedStatsWinner": 2,
+        "team2Score": 21,
+        "setNumber": 2,
+        "courtNumber": "Court #1",
+        "id": "79D2FD40-AC0E-43A1-8586-585609894C0F",
+        "team1PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "40545549-6572-4D31-B738-383830393935"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 16,
+        "isCompleted": true,
+        "matchNumber": 2,
+        "team2PlayerIds": [
+          "495A594B-6572-4D31-B738-383634323731",
+          "4458594B-6572-4D31-B738-383634323931"
+        ],
+        "winningTeam": 2
+      },
+      {
+        "appliedStatsWinner": 1,
+        "team2Score": 17,
+        "setNumber": 3,
+        "courtNumber": "1",
+        "id": "432A565F-3137-4839-B037-323839343732",
+        "team1PlayerIds": [
+          "495A594B-6572-4D31-B738-383634323731",
+          "4458594B-6572-4D31-B738-383634323931"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 21,
+        "isCompleted": true,
+        "matchNumber": 3,
+        "team2PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "40545549-6572-4D31-B738-383830393935"
+        ],
+        "winningTeam": 1
+      }
+    ]
   },
   {
-    id: "game-wednesday-coed-10-7-26",
-    title: "Wednesday COED 10/7/26 5PM",
-    targetRating: "B",
-    allowedRatings: ["Novice", "Intermediate", "B", "A", "AA", "Open"],
-    genderCategory: "COED",
-    format: "Best of 3 Sets (21-21-15)",
-    isLevelLocked: true,
-    hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
-    courtLocation: "Main Beach",
-    courtNumber: "Court #1",
-    scheduledDate: "2026-10-08T00:00:00.000Z",
-    status: "scheduled",
-    maxPlayers: 4,
-    isAutoMatched: false,
-    matchedOptionName: "Community Open Match",
-    notes: "Wednesday sunset beach doubles session. 5PM on the sand!",
-    team1PlayerIds: ["47519EF2-207D-4C20-B9A6-BFEDA40FE581"],
-    team2PlayerIds: [],
-    submittedRatings: {},
-    setScores: []
+    "id": "D7B9F150-5B3F-4F6C-B69A-EC28B8CA7180",
+    "title": "Wednesday 9/9/26 4PM",
+    "targetRating": "B",
+    "allowedRatings": [
+      "B",
+      "Intermediate"
+    ],
+    "genderCategory": "COED",
+    "format": "King of Beach (Rotating 3 Sets)",
+    "isLevelLocked": true,
+    "hostPlayerId": "2501690C-B0EB-461E-B92A-9BCC22F7F42E",
+    "courtLocation": "Main Beach",
+    "courtNumber": "Court #1",
+    "scheduledDate": "2026-09-09T23:30:00Z",
+    "status": "scheduled",
+    "maxPlayers": 4,
+    "isAutoMatched": false,
+    "isPrivate": false,
+    "matchedOptionName": "Community Open Match",
+    "notes": "Bring an official Wilson or Molten beach volleyball!",
+    "team1PlayerIds": [
+      "2501690C-B0EB-461E-B92A-9BCC22F7F42E",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "team2PlayerIds": [
+      "09A4B8E0-DF27-48A3-BBC9-E328DFFDB630",
+      "2A505E93-C50F-489E-BE94-8FC8A1ED4B90"
+    ],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [],
+    "subMatches": []
+  },
+  {
+    "id": "game-1789282128278",
+    "title": "Sunday 9/13/26 10am",
+    "targetRating": "Intermediate",
+    "allowedRatings": [
+      "Intermediate",
+      "B"
+    ],
+    "genderCategory": "COED",
+    "format": "Single Set to 21",
+    "isLevelLocked": true,
+    "hostPlayerId": "B515658C-66C0-43C8-B625-CE955B003FAA",
+    "courtLocation": "Main Beach",
+    "courtNumber": "Court #1",
+    "scheduledDate": "2026-09-13T17:00:00Z",
+    "status": "scheduled",
+    "maxPlayers": 4,
+    "isAutoMatched": false,
+    "isPrivate": false,
+    "matchedOptionName": "Host Scheduled",
+    "notes": "",
+    "team1PlayerIds": [
+      "B515658C-66C0-43C8-B625-CE955B003FAA",
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+    ],
+    "team2PlayerIds": [
+      "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+      "104FAF3C-2420-4F92-8292-B2AB3BF8C572"
+    ],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [
+      {
+        "text": "Got a court",
+        "date": "2026-09-13T18:09:51Z",
+        "origin": "ios",
+        "senderId": "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+        "senderName": "The Rock",
+        "id": "A179BD48-8B72-4584-9020-71931CF591F3"
+      }
+    ],
+    "subMatches": [
+      {
+        "appliedStatsWinner": 1,
+        "team2Score": 15,
+        "setNumber": 1,
+        "courtNumber": "Court #4",
+        "id": "A0B1D134-F49C-4F3C-8CCC-FFB3279E77BB",
+        "team1PlayerIds": [
+          "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+          "3C69FDBA-B9FF-4177-A43C-6ECF5F169770"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 21,
+        "isCompleted": true,
+        "matchNumber": 1,
+        "team2PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "B515658C-66C0-43C8-B625-CE955B003FAA"
+        ],
+        "winningTeam": 1
+      },
+      {
+        "appliedStatsWinner": 2,
+        "team2Score": 23,
+        "setNumber": 2,
+        "courtNumber": "Court #4",
+        "id": "8C0C293E-8D92-412B-8F51-D2599A859C28",
+        "team1PlayerIds": [
+          "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 21,
+        "isCompleted": true,
+        "matchNumber": 2,
+        "team2PlayerIds": [
+          "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+          "B515658C-66C0-43C8-B625-CE955B003FAA"
+        ],
+        "winningTeam": 2
+      },
+      {
+        "appliedStatsWinner": 2,
+        "team2Score": 21,
+        "setNumber": 3,
+        "courtNumber": "Court #4",
+        "id": "459E0347-3636-4316-BE1B-A4DF8CF8F904",
+        "team1PlayerIds": [
+          "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+          "B515658C-66C0-43C8-B625-CE955B003FAA"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 17,
+        "isCompleted": true,
+        "matchNumber": 3,
+        "team2PlayerIds": [
+          "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+        ],
+        "winningTeam": 2
+      },
+      {
+        "appliedStatsWinner": 2,
+        "team2Score": 21,
+        "setNumber": 4,
+        "courtNumber": "Court #1",
+        "id": "A2319EB1-05D6-4350-9F42-9480C88F26DF",
+        "team1PlayerIds": [
+          "3C69FDBA-B9FF-4177-A43C-6ECF5F169770",
+          "B515658C-66C0-43C8-B625-CE955B003FAA"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 11,
+        "isCompleted": true,
+        "matchNumber": 4,
+        "team2PlayerIds": [
+          "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581"
+        ],
+        "winningTeam": 2
+      },
+      {
+        "appliedStatsWinner": 2,
+        "team2Score": 21,
+        "setNumber": 5,
+        "courtNumber": "Court #1",
+        "id": "1B6AEC7D-A86A-451B-AF83-E3016B9643D3",
+        "team1PlayerIds": [
+          "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+          "3C69FDBA-B9FF-4177-A43C-6ECF5F169770"
+        ],
+        "restingPlayerIds": [],
+        "team1Score": 18,
+        "isCompleted": true,
+        "matchNumber": 5,
+        "team2PlayerIds": [
+          "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+          "B515658C-66C0-43C8-B625-CE955B003FAA"
+        ],
+        "winningTeam": 2
+      }
+    ]
+  },
+  {
+    "id": "game-1789422195301",
+    "title": "Thursday 9/17/26 4PM",
+    "targetRating": "Intermediate",
+    "allowedRatings": [
+      "Intermediate"
+    ],
+    "genderCategory": "OPEN",
+    "format": "Best of 3 Sets (21-21-15)",
+    "isLevelLocked": true,
+    "hostPlayerId": "D97858F9-506B-4507-8C69-39936CFD6624",
+    "courtLocation": "Main Beach",
+    "courtNumber": "Court #1",
+    "scheduledDate": "2026-09-17T23:00:00Z",
+    "status": "scheduled",
+    "maxPlayers": 8,
+    "isAutoMatched": false,
+    "isPrivate": false,
+    "matchedOptionName": "Host Scheduled",
+    "notes": "",
+    "team1PlayerIds": [
+      "D97858F9-506B-4507-8C69-39936CFD6624",
+      "D1DE03D3-C131-4171-8EB9-9693A1720DA5",
+      "2A7E6B4F-5A8F-4D46-AF99-3C403697DE11",
+      "4059564F-6572-4D31-B738-383537323034"
+    ],
+    "team2PlayerIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "871EEE45-C9A6-4AF4-821D-489466B849F4",
+      "CB39C095-73D2-4F2C-9A10-D8FDB2C1743E",
+      "63CA3D1E-263A-48B5-BBF5-A1C489A10A60"
+    ],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [
+      {
+        "text": "omw",
+        "date": "2026-09-17T04:48:08Z",
+        "origin": "ios",
+        "senderId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+        "senderName": "RunWild",
+        "id": "666ECBB8-6DEB-40DE-9032-5C51FD4CB204"
+      },
+      {
+        "text": "Test",
+        "date": "2026-09-17T05:03:16Z",
+        "origin": "web",
+        "senderId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+        "senderName": "RunWild",
+        "id": "5A73675F-3137-4839-B632-313339363531"
+      },
+      {
+        "text": ";;;;(",
+        "date": "2026-09-17T05:03:22Z",
+        "origin": "ios",
+        "senderId": "4059564F-6572-4D31-B738-383537323034",
+        "senderName": "Harshal",
+        "id": "D4970E78-0451-45AD-9A97-0327761347FD"
+      },
+      {
+        "text": ");;)(",
+        "date": "2026-09-17T05:03:32Z",
+        "origin": "ios",
+        "senderId": "4059564F-6572-4D31-B738-383537323034",
+        "senderName": "Harshal",
+        "id": "0CE0AD78-8EA7-4B89-83DE-F5772EA35AF0"
+      },
+      {
+        "text": "Fh",
+        "date": "2026-09-17T05:05:10Z",
+        "origin": "ios",
+        "senderId": "4059564F-6572-4D31-B738-383537323034",
+        "senderName": "Harshal",
+        "id": "A300F869-6B35-4DFA-BCBE-87A338CD7E1A"
+      },
+      {
+        "text": "omw",
+        "date": "2026-09-17T05:12:59Z",
+        "origin": "ios",
+        "senderId": "4059564F-6572-4D31-B738-383537323034",
+        "senderName": "Harshal",
+        "id": "76DC737E-BCB0-494A-B098-0E75CDD8AF61"
+      },
+      {
+        "text": "omw",
+        "date": "2026-09-17T05:13:08Z",
+        "origin": "ios",
+        "senderId": "4059564F-6572-4D31-B738-383537323034",
+        "senderName": "Harshal",
+        "id": "6247062E-A7C5-4B4D-A3AF-CBC63BEF2860"
+      },
+      {
+        "text": "omw",
+        "date": "2026-09-17T05:13:30Z",
+        "origin": "ios",
+        "senderId": "4059564F-6572-4D31-B738-383537323034",
+        "senderName": "Harshal",
+        "id": "99ECE20E-318C-4313-82FE-994A299068E4"
+      }
+    ],
+    "subMatches": []
+  },
+  {
+    "id": "game-1789424784815",
+    "title": "Wednesday 9/16/26 3:30pm",
+    "targetRating": "Novice",
+    "allowedRatings": [
+      "Novice",
+      "Intermediate",
+      "B"
+    ],
+    "genderCategory": "COED",
+    "format": "Best of 3 Sets (21-21-15)",
+    "isLevelLocked": false,
+    "hostPlayerId": "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+    "courtLocation": "Main Beach",
+    "courtNumber": "Court #1",
+    "scheduledDate": "2026-09-16T22:00:00Z",
+    "status": "scheduled",
+    "maxPlayers": 4,
+    "isAutoMatched": false,
+    "isPrivate": false,
+    "matchedOptionName": "Host Scheduled",
+    "notes": "",
+    "team1PlayerIds": [
+      "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
+      "63CA3D1E-263A-48B5-BBF5-A1C489A10A60"
+    ],
+    "team2PlayerIds": [
+      "D1DE03D3-C131-4171-8EB9-9693A1720DA5"
+    ],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [],
+    "subMatches": []
+  },
+  {
+    "id": "game-wednesday-coed-10-7-26",
+    "title": "Wednesday COED 10/7/26 5PM",
+    "targetRating": "B",
+    "allowedRatings": [
+      "Novice",
+      "Intermediate",
+      "B",
+      "A",
+      "AA",
+      "Open"
+    ],
+    "genderCategory": "COED",
+    "format": "Best of 3 Sets (21-21-15)",
+    "isLevelLocked": true,
+    "hostPlayerId": "104FAF3C-2420-4F92-8292-B2AB3BF8C572",
+    "courtLocation": "Main Beach",
+    "courtNumber": "Court #1",
+    "scheduledDate": "2026-10-08T00:00:00Z",
+    "status": "scheduled",
+    "maxPlayers": 4,
+    "isAutoMatched": true,
+    "isPrivate": false,
+    "matchedOptionName": "Smart Availability",
+    "notes": "Wednesday sunset beach doubles session. 5PM on the sand!",
+    "team1PlayerIds": [
+      "104FAF3C-2420-4F92-8292-B2AB3BF8C572"
+    ],
+    "team2PlayerIds": [],
+    "waitlistPlayerIds": [],
+    "submittedRatings": [],
+    "setScores": [],
+    "messages": [],
+    "subMatches": []
   }
 ];
+window.initialCommunityGames = initialCommunityGames;
 
 // Initial Santa Cruz Community Tournaments for zero-config startup
 export const initialCommunityTournaments = [
@@ -2066,9 +3272,26 @@ class AppState {
       console.warn("Storage read warning:", e);
     }
 
-    const loadedGames = Array.isArray(savedGames) ? savedGames.filter(isUpcomingGame) : [];
-    const existingTitles = new Set(loadedGames.map(g => (g.title || "").toLowerCase().trim()));
-    const missingInitial = initialCommunityGames.filter(g => !existingTitles.has((g.title || "").toLowerCase().trim()) && isUpcomingGame(g));
+    // Players: load from storage or fallback to initialCommunityPlayers
+    const loadedPlayers = (Array.isArray(savedPlayers) && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
+    this.players = deduplicatePlayers(loadedPlayers);
+
+    // Merge any missing initial players into this.players
+    const existingPlayerIds = new Set(this.players.map(p => String(p.id).toLowerCase()));
+    for (const initP of initialCommunityPlayers) {
+      if (!existingPlayerIds.has(String(initP.id).toLowerCase())) {
+        this.players.push(initP);
+      }
+    }
+
+    // Games: load ALL saved games (upcoming and past!) and merge any missing initial games
+    const loadedGames = Array.isArray(savedGames) ? savedGames : [];
+    const existingGameIds = new Set(loadedGames.map(g => String(g.id || g.rawId || "").toLowerCase()));
+    const existingGameTitles = new Set(loadedGames.map(g => (g.title || "").toLowerCase().trim()));
+    const missingInitial = initialCommunityGames.filter(g => 
+      !existingGameIds.has(String(g.id || "").toLowerCase()) &&
+      !existingGameTitles.has((g.title || "").toLowerCase().trim())
+    );
     this.games = [...loadedGames, ...missingInitial];
     this.availabilitySlots = deduplicateSlots(savedSlots || []);
     const baseTourns = (savedTourns && savedTourns.length > 0) ? savedTourns : initialCommunityTournaments;
@@ -2090,9 +3313,14 @@ class AppState {
     this.collapsedPools = {};
     this.isDemoModeEnabled = localStorage.getItem("setgames_demo_mode") === "true";
     
-    // Active user session
-    this.currentUser = this.players.find(p => p.id === savedUserId) || null;
-    if (!isRootUser(this.currentUser)) {
+    // Active user session: saved user, or default to Peter T (Root Admin), or first player
+    this.currentUser = this.players.find(p => p.id === savedUserId) ||
+                       this.players.find(p => isRootUser(p)) ||
+                       this.players.find(p => p.id === "47519EF2-207D-4C20-B9A6-BFEDA40FE581") ||
+                       this.players[0] || null;
+    if (isRootUser(this.currentUser)) {
+      this.isDemoModeEnabled = true;
+    } else {
       this.isDemoModeEnabled = false;
       try {
         localStorage.removeItem("setgames_demo_mode");
@@ -3127,22 +4355,12 @@ function renderMatches() {
   const container = document.getElementById("matches-list");
   if (!container) return;
 
-  if (!state.currentUser) {
-    container.innerHTML = `
-      <div style="text-align: center; padding: 50px 20px; background: var(--card-bg, #ffffff); border-radius: 16px; border: 1px solid var(--border, #e2e8f0); margin: 20px 0;">
-        <div style="font-size: 48px; margin-bottom: 12px;">🔒</div>
-        <h3 style="font-size: 19px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">Log In to Access Set Games</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; max-width: 320px; margin-left: auto; margin-right: auto;">
-          Only authenticated community members can view scheduled matches, team rosters, and court details.
-        </p>
-        <button class="btn btn-primary" onclick="window.showAuthModal()" style="padding: 10px 24px; font-weight: 700; border-radius: 10px;">Log In / Sign Up</button>
-        <div style="margin-top: 14px;">
-          <button class="btn btn-outline btn-sm" onclick="window.switchTab('ladders')">🏆 View Beach Ladders</button>
-        </div>
-      </div>
-    `;
-    return;
-  }
+  const guestBanner = !state.currentUser ? `
+    <div style="text-align: center; padding: 12px 16px; background: rgba(43, 110, 122, 0.15); border: 1px solid rgba(43, 110, 122, 0.35); border-radius: 12px; margin: 8px 16px 14px;">
+      <span style="font-size: 13px; color: #e2e8f0;">👋 Viewing schedule as guest. </span>
+      <button type="button" class="btn btn-primary btn-sm" onclick="window.showAuthModal()" style="padding: 4px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; margin-left: 6px;">Log In / Sign Up</button>
+    </div>
+  ` : "";
 
   const currentUserId = state.currentUser?.id;
   const isRoot = isRootUser(state.currentUser);
@@ -3724,7 +4942,7 @@ function renderMatches() {
     }
   }).join("");
 
-  container.innerHTML = cardsHtml;
+  container.innerHTML = guestBanner + cardsHtml;
 }
 
 window.renderMatches = renderMatches;
@@ -4543,14 +5761,10 @@ setInterval(checkUpcomingMatchReminders, 60000);
 export function switchTab(tabId) {
   const normalizedId = (tabId === "ladder" || tabId === "popular") ? "ladders" : tabId;
 
-  // If player isn't logged in, they cannot access Set games, Auto-Match, or Profile. Only Ladders and Volleyball are visible.
-  if (!state.currentUser && normalizedId !== "ladders" && normalizedId !== "volleyball") {
+  // If player isn't logged in, prompt auth on Profile tab, but allow browsing Set Games, Ladders, and Volleyball freely
+  if (!state.currentUser && normalizedId === "profile") {
     if (typeof window.showAuthModal === "function") {
       window.showAuthModal();
-    }
-    const activeTab = document.querySelector(".tab-content.active");
-    if (!activeTab || (activeTab.id !== "tab-ladders" && activeTab.id !== "tab-volleyball")) {
-      switchTab("ladders");
     }
     return;
   }
@@ -10328,16 +11542,14 @@ function initApp() {
   try { window.updateNotificationBadge(); } catch (e) { console.error("updateNotificationBadge error:", e); }
 
   try {
+    renderMatches();
     if (state.currentUser) {
-      renderMatches();
       renderProfile();
-      switchTab("matches");
-    } else {
-      switchTab("ladders");
     }
+    switchTab("matches");
   } catch (e) {
     console.error("Initial tab switch error:", e);
-    try { switchTab("ladders"); } catch (_) {}
+    try { switchTab("matches"); } catch (_) {}
   }
 
   // Backdrop click to close auth modal for guest browsing
@@ -10446,9 +11658,10 @@ function initApp() {
       return s !== "canceled";
     });
     const remoteTitles = new Set(validGames.map(g => (g.title || "").toLowerCase().trim()));
+    const remoteIds = new Set(validGames.map(g => g.id || g.rawId));
     const localPending = (state.games || []).filter(g => {
       const title = (g.title || "").toLowerCase().trim();
-      return isUpcomingGame(g) && !remoteTitles.has(title) && !validGames.some(r => r.id === g.id);
+      return !remoteTitles.has(title) && !remoteIds.has(g.id) && !remoteIds.has(g.rawId);
     });
     state.games = [...validGames, ...localPending];
     state.saveLocal();
