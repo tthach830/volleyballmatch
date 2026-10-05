@@ -38,6 +38,33 @@ public class FirestoreService: ObservableObject {
             return value
         }
     }
+    private func createDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { d in
+            let container = try d.singleValueContainer()
+            if let str = try? container.decode(String.self) {
+                let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                if let date = isoFormatter.date(from: str) { return date }
+                isoFormatter.formatOptions = [.withInternetDateTime]
+                if let date = isoFormatter.date(from: str) { return date }
+                let df = DateFormatter()
+                df.locale = Locale(identifier: "en_US_POSIX")
+                df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+                if let date = df.date(from: str) { return date }
+                df.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+                if let date = df.date(from: str) { return date }
+            }
+            if let double = try? container.decode(Double.self) {
+                if double > 10_000_000_000 {
+                    return Date(timeIntervalSince1970: double / 1000)
+                }
+                return Date(timeIntervalSince1970: double)
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date format")
+        }
+        return decoder
+    }
     
     public func startListening(
         onPlayersUpdate: @escaping ([Player]) -> Void,
@@ -47,8 +74,12 @@ public class FirestoreService: ObservableObject {
     ) {
         // Real-time listener for Players
         playersListener = db.collection("players").addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self, let documents = snapshot?.documents, error == nil else { return }
-            let decoder = JSONDecoder()
+            if let error = error {
+                print("❌ [FirestoreService] playersListener error: \(error.localizedDescription)")
+                return
+            }
+            guard let self = self, let documents = snapshot?.documents else { return }
+            let decoder = self.createDecoder()
             let players: [Player] = documents.compactMap { doc in
                 do {
                     let safeDict = self.sanitizeForJSON(doc.data())
@@ -68,9 +99,12 @@ public class FirestoreService: ObservableObject {
         
         // Real-time listener for Set Games
         gamesListener = db.collection("games").addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self, let documents = snapshot?.documents, error == nil else { return }
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
+            if let error = error {
+                print("❌ [FirestoreService] gamesListener error: \(error.localizedDescription)")
+                return
+            }
+            guard let self = self, let documents = snapshot?.documents else { return }
+            let decoder = self.createDecoder()
             let games: [SetGame] = documents.compactMap { doc in
                 do {
                     var safeDict = (self.sanitizeForJSON(doc.data()) as? [String: Any]) ?? [:]
@@ -91,9 +125,12 @@ public class FirestoreService: ObservableObject {
         
         // Real-time listener for Availability
         slotsListener = db.collection("availabilitySlots").addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self, let documents = snapshot?.documents, error == nil else { return }
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
+            if let error = error {
+                print("❌ [FirestoreService] slotsListener error: \(error.localizedDescription)")
+                return
+            }
+            guard let self = self, let documents = snapshot?.documents else { return }
+            let decoder = self.createDecoder()
             let slots: [AvailabilitySlot] = documents.compactMap { doc in
                 do {
                     var safeDict = (self.sanitizeForJSON(doc.data()) as? [String: Any]) ?? [:]
@@ -115,9 +152,12 @@ public class FirestoreService: ObservableObject {
         // Real-time listener for Tournaments
         if let onTournamentsUpdate = onTournamentsUpdate {
             tournamentsListener = db.collection("tournaments").addSnapshotListener { [weak self] snapshot, error in
-                guard let self = self, let documents = snapshot?.documents, error == nil else { return }
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
+                if let error = error {
+                    print("❌ [FirestoreService] tournamentsListener error: \(error.localizedDescription)")
+                    return
+                }
+                guard let self = self, let documents = snapshot?.documents else { return }
+                let decoder = self.createDecoder()
                 let tournaments: [Tournament] = documents.compactMap { doc in
                     do {
                         var safeDict = (self.sanitizeForJSON(doc.data()) as? [String: Any]) ?? [:]
