@@ -11374,12 +11374,20 @@ window.submitCreateTournament = function(e) {
   const tournUUID = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID().toUpperCase() : ("tourn-" + Date.now());
   const hostId = (state.currentUser?.id && isValidUUID(state.currentUser.id)) ? state.currentUser.id : (state.players?.[0]?.id || "47519EF2-207D-4C20-B9A6-BFEDA40FE581");
 
+  let finalDateISO;
+  try {
+    const d = dateVal ? new Date(dateVal) : new Date(Date.now() + 86400000 * 3);
+    finalDateISO = (!isNaN(d.getTime())) ? d.toISOString() : new Date(Date.now() + 86400000 * 3).toISOString();
+  } catch (e) {
+    finalDateISO = new Date(Date.now() + 86400000 * 3).toISOString();
+  }
+
   const newTourn = {
     id: tournUUID,
     rawId: tournUUID,
     title,
     location,
-    date: dateVal ? new Date(dateVal).toISOString() : new Date(Date.now() + 86400000 * 3).toISOString(),
+    date: finalDateISO,
     courts: courtsStr.split(",").map(c => c.trim()).filter(Boolean),
     allowedDivisions: checkedDivs.length > 0 ? checkedDivs : DIVISION_CONFIG.map(d => d.name),
     maxTeamsPerDivision: maxTeams,
@@ -11870,14 +11878,15 @@ function initApp() {
         t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
         t.rawId !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967"
       );
-      if (filtered.length === 0 && (!state.tournaments || state.tournaments.length === 0)) {
-        state.tournaments = deduplicateTournaments(initialCommunityTournaments);
-        for (const t of initialCommunityTournaments) {
-          saveTournamentToFirestore(t).catch(() => {});
-        }
-      } else {
-        state.tournaments = deduplicateTournaments(filtered);
-      }
+      const remoteTitles = new Set(filtered.map(t => (t.title || "").toLowerCase().trim()));
+      const remoteIds = new Set(filtered.map(t => t.id || t.rawId));
+      const localPending = (state.tournaments || []).filter(t => {
+        if (!t || t.title?.toLowerCase().includes("winter wonderland")) return false;
+        const title = (t.title || "").toLowerCase().trim();
+        return !remoteTitles.has(title) && !remoteIds.has(t.id) && !remoteIds.has(t.rawId);
+      });
+      const combined = [...filtered, ...localPending];
+      state.tournaments = deduplicateTournaments(combined.length > 0 ? combined : initialCommunityTournaments);
       state.saveLocal();
       renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {
