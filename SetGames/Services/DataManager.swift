@@ -22,6 +22,7 @@ public class DataManager: ObservableObject {
     @Published public var isDemoModeEnabled: Bool = false
     private var hasCompletedInitialGamesSync: Bool = false
     private var recentlyDeletedSlotIds = Set<String>()
+    private var recentlyDeletedTournamentIds = Set<String>()
     
     public init() {
         self.isDemoModeEnabled = UserDefaults.standard.bool(forKey: "isDemoModeEnabled")
@@ -1693,7 +1694,14 @@ public class DataManager: ObservableObject {
             },
             onTournamentsUpdate: { [weak self] remoteTournaments in
                 guard let self = self else { return }
-                self.tournaments = self.deduplicateTournaments(self.tournaments + remoteTournaments)
+                let validRemotes = remoteTournaments.filter { r in
+                    !self.recentlyDeletedTournamentIds.contains(r.id.uuidString) &&
+                    !(r.rawId != nil && self.recentlyDeletedTournamentIds.contains(r.rawId!)) &&
+                    r.id.uuidString != "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
+                    !(r.rawId == "26B299D3-A7EA-4BF9-B415-14F9E80EE967") &&
+                    !r.title.localizedCaseInsensitiveContains("winter wonderland")
+                }
+                self.tournaments = self.deduplicateTournaments(validRemotes)
                 self.saveToDisk()
             }
         )
@@ -2007,14 +2015,6 @@ public class DataManager: ObservableObject {
         halloweenComponents.minute = 0
         let halloweenDate = cal.date(from: halloweenComponents) ?? Date()
         
-        var winterComponents = DateComponents()
-        winterComponents.year = 2026
-        winterComponents.month = 12
-        winterComponents.day = 26
-        winterComponents.hour = 10
-        winterComponents.minute = 0
-        let winterDate = cal.date(from: winterComponents) ?? Date()
-        
         let p1Id = self.players.first?.id ?? UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581")!
         let p2Id = (self.players.count > 1 ? self.players[1].id : nil) ?? UUID(uuidString: "40545549-6572-4D31-B738-383830393935")!
         
@@ -2038,27 +2038,7 @@ public class DataManager: ObservableObject {
             teamFormat: .quads4v4
         )
         
-        let winterTournament = Tournament(
-            id: UUID(uuidString: "26B299D3-A7EA-4BF9-B415-14F9E80EE967") ?? UUID(),
-            rawId: "26B299D3-A7EA-4BF9-B415-14F9E80EE967",
-            title: "Winter Wonderland 4v4",
-            hostPlayerId: p1Id,
-            coHostPlayerIds: [],
-            date: winterDate,
-            location: "Main Beach",
-            courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
-            allowedDivisions: [.coed4v4, .coedIntermediate2v2, .coedNovice2v2],
-            maxTeamsPerDivision: 8,
-            teams: [],
-            freeAgents: [],
-            matches: [],
-            status: "registration_open",
-            notes: "Holiday beach volleyball tournament! 4v4 Coed and 2v2 doubles. Costumes and festive gear welcome!",
-            createdAt: Date(),
-            teamFormat: .quads4v4
-        )
-        
-        return [halloweenTournament, winterTournament]
+        return [halloweenTournament]
     }
     
     // MARK: - Local Device Persistence
@@ -2846,6 +2826,10 @@ public class DataManager: ObservableObject {
         guard isHost else {
             return (false, "Only the tournament host or admin can delete this tournament.")
         }
+        recentlyDeletedTournamentIds.insert(id.uuidString)
+        if let rawId = t.rawId {
+            recentlyDeletedTournamentIds.insert(rawId)
+        }
         tournaments.removeAll { $0.id == id }
         saveToDisk()
         FirestoreService.shared.deleteTournament(id: id, rawId: t.rawId)
@@ -2894,7 +2878,12 @@ public class DataManager: ObservableObject {
         
         if let tData = try? Data(contentsOf: tournamentsFileURL),
            let loadedTournaments = try? decoder.decode([Tournament].self, from: tData) {
-            self.tournaments = deduplicateTournaments(loadedTournaments)
+            let filtered = loadedTournaments.filter {
+                $0.id.uuidString != "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
+                $0.rawId != "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
+                !$0.title.localizedCaseInsensitiveContains("winter wonderland")
+            }
+            self.tournaments = deduplicateTournaments(filtered)
         }
         if self.tournaments.isEmpty {
             self.tournaments = seedDefaultTournaments()

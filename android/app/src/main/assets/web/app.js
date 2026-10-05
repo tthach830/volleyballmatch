@@ -243,25 +243,6 @@ export const initialCommunityTournaments = [
     freeAgents: [],
     matches: [],
     createdAt: "2026-10-02T22:02:32Z"
-  },
-  {
-    id: "26B299D3-A7EA-4BF9-B415-14F9E80EE967",
-    rawId: "26B299D3-A7EA-4BF9-B415-14F9E80EE967",
-    title: "Winter Wonderland 4v4",
-    date: "2026-12-26T17:00:00Z",
-    location: "Main Beach",
-    courts: ["Court #1", "Court #2", "Court #3", "Court #4"],
-    allowedDivisions: ["4v4 Coed", "2v2 Coed Intermediate", "2v2 Coed Novice"],
-    maxTeamsPerDivision: 8,
-    status: "registration_open",
-    teamFormat: "4v4",
-    hostPlayerId: "47519EF2-207D-4C20-B9A6-BFEDA40FE581",
-    coHostPlayerIds: ["445E5341-6572-4D31-B738-383834323637"],
-    notes: "Holiday beach volleyball tournament! 4v4 Coed and 2v2 doubles. Costumes and festive gear welcome!",
-    teams: [],
-    freeAgents: [],
-    matches: [],
-    createdAt: "2026-09-16T07:02:50Z"
   }
 ];
 window.initialCommunityTournaments = initialCommunityTournaments;
@@ -2066,8 +2047,8 @@ class AppState {
     this.players = (savedPlayers && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
     this.games = Array.isArray(savedGames) ? savedGames.filter(isUpcomingGame) : [];
     this.availabilitySlots = deduplicateSlots(savedSlots || []);
-    const baseTourns = (savedTourns && savedTourns.length > 0) ? savedTourns : [];
-    this.tournaments = deduplicateTournaments([...initialCommunityTournaments, ...baseTourns]);
+    const baseTourns = (savedTourns && savedTourns.length > 0) ? savedTourns : initialCommunityTournaments;
+    this.tournaments = deduplicateTournaments(baseTourns).filter(t => !t.title?.toLowerCase().includes("winter wonderland") && t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967");
     this.notifications = Array.isArray(savedNotifs) ? savedNotifs : [
       {
         id: "notif-welcome",
@@ -10457,11 +10438,19 @@ function initApp() {
 
   subscribeToTournaments((remoteTournaments) => {
     if (Array.isArray(remoteTournaments)) {
-      state.tournaments = deduplicateTournaments([
-        ...initialCommunityTournaments,
-        ...(state.tournaments || []),
-        ...remoteTournaments
-      ]);
+      const filtered = remoteTournaments.filter(t => 
+        !t.title?.toLowerCase().includes("winter wonderland") && 
+        t.id !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967" &&
+        t.rawId !== "26B299D3-A7EA-4BF9-B415-14F9E80EE967"
+      );
+      if (filtered.length === 0 && (!state.tournaments || state.tournaments.length === 0)) {
+        state.tournaments = deduplicateTournaments(initialCommunityTournaments);
+        for (const t of initialCommunityTournaments) {
+          saveTournamentToFirestore(t).catch(() => {});
+        }
+      } else {
+        state.tournaments = deduplicateTournaments(filtered);
+      }
       state.saveLocal();
       renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {
@@ -10473,10 +10462,8 @@ function initApp() {
     }
   });
 
-  // Ensure initial community tournaments exist in Firestore
-  for (const t of initialCommunityTournaments) {
-    saveTournamentToFirestore(t).catch(() => {});
-  }
+  // Prune deleted Winter Wonderland from Firestore
+  deleteTournamentFromFirestore("26B299D3-A7EA-4BF9-B415-14F9E80EE967").catch(() => {});
 
   // Handle incoming deep link or game route from QR scan
   handleIncomingGameRoute();
