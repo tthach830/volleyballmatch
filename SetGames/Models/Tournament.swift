@@ -601,9 +601,6 @@ public struct Tournament: Identifiable, Codable, Hashable {
         if !allowedDivisions.isEmpty && allowedDivisions.allSatisfy({ $0 == .coed4v4 }) {
             return .quads4v4
         }
-        if title.lowercased().contains("hollao") || title.lowercased().contains("halloween") {
-            return .quads4v4
-        }
         return teamFormat
     }
     

@@ -40,7 +40,10 @@ public struct TournamentDetailView: View {
     }
     
     private var tournament: Tournament? {
-        dataManager.tournaments.first(where: { $0.id == tournamentId })
+        dataManager.tournaments.first(where: { 
+            $0.id == tournamentId || 
+            ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(tournamentId.uuidString) == .orderedSame)
+        })
     }
     
     private var isUserRegistered: Bool {

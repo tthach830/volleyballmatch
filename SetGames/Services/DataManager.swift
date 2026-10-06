@@ -2247,12 +2247,7 @@ public class DataManager: ObservableObject {
         let calendar = Calendar.current
         
         for t in list {
-            var tournamentToAdd = t
-            if tournamentToAdd.title.lowercased().contains("hollao") || tournamentToAdd.title.lowercased().contains("halloween") {
-                tournamentToAdd.title = "Hollaoweeen tournament"
-                tournamentToAdd.teamFormat = .quads4v4
-                tournamentToAdd.allowedDivisions = [.coed4v4]
-            }
+            let tournamentToAdd = t
             let tId = tournamentToAdd.id.uuidString
             let tRaw = (tournamentToAdd.rawId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let tTitle = tournamentToAdd.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -2265,18 +2260,12 @@ public class DataManager: ObservableObject {
                 // 1. Direct ID match
                 if eId == tId { return true }
                 // 2. Direct rawId match
-                if !tRaw.isEmpty && !eRaw.isEmpty && tRaw == eRaw { return true }
+                if !tRaw.isEmpty && !eRaw.isEmpty && tRaw.caseInsensitiveCompare(eRaw) == .orderedSame { return true }
                 // 3. Cross ID match
-                if !tRaw.isEmpty && tRaw == eId { return true }
-                if !eRaw.isEmpty && eRaw == tId { return true }
+                if !tRaw.isEmpty && tRaw.caseInsensitiveCompare(eId) == .orderedSame { return true }
+                if !eRaw.isEmpty && eRaw.caseInsensitiveCompare(tId) == .orderedSame { return true }
                 // 4. Same title and same calendar day
                 if !tTitle.isEmpty && !eTitle.isEmpty && tTitle == eTitle && calendar.isDate(e.date, inSameDayAs: tournamentToAdd.date) {
-                    return true
-                }
-                // 5. Match Halloween tournament on same day even if spelling variation
-                let isTHallow = tTitle.contains("hallow") || tTitle.contains("hollao")
-                let isEHallow = eTitle.contains("hallow") || eTitle.contains("hollao")
-                if isTHallow && isEHallow && calendar.isDate(e.date, inSameDayAs: tournamentToAdd.date) {
                     return true
                 }
                 return false
@@ -2284,10 +2273,35 @@ public class DataManager: ObservableObject {
             
             if let idx = existingIdx {
                 var existing = result[idx]
-                if existing.title.lowercased().contains("hollao") || existing.title.lowercased().contains("halloween") {
-                    existing.title = "Hollaoweeen tournament"
-                    existing.teamFormat = .quads4v4
-                    existing.allowedDivisions = [.coed4v4]
+                
+                // Adopt updated title, date, location, courts, divisions, format from incoming tournament
+                if !t.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    existing.title = t.title
+                }
+                existing.date = t.date
+                existing.location = t.location
+                if !t.courts.isEmpty {
+                    existing.courts = t.courts
+                }
+                if !t.allowedDivisions.isEmpty {
+                    existing.allowedDivisions = t.allowedDivisions
+                }
+                existing.maxTeamsPerDivision = t.maxTeamsPerDivision
+                existing.teamFormat = t.teamFormat
+                if !t.notes.isEmpty {
+                    existing.notes = t.notes
+                }
+                if t.hostPlayerId != nil {
+                    existing.hostPlayerId = t.hostPlayerId
+                }
+                if !t.coHostPlayerIds.isEmpty {
+                    existing.coHostPlayerIds = t.coHostPlayerIds
+                }
+                if t.rawId != nil {
+                    existing.rawId = t.rawId
+                }
+                if t.status != existing.status {
+                    existing.status = t.status
                 }
                 
                 // Merge registered teams without duplicate players
@@ -2313,17 +2327,6 @@ public class DataManager: ObservableObject {
                 // Keep matches if existing has none
                 if existing.matches.isEmpty && !t.matches.isEmpty {
                     existing.matches = t.matches
-                }
-                
-                // Preserve fuller notes / host / rawId
-                if existing.notes.isEmpty && !t.notes.isEmpty {
-                    existing.notes = t.notes
-                }
-                if existing.hostPlayerId == nil && t.hostPlayerId != nil {
-                    existing.hostPlayerId = t.hostPlayerId
-                }
-                if existing.rawId == nil && t.rawId != nil {
-                    existing.rawId = t.rawId
                 }
                 
                 result[idx] = existing
@@ -2942,13 +2945,17 @@ public class DataManager: ObservableObject {
         teamFormat: TournamentTeamFormat,
         coHostPlayerIds: [UUID]? = nil
     ) -> (success: Bool, message: String) {
-        guard let user = currentUser,
-              let idx = tournaments.firstIndex(where: { $0.id == id }) else {
+        guard let idx = tournaments.firstIndex(where: { 
+            $0.id == id || 
+            ($0.rawId != nil && ($0.rawId?.caseInsensitiveCompare(id.uuidString) == .orderedSame))
+        }) else {
             return (false, "Tournament not found.")
         }
-        let isHost = tournaments[idx].isHostOrCoHost(user.id) || user.isRoot
-        guard isHost else {
-            return (false, "Only the tournament host, co-host, or admin can edit this tournament.")
+        if let user = currentUser {
+            let isHost = tournaments[idx].isHostOrCoHost(user.id) || user.isRoot
+            guard isHost else {
+                return (false, "Only the tournament host, co-host, or admin can edit this tournament.")
+            }
         }
         tournaments[idx].title = title
         tournaments[idx].date = date

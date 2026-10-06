@@ -4329,7 +4329,6 @@ export function getEffectiveTournamentFormat(t) {
   if (t.teamFormat === "4v4") return "4v4";
   const divs = Array.isArray(t.allowedDivisions) ? t.allowedDivisions : [];
   if (divs.length > 0 && divs.every(d => String(d).includes("4v4"))) return "4v4";
-  if (t.title && (t.title.toLowerCase().includes("hollao") || t.title.toLowerCase().includes("halloween"))) return "4v4";
   return t.teamFormat || "2v2";
 }
 window.getEffectiveTournamentFormat = getEffectiveTournamentFormat;
@@ -9219,11 +9218,6 @@ export function deduplicateTournaments(tournaments) {
 
   for (const t of tournaments) {
     if (!t) continue;
-    if (t.title && (t.title.toLowerCase().includes("hollao") || t.title.toLowerCase().includes("halloween"))) {
-      t.title = "Hollaoweeen tournament";
-      t.teamFormat = "4v4";
-      t.allowedDivisions = ["4v4 Coed"];
-    }
     const tId = t.id ? String(t.id).trim() : "";
     const tRawId = t.rawId ? String(t.rawId).trim() : "";
     const tTitle = (t.title || "").trim().toLowerCase();
@@ -9256,6 +9250,20 @@ export function deduplicateTournaments(tournaments) {
       // Merge tournament records to preserve registered teams, free agents, and matches
       const existing = result[existingIdx];
 
+      // Adopt latest title, date, location, courts, divisions, teamFormat from incoming if present
+      if (t.title && t.title.trim()) existing.title = t.title.trim();
+      if (t.location) existing.location = t.location;
+      if (t.date) existing.date = t.date;
+      if (Array.isArray(t.courts) && t.courts.length > 0) existing.courts = t.courts;
+      if (Array.isArray(t.allowedDivisions) && t.allowedDivisions.length > 0) existing.allowedDivisions = t.allowedDivisions;
+      if (t.maxTeamsPerDivision) existing.maxTeamsPerDivision = t.maxTeamsPerDivision;
+      if (t.teamFormat) existing.teamFormat = t.teamFormat;
+      if (t.notes) existing.notes = t.notes;
+      if (t.hostPlayerId) existing.hostPlayerId = t.hostPlayerId;
+      if (Array.isArray(t.coHostPlayerIds)) existing.coHostPlayerIds = t.coHostPlayerIds;
+      if (t.rawId && !existing.rawId) existing.rawId = t.rawId;
+      if (t.status) existing.status = t.status;
+
       // If one of them has a Firestore document ID that differs from canonical, flag the shadow doc for cleanup
       const shadowDocId = t._docId || (t.id !== existing.id ? t.id : null);
       if (shadowDocId && shadowDocId !== existing.id && shadowDocId !== existing.rawId) {
@@ -9287,20 +9295,6 @@ export function deduplicateTournaments(tournaments) {
       // Keep matches if existing has none
       if ((!existing.matches || existing.matches.length === 0) && Array.isArray(t.matches) && t.matches.length > 0) {
         existing.matches = t.matches;
-      }
-
-      // Keep more complete notes / fields
-      if (!existing.notes && t.notes) existing.notes = t.notes;
-      if (!existing.hostPlayerId && t.hostPlayerId) existing.hostPlayerId = t.hostPlayerId;
-      if (!existing.teamFormat && t.teamFormat) existing.teamFormat = t.teamFormat;
-      if (t.rawId && !existing.rawId) existing.rawId = t.rawId;
-      if (existing.title && (existing.title.toLowerCase().includes("hollao") || existing.title.toLowerCase().includes("halloween"))) {
-        existing.title = "Hollaoweeen tournament";
-        existing.teamFormat = "4v4";
-        existing.allowedDivisions = ["4v4 Coed"];
-      }
-      if (!existing.allowedDivisions && Array.isArray(t.allowedDivisions)) {
-        existing.allowedDivisions = t.allowedDivisions;
       }
     } else {
       result.push({ ...t });
