@@ -71,10 +71,12 @@ public struct RootView: View {
             .onChange(of: selectedTab) { _, newTab in
                 logTabScreen(newTab)
             }
-            .onChange(of: dataManager.currentUser) { _, newUser in
-                if newUser != nil {
+            .onChange(of: dataManager.currentUser?.id) { oldId, newId in
+                if oldId == nil && newId != nil {
+                    // Fresh login: navigate to Set Games
                     selectedTab = 0
-                } else {
+                } else if oldId != nil && newId == nil {
+                    // Logged out: fallback to Ladders
                     selectedTab = 1
                 }
             }
