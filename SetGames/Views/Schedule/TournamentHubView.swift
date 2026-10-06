@@ -237,42 +237,16 @@ public struct TournamentCardView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             
-            // Header Row
-            HStack {
-                HStack(spacing: 6) {
-                    Text("🏆")
-                    Text(tournament.title)
-                        .font(.headline)
-                        .fontWeight(.black)
-                        .foregroundColor(.white)
-                }
+            // Title Row
+            HStack(alignment: .top, spacing: 8) {
+                Text("🏆")
+                    .font(.title3)
+                Text(tournament.title)
+                    .font(.headline)
+                    .fontWeight(.black)
+                    .foregroundColor(.white)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-                
-                if isUserHost {
-                    Text("👑 Host")
-                        .font(.system(size: 10, weight: .black))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.yellow.opacity(0.2)))
-                        .foregroundColor(.yellow)
-                } else if isUserCoHost {
-                    Text("👥 Co-Host")
-                        .font(.system(size: 10, weight: .black))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.blue.opacity(0.2)))
-                        .foregroundColor(.cyan)
-                }
-                
-                if isUserRegistered {
-                    Text("🟢 Registered")
-                        .font(.system(size: 10, weight: .black))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.green.opacity(0.2)))
-                        .foregroundColor(.green)
-                }
-                
                 if let pool = poolStatusBadge {
                     Text("\(pool.played)/\(pool.total) Pools")
                         .font(.system(size: 10, weight: .bold))
@@ -281,13 +255,56 @@ public struct TournamentCardView: View {
                         .background(Capsule().fill(pool.played == pool.total ? Color.green.opacity(0.2) : Color.orange.opacity(0.2)))
                         .foregroundColor(pool.played == pool.total ? .green : .orange)
                 }
-                
-                Text("\(tournament.effectiveTeamFormat.icon) \(tournament.effectiveTeamFormat.displayName)")
-                    .font(.system(size: 10, weight: .black))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.cyan.opacity(0.2)))
-                    .foregroundColor(.cyan)
+            }
+            
+            // Badges Row: Host, Reg, Format, and Offered Divisions
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    if isUserHost {
+                        Text("👑 Host")
+                            .font(.system(size: 10, weight: .black))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color.yellow.opacity(0.2)))
+                            .foregroundColor(.yellow)
+                    } else if isUserCoHost {
+                        Text("👥 Co-Host")
+                            .font(.system(size: 10, weight: .black))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color.blue.opacity(0.2)))
+                            .foregroundColor(.cyan)
+                    }
+                    
+                    if isUserRegistered {
+                        Text("🟢 Reg")
+                            .font(.system(size: 10, weight: .black))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color.green.opacity(0.2)))
+                            .foregroundColor(.green)
+                    }
+                    
+                    Text("\(tournament.effectiveTeamFormat.icon) \(tournament.effectiveTeamFormat.displayName)")
+                        .font(.system(size: 10, weight: .black))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.cyan.opacity(0.2)))
+                        .foregroundColor(.cyan)
+                    
+                    ForEach(tournament.allowedDivisions) { div in
+                        HStack(spacing: 4) {
+                            Text(div.icon)
+                            Text(div.displayName)
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.white.opacity(0.08))
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                    }
+                }
             }
             
             // Date & Location
@@ -312,24 +329,6 @@ public struct TournamentCardView: View {
             }
             
             Divider().background(Color.white.opacity(0.1))
-            
-            // Division Badges Row
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(tournament.allowedDivisions) { div in
-                        HStack(spacing: 4) {
-                            Text(div.icon)
-                            Text(div.displayName)
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.08))
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
-                    }
-                }
-            }
             
             // Footer: Teams Count
             HStack {

@@ -216,7 +216,7 @@ public struct TournamentDetailView: View {
                         if isUserRegistered {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("🟢 Registered")
+                                    Text("🟢 Reg")
                                         .font(.caption2)
                                         .fontWeight(.bold)
                                         .foregroundColor(.green)

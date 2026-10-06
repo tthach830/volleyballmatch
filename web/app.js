@@ -4370,37 +4370,49 @@ export function renderTournamentCardHtml(t, currentUserId, index = 0) {
     return `
       ${index > 0 ? '<div class="games-white-gap"></div>' : ''}
       <div class="game-details-card" id="tournament-card-${t.id}" onclick="window.openTournamentDetail('${t.id}')" style="cursor: pointer;">
-        <!-- Header Row -->
+        <!-- Title Row -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
           <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span style="font-size: 18px;">🏆</span>
             <span style="font-size: 17px; font-weight: 800; color: #ffffff;">${t.title || 'Beach Tournament'}</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
-            ${isHost ? `
-              <span style="font-size: 10px; font-weight: 800; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 2px 7px; border-radius: 999px;">
-                👑 Host
-              </span>
-            ` : ''}
-            ${isCoHost ? `
-              <span style="font-size: 10px; font-weight: 800; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 7px; border-radius: 999px;">
-                👥 Co-Host
-              </span>
-            ` : ''}
-            ${isRegistered ? `
-              <span style="font-size: 10px; font-weight: 800; background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 2px 7px; border-radius: 999px;">
-                🟢 Registered
-              </span>
-            ` : ''}
-            ${poolTotal > 0 ? `
-              <span style="font-size: 10px; font-weight: 800; background: ${poolPlayed === poolTotal ? 'rgba(34, 197, 94, 0.2)' : 'rgba(249, 115, 22, 0.2)'}; color: ${poolPlayed === poolTotal ? '#4ade80' : '#fb923c'}; padding: 2px 7px; border-radius: 999px;">
-                📊 ${poolPlayed}/${poolTotal} Pools
-              </span>
-            ` : ''}
-            <span style="font-size: 10px; font-weight: 800; background: rgba(8, 145, 178, 0.25); color: #22d3ee; padding: 2px 7px; border-radius: 999px;">
-              ${getEffectiveTournamentFormat(t) === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
+          ${poolTotal > 0 ? `
+            <span style="font-size: 10px; font-weight: 800; background: ${poolPlayed === poolTotal ? 'rgba(34, 197, 94, 0.2)' : 'rgba(249, 115, 22, 0.2)'}; color: ${poolPlayed === poolTotal ? '#4ade80' : '#fb923c'}; padding: 2px 7px; border-radius: 999px;">
+              📊 ${poolPlayed}/${poolTotal} Pools
             </span>
-          </div>
+          ` : ''}
+        </div>
+
+        <!-- Badges Row: Host, Reg, Format, Divisions -->
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
+          ${isHost ? `
+            <span style="font-size: 10px; font-weight: 800; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 2px 7px; border-radius: 999px;">
+              👑 Host
+            </span>
+          ` : ''}
+          ${isCoHost ? `
+            <span style="font-size: 10px; font-weight: 800; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 7px; border-radius: 999px;">
+              👥 Co-Host
+            </span>
+          ` : ''}
+          ${isRegistered ? `
+            <span style="font-size: 10px; font-weight: 800; background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 2px 7px; border-radius: 999px;">
+              🟢 Reg
+            </span>
+          ` : ''}
+          <span style="font-size: 10px; font-weight: 800; background: rgba(8, 145, 178, 0.25); color: #22d3ee; padding: 2px 7px; border-radius: 999px;">
+            ${getEffectiveTournamentFormat(t) === '4v4' ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}
+          </span>
+          ${allowedDivs.map(divName => {
+            const conf = (typeof DIVISION_CONFIG !== "undefined" ? DIVISION_CONFIG.find(c => c.name === divName) : null) || { icon: "🏐", name: divName };
+            const divTeamCount = (t.teams || []).filter(tm => tm.division === divName).length;
+            const maxTeams = t.maxTeamsPerDivision || 8;
+            return `
+              <span style="font-size: 11px; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: #e2e8f0; padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                ${conf.icon || "🏐"} ${conf.name || divName} (${divTeamCount}/${maxTeams})
+              </span>
+            `;
+          }).join('')}
         </div>
 
         <!-- Date & Location -->
@@ -4413,20 +4425,6 @@ export function renderTournamentCardHtml(t, currentUserId, index = 0) {
             <span style="color: #38bdf8;">📍</span>
             <span>${t.location || 'Main Beach'} • ${courtStr}</span>
           </div>
-        </div>
-
-        <!-- Divisions Badges -->
-        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
-          ${allowedDivs.map(divName => {
-            const conf = (typeof DIVISION_CONFIG !== "undefined" ? DIVISION_CONFIG.find(c => c.name === divName) : null) || { icon: "🏐", name: divName };
-            const divTeamCount = (t.teams || []).filter(tm => tm.division === divName).length;
-            const maxTeams = t.maxTeamsPerDivision || 8;
-            return `
-              <span style="font-size: 11px; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: #e2e8f0; padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1);">
-                ${conf.icon || "🏐"} ${conf.name || divName} (${divTeamCount}/${maxTeams})
-              </span>
-            `;
-          }).join('')}
         </div>
 
         <!-- Footer -->
