@@ -15,6 +15,11 @@ import {
   setUserAnalyticsIdentity
 } from "./firebase-config.js";
 
+window.saveGameToFirestore = saveGameToFirestore;
+window.deleteGameFromFirestore = deleteGameFromFirestore;
+window.saveTournamentToFirestore = saveTournamentToFirestore;
+window.deleteTournamentFromFirestore = deleteTournamentFromFirestore;
+
 // Register Service Worker for background Push Notifications
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").then((reg) => {
@@ -3298,6 +3303,7 @@ class AppState {
     let savedNotifs = null;
     let savedUserId = null;
     let savedDeletedTourns = null;
+    let savedDeletedGames = null;
     try {
       savedPlayers = JSON.parse(localStorage.getItem("setgames_players"));
       savedGames = JSON.parse(localStorage.getItem("setgames_games"));
@@ -3306,11 +3312,13 @@ class AppState {
       savedNotifs = JSON.parse(localStorage.getItem("setgames_notifications"));
       savedUserId = localStorage.getItem("setgames_current_user_id");
       savedDeletedTourns = JSON.parse(localStorage.getItem("setgames_deleted_tournament_ids") || "[]");
+      savedDeletedGames = JSON.parse(localStorage.getItem("setgames_deleted_game_ids") || "[]");
     } catch (e) {
       console.warn("Storage read warning:", e);
     }
 
     this.deletedTournamentIds = new Set(Array.isArray(savedDeletedTourns) ? savedDeletedTourns.map(id => String(id).toLowerCase().trim()) : []);
+    this.deletedGameIds = new Set(Array.isArray(savedDeletedGames) ? savedDeletedGames.map(id => String(id).toLowerCase().trim()) : []);
 
     // Players: load from storage or fallback to initialCommunityPlayers
     const loadedPlayers = (Array.isArray(savedPlayers) && savedPlayers.length > 0) ? savedPlayers : initialCommunityPlayers;
@@ -3415,6 +3423,27 @@ class AppState {
     if (title) this.deletedTournamentIds.add(title);
     try {
       localStorage.setItem("setgames_deleted_tournament_ids", JSON.stringify(Array.from(this.deletedTournamentIds)));
+    } catch (e) {}
+  }
+
+  isGameDeleted(g) {
+    if (!g) return false;
+    const id1 = String(g.id || "").toLowerCase().trim();
+    const id2 = String(g.rawId || "").toLowerCase().trim();
+    const title = (g.title || "").toLowerCase().trim();
+    return this.deletedGameIds.has(id1) || (id2 && this.deletedGameIds.has(id2)) || this.deletedGameIds.has(title);
+  }
+
+  markGameDeleted(g) {
+    if (!g) return;
+    const id1 = String(g.id || "").toLowerCase().trim();
+    const id2 = String(g.rawId || "").toLowerCase().trim();
+    const title = (g.title || "").toLowerCase().trim();
+    if (id1) this.deletedGameIds.add(id1);
+    if (id2) this.deletedGameIds.add(id2);
+    if (title) this.deletedGameIds.add(title);
+    try {
+      localStorage.setItem("setgames_deleted_game_ids", JSON.stringify(Array.from(this.deletedGameIds)));
     } catch (e) {}
   }
 
@@ -6864,9 +6893,13 @@ window.deleteGame = (gameId) => {
     }).catch(err => console.log("Push note:", err));
   }
 
-  state.games = state.games.filter(g => g.id !== gameId);
+  state.markGameDeleted(game);
+  state.games = state.games.filter(g => !state.isGameDeleted(g) && g.id !== gameId && (g.rawId ? g.rawId !== gameId : true));
   state.saveLocal();
   deleteGameFromFirestore(gameId).catch(() => {});
+  if (game.rawId && game.rawId !== gameId) {
+    deleteGameFromFirestore(game.rawId).catch(() => {});
+  }
   if (typeof window.pushGamesToDevice === "function") {
     window.pushGamesToDevice();
   }
@@ -6886,7 +6919,11 @@ window.deleteAllGames = async () => {
   state.games = [];
   state.saveLocal();
   for (const g of gamesToDelete) {
+    state.markGameDeleted(g);
     deleteGameFromFirestore(g.id);
+    if (g.rawId && g.rawId !== g.id) {
+      deleteGameFromFirestore(g.rawId);
+    }
   }
   renderMatches();
   showToast(`Deleted all ${gamesToDelete.length} games from database.`);
@@ -9299,8 +9336,9 @@ export async function syncDeviceData() {
 
     // 1. Reconcile Games
     if (Array.isArray(data.games) && data.games.length > 0) {
-      const curGames = state.games || [];
+      const curGames = (state.games || []).filter(g => !state.isGameDeleted(g));
       for (const dg of data.games) {
+        if (state.isGameDeleted(dg)) continue;
         const dgId = String(dg.id || dg.rawId || "").toLowerCase();
         const dgTitle = (dg.title || "").toLowerCase().trim();
         const idx = curGames.findIndex(g => 
@@ -9310,12 +9348,12 @@ export async function syncDeviceData() {
         if (idx !== -1) {
           curGames[idx] = { ...curGames[idx], ...dg };
           dirty = true;
-        } else {
+        } else if (!hasCompletedInitialGamesSyncWeb) {
           curGames.unshift(dg);
           dirty = true;
         }
       }
-      state.games = curGames;
+      state.games = curGames.filter(g => !state.isGameDeleted(g));
     }
 
     // 2. Reconcile Tournaments
@@ -9334,7 +9372,7 @@ export async function syncDeviceData() {
         if (idx !== -1) {
           curTourns[idx] = { ...curTourns[idx], ...dt };
           dirty = true;
-        } else {
+        } else if (!hasCompletedInitialTournamentsSyncWeb) {
           curTourns.unshift(dt);
           dirty = true;
         }
@@ -11911,15 +11949,9 @@ function initApp() {
     hasCompletedInitialGamesSyncWeb = true;
     const validGames = list.filter(g => {
       const s = String(g.status || "").trim().toLowerCase();
-      return s !== "canceled";
+      return s !== "canceled" && !state.isGameDeleted(g);
     });
-    const remoteTitles = new Set(validGames.map(g => (g.title || "").toLowerCase().trim()));
-    const remoteIds = new Set(validGames.map(g => g.id || g.rawId));
-    const localPending = (state.games || []).filter(g => {
-      const title = (g.title || "").toLowerCase().trim();
-      return !remoteTitles.has(title) && !remoteIds.has(g.id) && !remoteIds.has(g.rawId);
-    });
-    state.games = [...validGames, ...localPending];
+    state.games = validGames;
     state.saveLocal();
     renderMatches();
     if (window.activeChatGameId) {
@@ -11953,17 +11985,6 @@ function initApp() {
 
   // Prune deleted Winter Wonderland from Firestore
   deleteTournamentFromFirestore("26B299D3-A7EA-4BF9-B415-14F9E80EE967").catch(() => {});
-
-  // Ensure Tuesday and Wednesday games are synced
-  const tuesGame = (state.games || []).find(g => (g.title || "").toLowerCase().includes("tuesday coed 10/6/26 12am")) || initialCommunityGames.find(g => (g.title || "").toLowerCase().includes("tuesday coed 10/6/26 12am"));
-  if (tuesGame) {
-    saveGameToFirestore(tuesGame).catch(() => {});
-  }
-
-  const wedGame = (state.games || []).find(g => (g.title || "").toLowerCase().includes("wednesday coed 10/7/26 5pm")) || initialCommunityGames.find(g => (g.title || "").toLowerCase().includes("wednesday coed 10/7/26 5pm"));
-  if (wedGame) {
-    saveGameToFirestore(wedGame).catch(() => {});
-  }
 
   pushTournamentsToDevice().catch(() => {});
   pushGamesToDevice().catch(() => {});

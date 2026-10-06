@@ -75,6 +75,52 @@ public class DataManager: ObservableObject {
         }
     }
     
+    private var recentlyDeletedGameIds: Set<String> {
+        get {
+            let list = UserDefaults.standard.stringArray(forKey: "setgames_deleted_game_ids") ?? []
+            return Set(list)
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: "setgames_deleted_game_ids")
+        }
+    }
+    
+    private var recentlyDeletedGameTitles: Set<String> {
+        get {
+            let list = UserDefaults.standard.stringArray(forKey: "setgames_deleted_game_titles") ?? []
+            return Set(list)
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: "setgames_deleted_game_titles")
+        }
+    }
+    
+    public func isGameDeleted(id: String, rawId: String? = nil, title: String? = nil) -> Bool {
+        if recentlyDeletedGameIds.contains(id) {
+            return true
+        }
+        if let rawId = rawId, recentlyDeletedGameIds.contains(rawId) {
+            return true
+        }
+        if let title = title, recentlyDeletedGameTitles.contains(title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return true
+        }
+        return false
+    }
+    
+    public func markGameDeleted(id: String, rawId: String? = nil, title: String? = nil) {
+        var ids = recentlyDeletedGameIds
+        ids.insert(id)
+        if let rawId = rawId { ids.insert(rawId) }
+        recentlyDeletedGameIds = ids
+        
+        if let title = title {
+            var titles = recentlyDeletedGameTitles
+            titles.insert(title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
+            recentlyDeletedGameTitles = titles
+        }
+    }
+    
     public init() {
         self.isDemoModeEnabled = UserDefaults.standard.bool(forKey: "isDemoModeEnabled")
         if !loadFromDisk() {
@@ -1392,6 +1438,7 @@ public class DataManager: ObservableObject {
             }
         }
         
+        markGameDeleted(id: game.id.uuidString, rawId: game.rawId, title: game.title)
         games.remove(at: index)
         saveToDisk()
         FirestoreService.shared.deleteGame(id: gameId, rawId: game.rawId)
@@ -1407,11 +1454,12 @@ public class DataManager: ObservableObject {
         }
         let count = games.count
         let allGames = games
-        games.removeAll()
-        saveToDisk()
         for g in allGames {
+            markGameDeleted(id: g.id.uuidString, rawId: g.rawId, title: g.title)
             FirestoreService.shared.deleteGame(id: g.id, rawId: g.rawId)
         }
+        games.removeAll()
+        saveToDisk()
         return (true, count)
     }
     
@@ -1723,25 +1771,11 @@ public class DataManager: ObservableObject {
                 }
                 
                 self.hasCompletedInitialGamesSync = true
-                let validRemotes = remoteGames.filter { $0.status != .canceled }
-                if !validRemotes.isEmpty {
-                    let remoteIds = Set(validRemotes.map { $0.id.uuidString } + validRemotes.compactMap { $0.rawId })
-                    let remoteTitles = Set(validRemotes.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
-                    let localPending = self.games.filter { local in
-                        local.status != .canceled &&
-                        !remoteIds.contains(local.id.uuidString) &&
-                        !(local.rawId != nil && remoteIds.contains(local.rawId!)) &&
-                        !remoteTitles.contains(local.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
-                    }
-                    self.games = validRemotes + localPending
-                    for pending in localPending {
-                        FirestoreService.shared.saveGame(pending)
-                    }
-                } else if !self.games.isEmpty {
-                    for g in self.games {
-                        FirestoreService.shared.saveGame(g)
-                    }
+                let validRemotes = remoteGames.filter { g in
+                    g.status != .canceled &&
+                    !self.isGameDeleted(id: g.id.uuidString, rawId: g.rawId, title: g.title)
                 }
+                self.games = validRemotes
                 self.saveToDisk()
                 self.syncMatchReminders()
             },
@@ -3074,60 +3108,10 @@ public class DataManager: ObservableObject {
         
         if let gData = try? Data(contentsOf: gamesFileURL),
            let loadedGames = try? decoder.decode([SetGame].self, from: gData) {
-            var active = loadedGames.filter { $0.status != .canceled }
-            let existingTitles = Set(active.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
-            let existingIds = Set(active.map { $0.id.uuidString } + active.compactMap { $0.rawId })
-            
-            // Tuesday COED 10/6/26 12AM
-            if !existingTitles.contains("tuesday coed 10/6/26 12am") && !existingIds.contains("0D71F7B9-0025-4A6F-940D-2B85F15993B1") {
-                let tuesdayDate = ISO8601DateFormatter().date(from: "2026-10-06T07:00:00Z") ?? Date()
-                let tuesGame = SetGame(
-                    id: UUID(uuidString: "0D71F7B9-0025-4A6F-940D-2B85F15993B1") ?? UUID(),
-                    rawId: "0D71F7B9-0025-4A6F-940D-2B85F15993B1",
-                    title: "Tuesday COED 10/6/26 12AM",
-                    targetRating: .intermediate,
-                    allowedRatings: [.intermediate],
-                    genderCategory: .coed,
-                    format: .bestOfThree,
-                    status: .scheduled,
-                    scheduledDate: tuesdayDate,
-                    courtLocation: "Harbor Beach",
-                    courtNumber: "Court #1",
-                    team1PlayerIds: [UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581") ?? UUID()],
-                    team2PlayerIds: [],
-                    matchedOptionName: "Community Open Match",
-                    notes: "Bring an official Wilson or Molten beach volleyball!",
-                    hostPlayerId: UUID(uuidString: "47519EF2-207D-4C20-B9A6-BFEDA40FE581") ?? UUID(),
-                    isLevelLocked: true
-                )
-                active.append(tuesGame)
+            let active = loadedGames.filter {
+                $0.status != .canceled &&
+                !self.isGameDeleted(id: $0.id.uuidString, rawId: $0.rawId, title: $0.title)
             }
-            
-            // Wednesday COED 10/7/26 5PM
-            if !existingTitles.contains("wednesday coed 10/7/26 5pm") && !existingIds.contains("game-wednesday-coed-10-7-26") {
-                let wednesdayDate = ISO8601DateFormatter().date(from: "2026-10-08T00:00:00Z") ?? Date()
-                let wedGame = SetGame(
-                    id: SetGame.parseUUID(from: "game-wednesday-coed-10-7-26") ?? UUID(),
-                    rawId: "game-wednesday-coed-10-7-26",
-                    title: "Wednesday COED 10/7/26 5PM",
-                    targetRating: .b,
-                    allowedRatings: [.novice, .intermediate, .b, .a, .aa, .open],
-                    genderCategory: .coed,
-                    format: .bestOfThree,
-                    status: .scheduled,
-                    scheduledDate: wednesdayDate,
-                    courtLocation: "Main Beach",
-                    courtNumber: "Court #1",
-                    team1PlayerIds: [UUID(uuidString: "104FAF3C-2420-4F92-8292-B2AB3BF8C572") ?? UUID()],
-                    team2PlayerIds: [],
-                    matchedOptionName: "Smart Availability",
-                    notes: "Wednesday sunset beach doubles session. 5PM on the sand!",
-                    hostPlayerId: UUID(uuidString: "104FAF3C-2420-4F92-8292-B2AB3BF8C572") ?? UUID(),
-                    isLevelLocked: true
-                )
-                active.append(wedGame)
-            }
-            
             self.games = active
         }
         
