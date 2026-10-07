@@ -11,13 +11,13 @@ public struct RootView: View {
     public var body: some View {
         ZStack(alignment: .top) {
             TabView(selection: $selectedTab) {
-                // Tab 0: Set Games (Gated for non-logged-in users)
+                // Tab 0: Games (Gated for non-logged-in users)
                 Group {
                     if dataManager.currentUser != nil {
                         ConfirmedGamesView(dataManager: dataManager)
                     } else {
                         AuthGateView(
-                            title: "Set Games",
+                            title: "Games",
                             icon: "figure.volleyball",
                             subtitle: "Log in or create an account to view upcoming matches, teams, and court details.",
                             dataManager: dataManager
@@ -25,7 +25,7 @@ public struct RootView: View {
                     }
                 }
                 .tabItem {
-                    Label("Set Games", systemImage: "figure.volleyball")
+                    Label("Games", systemImage: "figure.volleyball")
                 }
                 .tag(0)
                 
@@ -124,7 +124,7 @@ public struct RootView: View {
     }
     
     private func logTabScreen(_ tab: Int) {
-        let screens = ["Set Games", "Ladders", "Volleyball?", "Profile"]
+        let screens = ["Games", "Ladders", "Volleyball?", "Profile"]
         if tab >= 0 && tab < screens.count {
             AnalyticsService.shared.logScreenView(screenName: screens[tab])
         }
