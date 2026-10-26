@@ -6985,11 +6985,9 @@ export function formatGameShareTitle(game) {
 window.formatGameShareTitle = formatGameShareTitle;
 
 export function getGameShareUrl(gameId) {
-  if (window.location.origin && window.location.origin.startsWith("http")) {
-    return `${window.location.origin}${window.location.pathname}?gameId=${gameId}`;
-  }
-  return `https://volleyballmatch-13d66.web.app/?gameId=${gameId}`;
+  return `https://runwildlovestronglivefree.org/volleyballmatch/?gameId=${gameId}`;
 }
+window.getGameShareUrl = getGameShareUrl;
 
 window.activeQRGameId = null;
 
@@ -7190,10 +7188,7 @@ export function formatTournamentShareTitle(tournament) {
 window.formatTournamentShareTitle = formatTournamentShareTitle;
 
 export function getTournamentShareUrl(tournamentId) {
-  if (window.location.origin && window.location.origin.startsWith("http")) {
-    return `${window.location.origin}${window.location.pathname}?tournamentId=${tournamentId}`;
-  }
-  return `https://volleyballmatch-13d66.web.app/?tournamentId=${tournamentId}`;
+  return `https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=${tournamentId}`;
 }
 window.getTournamentShareUrl = getTournamentShareUrl;
 
