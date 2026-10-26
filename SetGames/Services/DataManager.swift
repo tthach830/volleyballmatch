@@ -2431,12 +2431,23 @@ public class DataManager: ObservableObject {
         division: TournamentDivisionCategory
     ) {
         guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
-        let currentCount = tournaments[idx].teams(for: division).count
-        let demoNames = ["Sandstorm", "Spike Force", "Net Ninjas", "Ace Bandits"]
+        let currentTeams = tournaments[idx].teams.filter { $0.division == division }
+        let currentCount = currentTeams.count
+        let demoNames = [
+            "Sandstorm", "Spike Force", "Net Ninjas", "Ace Bandits",
+            "Block Party", "Dig This", "Sets on Fire", "Beach Bums"
+        ]
         
-        for (i, name) in demoNames.enumerated() {
-            let p1 = players.indices.contains(i * 2) ? players[i * 2].id : UUID()
-            let p2 = players.indices.contains(i * 2 + 1) ? players[i * 2 + 1].id : UUID()
+        let needed = max(0, 8 - currentCount)
+        let countToAdd = needed == 0 ? 4 : needed
+        
+        for i in 0..<countToAdd {
+            let nameIdx = (currentCount + i) % demoNames.count
+            let name = demoNames[nameIdx]
+            let p1Idx = (i * 2) % max(1, players.count)
+            let p2Idx = (i * 2 + 1) % max(1, players.count)
+            let p1 = players.indices.contains(p1Idx) ? players[p1Idx].id : UUID()
+            let p2 = players.indices.contains(p2Idx) ? players[p2Idx].id : UUID()
             let team = TournamentTeam(
                 id: UUID(),
                 teamName: name,
@@ -2611,14 +2622,11 @@ public class DataManager: ObservableObject {
         
         // 3. Snake Seeding into Pools A & B
         let poolNames = ["Pool A", "Pool B"]
-        let poolCount = 2
         var pools: [String: [TournamentTeam]] = ["Pool A": [], "Pool B": []]
         
         for (i, team) in divTeams.enumerated() {
-            let round = i / poolCount
-            let pos = i % poolCount
-            let poolIndex = (round % 2 == 0) ? pos : (poolCount - 1 - pos)
-            let pName = poolNames[poolIndex]
+            let isPoolA = (i % 4 == 0 || i % 4 == 3)
+            let pName = isPoolA ? "Pool A" : "Pool B"
             var t = team
             t.poolName = pName
             t.poolSeed = (pools[pName]?.count ?? 0) + 1
@@ -2637,48 +2645,85 @@ public class DataManager: ObservableObject {
         }
         
         // 4. Remove previous pool matches for this division
-        tournaments[tIdx].matches.removeAll { $0.division == division && $0.stage == "pool" }
+        tournaments[tIdx].matches.removeAll { $0.division == division && ($0.stage == "pool" || $0.poolName != nil) }
         
-        // 5. Generate Round-Robin Matches for each pool
+        // 5. Generate Round-Robin Matches for each pool using Circle method
+        func generateRounds(teams: [TournamentTeam]) -> [[(t1: TournamentTeam, t2: TournamentTeam)]] {
+            guard teams.count >= 2 else { return [] }
+            var list: [TournamentTeam?] = teams.map { Optional($0) }
+            if list.count % 2 != 0 {
+                list.append(nil) // bye placeholder
+            }
+            let numRounds = list.count - 1
+            let half = list.count / 2
+            var rounds: [[(t1: TournamentTeam, t2: TournamentTeam)]] = []
+            
+            for _ in 0..<numRounds {
+                var roundMatches: [(t1: TournamentTeam, t2: TournamentTeam)] = []
+                for i in 0..<half {
+                    if let t1 = list[i], let t2 = list[list.count - 1 - i] {
+                        roundMatches.append((t1, t2))
+                    }
+                }
+                rounds.append(roundMatches)
+                if list.count > 1 {
+                    let last = list.removeLast()
+                    list.insert(last, at: 1)
+                }
+            }
+            return rounds
+        }
+        
+        let poolATeams = pools["Pool A"] ?? []
+        let poolBTeams = pools["Pool B"] ?? []
+        let roundsA = generateRounds(teams: poolATeams)
+        let roundsB = generateRounds(teams: poolBTeams)
+        let maxRounds = max(roundsA.count, roundsB.count)
+        
         let courts = tournaments[tIdx].courts.isEmpty ? ["Court #1", "Court #2"] : tournaments[tIdx].courts
         var generatedMatches: [TournamentMatch] = []
         var matchNum = 1
+        var courtIdx = 0
         
-        for poolName in poolNames {
-            guard let pTeams = pools[poolName], pTeams.count >= 2 else { continue }
-            
-            let pairings: [(r: Int, i1: Int, i2: Int)] = [
-                (1, 0, min(3, pTeams.count - 1)),
-                (1, min(1, pTeams.count - 1), min(2, pTeams.count - 1)),
-                (2, 0, min(2, pTeams.count - 1)),
-                (2, min(1, pTeams.count - 1), min(3, pTeams.count - 1)),
-                (3, 0, min(1, pTeams.count - 1)),
-                (3, min(2, pTeams.count - 1), min(3, pTeams.count - 1))
-            ]
-            
-            var seenPairs = Set<String>()
-            for p in pairings {
-                let t1 = pTeams[p.i1]
-                let t2 = pTeams[p.i2]
-                guard t1.id != t2.id else { continue }
-                let key = [t1.id.uuidString, t2.id.uuidString].sorted().joined(separator: "-")
-                if seenPairs.contains(key) { continue }
-                seenPairs.insert(key)
-                
-                let court = courts[(matchNum - 1) % courts.count]
-                let match = TournamentMatch(
-                    id: UUID(),
-                    roundNumber: p.r,
-                    matchNumber: matchNum,
-                    division: division,
-                    courtNumber: court,
-                    team1Id: t1.id,
-                    team2Id: t2.id,
-                    poolName: poolName,
-                    stage: "pool"
-                )
-                generatedMatches.append(match)
-                matchNum += 1
+        for r in 0..<maxRounds {
+            let roundNumber = r + 1
+            if r < roundsA.count {
+                for pair in roundsA[r] {
+                    let court = courts[courtIdx % courts.count]
+                    courtIdx += 1
+                    let match = TournamentMatch(
+                        id: UUID(),
+                        roundNumber: roundNumber,
+                        matchNumber: matchNum,
+                        division: division,
+                        courtNumber: court,
+                        team1Id: pair.t1.id,
+                        team2Id: pair.t2.id,
+                        poolName: "Pool A",
+                        stage: "pool"
+                    )
+                    generatedMatches.append(match)
+                    matchNum += 1
+                }
+            }
+            if r < roundsB.count {
+                for pair in roundsB[r] {
+                    let court = courts[courtIdx % courts.count]
+                    courtIdx += 1
+                    let match = TournamentMatch(
+                        id: UUID(),
+                        roundNumber: roundNumber,
+                        matchNumber: matchNum,
+                        division: division,
+                        courtNumber: court,
+                        team1Id: pair.t1.id,
+                        team2Id: pair.t2.id,
+                        poolName: "Pool B",
+                        stage: "pool"
+                    )
+                    generatedMatches.append(match)
+                    matchNum += 1
+                }
             }
         }
         

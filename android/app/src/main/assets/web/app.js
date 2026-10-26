@@ -9438,7 +9438,7 @@ window.saveGeneratedMatchesToSchedule = () => {
 // ==========================================
 window.currentTournamentFilter = "upcoming";
 window.activeTournamentId = null;
-window.activeTournamentDivision = "Coed Novice";
+window.activeTournamentDivision = "2v2 Coed Novice";
 window.activeTournamentSubTab = "pools";
 
 const DIVISION_CONFIG = [
@@ -9766,23 +9766,24 @@ window.calculatePoolStandings = function(teams, matches) {
     let pointsAgainst = 0;
 
     (matches || []).forEach(m => {
-      if (m.status !== "completed") return;
-      if (m.team1Id === team.id) {
+      const isCompleted = m.status === "completed" || m.isCompleted === true || (m.team1Score !== null && m.team1Score !== undefined && m.team2Score !== null && m.team2Score !== undefined && (Number(m.team1Score) > 0 || Number(m.team2Score) > 0));
+      if (!isCompleted) return;
+      const s1 = parseInt(m.team1Score, 10) || 0;
+      const s2 = parseInt(m.team2Score, 10) || 0;
+      const t1Match = isSamePlayer(m.team1Id, team.id);
+      const t2Match = isSamePlayer(m.team2Id, team.id);
+      if (t1Match) {
         played++;
-        const s1 = parseInt(m.team1Score, 10) || 0;
-        const s2 = parseInt(m.team2Score, 10) || 0;
         pointsFor += s1;
         pointsAgainst += s2;
-        if (s1 > s2) wins++;
-        else if (s2 > s1) losses++;
-      } else if (m.team2Id === team.id) {
+        if (s1 > s2 || (m.winningTeamId && isSamePlayer(m.winningTeamId, team.id))) wins++;
+        else if (s2 > s1 || (m.winningTeamId && !isSamePlayer(m.winningTeamId, team.id))) losses++;
+      } else if (t2Match) {
         played++;
-        const s1 = parseInt(m.team1Score, 10) || 0;
-        const s2 = parseInt(m.team2Score, 10) || 0;
         pointsFor += s2;
         pointsAgainst += s1;
-        if (s2 > s1) wins++;
-        else if (s1 > s2) losses++;
+        if (s2 > s1 || (m.winningTeamId && isSamePlayer(m.winningTeamId, team.id))) wins++;
+        else if (s1 > s2 || (m.winningTeamId && !isSamePlayer(m.winningTeamId, team.id))) losses++;
       }
     });
 
@@ -9791,6 +9792,8 @@ window.calculatePoolStandings = function(teams, matches) {
 
     return {
       team,
+      teamId: team.id,
+      teamName: team.teamName,
       matchesPlayed: played,
       wins,
       losses,
@@ -10172,18 +10175,20 @@ window.renderTournamentDetail = function() {
   };
 
   if (window.activeTournamentSubTab === "pools") {
+    const isPoolA = p => /pool\s*a/i.test(String(p || ''));
+    const isPoolB = p => /pool\s*b/i.test(String(p || ''));
     const poolAName = "Pool A";
     const poolBName = "Pool B";
-    const poolAMatches = divMatches.filter(m => m.poolName === poolAName);
-    const poolBMatches = divMatches.filter(m => m.poolName === poolBName);
+    const poolAMatches = divMatches.filter(m => isPoolA(m.poolName));
+    const poolBMatches = divMatches.filter(m => isPoolB(m.poolName));
     const hasPools = poolAMatches.length > 0 || poolBMatches.length > 0;
-    const poolATeams = divTeams.filter(tm => tm.poolName === poolAName || !tm.poolName);
-    const poolBTeams = divTeams.filter(tm => tm.poolName === poolBName);
-    const standingsA = window.calculatePoolStandings(divTeams.filter(tm => tm.poolName === poolAName), poolAMatches);
-    const standingsB = window.calculatePoolStandings(divTeams.filter(tm => tm.poolName === poolBName), poolBMatches);
+    const poolATeams = divTeams.filter(tm => isPoolA(tm.poolName) || (!tm.poolName && divTeams.length <= 4));
+    const poolBTeams = divTeams.filter(tm => isPoolB(tm.poolName));
+    const standingsA = window.calculatePoolStandings(poolATeams, poolAMatches);
+    const standingsB = window.calculatePoolStandings(poolBTeams, poolBMatches);
     const bracketMatches = divMatches.filter(m => m.stage !== "pool" && !m.poolName);
 
-    const isMatchPlayed = m => m.score1 !== null && m.score2 !== null && (m.score1 > 0 || m.score2 > 0 || m.winningTeamId);
+    const isMatchPlayed = m => m.status === "completed" || m.isCompleted === true || (m.team1Score !== null && m.team1Score !== undefined && m.team2Score !== null && m.team2Score !== undefined && (Number(m.team1Score) > 0 || Number(m.team2Score) > 0 || m.winningTeamId));
     const playedA = poolAMatches.filter(isMatchPlayed).length;
     const totalA = poolAMatches.length;
     const playedB = poolBMatches.filter(isMatchPlayed).length;
@@ -10546,31 +10551,33 @@ window.renderTournamentDetail = function() {
 };
 
 window.renderMatchCardHTML = function(tournament, match) {
-  const t1 = (tournament.teams || []).find(tm => tm.id === match.team1Id);
-  const t2 = (tournament.teams || []).find(tm => tm.id === match.team2Id);
-  const isFinal = match.status === "completed";
+  const t1 = (tournament.teams || []).find(tm => isSamePlayer(tm.id, match.team1Id));
+  const t2 = (tournament.teams || []).find(tm => isSamePlayer(tm.id, match.team2Id));
+  const isFinal = match.status === "completed" || match.isCompleted === true;
   const stageName = match.poolName ? match.poolName : (match.stage ? match.stage.replace('_', ' ').toUpperCase() : 'MATCH');
   const name1 = t1 ? window.getTeamPlayerDisplay(t1, tournament) : '<span style="color: var(--text-muted, #94a3b8); font-weight: 400; font-style: italic;">TBD</span>';
   const name2 = t2 ? window.getTeamPlayerDisplay(t2, tournament) : '<span style="color: var(--text-muted, #94a3b8); font-weight: 400; font-style: italic;">TBD</span>';
+  const isWinner1 = isFinal && isSamePlayer(match.winningTeamId, match.team1Id);
+  const isWinner2 = isFinal && isSamePlayer(match.winningTeamId, match.team2Id);
 
   return `
     <div style="background: var(--surface, #ffffff); border: 1px solid ${isFinal ? 'rgba(22,163,74,0.3)' : 'var(--border, #e2e8f0)'}; border-radius: 12px; padding: 12px;">
       <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #ea580c; margin-bottom: 8px;">
-        <span style="background: rgba(234,88,12,0.1); padding: 2px 8px; border-radius: 999px;">${stageName} • #${match.matchNumber}</span>
+        <span style="background: rgba(234,88,12,0.1); padding: 2px 8px; border-radius: 999px;">${stageName}${match.roundNumber ? ` • Rd ${match.roundNumber}` : ''} • #${match.matchNumber}</span>
         <span style="color: #0284c7; font-weight: 700;">📍 ${match.courtNumber || 'Court #1'}</span>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; gap: 8px;">
-        <div style="flex: 1; text-align: left; color: ${match.winningTeamId === match.team1Id ? '#16a34a' : 'inherit'}; font-weight: ${match.winningTeamId === match.team1Id ? '900' : '700'};">
+        <div style="flex: 1; text-align: left; color: ${isWinner1 ? '#16a34a' : 'inherit'}; font-weight: ${isWinner1 ? '900' : '700'};">
           ${name1}
-          ${match.winningTeamId === match.team1Id ? ' ✓' : ''}
+          ${isWinner1 ? ' ✓' : ''}
         </div>
 
         <div style="font-size: 14px; font-weight: 900; background: var(--bg-alt, #f1f5f9); padding: 4px 12px; border-radius: 8px; white-space: nowrap;">
           ${match.team1Score !== undefined && match.team1Score !== null ? `${match.team1Score} - ${match.team2Score}` : 'vs'}
         </div>
 
-        <div style="flex: 1; text-align: right; color: ${match.winningTeamId === match.team2Id ? '#16a34a' : 'inherit'}; font-weight: ${match.winningTeamId === match.team2Id ? '900' : '700'};">
-          ${match.winningTeamId === match.team2Id ? '✓ ' : ''}
+        <div style="flex: 1; text-align: right; color: ${isWinner2 ? '#16a34a' : 'inherit'}; font-weight: ${isWinner2 ? '900' : '700'};">
+          ${isWinner2 ? '✓ ' : ''}
           ${name2}
         </div>
       </div>
@@ -10796,7 +10803,8 @@ window.addDemoTournamentTeams = function(tournamentId, division) {
   );
   if (!t) return;
   t.teams = t.teams || [];
-  const currentDivTeams = t.teams.filter(tm => tm.division === division);
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const currentDivTeams = t.teams.filter(tm => isSameDiv(tm.division, division));
   const demoConfigs = [
     { name: "Lauren L./Peter T.", p1Name: "Lauren Larson", p2Name: "Peter Thach", p1: 0, p2: 1 },
     { name: "Alicia M./Emily S.", p1Name: "Alicia Miller", p2Name: "Emily Smith", p1: 2, p2: 3 },
@@ -10808,7 +10816,13 @@ window.addDemoTournamentTeams = function(tournamentId, division) {
     { name: "Alex M./Chris P.", p1Name: "Alex Morgan", p2Name: "Chris Paul", p1: 3, p2: 7 }
   ];
   
-  const configsToAdd = currentDivTeams.length === 0 ? demoConfigs : demoConfigs.slice(currentDivTeams.length % demoConfigs.length, (currentDivTeams.length % demoConfigs.length) + 4);
+  const needed = Math.max(0, 8 - currentDivTeams.length);
+  const countToAdd = needed === 0 ? 4 : needed;
+  const configsToAdd = [];
+  for (let i = 0; i < countToAdd; i++) {
+    const cfgIdx = (currentDivTeams.length + i) % demoConfigs.length;
+    configsToAdd.push(demoConfigs[cfgIdx]);
+  }
   
   configsToAdd.forEach((item, idx) => {
     const p1 = (state.players && state.players[item.p1]) ? state.players[item.p1].id : `demo-p-${Date.now()}-${idx * 2 + 1}`;
@@ -10827,6 +10841,9 @@ window.addDemoTournamentTeams = function(tournamentId, division) {
 
   state.saveLocal();
   saveTournamentToFirestore(t);
+  if (typeof window.pushTournamentsToDevice === "function") {
+    window.pushTournamentsToDevice();
+  }
   showToast(`⚡ Added ${configsToAdd.length} demo teams for ${division}!`);
   window.renderTournamentDetail();
   window.renderTournamentsList();
@@ -10839,7 +10856,8 @@ window.generatePoolPlay = function(tournamentId, division) {
   );
   if (!t) return;
 
-  const divTeams = (t.teams || []).filter(tm => tm.division === division);
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const divTeams = (t.teams || []).filter(tm => isSameDiv(tm.division, division));
   if (divTeams.length < 4) {
     showToast("At least 4 teams required to seed pool play!");
     return;
@@ -10847,11 +10865,16 @@ window.generatePoolPlay = function(tournamentId, division) {
 
   // Calculate average team Elo for seeding
   const seededTeams = divTeams.map(tm => {
-    const p1 = state.players.find(p => p.id === tm.player1Id);
-    const p2 = tm.player2Id ? state.players.find(p => p.id === tm.player2Id) : null;
-    const elo1 = p1?.eloRating || 1500;
-    const elo2 = p2 ? (p2.eloRating || 1500) : elo1;
-    const avgElo = Math.round((elo1 + elo2) / 2);
+    const pIds = [tm.player1Id, tm.player2Id, tm.player3Id, tm.player4Id].filter(Boolean);
+    let sumElo = 0, count = 0;
+    pIds.forEach(pid => {
+      const p = (state.players || []).find(pl => isSamePlayer(pl.id, pid));
+      if (p && p.eloRating) {
+        sumElo += p.eloRating;
+        count++;
+      }
+    });
+    const avgElo = count > 0 ? Math.round(sumElo / count) : 1500;
     return { ...tm, avgElo };
   });
 
@@ -10882,47 +10905,101 @@ window.generatePoolPlay = function(tournamentId, division) {
   t.teams = (t.teams || []).filter(tm => !updatedTeamIds.has(tm.id)).concat(poolATeams, poolBTeams);
 
   // Remove existing pool matches for this division
-  t.matches = (t.matches || []).filter(m => !(m.division === division && (m.poolName || m.stage === "pool")));
+  t.matches = (t.matches || []).filter(m => !(isSameDiv(m.division, division) && (m.poolName || m.stage === "pool")));
 
   const courts = (t.courts && t.courts.length > 0) ? t.courts : ["Court #1", "Court #2"];
   let courtIndex = 0;
   let matchNumber = 1;
 
-  function buildPoolRoundRobin(poolTeams, poolName) {
-    const matches = [];
-    const n = poolTeams.length;
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        matches.push({
+  function generateRoundRobinRounds(teams) {
+    if (!teams || teams.length < 2) return [];
+    const list = [...teams];
+    if (list.length % 2 !== 0) {
+      list.push(null);
+    }
+    const numRounds = list.length - 1;
+    const half = list.length / 2;
+    const rounds = [];
+    for (let r = 0; r < numRounds; r++) {
+      const roundMatches = [];
+      for (let i = 0; i < half; i++) {
+        const t1 = list[i];
+        const t2 = list[list.length - 1 - i];
+        if (t1 !== null && t2 !== null) {
+          roundMatches.push({ t1, t2 });
+        }
+      }
+      rounds.push(roundMatches);
+      if (list.length > 1) {
+        const last = list.pop();
+        list.splice(1, 0, last);
+      }
+    }
+    return rounds;
+  }
+
+  const roundsA = generateRoundRobinRounds(poolATeams);
+  const roundsB = generateRoundRobinRounds(poolBTeams);
+  const maxRounds = Math.max(roundsA.length, roundsB.length);
+  const newMatches = [];
+
+  for (let r = 0; r < maxRounds; r++) {
+    const roundNum = r + 1;
+    if (roundsA[r]) {
+      roundsA[r].forEach(pair => {
+        newMatches.push({
           id: crypto.randomUUID ? crypto.randomUUID() : 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
           division,
-          poolName,
+          poolName: "Pool A",
           stage: "pool",
-          roundNumber: 1,
+          roundNumber: roundNum,
           matchNumber: matchNumber++,
           courtNumber: courts[courtIndex % courts.length],
-          team1Id: poolTeams[i].id,
-          team2Id: poolTeams[j].id,
+          team1Id: pair.t1.id,
+          team2Id: pair.t2.id,
           team1Score: null,
           team2Score: null,
           winningTeamId: null,
-          status: "scheduled"
+          status: "scheduled",
+          isCompleted: false
         });
         courtIndex++;
-      }
+      });
     }
-    return matches;
+    if (roundsB[r]) {
+      roundsB[r].forEach(pair => {
+        newMatches.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          division,
+          poolName: "Pool B",
+          stage: "pool",
+          roundNumber: roundNum,
+          matchNumber: matchNumber++,
+          courtNumber: courts[courtIndex % courts.length],
+          team1Id: pair.t1.id,
+          team2Id: pair.t2.id,
+          team1Score: null,
+          team2Score: null,
+          winningTeamId: null,
+          status: "scheduled",
+          isCompleted: false
+        });
+        courtIndex++;
+      });
+    }
   }
 
-  const poolAMatches = buildPoolRoundRobin(poolATeams, "Pool A");
-  const poolBMatches = buildPoolRoundRobin(poolBTeams, "Pool B");
-
-  t.matches = (t.matches || []).concat(poolAMatches, poolBMatches);
+  t.matches = (t.matches || []).concat(newMatches);
+  t.status = "in_progress";
 
   state.saveLocal();
   saveTournamentToFirestore(t);
-  showToast(`✅ Pool Play seeded! ${poolAMatches.length + poolBMatches.length} matches created across ${courts.join(', ')}.`);
+  if (typeof window.pushTournamentsToDevice === "function") {
+    window.pushTournamentsToDevice();
+  }
+  showToast(`✅ Pool Play seeded! ${newMatches.length} matches created across ${courts.join(', ')}.`);
   window.renderTournamentDetail();
+  window.renderTournamentsList();
 };
 
 window.generatePlayoffBracket = function(tournamentId, division, advanceMode) {
@@ -10937,12 +11014,16 @@ window.generatePlayoffBracket = function(tournamentId, division, advanceMode) {
   }
   const activeAdvanceMode = t.playoffAdvanceMode || "all_teams";
 
-  const divTeams = (t.teams || []).filter(tm => tm.division === division);
-  const divPoolAMatches = (t.matches || []).filter(m => m.division === division && m.poolName === "Pool A");
-  const divPoolBMatches = (t.matches || []).filter(m => m.division === division && m.poolName === "Pool B");
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const isPoolA = p => /pool\s*a/i.test(String(p || ''));
+  const isPoolB = p => /pool\s*b/i.test(String(p || ''));
 
-  const poolATeams = divTeams.filter(tm => tm.poolName === "Pool A");
-  const poolBTeams = divTeams.filter(tm => tm.poolName === "Pool B");
+  const divTeams = (t.teams || []).filter(tm => isSameDiv(tm.division, division));
+  const divPoolAMatches = (t.matches || []).filter(m => isSameDiv(m.division, division) && isPoolA(m.poolName));
+  const divPoolBMatches = (t.matches || []).filter(m => isSameDiv(m.division, division) && isPoolB(m.poolName));
+
+  const poolATeams = divTeams.filter(tm => isPoolA(tm.poolName) || (!tm.poolName && divTeams.length <= 4));
+  const poolBTeams = divTeams.filter(tm => isPoolB(tm.poolName));
 
   const standingsA = window.calculatePoolStandings(poolATeams, divPoolAMatches);
   const standingsB = window.calculatePoolStandings(poolBTeams, divPoolBMatches);
