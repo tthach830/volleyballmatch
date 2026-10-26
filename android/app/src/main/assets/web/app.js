@@ -10407,8 +10407,15 @@ window.renderTournamentDetail = function() {
       <div style="display: flex; flex-direction: column; gap: 16px;">
         <!-- Teams List -->
         <div>
-          <div style="font-size: 12px; font-weight: 800; color: #ea580c; text-transform: uppercase; margin-bottom: 8px;">
-            Confirmed Teams (${divTeams.length}/${t.maxTeamsPerDivision || 8})
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 12px; font-weight: 800; color: #ea580c; text-transform: uppercase;">
+              Confirmed Teams (${divTeams.length}/${t.maxTeamsPerDivision || 8})
+            </div>
+            ${isHost ? `
+              <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 8px;" onclick="window.openManualAddTeamModal('${t.id}', '${currentDiv}')">
+                ➕ Add Team
+              </button>
+            ` : ''}
           </div>
           ${divTeams.length === 0 ? `
             <div style="text-align: center; padding: 24px 12px; background: var(--bg-alt, #f8fafc); border-radius: 12px; color: var(--text-muted, #94a3b8); font-size: 12px;">
@@ -10417,10 +10424,10 @@ window.renderTournamentDetail = function() {
           ` : `
             <div style="display: flex; flex-direction: column; gap: 8px;">
               ${divTeams.map((team, idx) => {
-                const p1 = state.players.find(p => p.id === team.player1Id);
-                const p2 = team.player2Id ? state.players.find(p => p.id === team.player2Id) : null;
-                const p3 = team.player3Id ? state.players.find(p => p.id === team.player3Id) : null;
-                const p4 = team.player4Id ? state.players.find(p => p.id === team.player4Id) : null;
+                const p1 = state.players.find(p => isSamePlayer(p.id, team.player1Id));
+                const p2 = team.player2Id ? state.players.find(p => isSamePlayer(p.id, team.player2Id)) : null;
+                const p3 = team.player3Id ? state.players.find(p => isSamePlayer(p.id, team.player3Id)) : null;
+                const p4 = team.player4Id ? state.players.find(p => isSamePlayer(p.id, team.player4Id)) : null;
                 const is4v4 = (getEffectiveTournamentFormat(t) === '4v4');
                 const p1Name = p1 ? getPlayerDisplayName(p1) : 'Player 1';
                 const p2Name = p2 ? getPlayerDisplayName(p2) : null;
@@ -10428,6 +10435,12 @@ window.renderTournamentDetail = function() {
                 const p4Name = p4 ? getPlayerDisplayName(p4) : null;
                 const playerLine1 = `${p1?.avatarEmoji || '🏐'} ${p1Name} & ${p2 ? `${p2.avatarEmoji || '🏐'} ${p2Name}` : '<i style="color: #ea580c;">Looking for partner</i>'}`;
                 const playerLine2 = is4v4 ? `${p3 ? `${p3.avatarEmoji || '🏐'} ${p3Name}` : '<i style="color: #ea580c;">+ Open Spot</i>'} & ${p4 ? `${p4.avatarEmoji || '🏐'} ${p4Name}` : '<i style="color: #ea580c;">+ Open Spot</i>'}` : '';
+                const isMyTeam = state.currentUser && (
+                  isSamePlayer(team.player1Id, state.currentUser.id) ||
+                  isSamePlayer(team.player2Id, state.currentUser.id) ||
+                  isSamePlayer(team.player3Id, state.currentUser.id) ||
+                  isSamePlayer(team.player4Id, state.currentUser.id)
+                );
                 return `
                   <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 10px 14px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -10445,11 +10458,18 @@ window.renderTournamentDetail = function() {
                         </div>` : ''}
                       </div>
                     </div>
-                    ${isHost ? `
-                      <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: #fca5a5; padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px;" onclick="window.removeTournamentTeam('${t.id}', '${team.id}')" title="Remove Team">
-                        🗑️ Remove
-                      </button>
-                    ` : ''}
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      ${(isHost || isMyTeam) ? `
+                        <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px;" onclick="window.openEditTeamModal('${t.id}', '${team.id}')" title="Edit Team & Players">
+                          ✏️ Edit
+                        </button>
+                      ` : ''}
+                      ${isHost ? `
+                        <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: #fca5a5; padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px;" onclick="window.removeTournamentTeam('${t.id}', '${team.id}')" title="Remove Team">
+                          🗑️
+                        </button>
+                      ` : ''}
+                    </div>
                   </div>
                 `;
               }).join('')}
@@ -11558,6 +11578,275 @@ window.removeTournamentTeam = function(tournamentId, teamId) {
   showToast(`Removed team '${teamLabel}' from tournament.`);
   window.renderTournamentDetail();
   window.renderTournamentsList();
+};
+
+window.openManualAddTeamModal = function(tournamentId, division) {
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === targetId) ||
+    (item.rawId && String(item.rawId).trim() === targetId)
+  );
+  if (!t) return;
+
+  window.activeManualTeamTournId = t.id;
+  window.activeManualTeamId = null;
+
+  const subtitle = document.getElementById("tourn-team-modal-subtitle");
+  const title = document.getElementById("tourn-team-modal-title");
+  if (subtitle) subtitle.innerText = "Team Management";
+  if (title) title.innerText = "🏐 Add Team Manually";
+
+  const allowedDivs = t.allowedDivisions || DIVISION_CONFIG.map(c => c.name);
+  const activeDiv = division || window.activeTournamentDivision || allowedDivs[0];
+  const allPlayers = state.players || [];
+
+  const container = document.getElementById("tournament-team-modal-body");
+  if (!container) return;
+
+  container.innerHTML = `
+    <form onsubmit="window.submitManualTournamentTeam(event); return false;" style="display: flex; flex-direction: column; gap: 14px;">
+      <div>
+        <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Team Name</label>
+        <input type="text" id="manual-team-name" placeholder="e.g. Net Ninjas" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Division</label>
+          <select id="manual-team-div" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="window.updateManualTeamPlayerSlots()">
+            ${allowedDivs.map(d => `<option value="${d}" ${d === activeDiv ? 'selected' : ''}>${d}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Pool</label>
+          <select id="manual-team-pool" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+            <option value="">Auto / None</option>
+            <option value="Pool A">Pool A</option>
+            <option value="Pool B">Pool B</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 1 (Captain) *</label>
+        <select id="manual-team-p1" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" required>
+          <option value="">Select Captain...</option>
+          ${allPlayers.map(p => `<option value="${p.id}">${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 2 (Partner)</label>
+        <select id="manual-team-p2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+          <option value="">(None / Looking for partner)</option>
+          ${allPlayers.map(p => `<option value="${p.id}">${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+        </select>
+      </div>
+
+      <div id="manual-team-extra-players" style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- Injected if 4v4 -->
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 8px;">
+        <button type="button" class="btn btn-outline" style="flex: 1; padding: 10px;" onclick="window.closeTournamentTeamModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 10px; font-weight: 800;">➕ Add Team</button>
+      </div>
+    </form>
+  `;
+
+  window.updateManualTeamPlayerSlots();
+  document.getElementById("tournament-team-modal")?.classList.add("active");
+};
+
+window.openEditTeamModal = function(tournamentId, teamId) {
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === targetId) ||
+    (item.rawId && String(item.rawId).trim() === targetId)
+  );
+  if (!t) return;
+
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) return;
+
+  window.activeManualTeamTournId = t.id;
+  window.activeManualTeamId = team.id;
+
+  const subtitle = document.getElementById("tourn-team-modal-subtitle");
+  const title = document.getElementById("tourn-team-modal-title");
+  if (subtitle) subtitle.innerText = "Edit Roster & Players";
+  if (title) title.innerText = `✏️ Edit ${team.teamName}`;
+
+  const allowedDivs = t.allowedDivisions || DIVISION_CONFIG.map(c => c.name);
+  const activeDiv = team.division || allowedDivs[0];
+  const allPlayers = state.players || [];
+
+  const container = document.getElementById("tournament-team-modal-body");
+  if (!container) return;
+
+  container.innerHTML = `
+    <form onsubmit="window.submitManualTournamentTeam(event); return false;" style="display: flex; flex-direction: column; gap: 14px;">
+      <div>
+        <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Team Name</label>
+        <input type="text" id="manual-team-name" value="${team.teamName || ''}" placeholder="e.g. Net Ninjas" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Division</label>
+          <select id="manual-team-div" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="window.updateManualTeamPlayerSlots()">
+            ${allowedDivs.map(d => `<option value="${d}" ${d === activeDiv ? 'selected' : ''}>${d}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Pool</label>
+          <select id="manual-team-pool" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+            <option value="" ${!team.poolName ? 'selected' : ''}>Auto / None</option>
+            <option value="Pool A" ${team.poolName === 'Pool A' ? 'selected' : ''}>Pool A</option>
+            <option value="Pool B" ${team.poolName === 'Pool B' ? 'selected' : ''}>Pool B</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 1 (Captain) *</label>
+        <select id="manual-team-p1" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" required>
+          <option value="">Select Captain...</option>
+          ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, team.player1Id) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 2 (Partner)</label>
+        <select id="manual-team-p2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+          <option value="">(None / Looking for partner)</option>
+          ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, team.player2Id) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+        </select>
+      </div>
+
+      <div id="manual-team-extra-players" style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- Injected if 4v4 -->
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 8px;">
+        <button type="button" class="btn btn-outline" style="flex: 1; padding: 10px;" onclick="window.closeTournamentTeamModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 10px; font-weight: 800;">💾 Save Changes</button>
+      </div>
+    </form>
+  `;
+
+  window.updateManualTeamPlayerSlots(team);
+  document.getElementById("tournament-team-modal")?.classList.add("active");
+};
+
+window.updateManualTeamPlayerSlots = function(existingTeam) {
+  const divSelect = document.getElementById("manual-team-div");
+  const extraContainer = document.getElementById("manual-team-extra-players");
+  if (!divSelect || !extraContainer) return;
+
+  const currentDiv = divSelect.value || "";
+  const is4v4 = currentDiv.includes("4v4");
+  const allPlayers = state.players || [];
+
+  if (!is4v4) {
+    extraContainer.innerHTML = "";
+    return;
+  }
+
+  const p3Selected = existingTeam ? existingTeam.player3Id : null;
+  const p4Selected = existingTeam ? existingTeam.player4Id : null;
+
+  extraContainer.innerHTML = `
+    <div>
+      <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 3</label>
+      <select id="manual-team-p3" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+        <option value="">(None / Open spot)</option>
+        ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p3Selected) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+      </select>
+    </div>
+
+    <div>
+      <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 4</label>
+      <select id="manual-team-p4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+        <option value="">(None / Open spot)</option>
+        ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p4Selected) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+      </select>
+    </div>
+  `;
+};
+
+window.submitManualTournamentTeam = function(e) {
+  if (e) e.preventDefault();
+  const targetId = window.activeManualTeamTournId ? String(window.activeManualTeamTournId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === targetId) ||
+    (item.rawId && String(item.rawId).trim() === targetId)
+  );
+  if (!t) return;
+
+  const teamNameInput = document.getElementById("manual-team-name")?.value.trim();
+  const division = document.getElementById("manual-team-div")?.value;
+  const poolName = document.getElementById("manual-team-pool")?.value || null;
+  const p1 = document.getElementById("manual-team-p1")?.value;
+  const p2 = document.getElementById("manual-team-p2")?.value || null;
+  const p3 = document.getElementById("manual-team-p3")?.value || null;
+  const p4 = document.getElementById("manual-team-p4")?.value || null;
+
+  if (!p1) {
+    showToast("Please select Player 1 (Captain)!");
+    return;
+  }
+
+  t.teams = t.teams || [];
+  const p1Obj = (state.players || []).find(p => isSamePlayer(p.id, p1));
+  const finalTeamName = teamNameInput || `Team ${p1Obj ? p1Obj.name : 'Beach'}`;
+
+  if (window.activeManualTeamId) {
+    // Edit existing team
+    const teamIdx = t.teams.findIndex(tm => isSamePlayer(tm.id, window.activeManualTeamId));
+    if (teamIdx >= 0) {
+      t.teams[teamIdx].teamName = finalTeamName;
+      t.teams[teamIdx].division = division;
+      t.teams[teamIdx].poolName = poolName;
+      t.teams[teamIdx].player1Id = p1;
+      t.teams[teamIdx].player2Id = p2;
+      t.teams[teamIdx].player3Id = p3;
+      t.teams[teamIdx].player4Id = p4;
+      showToast(`✅ Updated team ${finalTeamName}!`);
+    }
+  } else {
+    // Add new team
+    const divTeams = t.teams.filter(tm => tm.division === division);
+    const newTeam = {
+      id: crypto.randomUUID ? crypto.randomUUID().toUpperCase() : 'team_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      teamName: finalTeamName,
+      division,
+      poolName,
+      player1Id: p1,
+      player2Id: p2,
+      player3Id: p3,
+      player4Id: p4,
+      seed: divTeams.length + 1,
+      isConfirmed: true
+    };
+    t.teams.push(newTeam);
+    showToast(`✅ Added team ${finalTeamName} to ${division}!`);
+  }
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  if (typeof window.pushTournamentsToDevice === "function") {
+    window.pushTournamentsToDevice();
+  }
+  window.closeTournamentTeamModal();
+  window.renderTournamentDetail();
+  window.renderTournamentsList();
+};
+
+window.closeTournamentTeamModal = function() {
+  document.getElementById("tournament-team-modal")?.classList.remove("active");
+  window.activeManualTeamTournId = null;
+  window.activeManualTeamId = null;
 };
 
 window.removeTournamentFreeAgent = function(tournamentId, playerId) {

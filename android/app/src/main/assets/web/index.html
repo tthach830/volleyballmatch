@@ -1212,6 +1212,22 @@
       </div>
     </div>
 
+    <!-- Manual Add / Edit Team Modal -->
+    <div id="tournament-team-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTournamentTeamModal()">
+      <div class="modal-card tournament-modal-card" style="max-width: 480px; padding: 20px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div>
+            <div id="tourn-team-modal-subtitle" style="font-size: 11px; font-weight: 800; color: #ea580c; text-transform: uppercase;">Team Management</div>
+            <h2 id="tourn-team-modal-title" class="modal-title" style="font-size: 17px; font-weight: 800; margin: 2px 0 0 0;">🏐 Add Team Manually</h2>
+          </div>
+          <button type="button" class="modal-close" onclick="window.closeTournamentTeamModal()">&times;</button>
+        </div>
+        <div id="tournament-team-modal-body">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+    </div>
+
     <!-- Host New Tournament Modal -->
     <div id="create-tournament-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeCreateTournamentModal()">
       <div class="modal-card tournament-modal-card" style="max-width: 480px; padding: 20px; max-height: 90vh; overflow-y: auto;">
@@ -1633,6 +1649,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=15.5"></script>
+  <script type="module" src="app.js?v=15.6"></script>
 </body>
 </html>

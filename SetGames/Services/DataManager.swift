@@ -2426,6 +2426,82 @@ public class DataManager: ObservableObject {
         )
     }
     
+    public func addTeamToTournament(
+        tournamentId: UUID,
+        teamName: String,
+        division: TournamentDivisionCategory,
+        player1Id: UUID,
+        player2Id: UUID?,
+        player3Id: UUID? = nil,
+        player4Id: UUID? = nil,
+        poolName: String? = nil
+    ) {
+        guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        let currentCount = tournaments[idx].teams(for: division).count
+        let fallbackName = "Team \(players.first(where: { $0.id == player1Id })?.name ?? "Volley")"
+        let finalName = teamName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallbackName : teamName.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        let newTeam = TournamentTeam(
+            id: UUID(),
+            teamName: finalName,
+            player1Id: player1Id,
+            player2Id: player2Id,
+            player3Id: player3Id,
+            player4Id: player4Id,
+            seed: currentCount + 1,
+            poolName: (poolName?.isEmpty ?? true) ? nil : poolName,
+            division: division
+        )
+        tournaments[idx].teams.append(newTeam)
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        
+        postNotification(
+            title: "🏐 Team Added",
+            message: "\(finalName) has been added to \(division.displayName)!",
+            type: .tournament
+        )
+    }
+    
+    public func updateTournamentTeam(
+        tournamentId: UUID,
+        teamId: UUID,
+        teamName: String,
+        player1Id: UUID,
+        player2Id: UUID?,
+        player3Id: UUID? = nil,
+        player4Id: UUID? = nil,
+        division: TournamentDivisionCategory? = nil,
+        poolName: String? = nil
+    ) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        guard let tmIdx = tournaments[tIdx].teams.firstIndex(where: { $0.id == teamId }) else { return }
+        
+        let trimmed = teamName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            tournaments[tIdx].teams[tmIdx].teamName = trimmed
+        }
+        tournaments[tIdx].teams[tmIdx].player1Id = player1Id
+        tournaments[tIdx].teams[tmIdx].player2Id = player2Id
+        tournaments[tIdx].teams[tmIdx].player3Id = player3Id
+        tournaments[tIdx].teams[tmIdx].player4Id = player4Id
+        if let div = division {
+            tournaments[tIdx].teams[tmIdx].division = div
+        }
+        if let pool = poolName {
+            tournaments[tIdx].teams[tmIdx].poolName = pool.isEmpty ? nil : pool
+        }
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        postNotification(
+            title: "🏐 Team Updated",
+            message: "\(tournaments[tIdx].teams[tmIdx].teamName) has been updated!",
+            type: .tournament
+        )
+    }
+    
     public func addDemoTeams(
         tournamentId: UUID,
         division: TournamentDivisionCategory
