@@ -9961,58 +9961,83 @@ window.formatFirstLastInit = function(fullName) {
 };
 
 window.getTeamPlayerDisplay = function(team, tournament) {
-  if (!team) return '';
+  if (!team) return '<span style="color: var(--text-muted, #94a3b8); font-style: italic;">TBD</span>';
+  return window.getTeamNameDisplay(team, tournament);
+};
 
-  const playerIds = [team.player1Id, team.player2Id, team.player3Id, team.player4Id].filter(Boolean);
-  const resolvedNames = [];
+window.getTeamNameDisplay = function(team, tournament) {
+  if (!team) return '<span style="color: var(--text-muted, #94a3b8); font-style: italic;">TBD</span>';
+  const tId = tournament?.id || window.activeTournamentId || '';
+  const teamName = team.teamName || 'Team';
+  return `<span class="team-roster-link" style="cursor: pointer; font-weight: 700; text-decoration: underline dotted; text-underline-offset: 3px;" onclick="event.stopPropagation(); window.showTeamRosterModal('${tId}', '${team.id}')" title="Click to view players in ${teamName}">${teamName}</span>`;
+};
 
-  for (const pid of playerIds) {
-    const p = (state.players || []).find(item => item.id === pid);
-    if (p) {
-      const pName = p.name || p.displayName || p.nickname || '';
-      if (pName) {
-        resolvedNames.push(window.formatFirstLastInit(pName));
-      }
-    }
-  }
+window.showTeamRosterModal = function(tournamentId, teamId) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
+    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+  );
+  if (!t) return;
+  const tm = (t.teams || []).find(item => String(item.id).trim() === String(teamId).trim());
+  if (!tm) return;
 
-  if (resolvedNames.length > 0) {
-    return resolvedNames.join('/');
-  }
+  const modal = document.getElementById("team-roster-modal");
+  const content = document.getElementById("team-roster-modal-content");
+  const titleEl = document.getElementById("team-roster-modal-title");
+  if (!modal || !content) return;
 
-  const directNames = [team.p1Name, team.p2Name, team.p3Name, team.p4Name].filter(Boolean);
-  if (directNames.length > 0) {
-    return directNames.map(n => window.formatFirstLastInit(n)).join('/');
-  }
+  if (titleEl) titleEl.innerText = `👥 ${tm.teamName}`;
 
-  // Demo team name mapping fallback
-  const rawName = (team.teamName || '').toLowerCase();
-  if (rawName.includes('sandstorm')) {
-    return 'Lauren L./Peter T.';
-  } else if (rawName.includes('spike force')) {
-    return 'Alicia M./Emily S.';
-  } else if (rawName.includes('net ninjas')) {
-    return 'Billy K./Harshal P.';
-  } else if (rawName.includes('ace bandits')) {
-    return 'Lucas V./Chloe B.';
-  } else if (rawName.includes('block party')) {
-    return 'Kai R./Taylor J.';
-  } else if (rawName.includes('sun spikers')) {
-    return 'Maya L./Carlos G.';
-  } else if (rawName.includes('coast crushers')) {
-    return 'Sam R./Jordan H.';
-  } else if (rawName.includes('dune diggers')) {
-    return 'Alex M./Chris P.';
-  }
+  const slots = [
+    { id: tm.player1Id, role: "Captain", directName: tm.p1Name },
+    { id: tm.player2Id, role: "Partner", directName: tm.p2Name },
+    { id: tm.player3Id, role: "Player 3", directName: tm.p3Name },
+    { id: tm.player4Id, role: "Player 4", directName: tm.p4Name }
+  ].filter(s => s.id || s.directName);
 
-  if (team.teamName && team.teamName.includes('/')) {
-    return window.formatFirstLastInit(team.teamName);
-  }
-  if (team.teamName && team.teamName.includes('&')) {
-    return team.teamName.split('&').map(part => window.formatFirstLastInit(part)).join('/');
-  }
+  let html = `
+    <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 12px;">
+      <div style="font-size: 16px; font-weight: 900; color: var(--text-main, #0f172a);">${tm.teamName}</div>
+      <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+        <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(234,88,12,0.12); color: #ea580c;">${tm.division || 'Volleyball'}</span>
+        ${tm.poolName ? `<span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(2,132,199,0.12); color: #0284c7;">${tm.poolName}</span>` : ''}
+        ${tm.seed || tm.poolSeed ? `<span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(100,116,139,0.12); color: var(--text-muted, #64748b);">Seed #${tm.seed || tm.poolSeed}</span>` : ''}
+      </div>
+    </div>
 
-  return team.teamName || 'TBD';
+    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase; margin-top: 4px;">Roster & Players</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+  `;
+
+  slots.forEach(slot => {
+    const p = slot.id ? (state.players || []).find(pl => isSamePlayer(pl.id, slot.id)) : null;
+    const displayName = p ? getPlayerDisplayName(p) : (slot.directName || 'Player');
+    const avatar = p?.avatarEmoji || '🏐';
+    const rating = p?.rating || 'Player';
+    const elo = p?.eloRating || 1500;
+    const beach = p?.homeBeach || 'Local';
+
+    html += `
+      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 10px;">
+        <div style="font-size: 24px;">${avatar}</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-weight: 800; font-size: 13px; color: var(--text-main, #0f172a);">${displayName}</span>
+            <span style="font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; background: ${slot.role === 'Captain' ? '#ea580c' : 'rgba(100,116,139,0.2)'}; color: ${slot.role === 'Captain' ? '#ffffff' : 'inherit'};">${slot.role}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted, #64748b);">${rating} • Elo ${elo} • ${beach}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  content.innerHTML = html;
+  modal.classList.add("active");
+};
+
+window.closeTeamRosterModal = function() {
+  document.getElementById("team-roster-modal")?.classList.remove("active");
 };
 
 window.renderTournamentDetail = function() {

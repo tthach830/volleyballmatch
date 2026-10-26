@@ -1377,6 +1377,22 @@
       </div>
     </div>
 
+    <!-- Team Roster Modal (Displays players on team click) -->
+    <div id="team-roster-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTeamRosterModal()">
+      <div class="modal-card tournament-modal-card" style="max-width: 440px; padding: 20px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.12)); padding-bottom: 8px;">
+          <h2 class="modal-title" id="team-roster-modal-title" style="font-size: 16px; font-weight: 800;">👥 Team Roster</h2>
+          <button type="button" class="modal-close" onclick="window.closeTeamRosterModal()">&times;</button>
+        </div>
+        <div id="team-roster-modal-content" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px;">
+          <!-- Populated by JS -->
+        </div>
+        <div style="display: flex; justify-content: flex-end; margin-top: 12px; border-top: 1px solid var(--border, rgba(255,255,255,0.12)); padding-top: 10px;">
+          <button type="button" class="btn btn-primary" style="padding: 6px 16px; background: #ea580c; border: none; font-weight: 800;" onclick="window.closeTeamRosterModal()">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Player to Game Modal (Host / Admin manual player addition) -->
     <div id="modal-add-player-to-game" class="modal-backdrop" onclick="if(event.target === this) window.closeAddPlayerModal()">
       <div class="modal-card" style="max-width: 440px; max-height: 85vh; display: flex; flex-direction: column; padding: 18px;">
@@ -1693,6 +1709,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=15.9"></script>
+  <script type="module" src="app.js?v=16.0"></script>
 </body>
 </html>

@@ -40,6 +40,7 @@ public struct TournamentDetailView: View {
     @State private var showRemoveFreeAgentAlert: Bool = false
     @State private var showRegeneratePoolsAlert: Bool = false
     @State private var showRemovePoolsAlert: Bool = false
+    @State private var selectedTeamForRoster: TournamentTeam? = nil
     
     public enum SubTab: String, CaseIterable {
         case pools = "🏊 Pools"
@@ -227,6 +228,9 @@ public struct TournamentDetailView: View {
                     case .editPools:
                         EditPoolPlaySheet(tournament: t, division: selectedDivision, dataManager: dataManager)
                     }
+                }
+                .sheet(item: $selectedTeamForRoster) { team in
+                    TeamRosterSheet(team: team, tournament: t, dataManager: dataManager)
                 }
                 .alert("Leave Tournament?", isPresented: $showLeaveAlert) {
                     Button("Cancel", role: .cancel) {}
@@ -691,10 +695,16 @@ public struct TournamentDetailView: View {
                         }
                         .frame(width: 24, alignment: .leading)
                         
-                        Text(row.team.playerNamesDisplay(players: dataManager.players))
-                            .font(.system(size: 13, weight: isTopTwo ? .bold : .medium))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
+                        Button {
+                            selectedTeamForRoster = row.team
+                        } label: {
+                            Text(row.team.teamName)
+                                .font(.system(size: 13, weight: isTopTwo ? .bold : .medium))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                                .underline(pattern: .dot, color: .white.opacity(0.35))
+                        }
+                        .buttonStyle(.plain)
                         
                         Spacer()
                         
@@ -729,9 +739,17 @@ public struct TournamentDetailView: View {
             if !matches.isEmpty {
                 VStack(spacing: 8) {
                     ForEach(matches) { match in
-                        TournamentMatchRowView(match: match, teams: t.teams, players: dataManager.players) {
-                            activeSheet = .scoreMatch(match)
-                        }
+                        TournamentMatchRowView(
+                            match: match,
+                            teams: t.teams,
+                            players: dataManager.players,
+                            onScore: {
+                                activeSheet = .scoreMatch(match)
+                            },
+                            onSelectTeam: { team in
+                                selectedTeamForRoster = team
+                            }
+                        )
                     }
                 }
             }
@@ -1140,10 +1158,16 @@ public struct TournamentDetailView: View {
                                 Text("DIVISION CHAMPION")
                                     .font(.system(size: 10, weight: .black))
                                     .foregroundColor(.orange)
-                                Text(champTeam.playerNamesDisplay(players: dataManager.players))
-                                    .font(.title2)
-                                    .fontWeight(.heavy)
-                                    .foregroundColor(.white)
+                                Button {
+                                    selectedTeamForRoster = champTeam
+                                } label: {
+                                    Text(champTeam.teamName)
+                                        .font(.title2)
+                                        .fontWeight(.heavy)
+                                        .foregroundColor(.white)
+                                        .underline(pattern: .dot, color: .orange.opacity(0.6))
+                                }
+                                .buttonStyle(.plain)
                             }
                             Spacer()
                         }
@@ -1162,9 +1186,17 @@ public struct TournamentDetailView: View {
                 }
                 
                 // Interactive Tournament Bracket Tree Diagram
-                PlayoffBracketChartView(tournament: t, division: division, players: dataManager.players) { m in
-                    activeSheet = .scoreMatch(m)
-                }
+                PlayoffBracketChartView(
+                    tournament: t,
+                    division: division,
+                    players: dataManager.players,
+                    onSelectMatch: { m in
+                        activeSheet = .scoreMatch(m)
+                    },
+                    onSelectTeam: { team in
+                        selectedTeamForRoster = team
+                    }
+                )
                 
                 // Championship Final
                 let finals = bracketMatches.filter { $0.stage == "final" }
@@ -1179,9 +1211,11 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(finals) { m in
-                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players, onScore: {
                                 activeSheet = .scoreMatch(m)
-                            }
+                            }, onSelectTeam: { team in
+                                selectedTeamForRoster = team
+                            })
                         }
                     }
                 }
@@ -1199,9 +1233,11 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(thirdPlace) { m in
-                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players, onScore: {
                                 activeSheet = .scoreMatch(m)
-                            }
+                            }, onSelectTeam: { team in
+                                selectedTeamForRoster = team
+                            })
                         }
                     }
                 }
@@ -1219,9 +1255,11 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(semis) { m in
-                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players, onScore: {
                                 activeSheet = .scoreMatch(m)
-                            }
+                            }, onSelectTeam: { team in
+                                selectedTeamForRoster = team
+                            })
                         }
                     }
                 }
@@ -1239,9 +1277,11 @@ public struct TournamentDetailView: View {
                         .padding(.horizontal)
                         
                         ForEach(quarters) { m in
-                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players) {
+                            PlayoffCleanMatchCardView(match: m, teams: t.teams, players: dataManager.players, onScore: {
                                 activeSheet = .scoreMatch(m)
-                            }
+                            }, onSelectTeam: { team in
+                                selectedTeamForRoster = team
+                            })
                         }
                     }
                 }
@@ -1439,7 +1479,7 @@ struct TournamentTeamRowView: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(team.playerNamesDisplay(players: players))
+                    Text(team.teamName)
                         .font(.headline)
                         .foregroundColor(.white)
                     if let pool = team.poolName {
@@ -1598,6 +1638,7 @@ struct TournamentMatchRowView: View {
     let teams: [TournamentTeam]
     var players: [Player] = []
     var onScore: (() -> Void)? = nil
+    var onSelectTeam: ((TournamentTeam) -> Void)? = nil
     
     var body: some View {
         let t1 = teams.first(where: { $0.id == match.team1Id })
@@ -1644,10 +1685,22 @@ struct TournamentMatchRowView: View {
                 // Team 1
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text(t1?.playerNamesDisplay(players: players) ?? "TBD")
-                            .font(.system(size: 14, weight: match.winningTeamId == t1?.id ? .heavy : .medium))
-                            .foregroundColor(match.winningTeamId == t1?.id ? .green : (t1 != nil ? .white : .secondary))
-                            .lineLimit(1)
+                        if let team1 = t1 {
+                            Button {
+                                onSelectTeam?(team1)
+                            } label: {
+                                Text(team1.teamName)
+                                    .font(.system(size: 14, weight: match.winningTeamId == team1.id ? .heavy : .bold))
+                                    .foregroundColor(match.winningTeamId == team1.id ? .green : .white)
+                                    .lineLimit(1)
+                                    .underline(pattern: .dot, color: .white.opacity(0.4))
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Text("TBD")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
                         if match.winningTeamId == t1?.id {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.caption2)
@@ -1692,10 +1745,22 @@ struct TournamentMatchRowView: View {
                                 .font(.caption2)
                                 .foregroundColor(.green)
                         }
-                        Text(t2?.playerNamesDisplay(players: players) ?? "TBD")
-                            .font(.system(size: 14, weight: match.winningTeamId == t2?.id ? .heavy : .medium))
-                            .foregroundColor(match.winningTeamId == t2?.id ? .green : (t2 != nil ? .white : .secondary))
-                            .lineLimit(1)
+                        if let team2 = t2 {
+                            Button {
+                                onSelectTeam?(team2)
+                            } label: {
+                                Text(team2.teamName)
+                                    .font(.system(size: 14, weight: match.winningTeamId == team2.id ? .heavy : .bold))
+                                    .foregroundColor(match.winningTeamId == team2.id ? .green : .white)
+                                    .lineLimit(1)
+                                    .underline(pattern: .dot, color: .white.opacity(0.4))
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Text("TBD")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }
@@ -1750,8 +1815,8 @@ struct TournamentScoreSheet: View {
     var body: some View {
         let t1 = tournament.teams.first(where: { $0.id == match.team1Id })
         let t2 = tournament.teams.first(where: { $0.id == match.team2Id })
-        let t1Name = t1?.playerNamesDisplay(players: dataManager.players) ?? (t1?.teamName ?? "Team 1")
-        let t2Name = t2?.playerNamesDisplay(players: dataManager.players) ?? (t2?.teamName ?? "Team 2")
+        let t1Name = t1?.teamName ?? "Team 1"
+        let t2Name = t2?.teamName ?? "Team 2"
         let winnerName: String? = team1Score > team2Score ? t1Name : (team2Score > team1Score ? t2Name : nil)
         
         NavigationView {
@@ -1961,6 +2026,7 @@ struct PlayoffBracketChartView: View {
     let division: TournamentDivisionCategory
     var players: [Player] = []
     var onSelectMatch: ((TournamentMatch) -> Void)? = nil
+    var onSelectTeam: ((TournamentTeam) -> Void)? = nil
     
     private let colWidth: CGFloat = 175
     private let colGap: CGFloat = 36
@@ -2127,10 +2193,23 @@ struct PlayoffBracketChartView: View {
                         .background(Color.cyan.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                     
-                    Text(t1?.playerNamesDisplay(players: players) ?? "TBD")
-                        .font(.system(size: 11, weight: winner1 ? .bold : .regular))
-                        .foregroundColor(winner1 ? .green : (t1 != nil ? .white : .secondary))
-                        .lineLimit(1)
+                    if let team1 = t1 {
+                        Button {
+                            onSelectTeam?(team1)
+                        } label: {
+                            Text(team1.teamName)
+                                .font(.system(size: 11, weight: winner1 ? .bold : .regular))
+                                .foregroundColor(winner1 ? .green : .white)
+                                .lineLimit(1)
+                                .underline(pattern: .dot, color: .white.opacity(0.4))
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Text("TBD")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                     
                     Spacer(minLength: 2)
                     
@@ -2150,10 +2229,23 @@ struct PlayoffBracketChartView: View {
                         .background(Color.cyan.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                     
-                    Text(t2?.playerNamesDisplay(players: players) ?? "TBD")
-                        .font(.system(size: 11, weight: winner2 ? .bold : .regular))
-                        .foregroundColor(winner2 ? .green : (t2 != nil ? .white : .secondary))
-                        .lineLimit(1)
+                    if let team2 = t2 {
+                        Button {
+                            onSelectTeam?(team2)
+                        } label: {
+                            Text(team2.teamName)
+                                .font(.system(size: 11, weight: winner2 ? .bold : .regular))
+                                .foregroundColor(winner2 ? .green : .white)
+                                .lineLimit(1)
+                                .underline(pattern: .dot, color: .white.opacity(0.4))
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Text("TBD")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                     
                     Spacer(minLength: 2)
                     
@@ -2260,6 +2352,7 @@ struct PlayoffCleanMatchCardView: View {
     let teams: [TournamentTeam]
     var players: [Player] = []
     var onScore: (() -> Void)? = nil
+    var onSelectTeam: ((TournamentTeam) -> Void)? = nil
     
     var body: some View {
         let t1 = teams.first(where: { $0.id == match.team1Id })
@@ -2301,9 +2394,22 @@ struct PlayoffCleanMatchCardView: View {
                                 .foregroundColor(.white.opacity(0.45))
                                 .frame(width: 20, alignment: .leading)
                             
-                            Text(t1?.playerNamesDisplay(players: players) ?? "TBD")
-                                .font(.system(size: 15, weight: winner1 ? .heavy : .medium))
-                                .foregroundColor(winner1 ? .white : (t1 != nil ? .white.opacity(0.85) : .secondary))
+                            if let team1 = t1 {
+                                Button {
+                                    onSelectTeam?(team1)
+                                } label: {
+                                    Text(team1.teamName)
+                                        .font(.system(size: 15, weight: winner1 ? .heavy : .medium))
+                                        .foregroundColor(winner1 ? .white : .white.opacity(0.85))
+                                        .lineLimit(1)
+                                        .underline(pattern: .dot, color: .white.opacity(0.4))
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                Text("TBD")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
                             
                             Spacer()
                             
@@ -2323,9 +2429,22 @@ struct PlayoffCleanMatchCardView: View {
                                 .foregroundColor(.white.opacity(0.45))
                                 .frame(width: 20, alignment: .leading)
                             
-                            Text(t2?.playerNamesDisplay(players: players) ?? "TBD")
-                                .font(.system(size: 15, weight: winner2 ? .heavy : .medium))
-                                .foregroundColor(winner2 ? .white : (t2 != nil ? .white.opacity(0.85) : .secondary))
+                            if let team2 = t2 {
+                                Button {
+                                    onSelectTeam?(team2)
+                                } label: {
+                                    Text(team2.teamName)
+                                        .font(.system(size: 15, weight: winner2 ? .heavy : .medium))
+                                        .foregroundColor(winner2 ? .white : .white.opacity(0.85))
+                                        .lineLimit(1)
+                                        .underline(pattern: .dot, color: .white.opacity(0.4))
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                Text("TBD")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
                             
                             Spacer()
                             
@@ -2902,6 +3021,79 @@ struct EditPoolPlaySheet: View {
                     }
                     .fontWeight(.bold)
                     .foregroundColor(.orange)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Team Roster Sheet
+struct TeamRosterSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let team: TournamentTeam
+    let tournament: Tournament
+    @ObservedObject var dataManager: DataManager
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(team.teamName)
+                            .font(.title2)
+                            .fontWeight(.black)
+                            .foregroundColor(.white)
+                        HStack(spacing: 8) {
+                            Text(team.division.displayName)
+                                .font(.caption).fontWeight(.semibold)
+                                .padding(.horizontal, 8).padding(.vertical, 3)
+                                .background(Capsule().fill(Color.orange.opacity(0.2))).foregroundColor(.orange)
+                            if let pool = team.poolName {
+                                Text(pool)
+                                    .font(.caption).fontWeight(.semibold)
+                                    .padding(.horizontal, 8).padding(.vertical, 3)
+                                    .background(Capsule().fill(Color.cyan.opacity(0.2))).foregroundColor(.cyan)
+                            }
+                            if let seed = team.seed ?? team.poolSeed {
+                                Text("Seed #\(seed)").font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                Section("Roster & Players") {
+                    let playerSlots: [(id: UUID?, role: String)] = [
+                        (team.player1Id, "Captain"),
+                        (team.player2Id, "Partner"),
+                        (team.player3Id, "Player 3"),
+                        (team.player4Id, "Player 4")
+                    ]
+                    ForEach(playerSlots.filter { $0.id != nil }, id: \.role) { slot in
+                        if let pid = slot.id {
+                            let player = dataManager.player(for: pid)
+                            HStack(spacing: 12) {
+                                PlayerAvatarView(player: player, dimension: 40)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text(player.displayName).font(.subheadline).fontWeight(.bold)
+                                        Text(slot.role).font(.system(size: 10, weight: .bold))
+                                            .padding(.horizontal, 6).padding(.vertical, 2)
+                                            .background(Capsule().fill(slot.role == "Captain" ? Color.orange.opacity(0.2) : Color.white.opacity(0.1)))
+                                            .foregroundColor(slot.role == "Captain" ? .orange : .white.opacity(0.8))
+                                    }
+                                    Text("\(player.rating.rawValue) • Elo \(player.eloRating) • \(player.homeBeach)").font(.caption2).foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Team Roster")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
                 }
             }
         }
