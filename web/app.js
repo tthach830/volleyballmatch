@@ -11682,6 +11682,8 @@ window.openCreateTournamentModal = function() {
   document.getElementById("new-tourn-max-teams").value = "8";
   const formatEl = document.getElementById("new-tourn-format");
   if (formatEl) formatEl.value = "2v2";
+  const advanceEl = document.getElementById("new-tourn-advance-mode");
+  if (advanceEl) advanceEl.value = "all_teams";
   document.getElementById("new-tourn-notes").value = "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.";
   document.querySelectorAll('input[name="tourn-div"]').forEach(cb => cb.checked = true);
 
@@ -11723,7 +11725,10 @@ window.filterCreateTournCoHosts = function() {
 };
 
 window.openEditTournamentModal = function(tournamentId) {
-  const t = (state.tournaments || []).find(item => item.id === tournamentId);
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
+  );
   if (!t) return;
 
   const isRoot = isRootUser(state.currentUser);
@@ -11756,6 +11761,8 @@ window.openEditTournamentModal = function(tournamentId) {
   document.getElementById("new-tourn-max-teams").value = t.maxTeamsPerDivision || 8;
   const formatEl = document.getElementById("new-tourn-format");
   if (formatEl) formatEl.value = t.teamFormat || "2v2";
+  const advanceEl = document.getElementById("new-tourn-advance-mode");
+  if (advanceEl) advanceEl.value = t.playoffAdvanceMode || "all_teams";
   document.getElementById("new-tourn-notes").value = t.notes || "";
 
   const allowed = t.allowedDivisions || [];
@@ -11803,11 +11810,15 @@ window.submitCreateTournament = function(e) {
     const notes = document.getElementById("new-tourn-notes")?.value || "";
     const checkedDivs = Array.from(document.querySelectorAll('input[name="tourn-div"]:checked')).map(el => el.value);
     const teamFormat = document.getElementById("new-tourn-format")?.value || "2v2";
+    const advanceMode = document.getElementById("new-tourn-advance-mode")?.value || "all_teams";
     const coHostsSelect = document.getElementById("new-tourn-cohosts");
     const selectedCoHostIds = coHostsSelect ? Array.from(coHostsSelect.selectedOptions).map(opt => opt.value) : [];
 
     if (editId) {
-      const t = (state.tournaments || []).find(item => item.id === editId);
+      const t = (state.tournaments || []).find(item => 
+        (item.id && String(item.id).trim().toLowerCase() === String(editId).trim().toLowerCase()) ||
+        (item.rawId && String(item.rawId).trim().toLowerCase() === String(editId).trim().toLowerCase())
+      );
       if (!t) return;
 
       const isRoot = isRootUser(state.currentUser);
@@ -11830,6 +11841,7 @@ window.submitCreateTournament = function(e) {
       t.maxTeamsPerDivision = maxTeams;
       t.notes = notes;
       t.teamFormat = teamFormat;
+      t.playoffAdvanceMode = advanceMode;
       t.coHostPlayerIds = selectedCoHostIds;
 
       state.saveLocal();
@@ -11870,7 +11882,8 @@ window.submitCreateTournament = function(e) {
       createdAt: new Date().toISOString(),
       hostPlayerId: hostId,
       coHostPlayerIds: selectedCoHostIds,
-      teamFormat
+      teamFormat,
+      playoffAdvanceMode: advanceMode
     };
 
     state.tournaments = state.tournaments || [];

@@ -1264,6 +1264,15 @@
             </select>
           </div>
 
+          <!-- Playoff Qualification Mode (All Teams vs Top 2/Pool) -->
+          <div>
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8);">Playoffs Qualification</label>
+            <select id="new-tourn-advance-mode" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+              <option value="all_teams">🏆 All Teams Advance (Single Elimination QF & SF)</option>
+              <option value="top_teams">⚡ Top 2 Teams Per Pool (Direct to Semifinals)</option>
+            </select>
+          </div>
+
           <div>
             <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #94a3b8); display: block; margin-bottom: 6px;">Divisions Offered</label>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
@@ -1624,6 +1633,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=15.0"></script>
+  <script type="module" src="app.js?v=15.1"></script>
 </body>
 </html>
