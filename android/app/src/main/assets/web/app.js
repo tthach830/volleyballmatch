@@ -10340,9 +10340,15 @@ window.renderTournamentDetail = function() {
           ` : ''}
 
           ${isHost ? `
-            <div style="text-align: center; margin-top: 4px;">
-              <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 4px 12px;" onclick="if(confirm('Re-seed pool play? Existing match scores in pools will be reset.')) window.generatePoolPlay('${t.id}', '${currentDiv}')">
-                🔄 Re-Seed Pools
+            <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-primary" style="font-size: 11px; padding: 6px 14px; font-weight: 700; border-radius: 8px; background: #2563eb; border: none; cursor: pointer;" onclick="window.openEditPoolsModal('${t.id}', '${currentDiv}')">
+                ✏️ Edit Pools
+              </button>
+              <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 6px 14px; font-weight: 700; border-radius: 8px; cursor: pointer;" onclick="window.regeneratePoolPlay('${t.id}', '${currentDiv}')">
+                🔄 Re-generate
+              </button>
+              <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 6px 14px; font-weight: 700; border-radius: 8px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); cursor: pointer;" onclick="window.removePoolPlay('${t.id}', '${currentDiv}')">
+                🗑️ Remove Pools
               </button>
             </div>
           ` : ''}
@@ -10921,10 +10927,155 @@ window.promptAddDemoTeams = function(tournamentId, division) {
   window.addDemoTournamentTeams(tournamentId, division, count);
 };
 
+window.regeneratePoolPlay = function(tournamentId, division) {
+  if (!confirm(`Re-generate pool play for ${division}? Existing pool match scores will be reset.`)) {
+    return;
+  }
+  window.generatePoolPlay(tournamentId, division);
+};
+
+window.removePoolPlay = function(tournamentId, division) {
+  if (!confirm(`Are you sure you want to remove pool play for ${division}? All pool matches, scores, and standings will be deleted.`)) {
+    return;
+  }
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
+  );
+  if (!t) return;
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+
+  // 1. Clear poolName and poolSeed from teams in this division
+  (t.teams || []).forEach(tm => {
+    if (isSameDiv(tm.division, division)) {
+      delete tm.poolName;
+      delete tm.poolSeed;
+    }
+  });
+
+  // 2. Remove all matches for this division (pool & bracket)
+  t.matches = (t.matches || []).filter(m => !isSameDiv(m.division, division));
+
+  // 3. If no matches remain in the entire tournament, set status back to registration_open
+  if ((t.matches || []).length === 0) {
+    t.status = "registration_open";
+  }
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  if (typeof window.pushTournamentsToDevice === "function") {
+    window.pushTournamentsToDevice();
+  }
+  showToast(`🗑️ Removed pool play for ${division}.`);
+  window.renderTournamentDetail();
+  window.renderTournamentsList();
+};
+
+window.generatePoolMatchesFromCurrentTeams = function(t, division) {
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const poolATeams = (t.teams || []).filter(tm => isSameDiv(tm.division, division) && tm.poolName === "Pool A");
+  const poolBTeams = (t.teams || []).filter(tm => isSameDiv(tm.division, division) && tm.poolName === "Pool B");
+
+  // Remove existing matches for this division
+  t.matches = (t.matches || []).filter(m => !isSameDiv(m.division, division));
+
+  const courts = (t.courts && t.courts.length > 0) ? t.courts : ["Court #1", "Court #2"];
+  let courtIndex = 0;
+  let matchNumber = 1;
+
+  function generateRoundRobinRounds(teams) {
+    if (!teams || teams.length < 2) return [];
+    const list = [...teams];
+    if (list.length % 2 !== 0) {
+      list.push(null);
+    }
+    const numRounds = list.length - 1;
+    const half = list.length / 2;
+    const rounds = [];
+    for (let r = 0; r < numRounds; r++) {
+      const roundMatches = [];
+      for (let i = 0; i < half; i++) {
+        const t1 = list[i];
+        const t2 = list[list.length - 1 - i];
+        if (t1 !== null && t2 !== null) {
+          roundMatches.push({ t1, t2 });
+        }
+      }
+      rounds.push(roundMatches);
+      if (list.length > 1) {
+        const last = list.pop();
+        list.splice(1, 0, last);
+      }
+    }
+    return rounds;
+  }
+
+  const roundsA = generateRoundRobinRounds(poolATeams);
+  const roundsB = generateRoundRobinRounds(poolBTeams);
+  const maxRounds = Math.max(roundsA.length, roundsB.length);
+  const newMatches = [];
+
+  for (let r = 0; r < maxRounds; r++) {
+    const roundNum = r + 1;
+    if (roundsA[r]) {
+      roundsA[r].forEach(pair => {
+        newMatches.push({
+          id: (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          division,
+          poolName: "Pool A",
+          stage: "pool",
+          roundNumber: roundNum,
+          matchNumber: matchNumber++,
+          courtNumber: courts[courtIndex % courts.length],
+          team1Id: pair.t1.id,
+          team2Id: pair.t2.id,
+          team1Score: null,
+          team2Score: null,
+          winningTeamId: null,
+          status: "scheduled",
+          isCompleted: false
+        });
+        courtIndex++;
+      });
+    }
+    if (roundsB[r]) {
+      roundsB[r].forEach(pair => {
+        newMatches.push({
+          id: (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          division,
+          poolName: "Pool B",
+          stage: "pool",
+          roundNumber: roundNum,
+          matchNumber: matchNumber++,
+          courtNumber: courts[courtIndex % courts.length],
+          team1Id: pair.t1.id,
+          team2Id: pair.t2.id,
+          team1Score: null,
+          team2Score: null,
+          winningTeamId: null,
+          status: "scheduled",
+          isCompleted: false
+        });
+        courtIndex++;
+      });
+    }
+  }
+
+  t.matches = (t.matches || []).concat(newMatches);
+  t.status = "in_progress";
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  if (typeof window.pushTournamentsToDevice === "function") {
+    window.pushTournamentsToDevice();
+  }
+  return newMatches.length;
+};
+
 window.generatePoolPlay = function(tournamentId, division) {
   const t = (state.tournaments || []).find(item => 
-    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
-    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
   );
   if (!t) return;
 
@@ -10976,100 +11127,160 @@ window.generatePoolPlay = function(tournamentId, division) {
   const updatedTeamIds = new Set(seededTeams.map(tm => tm.id));
   t.teams = (t.teams || []).filter(tm => !updatedTeamIds.has(tm.id)).concat(poolATeams, poolBTeams);
 
-  // Remove existing pool matches for this division
-  t.matches = (t.matches || []).filter(m => !(isSameDiv(m.division, division) && (m.poolName || m.stage === "pool")));
+  const matchCount = window.generatePoolMatchesFromCurrentTeams(t, division);
 
   const courts = (t.courts && t.courts.length > 0) ? t.courts : ["Court #1", "Court #2"];
-  let courtIndex = 0;
-  let matchNumber = 1;
+  showToast(`✅ Pool Play seeded! ${matchCount} matches created across ${courts.join(', ')}.`);
+  window.renderTournamentDetail();
+  window.renderTournamentsList();
+};
 
-  function generateRoundRobinRounds(teams) {
-    if (!teams || teams.length < 2) return [];
-    const list = [...teams];
-    if (list.length % 2 !== 0) {
-      list.push(null);
-    }
-    const numRounds = list.length - 1;
-    const half = list.length / 2;
-    const rounds = [];
-    for (let r = 0; r < numRounds; r++) {
-      const roundMatches = [];
-      for (let i = 0; i < half; i++) {
-        const t1 = list[i];
-        const t2 = list[list.length - 1 - i];
-        if (t1 !== null && t2 !== null) {
-          roundMatches.push({ t1, t2 });
-        }
-      }
-      rounds.push(roundMatches);
-      if (list.length > 1) {
-        const last = list.pop();
-        list.splice(1, 0, last);
-      }
-    }
-    return rounds;
+window.activeEditPoolsTournamentId = null;
+window.activeEditPoolsDivision = null;
+
+window.openEditPoolsModal = function(tournamentId, division) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
+  );
+  if (!t) return;
+  window.activeEditPoolsTournamentId = t.id;
+  window.activeEditPoolsDivision = division;
+
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const divTeams = (t.teams || []).filter(tm => isSameDiv(tm.division, division));
+  const container = document.getElementById("edit-pools-modal-content");
+  if (!container) return;
+
+  document.getElementById("edit-pools-modal-title").innerText = `🏊 Edit Pools - ${division}`;
+
+  let poolACount = 0;
+  let poolBCount = 0;
+  divTeams.forEach(tm => {
+    const p = tm.poolName || "Pool A";
+    if (p === "Pool A") poolACount++;
+    else if (p === "Pool B") poolBCount++;
+  });
+
+  let html = `
+    <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 12px;">
+      <div style="display: flex; justify-content: space-around; align-items: center; text-align: center; margin-bottom: 10px;">
+        <div>
+          <div style="font-size: 11px; font-weight: 800; color: #0284c7; text-transform: uppercase;">Pool A</div>
+          <div id="edit-pool-a-count" style="font-size: 18px; font-weight: 900; color: var(--text-main, #0f172a);">${poolACount} Teams</div>
+        </div>
+        <div style="height: 30px; width: 1px; background: var(--border, #cbd5e1);"></div>
+        <div>
+          <div style="font-size: 11px; font-weight: 800; color: #ea580c; text-transform: uppercase;">Pool B</div>
+          <div id="edit-pool-b-count" style="font-size: 18px; font-weight: 900; color: var(--text-main, #0f172a);">${poolBCount} Teams</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 5px 12px; font-weight: 700; cursor: pointer;" onclick="window.snakeSeedEditPools()">
+          ✨ Snake Seed by Elo
+        </button>
+        <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 5px 12px; font-weight: 700; cursor: pointer;" onclick="window.swapEditPools()">
+          ↔️ Swap Pools
+        </button>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+  `;
+
+  divTeams.forEach(tm => {
+    const p1 = state.players.find(p => isSamePlayer(p.id, tm.player1Id));
+    const p2 = tm.player2Id ? state.players.find(p => isSamePlayer(p.id, tm.player2Id)) : null;
+    const pNames = [p1 ? getPlayerDisplayName(p1) : null, p2 ? getPlayerDisplayName(p2) : null].filter(Boolean).join(" / ");
+    const curPool = tm.poolName || "Pool A";
+
+    html += `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-alt, #f8fafc); border-radius: 10px; border: 1px solid var(--border, #e2e8f0);">
+        <div style="flex: 1; min-width: 0; padding-right: 10px;">
+          <div style="font-weight: 800; font-size: 13px; color: var(--text-main, #0f172a);">${tm.teamName}</div>
+          <div style="font-size: 11px; color: var(--text-muted, #64748b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${pNames}</div>
+        </div>
+        <div style="display: flex; gap: 4px; background: var(--bg, #ffffff); padding: 3px; border-radius: 8px; border: 1px solid var(--border, #cbd5e1);">
+          <label style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; user-select: none; ${curPool === 'Pool A' ? 'background: #0284c7; color: white;' : 'color: var(--text-muted, #64748b);'}">
+            <input type="radio" name="pool-choice-${tm.id}" value="Pool A" ${curPool === 'Pool A' ? 'checked' : ''} style="display: none;" onchange="window.updateEditPoolChoice('${tm.id}', 'Pool A')">
+            Pool A
+          </label>
+          <label style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; user-select: none; ${curPool === 'Pool B' ? 'background: #ea580c; color: white;' : 'color: var(--text-muted, #64748b);'}">
+            <input type="radio" name="pool-choice-${tm.id}" value="Pool B" ${curPool === 'Pool B' ? 'checked' : ''} style="display: none;" onchange="window.updateEditPoolChoice('${tm.id}', 'Pool B')">
+            Pool B
+          </label>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
+  document.getElementById("edit-pools-modal")?.classList.add("active");
+};
+
+window.closeEditPoolsModal = function() {
+  document.getElementById("edit-pools-modal")?.classList.remove("active");
+};
+
+window.updateEditPoolChoice = function(teamId, poolName) {
+  const t = (state.tournaments || []).find(item => item.id === window.activeEditPoolsTournamentId);
+  if (!t) return;
+  const tm = (t.teams || []).find(item => item.id === teamId);
+  if (tm) {
+    tm.poolName = poolName;
   }
+  window.openEditPoolsModal(window.activeEditPoolsTournamentId, window.activeEditPoolsDivision);
+};
 
-  const roundsA = generateRoundRobinRounds(poolATeams);
-  const roundsB = generateRoundRobinRounds(poolBTeams);
-  const maxRounds = Math.max(roundsA.length, roundsB.length);
-  const newMatches = [];
+window.snakeSeedEditPools = function() {
+  const t = (state.tournaments || []).find(item => item.id === window.activeEditPoolsTournamentId);
+  if (!t) return;
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const divTeams = (t.teams || []).filter(tm => isSameDiv(tm.division, window.activeEditPoolsDivision));
 
-  for (let r = 0; r < maxRounds; r++) {
-    const roundNum = r + 1;
-    if (roundsA[r]) {
-      roundsA[r].forEach(pair => {
-        newMatches.push({
-          id: crypto.randomUUID ? crypto.randomUUID() : 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-          division,
-          poolName: "Pool A",
-          stage: "pool",
-          roundNumber: roundNum,
-          matchNumber: matchNumber++,
-          courtNumber: courts[courtIndex % courts.length],
-          team1Id: pair.t1.id,
-          team2Id: pair.t2.id,
-          team1Score: null,
-          team2Score: null,
-          winningTeamId: null,
-          status: "scheduled",
-          isCompleted: false
-        });
-        courtIndex++;
-      });
+  divTeams.forEach((tm, idx) => {
+    const isPoolA = (idx % 4 === 0 || idx % 4 === 3);
+    tm.poolName = isPoolA ? "Pool A" : "Pool B";
+  });
+  window.openEditPoolsModal(window.activeEditPoolsTournamentId, window.activeEditPoolsDivision);
+};
+
+window.swapEditPools = function() {
+  const t = (state.tournaments || []).find(item => item.id === window.activeEditPoolsTournamentId);
+  if (!t) return;
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const divTeams = (t.teams || []).filter(tm => isSameDiv(tm.division, window.activeEditPoolsDivision));
+
+  divTeams.forEach(tm => {
+    tm.poolName = (tm.poolName === "Pool A") ? "Pool B" : "Pool A";
+  });
+  window.openEditPoolsModal(window.activeEditPoolsTournamentId, window.activeEditPoolsDivision);
+};
+
+window.saveEditPools = function() {
+  const t = (state.tournaments || []).find(item => item.id === window.activeEditPoolsTournamentId);
+  if (!t) return;
+  const division = window.activeEditPoolsDivision;
+  const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const divTeams = (t.teams || []).filter(tm => isSameDiv(tm.division, division));
+
+  let poolACount = 0;
+  let poolBCount = 0;
+  divTeams.forEach(tm => {
+    if (!tm.poolName) tm.poolName = "Pool A";
+    if (tm.poolName === "Pool A") {
+      poolACount++;
+      tm.poolSeed = poolACount;
+    } else {
+      poolBCount++;
+      tm.poolSeed = poolBCount;
     }
-    if (roundsB[r]) {
-      roundsB[r].forEach(pair => {
-        newMatches.push({
-          id: crypto.randomUUID ? crypto.randomUUID() : 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-          division,
-          poolName: "Pool B",
-          stage: "pool",
-          roundNumber: roundNum,
-          matchNumber: matchNumber++,
-          courtNumber: courts[courtIndex % courts.length],
-          team1Id: pair.t1.id,
-          team2Id: pair.t2.id,
-          team1Score: null,
-          team2Score: null,
-          winningTeamId: null,
-          status: "scheduled",
-          isCompleted: false
-        });
-        courtIndex++;
-      });
-    }
-  }
+  });
 
-  t.matches = (t.matches || []).concat(newMatches);
-  t.status = "in_progress";
-
-  state.saveLocal();
-  saveTournamentToFirestore(t);
-  if (typeof window.pushTournamentsToDevice === "function") {
-    window.pushTournamentsToDevice();
-  }
-  showToast(`✅ Pool Play seeded! ${newMatches.length} matches created across ${courts.join(', ')}.`);
+  const matchCount = window.generatePoolMatchesFromCurrentTeams(t, division);
+  showToast(`✅ Pool assignments saved! ${matchCount} matches scheduled.`);
+  window.closeEditPoolsModal();
   window.renderTournamentDetail();
   window.renderTournamentsList();
 };

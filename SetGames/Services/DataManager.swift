@@ -2797,7 +2797,6 @@ public class DataManager: ObservableObject {
         }
         
         // 3. Snake Seeding into Pools A & B
-        let poolNames = ["Pool A", "Pool B"]
         var pools: [String: [TournamentTeam]] = ["Pool A": [], "Pool B": []]
         
         for (i, team) in divTeams.enumerated() {
@@ -2820,10 +2819,88 @@ public class DataManager: ObservableObject {
             }
         }
         
-        // 4. Remove previous pool matches for this division
-        tournaments[tIdx].matches.removeAll { $0.division == division && ($0.stage == "pool" || $0.poolName != nil) }
+        generatePoolMatchesFromCurrentTeams(tournamentIndex: tIdx, division: division)
         
-        // 5. Generate Round-Robin Matches for each pool using Circle method
+        postNotification(
+            title: "🏐 Pool Play Generated!",
+            message: "Pool A & Pool B matches are scheduled for \(division.displayName)!",
+            type: .tournament
+        )
+        
+        let matchCount = tournaments[tIdx].matches.filter { $0.division == division && $0.stage == "pool" }.count
+        return (true, "Successfully generated \(matchCount) pool matches across Pools A & B.")
+    }
+    
+    public func updatePoolAssignments(
+        tournamentId: UUID,
+        division: TournamentDivisionCategory,
+        assignments: [UUID: String]
+    ) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        
+        var poolACount = 0
+        var poolBCount = 0
+        
+        for i in 0..<tournaments[tIdx].teams.count {
+            if tournaments[tIdx].teams[i].division == division {
+                let teamId = tournaments[tIdx].teams[i].id
+                let poolName = assignments[teamId] ?? tournaments[tIdx].teams[i].poolName ?? "Pool A"
+                tournaments[tIdx].teams[i].poolName = poolName
+                if poolName == "Pool A" {
+                    poolACount += 1
+                    tournaments[tIdx].teams[i].poolSeed = poolACount
+                } else if poolName == "Pool B" {
+                    poolBCount += 1
+                    tournaments[tIdx].teams[i].poolSeed = poolBCount
+                }
+            }
+        }
+        
+        generatePoolMatchesFromCurrentTeams(tournamentIndex: tIdx, division: division)
+        
+        postNotification(
+            title: "🏐 Pools Updated",
+            message: "Custom pool assignments and matches for \(division.displayName) have been updated!",
+            type: .tournament
+        )
+    }
+    
+    public func removePoolPlay(
+        tournamentId: UUID,
+        division: TournamentDivisionCategory
+    ) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        
+        for i in 0..<tournaments[tIdx].teams.count {
+            if tournaments[tIdx].teams[i].division == division {
+                tournaments[tIdx].teams[i].poolName = nil
+                tournaments[tIdx].teams[i].poolSeed = nil
+            }
+        }
+        
+        tournaments[tIdx].matches.removeAll { $0.division == division }
+        
+        if tournaments[tIdx].matches.isEmpty {
+            tournaments[tIdx].status = "registration_open"
+        }
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        postNotification(
+            title: "🗑️ Pool Play Removed",
+            message: "Pool play and matches for \(division.displayName) have been removed.",
+            type: .tournament
+        )
+    }
+    
+    private func generatePoolMatchesFromCurrentTeams(tournamentIndex tIdx: Int, division: TournamentDivisionCategory) {
+        // Remove previous matches for this division
+        tournaments[tIdx].matches.removeAll { $0.division == division }
+        
+        let poolATeams = tournaments[tIdx].teams.filter { $0.division == division && $0.poolName == "Pool A" }
+        let poolBTeams = tournaments[tIdx].teams.filter { $0.division == division && $0.poolName == "Pool B" }
+        
         func generateRounds(teams: [TournamentTeam]) -> [[(t1: TournamentTeam, t2: TournamentTeam)]] {
             guard teams.count >= 2 else { return [] }
             var list: [TournamentTeam?] = teams.map { Optional($0) }
@@ -2850,8 +2927,6 @@ public class DataManager: ObservableObject {
             return rounds
         }
         
-        let poolATeams = pools["Pool A"] ?? []
-        let poolBTeams = pools["Pool B"] ?? []
         let roundsA = generateRounds(teams: poolATeams)
         let roundsB = generateRounds(teams: poolBTeams)
         let maxRounds = max(roundsA.count, roundsB.count)
@@ -2908,14 +2983,6 @@ public class DataManager: ObservableObject {
         
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[tIdx])
-        
-        postNotification(
-            title: "🏐 Pool Play Generated!",
-            message: "Pool A & Pool B matches are scheduled for \(division.displayName)!",
-            type: .tournament
-        )
-        
-        return (true, "Successfully generated \(generatedMatches.count) pool matches across Pools A & B.")
     }
     
     @discardableResult

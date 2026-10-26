@@ -1360,6 +1360,23 @@
       </div>
     </div>
 
+    <!-- Edit Pool Play Modal -->
+    <div id="edit-pools-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeEditPoolsModal()">
+      <div class="modal-card tournament-modal-card" style="max-width: 520px; padding: 20px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.12)); padding-bottom: 8px;">
+          <h2 class="modal-title" id="edit-pools-modal-title" style="font-size: 16px; font-weight: 800;">🏊 Edit Pool Play</h2>
+          <button type="button" class="modal-close" onclick="window.closeEditPoolsModal()">&times;</button>
+        </div>
+        <div id="edit-pools-modal-content" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;">
+          <!-- Populated by JS -->
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; border-top: 1px solid var(--border, rgba(255,255,255,0.12)); padding-top: 12px;">
+          <button type="button" class="btn btn-outline" onclick="window.closeEditPoolsModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" style="background: #ea580c; border: none; font-weight: 800;" onclick="window.saveEditPools()">Save & Update Matches</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Player to Game Modal (Host / Admin manual player addition) -->
     <div id="modal-add-player-to-game" class="modal-backdrop" onclick="if(event.target === this) window.closeAddPlayerModal()">
       <div class="modal-card" style="max-width: 440px; max-height: 85vh; display: flex; flex-direction: column; padding: 18px;">
@@ -1676,6 +1693,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=15.8"></script>
+  <script type="module" src="app.js?v=15.9"></script>
 </body>
 </html>

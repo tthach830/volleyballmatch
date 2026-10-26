@@ -13,6 +13,7 @@ public struct TournamentDetailView: View {
         case qrCode
         case addTeam
         case editTeam(TournamentTeam)
+        case editPools
         
         public var id: String {
             switch self {
@@ -23,6 +24,7 @@ public struct TournamentDetailView: View {
             case .qrCode: return "qrCode"
             case .addTeam: return "addTeam"
             case .editTeam(let team): return "editTeam-\(team.id.uuidString)"
+            case .editPools: return "editPools"
             }
         }
     }
@@ -36,6 +38,8 @@ public struct TournamentDetailView: View {
     @State private var showRemoveTeamAlert: Bool = false
     @State private var freeAgentToRemove: TournamentFreeAgent? = nil
     @State private var showRemoveFreeAgentAlert: Bool = false
+    @State private var showRegeneratePoolsAlert: Bool = false
+    @State private var showRemovePoolsAlert: Bool = false
     
     public enum SubTab: String, CaseIterable {
         case pools = "🏊 Pools"
@@ -220,6 +224,8 @@ public struct TournamentDetailView: View {
                         ManualTeamEditSheet(dataManager: dataManager, tournament: t, preselectedDivision: selectedDivision, teamToEdit: nil)
                     case .editTeam(let team):
                         ManualTeamEditSheet(dataManager: dataManager, tournament: t, preselectedDivision: team.division, teamToEdit: team)
+                    case .editPools:
+                        EditPoolPlaySheet(tournament: t, division: selectedDivision, dataManager: dataManager)
                     }
                 }
                 .alert("Leave Tournament?", isPresented: $showLeaveAlert) {
@@ -535,13 +541,71 @@ public struct TournamentDetailView: View {
                 }
                 
                 if isHostOrAdmin {
-                    Button("Regenerate Pools") {
-                        dataManager.generatePoolPlay(tournamentId: t.id, division: division)
+                    HStack(spacing: 8) {
+                        Button {
+                            activeSheet = .editPools
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "pencil.and.list.clipboard")
+                                Text("Edit Pools")
+                            }
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Color.blue)
+                            .cornerRadius(8)
+                        }
+                        
+                        Button {
+                            showRegeneratePoolsAlert = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                Text("Re-generate")
+                            }
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Color.orange)
+                            .cornerRadius(8)
+                        }
+                        
+                        Button {
+                            showRemovePoolsAlert = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "trash")
+                                Text("Remove Pools")
+                            }
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Color.red.opacity(0.15))
+                            .cornerRadius(8)
+                        }
                     }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .padding(.top, 6)
                 }
             }
+        }
+        .alert("Re-generate Pool Play?", isPresented: $showRegeneratePoolsAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Re-generate", role: .destructive) {
+                _ = dataManager.generatePoolPlay(tournamentId: t.id, division: division)
+            }
+        } message: {
+            Text("This will re-seed teams using Elo and create new round-robin matchups for \(division.displayName). Any current pool match scores will be reset.")
+        }
+        .alert("Remove Pool Play?", isPresented: $showRemovePoolsAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove Pools", role: .destructive) {
+                dataManager.removePoolPlay(tournamentId: t.id, division: division)
+            }
+        } message: {
+            Text("Are you sure you want to remove pool play for \(division.displayName)? All pool matches, standings, and scores will be deleted.")
         }
     }
     
@@ -2667,6 +2731,177 @@ struct ManualTeamEditSheet: View {
                         dismiss()
                     }
                     .fontWeight(.bold)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Edit Pool Play Sheet
+struct EditPoolPlaySheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let tournament: Tournament
+    let division: TournamentDivisionCategory
+    @ObservedObject var dataManager: DataManager
+    
+    @State private var teamPools: [UUID: String] = [:]
+    
+    init(tournament: Tournament, division: TournamentDivisionCategory, dataManager: DataManager) {
+        self.tournament = tournament
+        self.division = division
+        self.dataManager = dataManager
+        
+        var initial: [UUID: String] = [:]
+        let teams = tournament.teams(for: division)
+        for (idx, team) in teams.enumerated() {
+            initial[team.id] = team.poolName ?? (idx % 2 == 0 ? "Pool A" : "Pool B")
+        }
+        _teamPools = State(initialValue: initial)
+    }
+    
+    private var divisionTeams: [TournamentTeam] {
+        tournament.teams(for: division)
+    }
+    
+    private var poolACount: Int {
+        teamPools.values.filter { $0 == "Pool A" }.count
+    }
+    
+    private var poolBCount: Int {
+        teamPools.values.filter { $0 == "Pool B" }.count
+    }
+    
+    private func teamElo(_ team: TournamentTeam) -> Int {
+        let pIds = team.allPlayerIds
+        let teamPlayers = dataManager.players.filter { pIds.contains($0.id) }
+        guard !teamPlayers.isEmpty else { return 1500 }
+        let total = teamPlayers.reduce(0) { $0 + $1.eloRating }
+        return total / teamPlayers.count
+    }
+    
+    private func snakeSeed() {
+        var sorted = divisionTeams
+        sorted.sort { teamElo($0) > teamElo($1) }
+        for (idx, team) in sorted.enumerated() {
+            let isPoolA = (idx % 4 == 0 || idx % 4 == 3)
+            teamPools[team.id] = isPoolA ? "Pool A" : "Pool B"
+        }
+    }
+    
+    private func swapPools() {
+        for (teamId, pool) in teamPools {
+            teamPools[teamId] = (pool == "Pool A") ? "Pool B" : "Pool A"
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Pool A")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.cyan)
+                            Text("\(poolACount) Teams")
+                                .font(.title3)
+                                .fontWeight(.black)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        Divider()
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Pool B")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                            Text("\(poolBCount) Teams")
+                                .font(.title3)
+                                .fontWeight(.black)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.vertical, 4)
+                    
+                    HStack(spacing: 12) {
+                        Button {
+                            snakeSeed()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "wand.and.stars")
+                                Text("Snake Seed")
+                            }
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Button {
+                            swapPools()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.left.arrow.right")
+                                Text("Swap Pools")
+                            }
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } header: {
+                    Text("Pool Balance (\(division.displayName))")
+                }
+                
+                Section("Assign Teams to Pools") {
+                    ForEach(divisionTeams) { team in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(team.teamName)
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                                
+                                let p1 = dataManager.player(for: team.player1Id).displayName
+                                let p2 = team.player2Id.map { dataManager.player(for: $0).displayName }
+                                Text([p1, p2].compactMap { $0 }.joined(separator: " / "))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Picker("", selection: Binding(
+                                get: { teamPools[team.id] ?? "Pool A" },
+                                set: { teamPools[team.id] = $0 }
+                            )) {
+                                Text("Pool A").tag("Pool A")
+                                Text("Pool B").tag("Pool B")
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 140)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+            .navigationTitle("Edit Pool Play")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save & Update") {
+                        dataManager.updatePoolAssignments(
+                            tournamentId: tournament.id,
+                            division: division,
+                            assignments: teamPools
+                        )
+                        dismiss()
+                    }
+                    .fontWeight(.bold)
+                    .foregroundColor(.orange)
                 }
             }
         }
