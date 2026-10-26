@@ -1315,6 +1315,33 @@
             <textarea id="new-tourn-notes" rows="2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.</textarea>
           </div>
 
+          <!-- Sample / Demo Tournament Checkbox -->
+          <div id="demo-tourn-wrapper" style="border: 1px dashed #f97316; border-radius: 10px; padding: 12px; background: rgba(249, 115, 22, 0.06); margin-top: 4px;">
+            <label style="font-size: 13px; font-weight: 700; color: #ea580c; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="new-tourn-is-demo" onchange="document.getElementById('demo-tourn-options').style.display = this.checked ? 'block' : 'none';">
+              <span>🧪 Create Sample / Demo Tournament</span>
+            </label>
+            <div id="demo-tourn-options" style="display: none; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <div>
+                <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Number of Demo Teams (X)</label>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                  <input type="number" id="new-tourn-demo-count" value="4" min="2" max="32" class="form-input" style="width: 100px; padding: 8px 10px; border-radius: 8px; font-weight: 700; text-align: center;">
+                  <span style="font-size: 12px; color: var(--text-muted, #94a3b8);">(e.g. 4, 6, 8, 12, 16)</span>
+                </div>
+              </div>
+              <div style="margin-top: 4px;">
+                <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Division for Demo Teams</label>
+                <select id="new-tourn-demo-div" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 4px;">
+                  <option value="2v2 Coed Novice">👫 2v2 Coed Novice</option>
+                  <option value="2v2 Coed Intermediate">👫 2v2 Coed Intermediate</option>
+                  <option value="4v4 Coed">🏐 4v4 Coed</option>
+                  <option value="2v2 Men's Intermediate">👨 2v2 Men's Intermediate</option>
+                </select>
+              </div>
+              <p style="font-size: 11px; color: var(--text-muted, #94a3b8); margin: 4px 0 0 0; line-height: 1.4;">Pre-fills the tournament with X demo teams and players so you can immediately test pool play, brackets, scorekeeping, and standings.</p>
+            </div>
+          </div>
+
           <button type="button" id="create-tourn-submit-btn" onclick="window.submitCreateTournament(event)" class="btn btn-primary" style="margin-top: 8px; font-weight: 800; padding: 12px; background: #ea580c; border: none; cursor: pointer;">Create Tournament</button>
         </form>
       </div>
@@ -1649,6 +1676,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=15.7"></script>
+  <script type="module" src="app.js?v=15.8"></script>
 </body>
 </html>

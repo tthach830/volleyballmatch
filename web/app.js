@@ -10319,7 +10319,7 @@ window.renderTournamentDetail = function() {
             </button>
             ${divTeams.length < 4 ? `
               <div style="font-size: 11px; color: #ea580c; margin-top: 8px;">At least 4 teams required to seed pool play.</div>
-              <button type="button" class="btn btn-outline" style="font-size: 12px; padding: 6px 14px; margin-top: 10px; font-weight: 700;" onclick="window.addDemoTournamentTeams('${t.id}', '${currentDiv}')">
+              <button type="button" class="btn btn-outline" style="font-size: 12px; padding: 6px 14px; margin-top: 10px; font-weight: 700;" onclick="window.promptAddDemoTeams('${t.id}', '${currentDiv}')">
                 ⚡ Quick-Add Demo Teams
               </button>
             ` : ''}
@@ -10412,9 +10412,14 @@ window.renderTournamentDetail = function() {
               Confirmed Teams (${divTeams.length}/${t.maxTeamsPerDivision || 8})
             </div>
             ${isHost ? `
-              <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 8px;" onclick="window.openManualAddTeamModal('${t.id}', '${currentDiv}')">
-                ➕ Add Team
-              </button>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 8px;" onclick="window.promptAddDemoTeams('${t.id}', '${currentDiv}')">
+                  🧪 Demo Teams
+                </button>
+                <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 8px;" onclick="window.openManualAddTeamModal('${t.id}', '${currentDiv}')">
+                  ➕ Add Team
+                </button>
+              </div>
             ` : ''}
           </div>
           ${divTeams.length === 0 ? `
@@ -10816,57 +10821,104 @@ window.renderPlayoffBracketChartHTML = function(t, division, bracketMatches) {
   `;
 };
 
-window.addDemoTournamentTeams = function(tournamentId, division) {
+window.addDemoTournamentTeams = function(tournamentId, division, count = 4) {
   const t = (state.tournaments || []).find(item => 
-    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
-    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
   );
   if (!t) return;
   t.teams = t.teams || [];
   const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
   const currentDivTeams = t.teams.filter(tm => isSameDiv(tm.division, division));
-  const demoConfigs = [
-    { name: "Lauren L./Peter T.", p1Name: "Lauren Larson", p2Name: "Peter Thach", p1: 0, p2: 1 },
-    { name: "Alicia M./Emily S.", p1Name: "Alicia Miller", p2Name: "Emily Smith", p1: 2, p2: 3 },
-    { name: "Billy K./Harshal P.", p1Name: "Billy King", p2Name: "Harshal Patel", p1: 4, p2: 5 },
-    { name: "Lucas V./Chloe B.", p1Name: "Lucas Vance", p2Name: "Chloe Bennett", p1: 6, p2: 7 },
-    { name: "Kai R./Taylor J.", p1Name: "Kai Rodriguez", p2Name: "Taylor Jenkins", p1: 0, p2: 4 },
-    { name: "Maya L./Carlos G.", p1Name: "Maya Lin", p2Name: "Carlos Gomez", p1: 1, p2: 5 },
-    { name: "Sam R./Jordan H.", p1Name: "Sam Rivera", p2Name: "Jordan Hayes", p1: 2, p2: 6 },
-    { name: "Alex M./Chris P.", p1Name: "Alex Morgan", p2Name: "Chris Paul", p1: 3, p2: 7 }
+  const currentCount = currentDivTeams.length;
+  
+  const countToAdd = (typeof count === 'number' && count > 0) ? count : 4;
+  
+  const demoTeamNames = [
+    "Beach Bums", "Sand Storm", "Net Ninjas", "Spike Force",
+    "Block Party", "Ace Bandits", "Sets on Fire", "Dig This",
+    "Wave Runners", "Sun Spikers", "Coast Busters", "Tide Turners",
+    "Sunset Strikers", "Dune Jumpers", "Volley Kings", "Sky High",
+    "Pacific Heat", "Surf & Turf", "Sandy Aces", "Net Dominators",
+    "Tsunami Hits", "Point Breakers", "Palm Smashers", "Rip Tide",
+    "Breeze Ballers", "Shoreline Setters", "Golden Coast", "Beach Blasters",
+    "High Tide", "Thunder Spikes", "Ocean Drive", "Solar Flares"
   ];
-  
-  const needed = Math.max(0, 8 - currentDivTeams.length);
-  const countToAdd = needed === 0 ? 4 : needed;
-  const configsToAdd = [];
+
+  const firstNames = [
+    "Alex", "Jordan", "Taylor", "Sam", "Casey", "Morgan", "Riley", "Jamie",
+    "Dakota", "Quinn", "Skyler", "Reese", "Avery", "Logan", "Peyton", "Cameron",
+    "Harper", "Finley", "Rowan", "Emerson", "Parker", "Kendall", "Hayden", "Jesse",
+    "Kai", "Eden", "Milan", "Rory", "Shea", "Dylan", "River", "Tatum"
+  ];
+  const lastNames = [
+    "Rivera", "Wave", "Cole", "Breeze", "Stone", "Coast", "Dawn", "Tide",
+    "Ray", "Dune", "Surf", "Ocean", "Sand", "Palm", "Shore", "Bay",
+    "Cove", "Beach", "Spike", "Net", "Set", "Dig", "Block", "Ace"
+  ];
+
+  const isNovice = (division || "").toLowerCase().includes("novice");
+  const defaultTier = isNovice ? "Novice" : "Intermediate";
+  const is4v4 = (t.teamFormat === "4v4") || (division || "").includes("4v4");
+  const playersPerTeam = is4v4 ? 4 : 2;
+
   for (let i = 0; i < countToAdd; i++) {
-    const cfgIdx = (currentDivTeams.length + i) % demoConfigs.length;
-    configsToAdd.push(demoConfigs[cfgIdx]);
-  }
-  
-  configsToAdd.forEach((item, idx) => {
-    const p1 = (state.players && state.players[item.p1]) ? state.players[item.p1].id : `demo-p-${Date.now()}-${idx * 2 + 1}`;
-    const p2 = (state.players && state.players[item.p2]) ? state.players[item.p2].id : `demo-p-${Date.now()}-${idx * 2 + 2}`;
+    const teamIdx = currentCount + i;
+    const nameIdx = teamIdx % demoTeamNames.length;
+    const teamSuffix = teamIdx >= demoTeamNames.length ? ` ${Math.floor(teamIdx / demoTeamNames.length) + 1}` : "";
+    const teamName = `${demoTeamNames[nameIdx]}${teamSuffix}`;
+
+    const p1Idx = teamIdx * playersPerTeam;
+    const p1Name = `${firstNames[p1Idx % firstNames.length]} ${lastNames[p1Idx % lastNames.length]}`;
+    const p1 = window.getOrCreateGuestPlayer ? window.getOrCreateGuestPlayer(p1Name, defaultTier) : null;
+
+    const p2Idx = teamIdx * playersPerTeam + 1;
+    const p2Name = `${firstNames[p2Idx % firstNames.length]} ${lastNames[p2Idx % lastNames.length]}`;
+    const p2 = window.getOrCreateGuestPlayer ? window.getOrCreateGuestPlayer(p2Name, defaultTier) : null;
+
+    let p3 = null;
+    let p4 = null;
+    if (is4v4) {
+      const p3Idx = teamIdx * playersPerTeam + 2;
+      const p3Name = `${firstNames[p3Idx % firstNames.length]} ${lastNames[p3Idx % lastNames.length]}`;
+      p3 = window.getOrCreateGuestPlayer ? window.getOrCreateGuestPlayer(p3Name, defaultTier) : null;
+
+      const p4Idx = teamIdx * playersPerTeam + 3;
+      const p4Name = `${firstNames[p4Idx % firstNames.length]} ${lastNames[p4Idx % lastNames.length]}`;
+      p4 = window.getOrCreateGuestPlayer ? window.getOrCreateGuestPlayer(p4Name, defaultTier) : null;
+    }
+
+    const newTeamId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID().toUpperCase() : ("team-" + Date.now() + "-" + (teamIdx + 1));
+
     t.teams.push({
-      id: "demo-team-" + Date.now() + "-" + (currentDivTeams.length + idx),
-      teamName: item.name,
-      p1Name: item.p1Name,
-      p2Name: item.p2Name,
-      player1Id: p1,
-      player2Id: p2,
-      seed: currentDivTeams.length + idx + 1,
-      division: division
+      id: newTeamId,
+      teamName: teamName,
+      player1Id: p1 ? p1.id : null,
+      player2Id: p2 ? p2.id : null,
+      player3Id: p3 ? p3.id : null,
+      player4Id: p4 ? p4.id : null,
+      seed: teamIdx + 1,
+      division: division,
+      isConfirmed: true,
+      registeredAt: new Date().toISOString()
     });
-  });
+  }
 
   state.saveLocal();
   saveTournamentToFirestore(t);
   if (typeof window.pushTournamentsToDevice === "function") {
     window.pushTournamentsToDevice();
   }
-  showToast(`⚡ Added ${configsToAdd.length} demo teams for ${division}!`);
+  showToast(`⚡ Added ${countToAdd} demo teams for ${division}!`);
   window.renderTournamentDetail();
   window.renderTournamentsList();
+};
+
+window.promptAddDemoTeams = function(tournamentId, division) {
+  const countStr = prompt("How many demo teams would you like to add?", "4");
+  if (countStr === null) return;
+  const count = parseInt(countStr) || 4;
+  window.addDemoTournamentTeams(tournamentId, division, count);
 };
 
 window.generatePoolPlay = function(tournamentId, division) {
@@ -12275,6 +12327,16 @@ window.openCreateTournamentModal = function() {
   if (cohostSearch) cohostSearch.value = "";
   window.filterCreateTournCoHosts();
 
+  // Reset demo tournament options
+  const demoWrapper = document.getElementById("demo-tourn-wrapper");
+  if (demoWrapper) demoWrapper.style.display = "block";
+  const isDemoEl = document.getElementById("new-tourn-is-demo");
+  if (isDemoEl) isDemoEl.checked = false;
+  const demoOptsEl = document.getElementById("demo-tourn-options");
+  if (demoOptsEl) demoOptsEl.style.display = "none";
+  const demoCountEl = document.getElementById("new-tourn-demo-count");
+  if (demoCountEl) demoCountEl.value = "4";
+
   modal.classList.add("active");
 };
 
@@ -12324,6 +12386,9 @@ window.openEditTournamentModal = function(tournamentId) {
 
   const modal = document.getElementById("create-tournament-modal");
   if (!modal) return;
+
+  const demoWrapper = document.getElementById("demo-tourn-wrapper");
+  if (demoWrapper) demoWrapper.style.display = "none";
 
   document.getElementById("edit-tourn-id").value = t.id;
   document.getElementById("create-tourn-modal-title").innerText = "✏️ Edit Beach Tournament";
@@ -12381,7 +12446,15 @@ window.submitCreateTournament = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   try {
     const editId = document.getElementById("edit-tourn-id")?.value;
-    const title = document.getElementById("new-tourn-title")?.value?.trim();
+    let title = document.getElementById("new-tourn-title")?.value?.trim();
+    const isDemo = !editId && (document.getElementById("new-tourn-is-demo")?.checked === true);
+    const demoCount = parseInt(document.getElementById("new-tourn-demo-count")?.value) || 4;
+    const demoDiv = document.getElementById("new-tourn-demo-div")?.value || "2v2 Coed Novice";
+
+    if (!title && isDemo) {
+      title = `Sample Beach Open (${demoCount} Teams)`;
+    }
+
     if (!title) {
       showToast("⚠️ Please enter a tournament title!");
       document.getElementById("new-tourn-title")?.focus();
@@ -12475,6 +12548,11 @@ window.submitCreateTournament = function(e) {
     state.saveLocal();
     saveTournamentToFirestore(newTourn);
     pushTournamentsToDevice();
+
+    if (isDemo && demoCount > 0) {
+      const chosenDiv = checkedDivs.includes(demoDiv) ? demoDiv : (checkedDivs[0] || demoDiv);
+      window.addDemoTournamentTeams(newTourn.id, chosenDiv, demoCount);
+    }
 
     showToast(`🏆 Hosted new tournament: ${title}!`);
     window.closeCreateTournamentModal();

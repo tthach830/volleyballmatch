@@ -1210,19 +1210,36 @@ public struct TournamentDetailView: View {
                         .foregroundColor(.orange)
                     Spacer()
                     if isHostOrAdmin {
-                        Button {
-                            activeSheet = .addTeam
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus.circle.fill")
-                                Text("Add Team")
+                        HStack(spacing: 8) {
+                            Button {
+                                dataManager.addDemoTeams(tournamentId: t.id, division: selectedDivision, count: 4)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "flask.fill")
+                                    Text("Demo Teams")
+                                }
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.cyan.opacity(0.15))
+                                .cornerRadius(8)
                             }
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.orange)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color.orange.opacity(0.15))
-                            .cornerRadius(8)
+
+                            Button {
+                                activeSheet = .addTeam
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus.circle.fill")
+                                    Text("Add Team")
+                                }
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.orange.opacity(0.15))
+                                .cornerRadius(8)
+                            }
                         }
                     }
                 }

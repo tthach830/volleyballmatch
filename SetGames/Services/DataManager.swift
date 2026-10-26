@@ -2350,11 +2350,14 @@ public class DataManager: ObservableObject {
         notes: String,
         teamFormat: TournamentTeamFormat = .doubles2v2,
         coHostPlayerIds: [UUID] = [],
-        playoffAdvanceMode: PlayoffAdvanceMode = .allTeams
+        playoffAdvanceMode: PlayoffAdvanceMode = .allTeams,
+        demoTeamCount: Int? = nil,
+        demoDivision: TournamentDivisionCategory? = nil
     ) {
+        let newId = UUID()
         let t = Tournament(
-            id: UUID(),
-            rawId: UUID().uuidString,
+            id: newId,
+            rawId: newId.uuidString,
             title: title,
             hostPlayerId: currentUser?.id,
             coHostPlayerIds: coHostPlayerIds,
@@ -2373,8 +2376,15 @@ public class DataManager: ObservableObject {
             playoffAdvanceMode: playoffAdvanceMode
         )
         tournaments.insert(t, at: 0)
-        saveToDisk()
-        FirestoreService.shared.saveTournament(t)
+        
+        if let count = demoTeamCount, count > 0 {
+            let targetDiv = demoDivision ?? allowedDivisions.first ?? .coedNovice2v2
+            addDemoTeams(tournamentId: newId, division: targetDiv, count: count)
+        } else {
+            saveToDisk()
+            FirestoreService.shared.saveTournament(tournaments[0])
+        }
+        
         postNotification(
             title: "🏆 New Tournament Hosted",
             message: "\(title) is open for sign-ups at \(location)!",
@@ -2545,32 +2555,81 @@ public class DataManager: ObservableObject {
     
     public func addDemoTeams(
         tournamentId: UUID,
-        division: TournamentDivisionCategory
+        division: TournamentDivisionCategory,
+        count: Int = 4
     ) {
         guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
         let currentTeams = tournaments[idx].teams.filter { $0.division == division }
         let currentCount = currentTeams.count
-        let demoNames = [
-            "Sandstorm", "Spike Force", "Net Ninjas", "Ace Bandits",
-            "Block Party", "Dig This", "Sets on Fire", "Beach Bums"
+        
+        let demoTeamNames = [
+            "Beach Bums", "Sand Storm", "Net Ninjas", "Spike Force",
+            "Block Party", "Ace Bandits", "Sets on Fire", "Dig This",
+            "Wave Runners", "Sun Spikers", "Coast Busters", "Tide Turners",
+            "Sunset Strikers", "Dune Jumpers", "Volley Kings", "Sky High",
+            "Pacific Heat", "Surf & Turf", "Sandy Aces", "Net Dominators",
+            "Tsunami Hits", "Point Breakers", "Palm Smashers", "Rip Tide",
+            "Breeze Ballers", "Shoreline Setters", "Golden Coast", "Beach Blasters",
+            "High Tide", "Thunder Spikes", "Ocean Drive", "Solar Flares"
         ]
         
-        let needed = max(0, 8 - currentCount)
-        let countToAdd = needed == 0 ? 4 : needed
+        let firstNames = [
+            "Alex", "Jordan", "Taylor", "Sam", "Casey", "Morgan", "Riley", "Jamie",
+            "Dakota", "Quinn", "Skyler", "Reese", "Avery", "Logan", "Peyton", "Cameron",
+            "Harper", "Finley", "Rowan", "Emerson", "Parker", "Kendall", "Hayden", "Jesse",
+            "Kai", "Eden", "Milan", "Rory", "Shea", "Dylan", "River", "Tatum",
+            "Blake", "Charlie", "Drew", "Elliott", "Frankie", "Harley", "Justice", "Lane",
+            "Micah", "Nico", "Phoenix", "Remy", "Sage", "Sloan", "Stevie", "Sunny"
+        ]
+        let lastNames = [
+            "Rivera", "Wave", "Cole", "Breeze", "Stone", "Coast", "Dawn", "Tide",
+            "Ray", "Dune", "Surf", "Ocean", "Sand", "Palm", "Shore", "Bay",
+            "Cove", "Beach", "Spike", "Net", "Set", "Dig", "Block", "Ace",
+            "Coral", "Splash", "Sun", "Sky", "Wind", "Storm", "Ridge", "Bluff"
+        ]
         
-        for i in 0..<countToAdd {
-            let nameIdx = (currentCount + i) % demoNames.count
-            let name = demoNames[nameIdx]
-            let p1Idx = (i * 2) % max(1, players.count)
-            let p2Idx = (i * 2 + 1) % max(1, players.count)
-            let p1 = players.indices.contains(p1Idx) ? players[p1Idx].id : UUID()
-            let p2 = players.indices.contains(p2Idx) ? players[p2Idx].id : UUID()
+        let defaultTier: RatingTier = division.isNovice ? .novice : .intermediate
+        let is4v4 = tournaments[idx].teamFormat == .quads4v4 || division == .coed4v4
+        let playersPerTeam = is4v4 ? 4 : 2
+        
+        for i in 0..<count {
+            let teamIdx = currentCount + i
+            let nameIdx = teamIdx % demoTeamNames.count
+            let teamSuffix = teamIdx >= demoTeamNames.count ? " \(teamIdx / demoTeamNames.count + 1)" : ""
+            let teamName = "\(demoTeamNames[nameIdx])\(teamSuffix)"
+            
+            let p1BaseIdx = teamIdx * playersPerTeam
+            let p1First = firstNames[p1BaseIdx % firstNames.count]
+            let p1Last = lastNames[p1BaseIdx % lastNames.count]
+            let p1 = getOrCreateGuestPlayer(name: "\(p1First) \(p1Last)", rating: defaultTier).id
+            
+            let p2BaseIdx = teamIdx * playersPerTeam + 1
+            let p2First = firstNames[p2BaseIdx % firstNames.count]
+            let p2Last = lastNames[p2BaseIdx % lastNames.count]
+            let p2 = getOrCreateGuestPlayer(name: "\(p2First) \(p2Last)", rating: defaultTier).id
+            
+            var p3: UUID? = nil
+            var p4: UUID? = nil
+            if is4v4 {
+                let p3BaseIdx = teamIdx * playersPerTeam + 2
+                let p3First = firstNames[p3BaseIdx % firstNames.count]
+                let p3Last = lastNames[p3BaseIdx % lastNames.count]
+                p3 = getOrCreateGuestPlayer(name: "\(p3First) \(p3Last)", rating: defaultTier).id
+                
+                let p4BaseIdx = teamIdx * playersPerTeam + 3
+                let p4First = firstNames[p4BaseIdx % firstNames.count]
+                let p4Last = lastNames[p4BaseIdx % lastNames.count]
+                p4 = getOrCreateGuestPlayer(name: "\(p4First) \(p4Last)", rating: defaultTier).id
+            }
+            
             let team = TournamentTeam(
                 id: UUID(),
-                teamName: name,
+                teamName: teamName,
                 player1Id: p1,
                 player2Id: p2,
-                seed: currentCount + i + 1,
+                player3Id: p3,
+                player4Id: p4,
+                seed: teamIdx + 1,
                 division: division
             )
             tournaments[idx].teams.append(team)

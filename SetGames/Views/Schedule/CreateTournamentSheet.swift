@@ -19,6 +19,11 @@ public struct CreateTournamentSheet: View {
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     
+    // Sample / Demo Tournament Options
+    @State private var isDemoTournament: Bool = false
+    @State private var demoTeamCount: Int = 4
+    @State private var demoDivision: TournamentDivisionCategory = .coedNovice2v2
+    
     public init(dataManager: DataManager, tournamentToEdit: Tournament? = nil) {
         self.dataManager = dataManager
         self.tournamentToEdit = tournamentToEdit
@@ -165,6 +170,41 @@ public struct CreateTournamentSheet: View {
                     TextEditor(text: $notes)
                         .frame(minHeight: 80)
                 }
+                
+                if tournamentToEdit == nil {
+                    Section("Demo & Testing Mode") {
+                        Toggle(isOn: $isDemoTournament) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "flask.fill")
+                                    .foregroundColor(.orange)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Create Sample / Demo Tournament")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                    Text("Pre-fill with X sample teams for instant testing")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        
+                        if isDemoTournament {
+                            Stepper("Number of Demo Teams (X): \(demoTeamCount)", value: $demoTeamCount, in: 2...32, step: 1)
+                            
+                            if selectedDivisions.count > 1 {
+                                Picker("Division for Demo Teams", selection: $demoDivision) {
+                                    ForEach(Array(selectedDivisions)) { div in
+                                        Text(div.displayName).tag(div)
+                                    }
+                                }
+                            }
+                            
+                            Text("Automatically populates this tournament with \(demoTeamCount) demo teams and players in \(selectedDivisions.contains(demoDivision) ? demoDivision.displayName : (selectedDivisions.first?.displayName ?? "the selected division")) so you can immediately test pool play, brackets, scorekeeping, and standings.")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
             }
             .navigationTitle(tournamentToEdit != nil ? "Edit Tournament" : "Host New Tournament")
             .navigationBarTitleDisplayMode(.inline)
@@ -202,7 +242,10 @@ public struct CreateTournamentSheet: View {
     }
     
     private func saveTournament() {
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        var trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedTitle.isEmpty && isDemoTournament {
+            trimmedTitle = "Sample Beach Open (\(demoTeamCount) Teams)"
+        }
         if trimmedTitle.isEmpty {
             alertMessage = "Please enter a title for the tournament."
             showAlert = true
@@ -239,6 +282,7 @@ public struct CreateTournamentSheet: View {
                 return
             }
         } else {
+            let chosenDiv = selectedDivisions.contains(demoDivision) ? demoDivision : (selectedDivisions.first ?? .coedNovice2v2)
             dataManager.createTournament(
                 title: trimmedTitle,
                 date: selectedDate,
@@ -249,7 +293,9 @@ public struct CreateTournamentSheet: View {
                 notes: notes,
                 teamFormat: selectedTeamFormat,
                 coHostPlayerIds: selectedCoHostIds,
-                playoffAdvanceMode: playoffAdvanceMode
+                playoffAdvanceMode: playoffAdvanceMode,
+                demoTeamCount: isDemoTournament ? demoTeamCount : nil,
+                demoDivision: isDemoTournament ? chosenDiv : nil
             )
         }
         
