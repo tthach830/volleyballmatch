@@ -280,6 +280,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
     
     // Host & Level Lock
     public var hostPlayerId: UUID?
+    public var coHostPlayerIds: [UUID]
     public var isLevelLocked: Bool
     public var maxPlayers: Int
     // Submitted ratings: [ReviewerUUID: [TargetPlayerUUID: Stars]]
@@ -316,6 +317,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
         matchedOptionName: String = "Smart Availability",
         notes: String = "Bring an official Molten or Wilson beach ball!",
         hostPlayerId: UUID? = nil,
+        coHostPlayerIds: [UUID] = [],
         isLevelLocked: Bool = true,
         submittedRatings: [UUID: [UUID: Int]] = [:],
         messages: [GameChatMessage] = [],
@@ -344,6 +346,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
         self.matchedOptionName = matchedOptionName
         self.notes = notes
         self.hostPlayerId = hostPlayerId
+        self.coHostPlayerIds = coHostPlayerIds
         self.isLevelLocked = isLevelLocked
         self.submittedRatings = submittedRatings
         self.messages = messages
@@ -369,6 +372,11 @@ public struct SetGame: Identifiable, Codable, Hashable {
     public func isPlayerTierAllowed(_ playerRating: RatingTier) -> Bool {
         if !isLevelLocked { return true }
         return effectiveAllowedRatings.contains(playerRating)
+    }
+    
+    public func isHostOrCoHost(_ playerId: UUID?) -> Bool {
+        guard let pid = playerId else { return false }
+        return (hostPlayerId == pid) || coHostPlayerIds.contains(pid)
     }
     
     public var allPlayerIds: [UUID] {
@@ -542,7 +550,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, title, targetRating, genderCategory, format, status, scheduledDate, courtLocation, courtNumber
         case team1PlayerIds, team2PlayerIds, setScores, winningTeam, isAutoMatched, matchedOptionName, notes
-        case hostPlayerId, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches, waitlistPlayerIds, allowedRatings, isPrivate
+        case hostPlayerId, coHostPlayerIds, isLevelLocked, submittedRatings, messages, maxPlayers, subMatches, waitlistPlayerIds, allowedRatings, isPrivate
     }
 
     public init(from decoder: Decoder) throws {
@@ -688,6 +696,14 @@ public struct SetGame: Identifiable, Codable, Hashable {
             hostPlayerId = nil
         }
         
+        if let coHosts = try? c.decode([UUID].self, forKey: .coHostPlayerIds) {
+            coHostPlayerIds = coHosts
+        } else if let strHosts = try? c.decode([String].self, forKey: .coHostPlayerIds) {
+            coHostPlayerIds = strHosts.compactMap { UUID(uuidString: $0) ?? SetGame.parseUUID(from: $0) }
+        } else {
+            coHostPlayerIds = []
+        }
+        
         isLevelLocked = (try? c.decode(Bool.self, forKey: .isLevelLocked)) ?? true
         submittedRatings = (try? c.decode([UUID: [UUID: Int]].self, forKey: .submittedRatings)) ?? [:]
         messages = (try? c.decode([GameChatMessage].self, forKey: .messages)) ?? []
@@ -742,6 +758,7 @@ public struct SetGame: Identifiable, Codable, Hashable {
         try c.encode(matchedOptionName, forKey: .matchedOptionName)
         try c.encode(notes, forKey: .notes)
         try c.encodeIfPresent(hostPlayerId, forKey: .hostPlayerId)
+        try c.encode(coHostPlayerIds, forKey: .coHostPlayerIds)
         try c.encode(isLevelLocked, forKey: .isLevelLocked)
         try c.encode(submittedRatings, forKey: .submittedRatings)
         try c.encode(messages, forKey: .messages)

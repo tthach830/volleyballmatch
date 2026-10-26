@@ -969,12 +969,12 @@ public struct GameDetailView: View {
         guard let user = dataManager.currentUser else { return false }
         if user.isRoot { return true }
         let userId = user.id
-        let isHost = (game.hostPlayerId == userId) || (game.team1PlayerIds.first == userId)
+        let isHost = game.isHostOrCoHost(userId) || (game.team1PlayerIds.first == userId)
         return isHost
     }
     
     private func playerCard(_ p: Player, game: SetGame, playerIndex: Int) -> some View {
-        let isMatchHost = (game.hostPlayerId == dataManager.currentUser?.id) || (dataManager.currentUser?.isRoot == true)
+        let isMatchHost = game.isHostOrCoHost(dataManager.currentUser?.id) || (dataManager.currentUser?.isRoot == true)
         let displayName = isUserInMatch ? p.displayName : "Player \(playerIndex)"
         return HStack(spacing: 8) {
             if game.allPlayerIds.count > 4 {

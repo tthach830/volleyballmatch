@@ -619,7 +619,7 @@ public struct ConfirmedGamesView: View {
         let borderColor = isTeam1 ? Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.6) : Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6)
         let labelText = game.openSpotLabel(isTeam1: isTeam1, slotIndex: slotIndex, allPlayers: dataManager.players)
         
-        let isHost = (game.hostPlayerId == dataManager.currentUser?.id) || (game.team1PlayerIds.first == dataManager.currentUser?.id)
+        let isHost = game.isHostOrCoHost(dataManager.currentUser?.id) || (game.team1PlayerIds.first == dataManager.currentUser?.id)
         let isRoot = dataManager.currentUser?.isRoot == true
         
         return Button {
@@ -910,7 +910,7 @@ public struct ConfirmedGamesView: View {
     }
 
     private func playersPoolBox(game: SetGame, isMyGame: Bool, currentUserId: UUID?) -> some View {
-        let isHost = (game.hostPlayerId == currentUserId) || (game.team1PlayerIds.first == currentUserId) || (dataManager.currentUser?.isRoot == true)
+        let isHost = game.isHostOrCoHost(currentUserId) || (game.team1PlayerIds.first == currentUserId) || (dataManager.currentUser?.isRoot == true)
         
         return VStack(spacing: 8) {
             if game.allPlayerIds.count > 4 {

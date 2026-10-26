@@ -3944,9 +3944,10 @@ window.removePlayerFromPool = (gameId, playerId) => {
 
   const currentUserId = state.currentUser.id;
   const isRoot = isRootUser(state.currentUser);
-  const isHost = isSamePlayer(game.hostPlayerId, currentUserId) || (game.team1PlayerIds && isSamePlayer(game.team1PlayerIds[0], currentUserId)) || isRoot;
+  const isCoHost = (game.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = isSamePlayer(game.hostPlayerId, currentUserId) || (game.team1PlayerIds && isSamePlayer(game.team1PlayerIds[0], currentUserId)) || isCoHost || isRoot;
   if (!isHost) {
-    showToast("Only the match host or admin can remove players from the pool.");
+    showToast("Only the match host, co-host, or admin can remove players from the pool.");
     return;
   }
 
@@ -4618,9 +4619,11 @@ function renderMatches() {
       isSamePlayer(game.hostPlayerId, currentUserId)
     );
     const isRoot = isRootUser(state.currentUser);
+    const isCoHost = currentUserId && (game.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
     const isHost = currentUserId && (
       isSamePlayer(game.hostPlayerId, currentUserId) ||
       isSamePlayer(game.team1PlayerIds?.[0], currentUserId) ||
+      isCoHost ||
       isRoot
     );
     const hostPlayer = game.hostPlayerId ? state.getPlayer(game.hostPlayerId) : (game.team1PlayerIds?.[0] ? state.getPlayer(game.team1PlayerIds[0]) : null);
@@ -10437,6 +10440,11 @@ window.renderTournamentDetail = function() {
                         </div>` : ''}
                       </div>
                     </div>
+                    ${isHost ? `
+                      <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: #fca5a5; padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px;" onclick="window.removeTournamentTeam('${t.id}', '${team.id}')" title="Remove Team">
+                        🗑️ Remove
+                      </button>
+                    ` : ''}
                   </div>
                 `;
               }).join('')}
@@ -10466,9 +10474,16 @@ window.renderTournamentDetail = function() {
                         ${fa.notes ? `<div style="font-size: 11px; color: var(--text-muted, #64748b); font-style: italic;">"${fa.notes}"</div>` : ''}
                       </div>
                     </div>
-                    <span style="font-size: 11px; font-weight: 800; background: rgba(2, 132, 199, 0.1); color: #0284c7; padding: 2px 8px; border-radius: 999px;">
-                      ${p?.rating || 'B'}
-                    </span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 11px; font-weight: 800; background: rgba(2, 132, 199, 0.1); color: #0284c7; padding: 2px 8px; border-radius: 999px;">
+                        ${p?.rating || 'B'}
+                      </span>
+                      ${isHost ? `
+                        <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: #fca5a5; padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px;" onclick="window.removeTournamentFreeAgent('${t.id}', '${fa.playerId}')" title="Remove Free Agent">
+                          🗑️
+                        </button>
+                      ` : ''}
+                    </div>
                   </div>
                 `;
               }).join('')}
@@ -11406,6 +11421,99 @@ window.leaveTournament = function(tournamentId) {
   saveTournamentToFirestore(t);
   pushTournamentsToDevice();
   showToast("Left tournament.");
+  window.renderTournamentDetail();
+  window.renderTournamentsList();
+};
+
+window.removeTournamentTeam = function(tournamentId, teamId) {
+  if (!state.currentUser) {
+    showToast("Please log in first.");
+    return;
+  }
+
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === targetId) ||
+    (item.rawId && String(item.rawId).trim() === targetId)
+  );
+  if (!t) return;
+
+  const currentUserId = state.currentUser.id;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can remove teams.");
+    return;
+  }
+
+  const team = (t.teams || []).find(tm => String(tm.id).trim() === String(teamId).trim());
+  const teamLabel = team ? team.teamName : "this team";
+  if (!confirm(`Are you sure you want to remove '${teamLabel}' from the tournament?`)) {
+    return;
+  }
+
+  t.teams = (t.teams || []).filter(tm => String(tm.id).trim() !== String(teamId).trim());
+
+  if (Array.isArray(t.matches)) {
+    t.matches.forEach(m => {
+      if (String(m.team1Id).trim() === String(teamId).trim()) {
+        m.team1Id = null;
+        m.team1Score = null;
+        m.winningTeamId = null;
+      }
+      if (String(m.team2Id).trim() === String(teamId).trim()) {
+        m.team2Id = null;
+        m.team2Score = null;
+        m.winningTeamId = null;
+      }
+    });
+  }
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  pushTournamentsToDevice();
+  showToast(`Removed team '${teamLabel}' from tournament.`);
+  window.renderTournamentDetail();
+  window.renderTournamentsList();
+};
+
+window.removeTournamentFreeAgent = function(tournamentId, playerId) {
+  if (!state.currentUser) {
+    showToast("Please log in first.");
+    return;
+  }
+
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === targetId) ||
+    (item.rawId && String(item.rawId).trim() === targetId)
+  );
+  if (!t) return;
+
+  const currentUserId = state.currentUser.id;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can remove free agents.");
+    return;
+  }
+
+  const p = state.getPlayer(playerId);
+  const pName = p ? getPlayerDisplayName(p) : "this free agent";
+  if (!confirm(`Are you sure you want to remove ${pName} from free agent pool?`)) {
+    return;
+  }
+
+  t.freeAgents = (t.freeAgents || []).filter(fa => !isSamePlayer(fa.playerId, playerId));
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  pushTournamentsToDevice();
+  showToast(`Removed ${pName} from free agents.`);
   window.renderTournamentDetail();
   window.renderTournamentsList();
 };

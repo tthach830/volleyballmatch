@@ -28,6 +28,10 @@ public struct TournamentDetailView: View {
     @State private var activeSheet: TournamentDetailSheet? = nil
     @State private var showLeaveAlert: Bool = false
     @State private var showDeleteTournamentAlert: Bool = false
+    @State private var teamToRemove: TournamentTeam? = nil
+    @State private var showRemoveTeamAlert: Bool = false
+    @State private var freeAgentToRemove: TournamentFreeAgent? = nil
+    @State private var showRemoveFreeAgentAlert: Bool = false
     
     public enum SubTab: String, CaseIterable {
         case pools = "🏊 Pools"
@@ -59,134 +63,8 @@ public struct TournamentDetailView: View {
                 ZStack(alignment: .bottom) {
                     ScrollView {
                         VStack(spacing: 16) {
-                            
-                            // Top Header Card
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack {
-                                    Text("BEACH TOURNAMENT")
-                                        .font(.system(size: 11, weight: .black))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(Capsule().fill(Color.orange.opacity(0.2)))
-                                        .foregroundColor(.orange)
-                                    
-                                    Spacer()
-                                    
-                                    Text(t.status.uppercased().replacingOccurrences(of: "_", with: " "))
-                                        .font(.system(size: 10, weight: .black))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(Capsule().fill(Color.green.opacity(0.2)))
-                                        .foregroundColor(.green)
-                                }
-                                
-                                Text("\(t.effectiveTeamFormat.icon) \(t.effectiveTeamFormat.displayName)")
-                                    .font(.system(size: 10, weight: .black))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(Capsule().fill(Color.cyan.opacity(0.2)))
-                                    .foregroundColor(.cyan)
-                                
-                                Text(t.title)
-                                    .font(.system(size: 24, weight: .black, design: .rounded))
-                                    .foregroundColor(.white)
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "calendar")
-                                            .font(.caption)
-                                            .foregroundColor(.orange)
-                                        Text(t.formattedDate)
-                                            .font(.caption)
-                                            .foregroundColor(.white.opacity(0.9))
-                                    }
-                                    
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "mappin.and.ellipse")
-                                            .font(.caption)
-                                            .foregroundColor(.cyan)
-                                        Text("\(t.location) • \(t.courts.joined(separator: ", "))")
-                                            .font(.caption)
-                                            .foregroundColor(.white.opacity(0.9))
-                                    }
-                                    
-                                    // Host & Co-Hosts
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "crown.fill")
-                                            .font(.caption2)
-                                            .foregroundColor(.yellow)
-                                        let hostName = dataManager.players.first(where: { $0.id == t.hostPlayerId })?.displayName ?? "Organizer"
-                                        Text("Host: \(hostName)")
-                                            .font(.caption)
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.white.opacity(0.9))
-                                        
-                                        let coHosts = t.coHosts(from: dataManager.players)
-                                        if !coHosts.isEmpty {
-                                            Text("•")
-                                                .foregroundColor(.white.opacity(0.4))
-                                            Image(systemName: "person.2.fill")
-                                                .font(.caption2)
-                                                .foregroundColor(.cyan)
-                                            Text("Co-Hosts: \(coHosts.map { $0.displayName }.joined(separator: ", "))")
-                                                .font(.caption)
-                                                .foregroundColor(.cyan)
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(18)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color(red: 0.14, green: 0.16, blue: 0.22), Color(red: 0.08, green: 0.10, blue: 0.15)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .cornerRadius(20)
-                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
-                            .padding(.horizontal)
-                            
-                            // DIVISION SELECTOR PILLS
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("DIVISIONS")
-                                    .font(.system(size: 11, weight: .black))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal)
-                                
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
-                                        ForEach(t.allowedDivisions) { div in
-                                            Button {
-                                                selectedDivision = div
-                                            } label: {
-                                                HStack(spacing: 6) {
-                                                    Text(div.icon)
-                                                    Text(div.displayName)
-                                                        .font(.system(size: 13, weight: .bold))
-                                                    
-                                                    // Team count badge
-                                                    let count = t.teams(for: div).count
-                                                    Text("\(count)")
-                                                        .font(.system(size: 10, weight: .black))
-                                                        .padding(.horizontal, 6)
-                                                        .padding(.vertical, 2)
-                                                        .background(Capsule().fill(selectedDivision == div ? Color.white.opacity(0.3) : Color.white.opacity(0.1)))
-                                                }
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 8)
-                                                .background(selectedDivision == div ? Color.orange : Color(red: 0.12, green: 0.14, blue: 0.19))
-                                                .foregroundColor(selectedDivision == div ? .white : .white.opacity(0.7))
-                                                .clipShape(Capsule())
-                                                .overlay(
-                                                    Capsule().stroke(selectedDivision == div ? Color.orange : Color.white.opacity(0.08), lineWidth: 1)
-                                                )
-                                            }
-                                        }
-                                    }
-                                    .padding(.horizontal)
-                                }
-                            }
+                            headerCard(t: t)
+                            divisionSelector(t: t)
                             
                             // SUB-TAB PICKER (Pools, Bracket, Rosters, Info)
                             Picker("View Mode", selection: $selectedSubTab) {
@@ -355,10 +233,175 @@ public struct TournamentDetailView: View {
                 } message: {
                     Text("Are you sure you want to permanently delete \"\(t.title)\"? This cannot be undone.")
                 }
+                .alert("Remove Team from Tournament?", isPresented: $showRemoveTeamAlert) {
+                    Button("Cancel", role: .cancel) { teamToRemove = nil }
+                    Button("Remove Team", role: .destructive) {
+                        if let team = teamToRemove {
+                            dataManager.removeTournamentTeam(tournamentId: t.id, teamId: team.id)
+                            teamToRemove = nil
+                        }
+                    }
+                } message: {
+                    if let team = teamToRemove {
+                        Text("Are you sure you want to remove '\(team.teamName)' from \(t.title)?")
+                    }
+                }
+                .alert("Remove Free Agent?", isPresented: $showRemoveFreeAgentAlert) {
+                    Button("Cancel", role: .cancel) { freeAgentToRemove = nil }
+                    Button("Remove", role: .destructive) {
+                        if let fa = freeAgentToRemove {
+                            dataManager.removeTournamentFreeAgent(tournamentId: t.id, playerId: fa.playerId)
+                            freeAgentToRemove = nil
+                        }
+                    }
+                } message: {
+                    if let fa = freeAgentToRemove {
+                        let pName = dataManager.player(for: fa.playerId).displayName
+                        Text("Are you sure you want to remove \(pName) from the free agent pool?")
+                    }
+                }
             } else {
                 Text("Tournament Not Found")
                     .foregroundColor(.secondary)
             }
+        }
+    }
+    
+    // MARK: - Header & Navigation Helpers
+    @ViewBuilder
+    private func headerCard(t: Tournament) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("BEACH TOURNAMENT")
+                    .font(.system(size: 11, weight: .black))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.orange.opacity(0.2)))
+                    .foregroundColor(.orange)
+                
+                Spacer()
+                
+                Text(t.status.uppercased().replacingOccurrences(of: "_", with: " "))
+                    .font(.system(size: 10, weight: .black))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.green.opacity(0.2)))
+                    .foregroundColor(.green)
+            }
+            
+            Text("\(t.effectiveTeamFormat.icon) \(t.effectiveTeamFormat.displayName)")
+                .font(.system(size: 10, weight: .black))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color.cyan.opacity(0.2)))
+                .foregroundColor(.cyan)
+            
+            Text(t.title)
+                .font(.system(size: 24, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                    Text(t.formattedDate)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.caption)
+                        .foregroundColor(.cyan)
+                    Text("\(t.location) • \(t.courts.joined(separator: ", "))")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                
+                // Host & Co-Hosts
+                HStack(spacing: 6) {
+                    Image(systemName: "crown.fill")
+                        .font(.caption2)
+                        .foregroundColor(.yellow)
+                    let hostName = dataManager.players.first(where: { $0.id == t.hostPlayerId })?.displayName ?? "Organizer"
+                    Text("Host: \(hostName)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white.opacity(0.9))
+                    
+                    let coHosts = t.coHosts(from: dataManager.players)
+                    if !coHosts.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.4))
+                        Image(systemName: "person.2.fill")
+                            .font(.caption2)
+                            .foregroundColor(.cyan)
+                        Text("Co-Hosts: \(coHosts.map { $0.displayName }.joined(separator: ", "))")
+                            .font(.caption)
+                            .foregroundColor(.cyan)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.14, green: 0.16, blue: 0.22), Color(red: 0.08, green: 0.10, blue: 0.15)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private func divisionSelector(t: Tournament) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("DIVISIONS")
+                .font(.system(size: 11, weight: .black))
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(t.allowedDivisions) { div in
+                        divisionPill(t: t, div: div)
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func divisionPill(t: Tournament, div: TournamentDivisionCategory) -> some View {
+        let count = t.teams(for: div).count
+        let isSelected = selectedDivision == div
+        Button {
+            selectedDivision = div
+        } label: {
+            HStack(spacing: 6) {
+                Text(div.icon)
+                Text(div.displayName)
+                    .font(.system(size: 13, weight: .bold))
+                
+                Text("\(count)")
+                    .font(.system(size: 10, weight: .black))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(isSelected ? Color.white.opacity(0.3) : Color.white.opacity(0.1)))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(isSelected ? Color.orange : Color(red: 0.12, green: 0.14, blue: 0.19))
+            .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: 1)
+            )
         }
     }
     
@@ -1148,6 +1191,7 @@ public struct TournamentDetailView: View {
     private func rosterView(t: Tournament, division: TournamentDivisionCategory) -> some View {
         let divisionTeams = t.teams(for: division)
         let divisionFreeAgents = t.freeAgents(for: division)
+        let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || t.isHostOrCoHost(dataManager.currentUser?.id)
         
         VStack(spacing: 16) {
             // Confirmed Teams Section
@@ -1177,7 +1221,15 @@ public struct TournamentDetailView: View {
                 } else {
                     VStack(spacing: 8) {
                         ForEach(Array(divisionTeams.enumerated()), id: \.element.id) { index, team in
-                            TournamentTeamRowView(team: team, seedNumber: team.seed ?? (index + 1), players: dataManager.players)
+                            TournamentTeamRowView(
+                                team: team,
+                                seedNumber: team.seed ?? (index + 1),
+                                players: dataManager.players,
+                                onRemove: isHostOrAdmin ? {
+                                    teamToRemove = team
+                                    showRemoveTeamAlert = true
+                                } : nil
+                            )
                         }
                     }
                     .padding(.horizontal)
@@ -1202,7 +1254,14 @@ public struct TournamentDetailView: View {
                 } else {
                     VStack(spacing: 8) {
                         ForEach(divisionFreeAgents) { fa in
-                            TournamentFreeAgentRowView(freeAgent: fa, players: dataManager.players)
+                            TournamentFreeAgentRowView(
+                                freeAgent: fa,
+                                players: dataManager.players,
+                                onRemove: isHostOrAdmin ? {
+                                    freeAgentToRemove = fa
+                                    showRemoveFreeAgentAlert = true
+                                } : nil
+                            )
                         }
                     }
                     .padding(.horizontal)
@@ -1255,6 +1314,7 @@ struct TournamentTeamRowView: View {
     let team: TournamentTeam
     let seedNumber: Int
     let players: [Player]
+    var onRemove: (() -> Void)? = nil
     
     var body: some View {
         let p1 = players.first(where: { $0.id == team.player1Id })
@@ -1332,6 +1392,18 @@ struct TournamentTeamRowView: View {
             }
             
             Spacer()
+            
+            if let onRemove = onRemove {
+                Button(action: onRemove) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color(red: 0.94, green: 0.27, blue: 0.27))
+                        .padding(8)
+                        .background(Color.red.opacity(0.12))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(12)
         .background(Color(red: 0.11, green: 0.13, blue: 0.18))
@@ -1358,6 +1430,7 @@ struct TournamentTeamRowView: View {
 struct TournamentFreeAgentRowView: View {
     let freeAgent: TournamentFreeAgent
     let players: [Player]
+    var onRemove: (() -> Void)? = nil
     
     var body: some View {
         if let p = players.first(where: { $0.id == freeAgent.playerId }) {
@@ -1377,6 +1450,18 @@ struct TournamentFreeAgentRowView: View {
                 }
                 Spacer()
                 RatingBadge(rating: p.rating)
+                
+                if let onRemove = onRemove {
+                    Button(action: onRemove) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(Color(red: 0.94, green: 0.27, blue: 0.27))
+                            .padding(8)
+                            .background(Color.red.opacity(0.12))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(10)
             .background(Color(red: 0.11, green: 0.13, blue: 0.18))

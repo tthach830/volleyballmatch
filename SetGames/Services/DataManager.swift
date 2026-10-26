@@ -1044,9 +1044,9 @@ public class DataManager: ObservableObject {
         }
         
         var game = games[index]
-        let isHost = (game.hostPlayerId == user.id) || user.isRoot
+        let isHost = game.isHostOrCoHost(user.id) || user.isRoot
         guard isHost else {
-            return (false, "Only the match host or admin can remove players from the pool.")
+            return (false, "Only the match host, co-host, or admin can remove players from the pool.")
         }
         
         guard user.isRoot ? (playerId != user.id) : (playerId != game.hostPlayerId) else {
@@ -2484,6 +2484,78 @@ public class DataManager: ObservableObject {
         tournaments[idx].freeAgents.removeAll { $0.playerId == playerId }
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[idx])
+    }
+    
+    @discardableResult
+    public func removeTournamentTeam(
+        tournamentId: UUID,
+        teamId: UUID
+    ) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Tournament not found.")
+        }
+        
+        let t = tournaments[idx]
+        let canManage = t.isHostOrCoHost(user.id) || user.isRoot
+        guard canManage else {
+            return (false, "Only the tournament host, co-host, or admin can remove teams.")
+        }
+        
+        guard let teamIdx = t.teams.firstIndex(where: { $0.id == teamId }) else {
+            return (false, "Team not found.")
+        }
+        
+        let removedTeam = t.teams[teamIdx]
+        tournaments[idx].teams.remove(at: teamIdx)
+        
+        // Also clear references in any scheduled matches
+        for mIdx in tournaments[idx].matches.indices {
+            if tournaments[idx].matches[mIdx].team1Id == teamId {
+                tournaments[idx].matches[mIdx].team1Id = nil
+                tournaments[idx].matches[mIdx].team1Score = nil
+                tournaments[idx].matches[mIdx].winningTeamId = nil
+            }
+            if tournaments[idx].matches[mIdx].team2Id == teamId {
+                tournaments[idx].matches[mIdx].team2Id = nil
+                tournaments[idx].matches[mIdx].team2Score = nil
+                tournaments[idx].matches[mIdx].winningTeamId = nil
+            }
+        }
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        
+        return (true, "Removed team '\(removedTeam.teamName)' from the tournament.")
+    }
+    
+    @discardableResult
+    public func removeTournamentFreeAgent(
+        tournamentId: UUID,
+        playerId: UUID
+    ) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Tournament not found.")
+        }
+        
+        let t = tournaments[idx]
+        let canManage = t.isHostOrCoHost(user.id) || user.isRoot
+        guard canManage else {
+            return (false, "Only the tournament host, co-host, or admin can remove free agents.")
+        }
+        
+        guard let faIdx = t.freeAgents.firstIndex(where: { $0.playerId == playerId }) else {
+            return (false, "Free agent not found.")
+        }
+        
+        let pName = player(for: playerId).displayName
+        tournaments[idx].freeAgents.remove(at: faIdx)
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        
+        return (true, "Removed \(pName) from free agent pool.")
     }
     
     public func updateTournamentMatchScore(
