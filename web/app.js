@@ -4429,9 +4429,15 @@ export function renderTournamentCardHtml(t, currentUserId, index = 0) {
 
         <!-- Footer -->
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 10px; font-size: 12px; font-weight: 700; color: #fb923c;">
-          <span style="color: rgba(255, 255, 255, 0.6); font-weight: 500;">
-            👥 ${totalTeams} Team${totalTeams !== 1 ? 's' : ''} Registered${totalFreeAgents > 0 ? ` • ${totalFreeAgents} Free Agent${totalFreeAgents !== 1 ? 's' : ''}` : ''}
-          </span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="card-btn-white" style="width: 38px; height: 38px; border-radius: 8px; flex-shrink: 0;" onclick="event.stopPropagation(); window.openTournamentQRCodeModal('${t.id}')" title="Scan / Share Tournament QR Code">
+              <span style="font-size: 13px;">📱</span>
+              <span style="font-size: 8px; font-weight: 800; line-height: 1;">QR</span>
+            </button>
+            <span style="color: rgba(255, 255, 255, 0.6); font-weight: 500;">
+              👥 ${totalTeams} Team${totalTeams !== 1 ? 's' : ''} Registered${totalFreeAgents > 0 ? ` • ${totalFreeAgents} Free Agent${totalFreeAgents !== 1 ? 's' : ''}` : ''}
+            </span>
+          </div>
           <span style="display: flex; align-items: center; gap: 4px;">
             View Details & Sign Up →
           </span>
@@ -7028,9 +7034,38 @@ window.closeGameQRCodeModal = () => {
   const modalEl = document.getElementById("modal-game-qr");
   if (modalEl) modalEl.classList.remove("active");
   window.activeQRGameId = null;
+  window.activeQRTournamentId = null;
 };
 
 window.copyGameQRLink = () => {
+  if (window.activeQRTournamentId) {
+    const tournament = (state.tournaments || []).find(t => t.id === window.activeQRTournamentId || (t.rawId && t.rawId === window.activeQRTournamentId));
+    const shareTitle = formatTournamentShareTitle(tournament);
+    const shareUrl = getTournamentShareUrl(window.activeQRTournamentId);
+    const textToCopy = `${shareTitle}\n${shareUrl}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const copyBtn = document.getElementById("btn-copy-qr-link");
+      if (copyBtn) {
+        copyBtn.innerHTML = "✓ Copied to Clipboard!";
+        copyBtn.style.color = "#16a34a";
+        copyBtn.style.borderColor = "#16a34a";
+        setTimeout(() => {
+          if (copyBtn) {
+            copyBtn.innerHTML = "📋 Copy Share Link";
+            copyBtn.style.color = "";
+            copyBtn.style.borderColor = "";
+          }
+        }, 2500);
+      }
+      showToast(`Copied: "${shareTitle}"`);
+    }).catch(() => {
+      navigator.clipboard.writeText(shareUrl).catch(() => {});
+      showToast("Share link copied to clipboard!");
+    });
+    return;
+  }
+
   if (!window.activeQRGameId) return;
   const game = state.games.find(g => g.id === window.activeQRGameId);
   const shareTitle = formatGameShareTitle(game);
@@ -7059,6 +7094,30 @@ window.copyGameQRLink = () => {
 };
 
 window.shareGameLink = async () => {
+  if (window.activeQRTournamentId) {
+    const tournament = (state.tournaments || []).find(t => t.id === window.activeQRTournamentId || (t.rawId && t.rawId === window.activeQRTournamentId));
+    const shareTitle = formatTournamentShareTitle(tournament);
+    const shareUrl = getTournamentShareUrl(window.activeQRTournamentId);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: `${shareTitle}\n`,
+          url: shareUrl
+        });
+        showToast("Tournament link shared!");
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          window.copyGameQRLink();
+        }
+      }
+    } else {
+      window.copyGameQRLink();
+    }
+    return;
+  }
+
   if (!window.activeQRGameId) return;
   const game = state.games.find(g => g.id === window.activeQRGameId);
   const shareTitle = formatGameShareTitle(game);
@@ -7082,7 +7141,161 @@ window.shareGameLink = async () => {
   }
 };
 
+export function formatTournamentShareTitle(tournament) {
+  if (!tournament) return "Join Beach Volleyball Tournament";
+  const dateObj = parseGameDate(tournament.date);
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const shortDay = days[dateObj.getDay()];
+  let hours = dateObj.getHours();
+  const minutes = dateObj.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const timeStr = minutes === 0 ? `${hours}${ampm}` : `${hours}:${String(minutes).padStart(2, "0")}${ampm}`;
+  return `Join ${tournament.title || "Beach Tournament"} ${shortDay} at ${timeStr}`;
+}
+window.formatTournamentShareTitle = formatTournamentShareTitle;
+
+export function getTournamentShareUrl(tournamentId) {
+  if (window.location.origin && window.location.origin.startsWith("http")) {
+    return `${window.location.origin}${window.location.pathname}?tournamentId=${tournamentId}`;
+  }
+  return `https://volleyballmatch-13d66.web.app/?tournamentId=${tournamentId}`;
+}
+window.getTournamentShareUrl = getTournamentShareUrl;
+
+window.activeQRTournamentId = null;
+
+window.openTournamentQRCodeModal = (tournamentId) => {
+  const tournament = (state.tournaments || []).find(t => t.id === tournamentId || (t.rawId && t.rawId === tournamentId));
+  if (!tournament) return;
+  window.activeQRTournamentId = tournament.id || tournamentId;
+  window.activeQRGameId = null;
+
+  const titleEl = document.getElementById("qr-modal-title");
+  const detailsEl = document.getElementById("qr-modal-details");
+  const urlEl = document.getElementById("qr-modal-url");
+  const canvasEl = document.getElementById("qr-code-canvas");
+  const fallbackImgEl = document.getElementById("qr-code-fallback-img");
+  const modalEl = document.getElementById("modal-game-qr");
+
+  const shareTitle = formatTournamentShareTitle(tournament);
+  if (titleEl) titleEl.textContent = shareTitle;
+  if (detailsEl) {
+    const d = parseGameDate(tournament.date);
+    const formattedDate = d.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+    const courtsList = Array.isArray(tournament.courts) ? tournament.courts : [];
+    const courtStr = courtsList.length > 0 ? `${courtsList.length} Court${courtsList.length > 1 ? 's' : ''}` : 'Courts TBD';
+    detailsEl.textContent = `📍 ${tournament.location || 'Main Beach'} • ${courtStr} • 📅 ${formattedDate}`;
+  }
+
+  const shareUrl = getTournamentShareUrl(window.activeQRTournamentId);
+  if (urlEl) urlEl.textContent = shareUrl;
+
+  // Render QR code using QRCode.js if available, else fallback to QR image service
+  if (window.QRCode && canvasEl) {
+    canvasEl.style.display = "block";
+    if (fallbackImgEl) fallbackImgEl.style.display = "none";
+    QRCode.toCanvas(canvasEl, shareUrl, {
+      width: 220,
+      margin: 1,
+      color: {
+        dark: "#0f172a",
+        light: "#ffffff"
+      }
+    }, (error) => {
+      if (error) {
+        console.warn("QRCode canvas generation error, using fallback image:", error);
+        if (fallbackImgEl) {
+          canvasEl.style.display = "none";
+          fallbackImgEl.style.display = "block";
+          fallbackImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(shareUrl)}`;
+        }
+      }
+    });
+  } else if (fallbackImgEl) {
+    if (canvasEl) canvasEl.style.display = "none";
+    fallbackImgEl.style.display = "block";
+    fallbackImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(shareUrl)}`;
+  }
+
+  const copyBtn = document.getElementById("btn-copy-qr-link");
+  if (copyBtn) {
+    copyBtn.innerHTML = "📋 Copy Share Link";
+    copyBtn.style.color = "";
+    copyBtn.style.borderColor = "";
+  }
+
+  if (modalEl) modalEl.classList.add("active");
+};
+
 export function handleIncomingGameRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const targetTournamentId = params.get("tournamentId") || params.get("tournId");
+  const targetGameId = params.get("gameId") || params.get("id") || params.get("join");
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  if (targetTournamentId) {
+    if (isIOS) {
+      const banner = document.getElementById("ios-app-banner");
+      const link = document.getElementById("ios-app-link");
+      if (banner && link) {
+        link.href = `setgames://tournament?id=${targetTournamentId}`;
+        banner.style.display = "flex";
+        setTimeout(() => {
+          window.location.href = `setgames://tournament?id=${targetTournamentId}`;
+        }, 300);
+      }
+    }
+
+    const checkAndFocusTournament = () => {
+      const tourn = (state.tournaments || []).find(t => t.id === targetTournamentId || t.rawId === targetTournamentId);
+      if (!tourn) return;
+
+      const shareTitle = formatTournamentShareTitle(tourn);
+      document.title = `${shareTitle} • Volleyball Match`;
+
+      if (window.openTournamentDetail) {
+        window.openTournamentDetail(tourn.id || targetTournamentId);
+      }
+
+      setTimeout(() => {
+        const card = document.getElementById(`tournament-card-${tourn.id}`);
+        if (card) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+          card.style.outline = "3px solid #f97316";
+          card.style.boxShadow = "0 0 24px rgba(249, 115, 22, 0.4)";
+          card.style.transition = "all 0.4s ease";
+          setTimeout(() => {
+            card.style.outline = "";
+            card.style.boxShadow = "";
+          }, 4000);
+        }
+      }, 350);
+    };
+
+    if (state.tournaments && state.tournaments.length > 0) {
+      checkAndFocusTournament();
+    } else {
+      const interval = setInterval(() => {
+        if (state.tournaments && state.tournaments.length > 0) {
+          clearInterval(interval);
+          checkAndFocusTournament();
+        }
+      }, 300);
+      setTimeout(() => clearInterval(interval), 5000);
+    }
+    return;
+  }
+
+  if (!targetGameId) return;
   const params = new URLSearchParams(window.location.search);
   const targetGameId = params.get("gameId") || params.get("id") || params.get("join");
   if (!targetGameId) return;
@@ -9716,8 +9929,11 @@ window.renderTournamentDetail = function() {
           </div>
         </div>
 
-        ${isHost ? `
-          <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;">
+        <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;">
+          <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; font-weight: 700; color: #ea580c; border-color: #fdba74;" onclick="window.openTournamentQRCodeModal('${t.id}')" title="Tournament QR Code & Share Link">
+            📱 QR Code
+          </button>
+          ${isHost ? `
             ${isPrimaryHost ? `
               <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; font-weight: 700; color: #0284c7; border-color: #bae6fd;" onclick="window.openManageCoHostsModal('${t.id}')">
                 👥 Co-Hosts
@@ -9731,8 +9947,8 @@ window.renderTournamentDetail = function() {
                 🗑️ Delete
               </button>
             ` : ''}
-          </div>
-        ` : ''}
+          ` : ''}
+        </div>
       </div>
     `;
   }

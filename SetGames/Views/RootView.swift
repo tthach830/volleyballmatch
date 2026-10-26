@@ -5,6 +5,7 @@ public struct RootView: View {
     @ObservedObject private var notificationService = NotificationService.shared
     @State private var selectedTab: Int = DataManager.shared.currentUser == nil ? 1 : 0
     @State private var deepLinkedGame: SetGame? = nil
+    @State private var deepLinkedTournament: Tournament? = nil
     
     public init() {}
     
@@ -97,6 +98,11 @@ public struct RootView: View {
                 GameDetailView(dataManager: dataManager, gameId: game.id)
             }
         }
+        .sheet(item: $deepLinkedTournament) { tournament in
+            NavigationStack {
+                TournamentDetailView(dataManager: dataManager, tournamentId: tournament.id)
+            }
+        }
         .onOpenURL { url in
             handleIncomingURL(url)
         }
@@ -106,8 +112,29 @@ public struct RootView: View {
         guard dataManager.currentUser != nil else { return }
         // Supported formats:
         // setgames://game?id=<uuid>
+        // setgames://tournament?id=<uuid>
         // https://volleyballmatch-13d66.web.app/?gameId=<uuid>
+        // https://volleyballmatch-13d66.web.app/?tournamentId=<uuid>
+        // https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=<uuid>
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return }
+        
+        let tournamentIdParam = components.queryItems?.first(where: {
+            let name = $0.name.lowercased()
+            return name == "tournamentid" || name == "tournid"
+        })?.value
+        
+        if let tournIdString = tournamentIdParam?.trimmingCharacters(in: .whitespacesAndNewlines), !tournIdString.isEmpty {
+            if let targetTournament = dataManager.tournaments.first(where: {
+                $0.id.uuidString.lowercased() == tournIdString.lowercased() ||
+                ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(tournIdString) == .orderedSame)
+            }) {
+                selectedTab = 0
+                deepLinkedTournament = targetTournament
+                return
+            }
+        }
+        
+        let isTournamentHost = url.host?.lowercased() == "tournament" || url.path.lowercased().contains("tournament")
         let targetId = components.queryItems?.first(where: { 
             let name = $0.name.lowercased()
             return name == "id" || name == "gameid" || name == "join"
@@ -115,11 +142,28 @@ public struct RootView: View {
         
         guard let idString = targetId?.trimmingCharacters(in: .whitespacesAndNewlines), !idString.isEmpty else { return }
         
+        if isTournamentHost {
+            if let targetTournament = dataManager.tournaments.first(where: {
+                $0.id.uuidString.lowercased() == idString.lowercased() ||
+                ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(idString) == .orderedSame)
+            }) {
+                selectedTab = 0
+                deepLinkedTournament = targetTournament
+                return
+            }
+        }
+        
         if let targetGame = dataManager.games.first(where: { 
             $0.id.uuidString.lowercased() == idString.lowercased() || $0.rawId == idString 
         }) {
             selectedTab = 0
             deepLinkedGame = targetGame
+        } else if let targetTournament = dataManager.tournaments.first(where: {
+            $0.id.uuidString.lowercased() == idString.lowercased() ||
+            ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(idString) == .orderedSame)
+        }) {
+            selectedTab = 0
+            deepLinkedTournament = targetTournament
         }
     }
     

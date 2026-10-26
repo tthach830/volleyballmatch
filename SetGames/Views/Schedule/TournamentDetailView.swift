@@ -10,6 +10,7 @@ public struct TournamentDetailView: View {
         case editTournament
         case manageCoHosts
         case scoreMatch(TournamentMatch)
+        case qrCode
         
         public var id: String {
             switch self {
@@ -17,6 +18,7 @@ public struct TournamentDetailView: View {
             case .editTournament: return "editTournament"
             case .manageCoHosts: return "manageCoHosts"
             case .scoreMatch(let match): return "scoreMatch-\(match.id.uuidString)"
+            case .qrCode: return "qrCode"
             }
         }
     }
@@ -273,34 +275,44 @@ public struct TournamentDetailView: View {
                 .navigationTitle(t.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || t.isHostOrCoHost(dataManager.currentUser?.id)
-                    let isPrimaryHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (t.hostPlayerId != nil && t.hostPlayerId == dataManager.currentUser?.id)
-                    if isHostOrAdmin {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Menu {
-                                Button {
-                                    activeSheet = .editTournament
-                                } label: {
-                                    Label("Edit Tournament", systemImage: "pencil")
-                                }
-                                
-                                if isPrimaryHostOrAdmin {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 12) {
+                            Button {
+                                activeSheet = .qrCode
+                            } label: {
+                                Image(systemName: "qrcode")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || t.isHostOrCoHost(dataManager.currentUser?.id)
+                            let isPrimaryHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (t.hostPlayerId != nil && t.hostPlayerId == dataManager.currentUser?.id)
+                            if isHostOrAdmin {
+                                Menu {
                                     Button {
-                                        activeSheet = .manageCoHosts
+                                        activeSheet = .editTournament
                                     } label: {
-                                        Label("Manage Co-Hosts", systemImage: "person.badge.shield.checkmark")
+                                        Label("Edit Tournament", systemImage: "pencil")
                                     }
                                     
-                                    Button(role: .destructive) {
-                                        showDeleteTournamentAlert = true
-                                    } label: {
-                                        Label("Delete Tournament", systemImage: "trash")
+                                    if isPrimaryHostOrAdmin {
+                                        Button {
+                                            activeSheet = .manageCoHosts
+                                        } label: {
+                                            Label("Manage Co-Hosts", systemImage: "person.badge.shield.checkmark")
+                                        }
+                                        
+                                        Button(role: .destructive) {
+                                            showDeleteTournamentAlert = true
+                                        } label: {
+                                            Label("Delete Tournament", systemImage: "trash")
+                                        }
                                     }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                        .font(.system(size: 17))
+                                        .foregroundColor(.white)
                                 }
-                            } label: {
-                                Image(systemName: "ellipsis.circle")
-                                    .font(.system(size: 17))
-                                    .foregroundColor(.white)
                             }
                         }
                     }
@@ -315,6 +327,8 @@ public struct TournamentDetailView: View {
                         ManageCoHostsSheet(dataManager: dataManager, tournament: t)
                     case .scoreMatch(let match):
                         TournamentScoreSheet(tournament: t, match: match, dataManager: dataManager)
+                    case .qrCode:
+                        TournamentQRCodeSheet(tournament: t)
                     }
                 }
                 .alert("Leave Tournament?", isPresented: $showLeaveAlert) {

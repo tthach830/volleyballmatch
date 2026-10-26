@@ -7,11 +7,13 @@ public struct TournamentHubView: View {
     public enum TournamentHubSheet: Identifiable {
         case create
         case edit(Tournament)
+        case qrCode(Tournament)
         
         public var id: String {
             switch self {
             case .create: return "create"
             case .edit(let t): return "edit-\(t.id.uuidString)"
+            case .qrCode(let t): return "qr-\(t.id.uuidString)"
             }
         }
     }
@@ -118,6 +120,12 @@ public struct TournamentHubView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .contextMenu {
+                                    Button {
+                                        activeSheet = .qrCode(tournament)
+                                    } label: {
+                                        Label("QR Code / Share", systemImage: "qrcode")
+                                    }
+                                    
                                     let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || tournament.isHostOrCoHost(dataManager.currentUser?.id)
                                     let isPrimaryHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (tournament.hostPlayerId != nil && tournament.hostPlayerId == dataManager.currentUser?.id)
                                     if isHostOrAdmin {
@@ -178,6 +186,8 @@ public struct TournamentHubView: View {
                     CreateTournamentSheet(dataManager: dataManager)
                 case .edit(let tourn):
                     CreateTournamentSheet(dataManager: dataManager, tournamentToEdit: tourn)
+                case .qrCode(let tourn):
+                    TournamentQRCodeSheet(tournament: tourn)
                 }
             }
             .alert("Delete Tournament?", isPresented: Binding(

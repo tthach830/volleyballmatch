@@ -46,6 +46,7 @@ public struct ConfirmedGamesView: View {
     @State private var addPlayerGameForSheet: SetGame? = nil
     @State private var addPlayerTeamNumber: Int? = nil
     @State private var qrGameForSheet: SetGame? = nil
+    @State private var qrTournamentForSheet: Tournament? = nil
     @State private var editGameForSheet: SetGame? = nil
     @State private var gameForRandomTeams: SetGame? = nil
     @State private var chatGameForSheet: SetGame? = nil
@@ -220,6 +221,12 @@ public struct ConfirmedGamesView: View {
                                     }
                                     .buttonStyle(.plain)
                                     .contextMenu {
+                                        Button {
+                                            qrTournamentForSheet = tournament
+                                        } label: {
+                                            Label("QR Code / Share", systemImage: "qrcode")
+                                        }
+                                        
                                         let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || tournament.isHostOrCoHost(dataManager.currentUser?.id)
                                         let isPrimaryHostOrAdmin = (dataManager.currentUser?.isRoot == true) || (tournament.hostPlayerId != nil && tournament.hostPlayerId == dataManager.currentUser?.id)
                                         if isHostOrAdmin {
@@ -299,6 +306,9 @@ public struct ConfirmedGamesView: View {
             }
             .sheet(item: $qrGameForSheet) { game in
                 GameQRCodeSheet(game: game)
+            }
+            .sheet(item: $qrTournamentForSheet) { tournament in
+                TournamentQRCodeSheet(tournament: tournament)
             }
             .sheet(item: $editGameForSheet) { game in
                 EditMatchSheet(dataManager: dataManager, game: game)
