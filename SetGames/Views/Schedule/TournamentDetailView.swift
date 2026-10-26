@@ -2429,13 +2429,36 @@ struct ManualTeamEditSheet: View {
     let preselectedDivision: TournamentDivisionCategory
     let teamToEdit: TournamentTeam?
     
+    enum SlotType: String, CaseIterable, Identifiable {
+        case registered = "Registered"
+        case guest = "Guest"
+        case none = "Open Spot"
+        var id: String { rawValue }
+    }
+    
     @State private var teamName: String
     @State private var selectedDivision: TournamentDivisionCategory
     @State private var selectedPool: String
+    
+    // Player 1 (Captain)
+    @State private var isP1Guest: Bool = false
     @State private var player1Id: UUID
+    @State private var p1GuestName: String = ""
+    
+    // Player 2
+    @State private var p2SlotType: SlotType = .registered
     @State private var player2Id: UUID?
+    @State private var p2GuestName: String = ""
+    
+    // Player 3 (4v4)
+    @State private var p3SlotType: SlotType = .none
     @State private var player3Id: UUID?
+    @State private var p3GuestName: String = ""
+    
+    // Player 4 (4v4)
+    @State private var p4SlotType: SlotType = .none
     @State private var player4Id: UUID?
+    @State private var p4GuestName: String = ""
     
     init(dataManager: DataManager, tournament: Tournament, preselectedDivision: TournamentDivisionCategory, teamToEdit: TournamentTeam?) {
         self.dataManager = dataManager
@@ -2453,6 +2476,10 @@ struct ManualTeamEditSheet: View {
         _player2Id = State(initialValue: teamToEdit?.player2Id)
         _player3Id = State(initialValue: teamToEdit?.player3Id)
         _player4Id = State(initialValue: teamToEdit?.player4Id)
+        
+        _p2SlotType = State(initialValue: (teamToEdit?.player2Id != nil) ? .registered : .none)
+        _p3SlotType = State(initialValue: (teamToEdit?.player3Id != nil) ? .registered : .none)
+        _p4SlotType = State(initialValue: (teamToEdit?.player4Id != nil) ? .registered : .none)
     }
     
     private var is4v4: Bool {
@@ -2479,47 +2506,82 @@ struct ManualTeamEditSheet: View {
                 }
                 
                 Section("Player 1 (Captain)") {
-                    Picker("Player 1", selection: $player1Id) {
-                        ForEach(dataManager.players) { p in
-                            Text(p.name).tag(p.id)
+                    Toggle("Guest / Non-Registered Player", isOn: $isP1Guest)
+                    if isP1Guest {
+                        TextField("Enter captain's full name", text: $p1GuestName)
+                    } else {
+                        Picker("Select Player", selection: $player1Id) {
+                            ForEach(dataManager.players) { p in
+                                Text(p.name).tag(p.id)
+                            }
                         }
                     }
                 }
                 
                 Section("Player 2") {
-                    Picker("Player 2", selection: Binding(
-                        get: { player2Id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")! },
-                        set: { player2Id = ($0.uuidString == "00000000-0000-0000-0000-000000000000") ? nil : $0 }
-                    )) {
-                        Text("(None / Looking for partner)").tag(UUID(uuidString: "00000000-0000-0000-0000-000000000000")!)
-                        ForEach(dataManager.players.filter { $0.id != player1Id }) { p in
-                            Text(p.name).tag(p.id)
+                    Picker("Slot Type", selection: $p2SlotType) {
+                        Text("Registered").tag(SlotType.registered)
+                        Text("Guest").tag(SlotType.guest)
+                        Text("Open / Looking").tag(SlotType.none)
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    if p2SlotType == .registered {
+                        Picker("Select Partner", selection: Binding(
+                            get: { player2Id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")! },
+                            set: { player2Id = ($0.uuidString == "00000000-0000-0000-0000-000000000000") ? nil : $0 }
+                        )) {
+                            ForEach(dataManager.players.filter { $0.id != player1Id }) { p in
+                                Text(p.name).tag(p.id)
+                            }
                         }
+                    } else if p2SlotType == .guest {
+                        TextField("Enter partner's full name", text: $p2GuestName)
                     }
                 }
                 
                 if is4v4 {
                     Section("Player 3") {
-                        Picker("Player 3", selection: Binding(
-                            get: { player3Id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")! },
-                            set: { player3Id = ($0.uuidString == "00000000-0000-0000-0000-000000000000") ? nil : $0 }
-                        )) {
-                            Text("(Open spot)").tag(UUID(uuidString: "00000000-0000-0000-0000-000000000000")!)
-                            ForEach(dataManager.players.filter { $0.id != player1Id && $0.id != player2Id }) { p in
-                                Text(p.name).tag(p.id)
+                        Picker("Slot Type", selection: $p3SlotType) {
+                            Text("Registered").tag(SlotType.registered)
+                            Text("Guest").tag(SlotType.guest)
+                            Text("Open Spot").tag(SlotType.none)
+                        }
+                        .pickerStyle(.segmented)
+                        
+                        if p3SlotType == .registered {
+                            Picker("Select Player 3", selection: Binding(
+                                get: { player3Id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")! },
+                                set: { player3Id = ($0.uuidString == "00000000-0000-0000-0000-000000000000") ? nil : $0 }
+                            )) {
+                                ForEach(dataManager.players.filter { $0.id != player1Id && $0.id != player2Id }) { p in
+                                    Text(p.name).tag(p.id)
+                                }
                             }
+                        } else if p3SlotType == .guest {
+                            TextField("Enter player 3 full name", text: $p3GuestName)
                         }
                     }
                     
                     Section("Player 4") {
-                        Picker("Player 4", selection: Binding(
-                            get: { player4Id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")! },
-                            set: { player4Id = ($0.uuidString == "00000000-0000-0000-0000-000000000000") ? nil : $0 }
-                        )) {
-                            Text("(Open spot)").tag(UUID(uuidString: "00000000-0000-0000-0000-000000000000")!)
-                            ForEach(dataManager.players.filter { $0.id != player1Id && $0.id != player2Id && $0.id != player3Id }) { p in
-                                Text(p.name).tag(p.id)
+                        Picker("Slot Type", selection: $p4SlotType) {
+                            Text("Registered").tag(SlotType.registered)
+                            Text("Guest").tag(SlotType.guest)
+                            Text("Open Spot").tag(SlotType.none)
+                        }
+                        .pickerStyle(.segmented)
+                        
+                        if p4SlotType == .registered {
+                            Picker("Select Player 4", selection: Binding(
+                                get: { player4Id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")! },
+                                set: { player4Id = ($0.uuidString == "00000000-0000-0000-0000-000000000000") ? nil : $0 }
+                            )) {
+                                ForEach(dataManager.players.filter { $0.id != player1Id && $0.id != player2Id && $0.id != player3Id }) { p in
+                                    Text(p.name).tag(p.id)
+                                }
                             }
+                        } else if p4SlotType == .guest {
+                            TextField("Enter player 4 full name", text: $p4GuestName)
                         }
                     }
                 }
@@ -2533,15 +2595,43 @@ struct ManualTeamEditSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(teamToEdit == nil ? "Add Team" : "Save Changes") {
                         let pool = (selectedPool == "Auto" || selectedPool.isEmpty) ? nil : selectedPool
+                        let defaultTier: RatingTier = selectedDivision.isNovice ? .novice : .intermediate
+                        
+                        var finalP1Id = player1Id
+                        if isP1Guest && !p1GuestName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            finalP1Id = dataManager.getOrCreateGuestPlayer(name: p1GuestName, rating: defaultTier).id
+                        }
+                        
+                        var finalP2Id = player2Id
+                        if p2SlotType == .guest && !p2GuestName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            finalP2Id = dataManager.getOrCreateGuestPlayer(name: p2GuestName, rating: defaultTier).id
+                        } else if p2SlotType == .none {
+                            finalP2Id = nil
+                        }
+                        
+                        var finalP3Id = player3Id
+                        if p3SlotType == .guest && !p3GuestName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            finalP3Id = dataManager.getOrCreateGuestPlayer(name: p3GuestName, rating: defaultTier).id
+                        } else if p3SlotType == .none {
+                            finalP3Id = nil
+                        }
+                        
+                        var finalP4Id = player4Id
+                        if p4SlotType == .guest && !p4GuestName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            finalP4Id = dataManager.getOrCreateGuestPlayer(name: p4GuestName, rating: defaultTier).id
+                        } else if p4SlotType == .none {
+                            finalP4Id = nil
+                        }
+                        
                         if let existing = teamToEdit {
                             dataManager.updateTournamentTeam(
                                 tournamentId: tournament.id,
                                 teamId: existing.id,
                                 teamName: teamName,
-                                player1Id: player1Id,
-                                player2Id: player2Id,
-                                player3Id: player3Id,
-                                player4Id: player4Id,
+                                player1Id: finalP1Id,
+                                player2Id: finalP2Id,
+                                player3Id: finalP3Id,
+                                player4Id: finalP4Id,
                                 division: selectedDivision,
                                 poolName: pool
                             )
@@ -2550,10 +2640,10 @@ struct ManualTeamEditSheet: View {
                                 tournamentId: tournament.id,
                                 teamName: teamName,
                                 division: selectedDivision,
-                                player1Id: player1Id,
-                                player2Id: player2Id,
-                                player3Id: player3Id,
-                                player4Id: player4Id,
+                                player1Id: finalP1Id,
+                                player2Id: finalP2Id,
+                                player3Id: finalP3Id,
+                                player4Id: finalP4Id,
                                 poolName: pool
                             )
                         }

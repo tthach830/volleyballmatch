@@ -2426,6 +2426,47 @@ public class DataManager: ObservableObject {
         )
     }
     
+    @discardableResult
+    public func getOrCreateGuestPlayer(name: String, rating: RatingTier = .novice) -> Player {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return currentUser ?? players.first ?? Player(id: UUID(), name: "Guest Player", nickname: "Guest", gender: "COED", avatarEmoji: "🏐", rating: rating, eloRating: 1500, homeBeach: "Local", phoneNumber: "", password: "", starRatingSum: 0, starRatingCount: 0, consecutiveBackouts: 0, wins: 0, losses: 0, streak: 0, pointsScored: 0, pointsAllowed: 0, uniquePartnerIds: [], uniqueOpponentIds: [], recentForm: [], bio: "Guest Player", deviceToken: nil, isStatsHidden: false)
+        }
+        if let existing = players.first(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+            return existing
+        }
+        let guestPlayer = Player(
+            id: UUID(),
+            name: trimmed,
+            nickname: trimmed.components(separatedBy: " ").first ?? trimmed,
+            gender: "COED",
+            avatarEmoji: "🏐",
+            rating: rating,
+            eloRating: 1500,
+            homeBeach: "Local",
+            phoneNumber: "",
+            password: "",
+            starRatingSum: 0,
+            starRatingCount: 0,
+            consecutiveBackouts: 0,
+            wins: 0,
+            losses: 0,
+            streak: 0,
+            pointsScored: 0,
+            pointsAllowed: 0,
+            uniquePartnerIds: [],
+            uniqueOpponentIds: [],
+            recentForm: [],
+            bio: "Guest Player",
+            deviceToken: nil,
+            isStatsHidden: false
+        )
+        players.append(guestPlayer)
+        saveToDisk()
+        FirestoreService.shared.savePlayer(guestPlayer)
+        return guestPlayer
+    }
+    
     public func addTeamToTournament(
         tournamentId: UUID,
         teamName: String,

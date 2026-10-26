@@ -11580,6 +11580,33 @@ window.removeTournamentTeam = function(tournamentId, teamId) {
   window.renderTournamentsList();
 };
 
+window.getOrCreateGuestPlayer = function(name, rating = "Novice") {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return null;
+  state.players = state.players || [];
+  const existing = state.players.find(p => (p.name || "").trim().toLowerCase() === trimmed.toLowerCase());
+  if (existing) return existing;
+
+  const newId = crypto.randomUUID ? crypto.randomUUID().toUpperCase() : 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+  const guestPlayer = {
+    id: newId,
+    name: trimmed,
+    nickname: trimmed.split(' ')[0] || trimmed,
+    displayName: trimmed,
+    avatarEmoji: "🏐",
+    rating: rating,
+    eloRating: 1500,
+    phoneNumber: "",
+    isGuest: true
+  };
+  state.players.push(guestPlayer);
+  state.saveLocal();
+  if (typeof savePlayerToFirestore === "function") {
+    savePlayerToFirestore(guestPlayer);
+  }
+  return guestPlayer;
+};
+
 window.openManualAddTeamModal = function(tournamentId, division) {
   const targetId = tournamentId ? String(tournamentId).trim() : "";
   const t = (state.tournaments || []).find(item => 
@@ -11629,18 +11656,22 @@ window.openManualAddTeamModal = function(tournamentId, division) {
 
       <div>
         <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 1 (Captain) *</label>
-        <select id="manual-team-p1" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" required>
+        <select id="manual-team-p1" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p1-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');" required>
           <option value="">Select Captain...</option>
+          <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
           ${allPlayers.map(p => `<option value="${p.id}">${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
         </select>
+        <input type="text" id="manual-team-p1-guest" placeholder="Enter captain's full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
       </div>
 
       <div>
         <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 2 (Partner)</label>
-        <select id="manual-team-p2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+        <select id="manual-team-p2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p2-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
           <option value="">(None / Looking for partner)</option>
+          <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
           ${allPlayers.map(p => `<option value="${p.id}">${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
         </select>
+        <input type="text" id="manual-team-p2-guest" placeholder="Enter partner's full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
       </div>
 
       <div id="manual-team-extra-players" style="display: flex; flex-direction: column; gap: 14px;">
@@ -11710,18 +11741,22 @@ window.openEditTeamModal = function(tournamentId, teamId) {
 
       <div>
         <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 1 (Captain) *</label>
-        <select id="manual-team-p1" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" required>
+        <select id="manual-team-p1" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p1-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');" required>
           <option value="">Select Captain...</option>
+          <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
           ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, team.player1Id) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
         </select>
+        <input type="text" id="manual-team-p1-guest" placeholder="Enter captain's full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
       </div>
 
       <div>
         <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 2 (Partner)</label>
-        <select id="manual-team-p2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+        <select id="manual-team-p2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p2-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
           <option value="">(None / Looking for partner)</option>
+          <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
           ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, team.player2Id) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
         </select>
+        <input type="text" id="manual-team-p2-guest" placeholder="Enter partner's full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
       </div>
 
       <div id="manual-team-extra-players" style="display: flex; flex-direction: column; gap: 14px;">
@@ -11759,18 +11794,22 @@ window.updateManualTeamPlayerSlots = function(existingTeam) {
   extraContainer.innerHTML = `
     <div>
       <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 3</label>
-      <select id="manual-team-p3" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+      <select id="manual-team-p3" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p3-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
         <option value="">(None / Open spot)</option>
+        <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
         ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p3Selected) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
       </select>
+      <input type="text" id="manual-team-p3-guest" placeholder="Enter player 3 full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
     </div>
 
     <div>
       <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 4</label>
-      <select id="manual-team-p4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+      <select id="manual-team-p4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p4-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
         <option value="">(None / Open spot)</option>
+        <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
         ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p4Selected) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
       </select>
+      <input type="text" id="manual-team-p4-guest" placeholder="Enter player 4 full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
     </div>
   `;
 };
@@ -11787,10 +11826,54 @@ window.submitManualTournamentTeam = function(e) {
   const teamNameInput = document.getElementById("manual-team-name")?.value.trim();
   const division = document.getElementById("manual-team-div")?.value;
   const poolName = document.getElementById("manual-team-pool")?.value || null;
-  const p1 = document.getElementById("manual-team-p1")?.value;
-  const p2 = document.getElementById("manual-team-p2")?.value || null;
-  const p3 = document.getElementById("manual-team-p3")?.value || null;
-  const p4 = document.getElementById("manual-team-p4")?.value || null;
+  let p1 = document.getElementById("manual-team-p1")?.value;
+  let p2 = document.getElementById("manual-team-p2")?.value || null;
+  let p3 = document.getElementById("manual-team-p3")?.value || null;
+  let p4 = document.getElementById("manual-team-p4")?.value || null;
+
+  const isNovice = (division || "").toLowerCase().includes("novice");
+  const defaultTier = isNovice ? "Novice" : "Intermediate";
+
+  // Handle guest players
+  if (p1 === "__guest__") {
+    const gName = document.getElementById("manual-team-p1-guest")?.value.trim();
+    if (!gName) {
+      showToast("Please enter captain's name!");
+      return;
+    }
+    const gp = window.getOrCreateGuestPlayer(gName, defaultTier);
+    p1 = gp ? gp.id : null;
+  }
+
+  if (p2 === "__guest__") {
+    const gName = document.getElementById("manual-team-p2-guest")?.value.trim();
+    if (gName) {
+      const gp = window.getOrCreateGuestPlayer(gName, defaultTier);
+      p2 = gp ? gp.id : null;
+    } else {
+      p2 = null;
+    }
+  }
+
+  if (p3 === "__guest__") {
+    const gName = document.getElementById("manual-team-p3-guest")?.value.trim();
+    if (gName) {
+      const gp = window.getOrCreateGuestPlayer(gName, defaultTier);
+      p3 = gp ? gp.id : null;
+    } else {
+      p3 = null;
+    }
+  }
+
+  if (p4 === "__guest__") {
+    const gName = document.getElementById("manual-team-p4-guest")?.value.trim();
+    if (gName) {
+      const gp = window.getOrCreateGuestPlayer(gName, defaultTier);
+      p4 = gp ? gp.id : null;
+    } else {
+      p4 = null;
+    }
+  }
 
   if (!p1) {
     showToast("Please select Player 1 (Captain)!");
