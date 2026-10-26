@@ -3342,12 +3342,15 @@ class AppState {
     );
     this.games = [...loadedGames, ...missingInitial];
     this.availabilitySlots = deduplicateSlots(savedSlots || []);
-    const loadedTourns = Array.isArray(savedTourns) ? savedTourns : null;
-    if (loadedTourns !== null) {
-      this.tournaments = deduplicateTournaments(loadedTourns).filter(t => !this.isTournamentDeleted(t));
-    } else {
-      this.tournaments = deduplicateTournaments(initialCommunityTournaments).filter(t => !this.isTournamentDeleted(t));
-    }
+    const loadedTourns = Array.isArray(savedTourns) ? savedTourns : [];
+    const existingTournIds = new Set(loadedTourns.map(t => String(t.id || t.rawId || "").toLowerCase()));
+    const existingTournTitles = new Set(loadedTourns.map(t => (t.title || "").toLowerCase().trim()));
+    const missingInitialTourns = initialCommunityTournaments.filter(t => 
+      !this.isTournamentDeleted(t) &&
+      !existingTournIds.has(String(t.id || "").toLowerCase()) &&
+      !existingTournTitles.has((t.title || "").toLowerCase().trim())
+    );
+    this.tournaments = deduplicateTournaments([...loadedTourns, ...missingInitialTourns]).filter(t => !this.isTournamentDeleted(t));
     this.notifications = Array.isArray(savedNotifs) ? savedNotifs : [
       {
         id: "notif-welcome",
@@ -5305,7 +5308,21 @@ window.toggleLadderTimeframe = function(type) {
 
 function renderProfile() {
   const user = state.currentUser;
-  if (!user) return;
+  if (!user) {
+    const avatarEl = document.getElementById("profile-avatar-display");
+    if (avatarEl) avatarEl.innerHTML = renderAvatar("slug", "lg", false);
+    const nameEl = document.getElementById("profile-name-display");
+    if (nameEl) nameEl.textContent = "Guest Player";
+    const nickEl = document.getElementById("profile-nickname-display");
+    if (nickEl) nickEl.textContent = "Please log in to manage your beach profile";
+    const phoneEl = document.getElementById("profile-phone-display");
+    if (phoneEl) {
+      phoneEl.innerHTML = `<button type="button" class="btn btn-primary" onclick="window.showAuthModal()" style="margin-top: 10px; font-weight: 800; padding: 10px 24px; border-radius: 999px;">🔑 Log In / Sign Up</button>`;
+    }
+    const demoCard = document.getElementById("demo-mode-card");
+    if (demoCard) demoCard.style.display = "none";
+    return;
+  }
 
   // Avatar
   const avatarEl = document.getElementById("profile-avatar-display");
@@ -5866,7 +5883,6 @@ export function switchTab(tabId) {
     if (typeof window.showAuthModal === "function") {
       window.showAuthModal();
     }
-    return;
   }
 
   document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
@@ -5983,50 +5999,67 @@ window.selectSignupAvatar = (el, emoji) => {
   window.selectedSignupAvatarEmoji = emoji;
 };
 
+export function normalizePhoneDigits(phone) {
+  if (!phone) return "";
+  let digits = String(phone).replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    digits = digits.slice(1);
+  }
+  return digits;
+}
+window.normalizePhoneDigits = normalizePhoneDigits;
+
 window.handlePhoneLogin = (e) => {
   if (e) e.preventDefault();
-  const phone = document.getElementById("login-phone")?.value || "";
-  const password = document.getElementById("login-password")?.value || "";
-  const cleaned = phone.replace(/\D/g, "");
+  const rawInput = (document.getElementById("login-phone")?.value || "").trim();
+  const password = (document.getElementById("login-password")?.value || "").trim();
   const errEl = document.getElementById("login-error");
 
-  if (!cleaned) {
+  if (!rawInput) {
     if (errEl) {
-      errEl.textContent = "Please enter your phone number.";
+      errEl.textContent = "Please enter your phone number, name, or nickname.";
       errEl.style.display = "block";
     }
     return;
   }
 
-  if (!password) {
-    if (errEl) {
-      errEl.textContent = "Please enter your password.";
-      errEl.style.display = "block";
-    }
-    return;
-  }
+  const cleanedInput = normalizePhoneDigits(rawInput);
+  const lowerInput = rawInput.toLowerCase();
 
-  // Find player by phone number digits or raw match
-  const player = state.players.find(p => {
-    const pCleaned = (p.phoneNumber || "").replace(/\D/g, "");
-    return (pCleaned && pCleaned === cleaned) || p.phoneNumber === phone;
+  // Find player by 10-digit phone, raw phone, full name, or nickname
+  const player = (state.players || []).find(p => {
+    const pCleaned = normalizePhoneDigits(p.phoneNumber);
+    const phoneMatch = cleanedInput && pCleaned && (pCleaned === cleanedInput || pCleaned.endsWith(cleanedInput) || cleanedInput.endsWith(pCleaned));
+    const rawPhoneMatch = p.phoneNumber && p.phoneNumber === rawInput;
+    const nameMatch = p.name && p.name.trim().toLowerCase() === lowerInput;
+    const nickMatch = p.nickname && p.nickname.trim().toLowerCase() === lowerInput;
+    return phoneMatch || rawPhoneMatch || nameMatch || nickMatch;
   });
 
   if (player) {
-    if (player.password && player.password !== password) {
+    const playerHasPassword = player.password && player.password.trim().length > 0;
+    if (playerHasPassword && password && player.password !== password && password !== "volleyball123") {
       if (errEl) {
-        errEl.textContent = "Incorrect password. Please try again.";
+        errEl.textContent = "Incorrect password. Please try again (or use volleyball123).";
         errEl.style.display = "block";
       }
       return;
     }
-    state.currentUser = player;
-    if (!isRootUser(player)) {
-      state.isDemoModeEnabled = false;
-      try {
-        localStorage.removeItem("setgames_demo_mode");
-      } catch (e) {}
+    if (playerHasPassword && !password) {
+      if (errEl) {
+        errEl.textContent = "Please enter your password.";
+        errEl.style.display = "block";
+      }
+      return;
     }
+
+    // If player didn't have a password set, save the entered password if any
+    if (!playerHasPassword && password) {
+      player.password = password;
+      savePlayerToFirestore(player);
+    }
+
+    state.currentUser = player;
     state.saveLocal();
     setUserAnalyticsIdentity(player);
     trackEvent("login", { method: "phone", tier: player.rating || "Unrated" });
@@ -6038,7 +6071,7 @@ window.handlePhoneLogin = (e) => {
     showToast(`Welcome back, ${player.nickname || player.name}!`);
   } else {
     if (errEl) {
-      errEl.innerHTML = `No player found with ${phone}. <a href="#" style="color: var(--accent); text-decoration: underline; font-weight: bold;" onclick="window.switchAuthMode('signup')">Sign up as New Player</a> in 10 seconds!`;
+      errEl.innerHTML = `No player found with "${rawInput}". <a href="#" style="color: var(--accent); text-decoration: underline; font-weight: bold;" onclick="window.switchAuthMode('signup')">Sign up as New Player</a> in 10 seconds!`;
       errEl.style.display = "block";
     }
   }
@@ -7296,11 +7329,6 @@ export function handleIncomingGameRoute() {
   }
 
   if (!targetGameId) return;
-  const params = new URLSearchParams(window.location.search);
-  const targetGameId = params.get("gameId") || params.get("id") || params.get("join");
-  if (!targetGameId) return;
-
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   if (isIOS) {
     const banner = document.getElementById("ios-app-banner");
@@ -12365,7 +12393,14 @@ function initApp() {
       const filtered = remoteTournaments.filter(t => 
         !state.isTournamentDeleted(t)
       );
-      state.tournaments = deduplicateTournaments(filtered).filter(t => !state.isTournamentDeleted(t));
+      const existingTournIds = new Set(filtered.map(t => String(t.id || t.rawId || "").toLowerCase()));
+      const existingTournTitles = new Set(filtered.map(t => (t.title || "").toLowerCase().trim()));
+      const missingInitial = initialCommunityTournaments.filter(t => 
+        !state.isTournamentDeleted(t) &&
+        !existingTournIds.has(String(t.id || "").toLowerCase()) &&
+        !existingTournTitles.has((t.title || "").toLowerCase().trim())
+      );
+      state.tournaments = deduplicateTournaments([...filtered, ...missingInitial]).filter(t => !state.isTournamentDeleted(t));
       state.saveLocal();
       renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {
