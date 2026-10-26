@@ -2349,7 +2349,8 @@ public class DataManager: ObservableObject {
         maxTeamsPerDivision: Int = 8,
         notes: String,
         teamFormat: TournamentTeamFormat = .doubles2v2,
-        coHostPlayerIds: [UUID] = []
+        coHostPlayerIds: [UUID] = [],
+        playoffAdvanceMode: PlayoffAdvanceMode = .allTeams
     ) {
         let t = Tournament(
             id: UUID(),
@@ -2368,7 +2369,8 @@ public class DataManager: ObservableObject {
             status: "registration_open",
             notes: notes,
             createdAt: Date(),
-            teamFormat: teamFormat
+            teamFormat: teamFormat,
+            playoffAdvanceMode: playoffAdvanceMode
         )
         tournaments.insert(t, at: 0)
         saveToDisk()
@@ -2624,12 +2626,31 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    public func setTournamentPlayoffAdvanceMode(
+        tournamentId: UUID,
+        mode: PlayoffAdvanceMode
+    ) -> (success: Bool, message: String) {
+        guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Tournament not found.")
+        }
+        tournaments[idx].playoffAdvanceMode = mode
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        return (true, "Playoff advance format updated to \(mode.title).")
+    }
+    
+    @discardableResult
     public func generatePlayoffBracket(
         tournamentId: UUID,
-        division: TournamentDivisionCategory
+        division: TournamentDivisionCategory,
+        advanceMode: PlayoffAdvanceMode? = nil
     ) -> (success: Bool, message: String) {
         guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
             return (false, "Tournament not found.")
+        }
+        
+        if let mode = advanceMode {
+            tournaments[tIdx].playoffAdvanceMode = mode
         }
         
         let t = tournaments[tIdx]
@@ -2653,9 +2674,9 @@ public class DataManager: ObservableObject {
         var newMatches: [TournamentMatch] = []
         var matchNumber = (tournaments[tIdx].matches.filter { $0.division == division }.map { $0.matchNumber }.max() ?? 0) + 1
         
-        // Every team goes to playoff!
-        // If either pool has > 2 teams (6 or 8 teams total), generate single-elimination Quarterfinals
-        let hasQuarterfinals = poolAStandings.count > 2 || poolBStandings.count > 2
+        // Decide Quarterfinals vs Direct Semifinals:
+        // Quarterfinals occur only if advanceMode == .allTeams AND either pool has > 2 teams
+        let hasQuarterfinals = (tournaments[tIdx].playoffAdvanceMode == .allTeams) && (poolAStandings.count > 2 || poolBStandings.count > 2)
         
         if hasQuarterfinals {
             // QUARTERFINALS (Single Elimination)
@@ -2943,7 +2964,8 @@ public class DataManager: ObservableObject {
         maxTeamsPerDivision: Int,
         notes: String,
         teamFormat: TournamentTeamFormat,
-        coHostPlayerIds: [UUID]? = nil
+        coHostPlayerIds: [UUID]? = nil,
+        playoffAdvanceMode: PlayoffAdvanceMode? = nil
     ) -> (success: Bool, message: String) {
         guard let idx = tournaments.firstIndex(where: { 
             $0.id == id || 
@@ -2967,6 +2989,9 @@ public class DataManager: ObservableObject {
         tournaments[idx].teamFormat = teamFormat
         if let coHosts = coHostPlayerIds {
             tournaments[idx].coHostPlayerIds = coHosts
+        }
+        if let mode = playoffAdvanceMode {
+            tournaments[idx].playoffAdvanceMode = mode
         }
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[idx])

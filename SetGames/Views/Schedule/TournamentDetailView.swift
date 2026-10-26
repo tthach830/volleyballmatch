@@ -197,6 +197,11 @@ public struct TournamentDetailView: View {
                             .pickerStyle(.segmented)
                             .padding(.horizontal)
                             
+                            // SCHEDULE ESTIMATE BANNER
+                            if selectedSubTab == .pools || selectedSubTab == .bracket {
+                                scheduleEstimateCard(t: t, division: selectedDivision)
+                            }
+                            
                             // TAB CONTENT
                             switch selectedSubTab {
                             case .pools:
@@ -448,7 +453,7 @@ public struct TournamentDetailView: View {
                             .font(.subheadline)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
-                        Text("Every team advances to the single-elimination playoff bracket seeded by pool finish!")
+                        Text(t.playoffAdvanceMode == .allTeams ? "Every team advances to the single-elimination playoff bracket seeded by pool finish!" : "The top 2 teams from each pool advance directly to the Semifinals!")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -618,6 +623,147 @@ public struct TournamentDetailView: View {
         }
     }
     
+    // MARK: - Schedule Estimate Card
+    @ViewBuilder
+    private func scheduleEstimateCard(t: Tournament, division: TournamentDivisionCategory) -> some View {
+        let est = t.estimateSchedule(for: division)
+        let isHostOrAdmin = (dataManager.currentUser?.isRoot == true) || t.isHostOrCoHost(dataManager.currentUser?.id)
+        
+        VStack(spacing: 10) {
+            HStack(alignment: .center) {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.badge.checkmark.fill")
+                        .foregroundColor(.orange)
+                        .font(.system(size: 15))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("ESTIMATED SCHEDULE")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(.orange)
+                        Text("Total: \(est.formattedDuration)")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text("DONE BY")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.secondary)
+                    Text("~\(est.formattedEndTime)")
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundColor(.green)
+                }
+            }
+            
+            Divider().background(Color.white.opacity(0.1))
+            
+            // Breakdown chips
+            HStack(spacing: 8) {
+                // Pool Play
+                HStack(spacing: 4) {
+                    Image(systemName: "figure.volleyball")
+                        .font(.caption2)
+                        .foregroundColor(.cyan)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Pool Play: ~\(est.formattedPoolDuration)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("\(est.poolMatchCount) matches (\(est.roundsPool) rds • \(est.courtCount) \(est.courtCount == 1 ? "court" : "courts"))")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(8)
+                .background(Color.white.opacity(0.04))
+                .cornerRadius(8)
+                
+                // Playoffs
+                HStack(spacing: 4) {
+                    Image(systemName: "trophy.fill")
+                        .font(.caption2)
+                        .foregroundColor(.yellow)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Playoffs: ~\(est.formattedPlayoffDuration)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("\(est.playoffMatchCount) matches (\(est.roundsPlayoff) rounds)")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(8)
+                .background(Color.white.opacity(0.04))
+                .cornerRadius(8)
+            }
+            
+            // Playoff Advance Mode Option (Selectable by Host, readable by all)
+            HStack {
+                Text("Playoff Qualification:")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                if isHostOrAdmin {
+                    Menu {
+                        ForEach(PlayoffAdvanceMode.allCases) { mode in
+                            Button {
+                                dataManager.setTournamentPlayoffAdvanceMode(tournamentId: t.id, mode: mode)
+                            } label: {
+                                HStack {
+                                    Text(mode.title)
+                                    if t.playoffAdvanceMode == mode {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(t.playoffAdvanceMode.title)
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 9))
+                        }
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.15))
+                        .cornerRadius(6)
+                    }
+                } else {
+                    Text(t.playoffAdvanceMode.title)
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.12))
+                        .cornerRadius(6)
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.12, green: 0.14, blue: 0.20), Color(red: 0.09, green: 0.11, blue: 0.16)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .padding(.horizontal)
+    }
+    
     // MARK: - Host Pools Status Dashboard
     @ViewBuilder
     private func poolStatusDashboardView(
@@ -779,7 +925,7 @@ public struct TournamentDetailView: View {
                                 .font(.footnote)
                                 .fontWeight(.bold)
                                 .foregroundColor(.green)
-                            Text("Seeds are locked. Advance all teams to single elimination.")
+                            Text(t.playoffAdvanceMode == .allTeams ? "Seeds are locked. Advance all teams to single elimination." : "Seeds are locked. Top 2 teams per pool advance to Semifinals.")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
@@ -840,7 +986,7 @@ public struct TournamentDetailView: View {
                         .font(.headline)
                         .foregroundColor(.white)
                     
-                    Text("Complete pool play matches first. Every single team advances to the single-elimination playoff bracket!")
+                    Text(t.playoffAdvanceMode == .allTeams ? "Complete pool play matches first. Every single team advances to the single-elimination playoff bracket!" : "Complete pool play matches first. Top 2 teams from each pool advance to the Semifinals!")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)

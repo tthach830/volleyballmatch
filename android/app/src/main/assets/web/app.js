@@ -9784,6 +9784,109 @@ window.calculatePoolStandings = function(teams, matches) {
   return standings;
 };
 
+window.calculateTournamentScheduleEstimate = function(tournament, division, customAdvanceMode, minutesPerMatch = 30) {
+  if (!tournament) return null;
+  const advanceMode = customAdvanceMode || tournament.playoffAdvanceMode || "all_teams";
+  const courts = (tournament.courts && tournament.courts.length > 0) ? tournament.courts : ["Court #1", "Court #2"];
+  const numCourts = Math.max(1, courts.length);
+  
+  const divTeams = division 
+    ? (tournament.teams || []).filter(tm => tm.division === division)
+    : (tournament.teams || []);
+  const teamCount = divTeams.length;
+  
+  // Pool matches calculation
+  let totalPoolMatches = 0;
+  if (teamCount > 0) {
+    const half = Math.ceil(teamCount / 2);
+    const otherHalf = teamCount - half;
+    const poolAMatches = half >= 2 ? (half * (half - 1)) / 2 : 0;
+    const poolBMatches = otherHalf >= 2 ? (otherHalf * (otherHalf - 1)) / 2 : 0;
+    totalPoolMatches = poolAMatches + poolBMatches;
+  }
+  if (totalPoolMatches === 0) totalPoolMatches = 12; // default 8 teams
+  
+  const poolRounds = Math.ceil(totalPoolMatches / numCourts);
+  const poolMinutes = poolRounds * minutesPerMatch;
+  
+  let playoffMatchCount = 4;
+  let playoffRounds = 0;
+  
+  if (advanceMode === "all_teams") {
+    if (teamCount > 4 || teamCount === 0) {
+      playoffMatchCount = 8;
+      const qfRounds = Math.ceil(4 / numCourts);
+      const sfRounds = Math.ceil(2 / numCourts);
+      const fRounds = Math.ceil(2 / numCourts);
+      playoffRounds = qfRounds + sfRounds + fRounds;
+    } else {
+      playoffMatchCount = 4;
+      const sfRounds = Math.ceil(2 / numCourts);
+      const fRounds = Math.ceil(2 / numCourts);
+      playoffRounds = sfRounds + fRounds;
+    }
+  } else {
+    // top_teams: top 2 advance directly to Semifinals (2 matches) + Final & 3rd (2 matches) = 4 matches
+    playoffMatchCount = 4;
+    const sfRounds = Math.ceil(2 / numCourts);
+    const fRounds = Math.ceil(2 / numCourts);
+    playoffRounds = sfRounds + fRounds;
+  }
+  
+  const playoffMinutes = playoffRounds * minutesPerMatch;
+  const totalMinutes = poolMinutes + playoffMinutes;
+  
+  const startDate = tournament.date ? new Date(tournament.date) : new Date();
+  const endDate = new Date(startDate.getTime() + totalMinutes * 60 * 1000);
+  
+  const formatTime = (d) => {
+    let hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const minsStr = minutes < 10 ? '0' + minutes : minutes;
+    return `${hours}:${minsStr} ${ampm}`;
+  };
+  
+  const formatDuration = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  };
+  
+  return {
+    totalMinutes,
+    poolMinutes,
+    playoffMinutes,
+    poolMatchCount: totalPoolMatches,
+    playoffMatchCount,
+    roundsPool: poolRounds,
+    roundsPlayoff: playoffRounds,
+    formattedDuration: formatDuration(totalMinutes),
+    formattedPoolDuration: formatDuration(poolMinutes),
+    formattedPlayoffDuration: formatDuration(playoffMinutes),
+    formattedEndTime: formatTime(endDate),
+    courtCount: numCourts,
+    advanceMode
+  };
+};
+
+window.setTournamentPlayoffAdvanceMode = function(tournamentId, mode) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
+    (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
+  );
+  if (!t) return;
+  t.playoffAdvanceMode = mode;
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  showToast(`Playoff format set to: ${mode === 'top_teams' ? 'Top 2 Teams Per Pool' : 'All Teams Advance'}`);
+  window.renderTournamentDetail();
+};
+
 window.setTournamentSubTab = function(tabName) {
   window.activeTournamentSubTab = tabName;
   ["pools", "bracket", "roster", "info"].forEach(t => {
@@ -9979,6 +10082,69 @@ window.renderTournamentDetail = function() {
   const divFreeAgents = (t.freeAgents || []).filter(fa => fa.division === currentDiv);
   const divMatches = (t.matches || []).filter(m => m.division === currentDiv);
 
+  const scheduleEst = window.calculateTournamentScheduleEstimate(t, currentDiv);
+  const renderScheduleEstimateCardHTML = () => {
+    if (!scheduleEst) return '';
+    const isHost = (window.currentUser && window.currentUser.isRoot) ||
+      (t.hostPlayerId && window.currentUser && String(t.hostPlayerId).trim() === String(window.currentUser.id).trim()) ||
+      (t.coHostPlayerIds || []).some(id => window.currentUser && String(id).trim() === String(window.currentUser.id).trim());
+
+    const isAllTeams = (t.playoffAdvanceMode || 'all_teams') === 'all_teams';
+
+    return `
+      <div style="background: linear-gradient(135deg, rgba(30,41,59,0.06), rgba(15,23,42,0.03)); border: 1px solid var(--border, #e2e8f0); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 16px;">⏱️</span>
+            <div>
+              <div style="font-size: 10px; font-weight: 800; color: #ea580c; text-transform: uppercase; letter-spacing: 0.05em;">Estimated Schedule</div>
+              <div style="font-size: 14px; font-weight: 800; color: var(--text-main, #0f172a);">Total: ${scheduleEst.formattedDuration}</div>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-muted, #64748b); text-transform: uppercase;">Done By</div>
+            <div style="font-size: 14px; font-weight: 900; color: #16a34a;">~${scheduleEst.formattedEndTime}</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+          <div style="background: var(--bg-alt, #f8fafc); border-radius: 10px; padding: 8px 10px; border: 1px solid var(--border, #f1f5f9);">
+            <div style="font-size: 11px; font-weight: 800; color: #0891b2;">🏊 Pool Play: ~${scheduleEst.formattedPoolDuration}</div>
+            <div style="font-size: 10px; color: var(--text-muted, #64748b); margin-top: 1px;">
+              ${scheduleEst.poolMatchCount} matches (${scheduleEst.roundsPool} rds • ${scheduleEst.courtCount} ${scheduleEst.courtCount === 1 ? 'court' : 'courts'})
+            </div>
+          </div>
+          <div style="background: var(--bg-alt, #f8fafc); border-radius: 10px; padding: 8px 10px; border: 1px solid var(--border, #f1f5f9);">
+            <div style="font-size: 11px; font-weight: 800; color: #d97706;">🏆 Playoffs: ~${scheduleEst.formattedPlayoffDuration}</div>
+            <div style="font-size: 10px; color: var(--text-muted, #64748b); margin-top: 1px;">
+              ${scheduleEst.playoffMatchCount} matches (${scheduleEst.roundsPlayoff} rounds)
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border, rgba(0,0,0,0.06)); flex-wrap: wrap;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted, #64748b);">
+            Playoff Format:
+          </div>
+          ${isHost ? `
+            <div style="display: flex; gap: 4px; align-items: center;">
+              <button type="button" class="btn" style="padding: 3px 8px; font-size: 11px; font-weight: 700; border-radius: 6px; ${isAllTeams ? 'background: #ea580c; color: white; border: 1px solid #ea580c;' : 'background: transparent; color: var(--text-muted, #64748b); border: 1px solid var(--border, #cbd5e1);'}" onclick="window.setTournamentPlayoffAdvanceMode('${t.id}', 'all_teams')">
+                All Teams
+              </button>
+              <button type="button" class="btn" style="padding: 3px 8px; font-size: 11px; font-weight: 700; border-radius: 6px; ${!isAllTeams ? 'background: #ea580c; color: white; border: 1px solid #ea580c;' : 'background: transparent; color: var(--text-muted, #64748b); border: 1px solid var(--border, #cbd5e1);'}" onclick="window.setTournamentPlayoffAdvanceMode('${t.id}', 'top_teams')">
+                Top 2/Pool
+              </button>
+            </div>
+          ` : `
+            <span style="font-size: 11px; font-weight: 800; color: #ea580c; background: rgba(234,88,12,0.1); padding: 2px 8px; border-radius: 6px;">
+              ${isAllTeams ? 'All Teams Advance' : 'Top 2 Teams Per Pool'}
+            </span>
+          `}
+        </div>
+      </div>
+    `;
+  };
+
   if (window.activeTournamentSubTab === "pools") {
     const poolAName = "Pool A";
     const poolBName = "Pool B";
@@ -10109,12 +10275,13 @@ window.renderTournamentDetail = function() {
 
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 14px;">
+        ${renderScheduleEstimateCardHTML()}
         ${!hasPools ? `
           <div style="text-align: center; padding: 24px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
             <div style="font-size: 32px; margin-bottom: 6px;">🏊</div>
             <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 15px;">Auto Pool Play Generator</div>
             <div style="font-size: 12px; color: var(--text-muted, #64748b); max-width: 360px; margin: 4px auto 12px auto; line-height: 1.4;">
-              Automatically divides registered teams (${divTeams.length}) into Pool A & Pool B based on team Elo rating. Every team advances to the single-elimination playoff bracket!
+              Automatically divides registered teams (${divTeams.length}) into Pool A & Pool B based on team Elo rating. ${t.playoffAdvanceMode === 'top_teams' ? 'Top 2 teams from each pool advance directly to the Semifinals!' : 'Every team advances to the single-elimination playoff bracket!'}
             </div>
             <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 800; font-size: 13px;" onclick="window.generatePoolPlay('${t.id}', '${currentDiv}')" ${divTeams.length < 4 ? 'disabled' : ''}>
               ✨ Generate Pools (Snake Seeding)
@@ -10134,7 +10301,7 @@ window.renderTournamentDetail = function() {
           ${bracketMatches.length === 0 ? `
             <div style="text-align: center; padding: 18px; background: rgba(234,88,12,0.06); border: 1px solid rgba(234,88,12,0.2); border-radius: 14px; margin-top: 6px;">
               <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 14px;">Ready for Single Elimination Playoffs?</div>
-              <div style="font-size: 12px; color: var(--text-muted, #64748b); margin: 2px 0 10px 0;">Every team advances to the single-elimination playoff bracket seeded by pool finish!</div>
+              <div style="font-size: 12px; color: var(--text-muted, #64748b); margin: 2px 0 10px 0;">${t.playoffAdvanceMode === 'top_teams' ? 'Top 2 teams from each pool advance to the Semifinals!' : 'Every team advances to the single-elimination playoff bracket seeded by pool finish!'}</div>
               <button type="button" class="btn btn-primary" style="padding: 8px 18px; font-weight: 800; font-size: 12px;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
                 🏆 Generate Single Elimination Bracket
               </button>
@@ -10161,12 +10328,13 @@ window.renderTournamentDetail = function() {
 
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 12px;">
+        ${renderScheduleEstimateCardHTML()}
         ${bracketMatches.length === 0 ? `
           <div style="text-align: center; padding: 32px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
             <div style="font-size: 36px; margin-bottom: 6px;">🏆</div>
             <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 15px;">Playoff Bracket Not Yet Generated</div>
             <div style="font-size: 12px; color: var(--text-muted, #64748b); max-width: 360px; margin: 4px auto 12px auto; line-height: 1.4;">
-              Complete pool play matches first. Every single team advances to the single-elimination playoff bracket!
+              ${t.playoffAdvanceMode === 'top_teams' ? 'Complete pool play matches first. Top 2 teams from each pool advance directly to the Semifinals!' : 'Complete pool play matches first. Every single team advances to the single-elimination playoff bracket!'}
             </div>
             <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 800; font-size: 13px;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
               ✨ Generate Single Elimination Bracket
@@ -10719,12 +10887,17 @@ window.generatePoolPlay = function(tournamentId, division) {
   window.renderTournamentDetail();
 };
 
-window.generatePlayoffBracket = function(tournamentId, division) {
+window.generatePlayoffBracket = function(tournamentId, division, advanceMode) {
   const t = (state.tournaments || []).find(item => 
     (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
     (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
   );
   if (!t) return;
+
+  if (advanceMode) {
+    t.playoffAdvanceMode = advanceMode;
+  }
+  const activeAdvanceMode = t.playoffAdvanceMode || "all_teams";
 
   const divTeams = (t.teams || []).filter(tm => tm.division === division);
   const divPoolAMatches = (t.matches || []).filter(m => m.division === division && m.poolName === "Pool A");
@@ -10754,7 +10927,7 @@ window.generatePlayoffBracket = function(tournamentId, division) {
   const existingMatches = (t.matches || []).filter(m => m.division === division);
   let matchNumber = existingMatches.reduce((max, m) => Math.max(max, m.matchNumber || 0), 0) + 1;
 
-  const hasQuarterfinals = standingsA.length > 2 || standingsB.length > 2;
+  const hasQuarterfinals = (activeAdvanceMode === "all_teams") && (standingsA.length > 2 || standingsB.length > 2);
   const newMatches = [];
 
   if (hasQuarterfinals) {

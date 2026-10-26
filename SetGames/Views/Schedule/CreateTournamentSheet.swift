@@ -14,6 +14,7 @@ public struct CreateTournamentSheet: View {
     @State private var notes: String
     @State private var selectedTeamFormat: TournamentTeamFormat
     @State private var selectedCoHostIds: [UUID]
+    @State private var playoffAdvanceMode: PlayoffAdvanceMode
     @State private var showCoHostPicker: Bool = false
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
@@ -32,6 +33,7 @@ public struct CreateTournamentSheet: View {
             _notes = State(initialValue: t.notes)
             _selectedTeamFormat = State(initialValue: t.teamFormat)
             _selectedCoHostIds = State(initialValue: t.coHostPlayerIds)
+            _playoffAdvanceMode = State(initialValue: t.playoffAdvanceMode)
         } else {
             _title = State(initialValue: "")
             _location = State(initialValue: "Main Beach")
@@ -42,6 +44,7 @@ public struct CreateTournamentSheet: View {
             _notes = State(initialValue: "Double elimination beach doubles tournament. Rally score to 21, switch sides every 7 points.")
             _selectedTeamFormat = State(initialValue: .doubles2v2)
             _selectedCoHostIds = State(initialValue: [])
+            _playoffAdvanceMode = State(initialValue: .allTeams)
         }
     }
     
@@ -77,6 +80,20 @@ public struct CreateTournamentSheet: View {
                     TextField("Courts (comma-separated)", text: $courtsString)
                     
                     Stepper("Max Teams per Division: \(maxTeamsPerDivision)", value: $maxTeamsPerDivision, in: 4...32, step: 4)
+                }
+                
+                Section("Playoffs Qualification") {
+                    Picker("Playoff Format", selection: $playoffAdvanceMode) {
+                        ForEach(PlayoffAdvanceMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    Text(playoffAdvanceMode.description)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 2)
                 }
                 
                 Section("Co-Hosts (Optional)") {
@@ -213,7 +230,8 @@ public struct CreateTournamentSheet: View {
                 maxTeamsPerDivision: maxTeamsPerDivision,
                 notes: notes,
                 teamFormat: selectedTeamFormat,
-                coHostPlayerIds: selectedCoHostIds
+                coHostPlayerIds: selectedCoHostIds,
+                playoffAdvanceMode: playoffAdvanceMode
             )
             if !result.success {
                 alertMessage = result.message
@@ -230,7 +248,8 @@ public struct CreateTournamentSheet: View {
                 maxTeamsPerDivision: maxTeamsPerDivision,
                 notes: notes,
                 teamFormat: selectedTeamFormat,
-                coHostPlayerIds: selectedCoHostIds
+                coHostPlayerIds: selectedCoHostIds,
+                playoffAdvanceMode: playoffAdvanceMode
             )
         }
         

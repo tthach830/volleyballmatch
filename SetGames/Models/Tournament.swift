@@ -465,6 +465,74 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
     }
 }
 
+public enum PlayoffAdvanceMode: String, Codable, CaseIterable, Identifiable {
+    case allTeams = "all_teams"
+    case topTeamsOnly = "top_teams"
+    
+    public var id: String { rawValue }
+    
+    public var title: String {
+        switch self {
+        case .allTeams: return "All Teams Advance"
+        case .topTeamsOnly: return "Top 2 Teams Per Pool"
+        }
+    }
+    
+    public var description: String {
+        switch self {
+        case .allTeams: return "Every team advances to the single-elimination playoffs (Quarterfinals & Semifinals)."
+        case .topTeamsOnly: return "Only the top 2 teams from each pool advance directly to the Semifinals (A1 vs B2, B1 vs A2)."
+        }
+    }
+}
+
+public struct TournamentScheduleEstimate {
+    public let totalMinutes: Int
+    public let poolMinutes: Int
+    public let playoffMinutes: Int
+    public let poolMatchCount: Int
+    public let playoffMatchCount: Int
+    public let roundsPool: Int
+    public let roundsPlayoff: Int
+    public let endTime: Date
+    public let courtCount: Int
+    public let advanceMode: PlayoffAdvanceMode
+    
+    public var formattedDuration: String {
+        let hours = totalMinutes / 60
+        let mins = totalMinutes % 60
+        if hours == 0 {
+            return "\(mins) mins"
+        } else if mins == 0 {
+            return "\(hours)h"
+        } else {
+            return "\(hours)h \(mins)m"
+        }
+    }
+    
+    public var formattedPoolDuration: String {
+        let hours = poolMinutes / 60
+        let mins = poolMinutes % 60
+        if hours == 0 { return "\(mins)m" }
+        if mins == 0 { return "\(hours)h" }
+        return "\(hours)h \(mins)m"
+    }
+    
+    public var formattedPlayoffDuration: String {
+        let hours = playoffMinutes / 60
+        let mins = playoffMinutes % 60
+        if hours == 0 { return "\(mins)m" }
+        if mins == 0 { return "\(hours)h" }
+        return "\(hours)h \(mins)m"
+    }
+    
+    public var formattedEndTime: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: endTime)
+    }
+}
+
 public struct Tournament: Identifiable, Codable, Hashable {
     public var id: UUID
     public var rawId: String?
@@ -483,6 +551,7 @@ public struct Tournament: Identifiable, Codable, Hashable {
     public var notes: String
     public var createdAt: Date
     public var teamFormat: TournamentTeamFormat
+    public var playoffAdvanceMode: PlayoffAdvanceMode
     
     public init(
         id: UUID = UUID(),
@@ -501,7 +570,8 @@ public struct Tournament: Identifiable, Codable, Hashable {
         status: String = "registration_open",
         notes: String = "Standard beach rules. Rally score to 21, switch sides every 7 points.",
         createdAt: Date = Date(),
-        teamFormat: TournamentTeamFormat = .doubles2v2
+        teamFormat: TournamentTeamFormat = .doubles2v2,
+        playoffAdvanceMode: PlayoffAdvanceMode = .allTeams
     ) {
         self.id = id
         self.rawId = rawId ?? id.uuidString
@@ -520,10 +590,11 @@ public struct Tournament: Identifiable, Codable, Hashable {
         self.notes = notes
         self.createdAt = createdAt
         self.teamFormat = teamFormat
+        self.playoffAdvanceMode = playoffAdvanceMode
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, rawId, title, hostPlayerId, coHostPlayerIds, date, location, courts, allowedDivisions, maxTeamsPerDivision, teams, freeAgents, matches, status, notes, createdAt, teamFormat
+        case id, rawId, title, hostPlayerId, coHostPlayerIds, date, location, courts, allowedDivisions, maxTeamsPerDivision, teams, freeAgents, matches, status, notes, createdAt, teamFormat, playoffAdvanceMode
     }
     
     public init(from decoder: Decoder) throws {
@@ -594,6 +665,8 @@ public struct Tournament: Identifiable, Codable, Hashable {
                 teamFormat = .doubles2v2
             }
         }
+        
+        playoffAdvanceMode = (try? container.decode(PlayoffAdvanceMode.self, forKey: .playoffAdvanceMode)) ?? .allTeams
     }
     
     public var effectiveTeamFormat: TournamentTeamFormat {
@@ -740,5 +813,76 @@ public struct Tournament: Identifiable, Codable, Hashable {
         }
         
         return standings
+    }
+    
+    // MARK: - Schedule Time & Duration Estimation
+    public func estimateSchedule(
+        for division: TournamentDivisionCategory? = nil,
+        customAdvanceMode: PlayoffAdvanceMode? = nil,
+        minutesPerMatch: Int = 30
+    ) -> TournamentScheduleEstimate {
+        let activeAdvanceMode = customAdvanceMode ?? playoffAdvanceMode
+        let targetDiv = division ?? allowedDivisions.first ?? .coedNovice2v2
+        let divTeams = teams(for: targetDiv)
+        let teamCount = max(divTeams.count, 4) // minimum 4 teams benchmark
+        
+        let poolCount = 2
+        let teamsPerPool = (teamCount + 1) / poolCount
+        // Round robin in pool of n teams = n * (n - 1) / 2 matches
+        let matchesPerPool = teamsPerPool * max(teamsPerPool - 1, 1) / 2
+        let totalPoolMatches = matchesPerPool * poolCount
+        
+        // Courts allocated (default to courts array count or min 2)
+        let numCourts = max(courts.count, 1)
+        
+        // Pool rounds: each court can run matches in parallel
+        let poolRounds = Int(ceil(Double(totalPoolMatches) / Double(numCourts)))
+        let poolMinutes = poolRounds * minutesPerMatch
+        
+        // Playoff matches & rounds
+        let playoffMatchCount: Int
+        let playoffRounds: Int
+        
+        switch activeAdvanceMode {
+        case .allTeams:
+            if teamCount > 4 {
+                // 4 Quarterfinals + 2 Semifinals + 1 Final + 1 3rd place = 8 matches
+                playoffMatchCount = 8
+                // Round 1 (QF: 4 matches / courts), Round 2 (SF: 2 matches), Round 3 (Final & 3rd: 2 matches)
+                let qfRounds = Int(ceil(4.0 / Double(numCourts)))
+                let sfRounds = Int(ceil(2.0 / Double(numCourts)))
+                let fRounds = Int(ceil(2.0 / Double(numCourts)))
+                playoffRounds = qfRounds + sfRounds + fRounds
+            } else {
+                // 4 teams: 2 Semis + 1 Final + 1 3rd place = 4 matches
+                playoffMatchCount = 4
+                let sfRounds = Int(ceil(2.0 / Double(numCourts)))
+                let fRounds = Int(ceil(2.0 / Double(numCourts)))
+                playoffRounds = sfRounds + fRounds
+            }
+        case .topTeamsOnly:
+            // Top 2 advance: 2 Semifinals + 1 Final + 1 3rd place = 4 matches
+            playoffMatchCount = 4
+            let sfRounds = Int(ceil(2.0 / Double(numCourts)))
+            let fRounds = Int(ceil(2.0 / Double(numCourts)))
+            playoffRounds = sfRounds + fRounds
+        }
+        
+        let playoffMinutes = playoffRounds * minutesPerMatch
+        let totalMinutes = poolMinutes + playoffMinutes
+        let estimatedEnd = date.addingTimeInterval(TimeInterval(totalMinutes * 60))
+        
+        return TournamentScheduleEstimate(
+            totalMinutes: totalMinutes,
+            poolMinutes: poolMinutes,
+            playoffMinutes: playoffMinutes,
+            poolMatchCount: totalPoolMatches,
+            playoffMatchCount: playoffMatchCount,
+            roundsPool: poolRounds,
+            roundsPlayoff: playoffRounds,
+            endTime: estimatedEnd,
+            courtCount: numCourts,
+            advanceMode: activeAdvanceMode
+        )
     }
 }
