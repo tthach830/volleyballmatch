@@ -6,6 +6,7 @@ public struct RootView: View {
     @State private var selectedTab: Int = DataManager.shared.currentUser == nil ? 1 : 0
     @State private var deepLinkedGame: SetGame? = nil
     @State private var deepLinkedTournament: Tournament? = nil
+    @State private var pendingDeepLinkURL: URL? = nil
     
     public init() {}
     
@@ -82,6 +83,17 @@ public struct RootView: View {
                 }
             }
             
+            .onChange(of: dataManager.tournaments.count) { _, count in
+                if count > 0, let pendingURL = pendingDeepLinkURL {
+                    handleIncomingURL(pendingURL)
+                }
+            }
+            .onChange(of: dataManager.games.count) { _, count in
+                if count > 0, let pendingURL = pendingDeepLinkURL {
+                    handleIncomingURL(pendingURL)
+                }
+            }
+            
             if notificationService.showToast, let toast = notificationService.latestToast {
                 NotificationToastView(notification: toast) {
                     withAnimation {
@@ -109,7 +121,6 @@ public struct RootView: View {
     }
     
     private func handleIncomingURL(_ url: URL) {
-        guard dataManager.currentUser != nil else { return }
         // Supported formats:
         // setgames://game?id=<uuid>
         // setgames://tournament?id=<uuid>
@@ -128,8 +139,12 @@ public struct RootView: View {
                 $0.id.uuidString.lowercased() == tournIdString.lowercased() ||
                 ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(tournIdString) == .orderedSame)
             }) {
+                pendingDeepLinkURL = nil
                 selectedTab = 0
                 deepLinkedTournament = targetTournament
+                return
+            } else {
+                pendingDeepLinkURL = url
                 return
             }
         }
@@ -147,8 +162,12 @@ public struct RootView: View {
                 $0.id.uuidString.lowercased() == idString.lowercased() ||
                 ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(idString) == .orderedSame)
             }) {
+                pendingDeepLinkURL = nil
                 selectedTab = 0
                 deepLinkedTournament = targetTournament
+                return
+            } else {
+                pendingDeepLinkURL = url
                 return
             }
         }
@@ -156,14 +175,18 @@ public struct RootView: View {
         if let targetGame = dataManager.games.first(where: { 
             $0.id.uuidString.lowercased() == idString.lowercased() || $0.rawId == idString 
         }) {
+            pendingDeepLinkURL = nil
             selectedTab = 0
             deepLinkedGame = targetGame
         } else if let targetTournament = dataManager.tournaments.first(where: {
             $0.id.uuidString.lowercased() == idString.lowercased() ||
             ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(idString) == .orderedSame)
         }) {
+            pendingDeepLinkURL = nil
             selectedTab = 0
             deepLinkedTournament = targetTournament
+        } else {
+            pendingDeepLinkURL = url
         }
     }
     

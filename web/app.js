@@ -5958,6 +5958,7 @@ window.showAuthModal = () => {
   const modal = document.getElementById("auth-modal");
   if (modal) modal.classList.add("active");
 };
+window.openAuthModal = window.showAuthModal;
 
 window.closeAuthModal = () => {
   const modal = document.getElementById("auth-modal");
@@ -6072,6 +6073,19 @@ window.handlePhoneLogin = (e) => {
     renderProfile();
     renderMatches();
     showToast(`Welcome back, ${player.nickname || player.name}!`);
+
+    if (window.pendingTournamentSignUpId) {
+      const targetTournId = window.pendingTournamentSignUpId;
+      window.pendingTournamentSignUpId = null;
+      setTimeout(() => {
+        if (window.openTournamentDetail) {
+          window.openTournamentDetail(targetTournId);
+        }
+        if (window.openTournamentSignUpModal) {
+          window.openTournamentSignUpModal(targetTournId);
+        }
+      }, 350);
+    }
   } else {
     if (errEl) {
       errEl.innerHTML = `No player found with "${rawInput}". <a href="#" style="color: var(--accent); text-decoration: underline; font-weight: bold;" onclick="window.switchAuthMode('signup')">Sign up as New Player</a> in 10 seconds!`;
@@ -6121,10 +6135,7 @@ window.handlePhoneSignUp = (e) => {
     errEl.style.display = "none";
   }
 
-  if (!password) {
-    showToast("Please create a password for your account.");
-    return;
-  }
+  const finalPassword = password || "volleyball123";
 
   const baseElo = rating === "AA" ? 2100 : rating === "A" ? 1800 : rating === "B" ? 1550 : 1350;
   const newPlayerId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') 
@@ -6136,7 +6147,7 @@ window.handlePhoneSignUp = (e) => {
     nickname: name.split(" ")[0],
     gender,
     phoneNumber: phone,
-    password,
+    password: finalPassword,
     rating,
     eloRating: baseElo,
     homeBeach,
@@ -6167,6 +6178,19 @@ window.handlePhoneSignUp = (e) => {
   renderLadder();
   renderMatches();
   showToast(`Welcome to Volleyball Match, ${newPlayer.name}! 🏐`);
+
+  if (window.pendingTournamentSignUpId) {
+    const targetTournId = window.pendingTournamentSignUpId;
+    window.pendingTournamentSignUpId = null;
+    setTimeout(() => {
+      if (window.openTournamentDetail) {
+        window.openTournamentDetail(targetTournId);
+      }
+      if (window.openTournamentSignUpModal) {
+        window.openTournamentSignUpModal(targetTournId);
+      }
+    }, 350);
+  }
 };
 
 window.handleLogout = () => {
@@ -7280,9 +7304,6 @@ export function handleIncomingGameRoute() {
       if (banner && link) {
         link.href = `setgames://tournament?id=${targetTournamentId}`;
         banner.style.display = "flex";
-        setTimeout(() => {
-          window.location.href = `setgames://tournament?id=${targetTournamentId}`;
-        }, 300);
       }
     }
 
@@ -7334,10 +7355,6 @@ export function handleIncomingGameRoute() {
     if (banner && link) {
       link.href = `setgames://game?id=${targetGameId}`;
       banner.style.display = "flex";
-      // Gentle attempt to open native iOS app
-      setTimeout(() => {
-        window.location.href = `setgames://game?id=${targetGameId}`;
-      }, 300);
     }
   }
 
@@ -12309,11 +12326,24 @@ window.removeTournamentFreeAgent = function(tournamentId, playerId) {
 
 window.openTournamentSignUpModal = function(tournamentId) {
   if (!state.currentUser) {
-    showToast("Please log in first to sign up!");
-    window.openAuthModal();
+    window.pendingTournamentSignUpId = tournamentId;
+    showToast("Please sign up or log in first to register!");
+    window.showAuthModal();
+    window.switchAuthMode("signup");
     return;
   }
   window.signUpTournamentId = tournamentId;
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === targetId) ||
+    (item.rawId && String(item.rawId).trim() === targetId)
+  );
+  if (t) {
+    const allowed = t.allowedDivisions && t.allowedDivisions.length > 0 ? t.allowedDivisions : DIVISION_CONFIG.map(c => c.name);
+    if (!window.activeTournamentDivision || !allowed.includes(window.activeTournamentDivision)) {
+      window.activeTournamentDivision = allowed[0];
+    }
+  }
   const modal = document.getElementById("tournament-signup-modal");
   if (!modal) return;
   modal.classList.add("active");
@@ -12343,7 +12373,11 @@ window.renderTournamentSignUpBody = function() {
   );
   if (!t) return;
 
-  const currentDiv = window.activeTournamentDivision || "2v2 Coed Novice";
+  const allowed = t.allowedDivisions && t.allowedDivisions.length > 0 ? t.allowedDivisions : DIVISION_CONFIG.map(c => c.name);
+  if (!window.activeTournamentDivision || !allowed.includes(window.activeTournamentDivision)) {
+    window.activeTournamentDivision = allowed[0];
+  }
+  const currentDiv = window.activeTournamentDivision || allowed[0] || "2v2 Coed Novice";
   const user = state.currentUser;
   const divConf = DIVISION_CONFIG.find(c => c.name === currentDiv) || { teamSize: 2 };
   const is4v4 = (divConf.teamSize === 4 || currentDiv.includes("4v4") || getEffectiveTournamentFormat(t) === "4v4");
@@ -12361,8 +12395,9 @@ window.renderTournamentSignUpBody = function() {
   }).sort((a, b) => a.name.localeCompare(b.name));
 
   const partnerOption = (partners, selectId) => `
-    <select id="${selectId}" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;">
+    <select id="${selectId}" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="const g = document.getElementById('${selectId}-guest'); if (g) g.style.display = (this.value === '__guest__' ? 'block' : 'none');">
       <option value="">-- Looking for Teammate / TBD --</option>
+      <option value="__guest__">➕ Enter Unregistered / Guest Teammate...</option>
       ${partners.map(p => {
         const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
         const firstName = (p.name || "").split(/\s+/)[0] || "";
@@ -12371,6 +12406,7 @@ window.renderTournamentSignUpBody = function() {
         return `<option value="${p.id}">${name}${pNick}${pPhone} (${p.gender ? p.gender.toUpperCase() : '?'}, Rating: ${p.rating || 'Novice'})</option>`;
       }).join('')}
     </select>
+    <input type="text" id="${selectId}-guest" placeholder="Enter teammate's full name (Guest / Unregistered)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
   `;
 
   container.innerHTML = `
@@ -12383,6 +12419,14 @@ window.renderTournamentSignUpBody = function() {
           <span style="font-size: 11px; font-weight: 800; color: #0891b2; background: rgba(8,145,178,0.1); padding: 2px 8px; border-radius: 20px;">${is4v4 ? '🏐 4v4 Quads' : '👥 2v2 Doubles'}</span>
           ${isNovice ? '<span style="font-size: 10px; font-weight: 800; color: #16a34a; background: rgba(22,163,74,0.15); padding: 2px 8px; border-radius: 20px;">🛡️ Anti-Sandbagging Active</span>' : ''}
         </div>
+        ${allowed.length > 1 ? `
+          <div style="margin-top: 10px; border-top: 1px solid var(--border, #e2e8f0); padding-top: 8px;">
+            <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase;">Change Division</label>
+            <select class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 4px; font-weight: 700;" onchange="window.activeTournamentDivision = this.value; window.renderTournamentSignUpBody();">
+              ${allowed.map(d => `<option value="${d}" ${d === currentDiv ? 'selected' : ''}>${d}</option>`).join('')}
+            </select>
+          </div>
+        ` : ''}
       </div>
 
       <!-- Registration Type Toggle -->
@@ -12460,9 +12504,40 @@ window.submitTournamentTeamRegistration = function(e) {
   if (!t || !state.currentUser) return;
 
   const teamName = document.getElementById("tourn-team-name")?.value.trim() || `Team ${state.currentUser.name}`;
-  const partnerId = document.getElementById("tourn-partner-select")?.value || null;
-  const partner3Id = document.getElementById("tourn-partner3-select")?.value || null;
-  const partner4Id = document.getElementById("tourn-partner4-select")?.value || null;
+
+  const resolveTeammateId = (selectId) => {
+    const val = document.getElementById(selectId)?.value || null;
+    if (!val) return null;
+    if (val === "__guest__") {
+      const gName = document.getElementById(`${selectId}-guest`)?.value.trim();
+      if (gName) {
+        let guestP = (state.players || []).find(p => p.name.toLowerCase() === gName.toLowerCase());
+        if (!guestP) {
+          guestP = {
+            id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') 
+              ? crypto.randomUUID().toUpperCase() 
+              : deterministicUUID("guest-" + Date.now() + "-" + selectId),
+            name: gName,
+            nickname: gName.split(" ")[0],
+            rating: isNovice ? "Novice" : "Intermediate",
+            gender: "Coed",
+            phoneNumber: "",
+            isUnregistered: true
+          };
+          state.players.push(guestP);
+          state.saveLocal();
+          savePlayerToFirestore(guestP);
+        }
+        return guestP.id;
+      }
+      return null;
+    }
+    return val;
+  };
+
+  const partnerId = resolveTeammateId("tourn-partner-select");
+  const partner3Id = resolveTeammateId("tourn-partner3-select");
+  const partner4Id = resolveTeammateId("tourn-partner4-select");
   const currentDiv = window.activeTournamentDivision || "2v2 Coed Novice";
   const isNovice = currentDiv.toLowerCase().includes("novice");
 
@@ -12578,7 +12653,7 @@ window.submitTournamentFreeAgentRegistration = function(e) {
 window.openCreateTournamentModal = function() {
   if (!state.currentUser) {
     showToast("Please log in first to host a tournament!");
-    window.openAuthModal();
+    window.showAuthModal();
     return;
   }
   const modal = document.getElementById("create-tournament-modal");
