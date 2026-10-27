@@ -456,65 +456,87 @@ public struct TournamentDetailView: View {
         VStack(spacing: 20) {
             // Generator Card (if no pools exist or host wants to re-generate)
             if !hasPools {
-                VStack(spacing: 12) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 36))
-                        .foregroundColor(.cyan)
-                    
-                    Text("Auto Pool Play Generator")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    
-                    Text("Divides the \(divisionTeams.count) registered teams into Pool A & Pool B using Elo snake-seeding and creates all round-robin matchups.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                    
-                    Button {
-                        dataManager.generatePoolPlay(tournamentId: t.id, division: division)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "wand.and.stars")
-                            Text("Generate Pools (Snake Seeding)")
-                                .fontWeight(.bold)
-                        }
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(divisionTeams.count >= 4 ? Color.cyan : Color.gray.opacity(0.4))
-                        .cornerRadius(12)
-                    }
-                    .disabled(divisionTeams.count < 4)
-                    
-                    if divisionTeams.count < 4 {
-                        Text("At least 4 teams required to seed pool play.")
-                            .font(.caption2)
-                            .foregroundColor(.orange)
+                if isHostOrAdmin {
+                    VStack(spacing: 12) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 36))
+                            .foregroundColor(.cyan)
+                        
+                        Text("Auto Pool Play Generator")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        Text("Divides the \(divisionTeams.count) registered teams into Pool A & Pool B using Elo snake-seeding and creates all round-robin matchups.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                         
                         Button {
-                            dataManager.addDemoTeams(tournamentId: t.id, division: division)
+                            dataManager.generatePoolPlay(tournamentId: t.id, division: division)
                         } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "bolt.fill")
-                                Text("Quick-Add 4 Demo Teams")
+                            HStack(spacing: 6) {
+                                Image(systemName: "wand.and.stars")
+                                Text("Generate Pools (Snake Seeding)")
+                                    .fontWeight(.bold)
                             }
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.cyan)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.cyan.opacity(0.12))
-                            .cornerRadius(8)
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(divisionTeams.count >= 4 ? Color.cyan : Color.gray.opacity(0.4))
+                            .cornerRadius(12)
                         }
-                        .padding(.top, 4)
+                        .disabled(divisionTeams.count < 4)
+                        
+                        if divisionTeams.count < 4 {
+                            Text("At least 4 teams required to seed pool play.")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                            
+                            Button {
+                                dataManager.addDemoTeams(tournamentId: t.id, division: division)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "bolt.fill")
+                                    Text("Quick-Add 4 Demo Teams")
+                                }
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.cyan.opacity(0.12))
+                                .cornerRadius(8)
+                            }
+                            .padding(.top, 4)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(24)
+                    .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                    .cornerRadius(18)
+                    .padding(.horizontal)
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.badge.checkmark")
+                            .font(.system(size: 36))
+                            .foregroundColor(.orange)
+                        
+                        Text("Pool Play Not Yet Generated")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        Text("The tournament host will seed and generate pool play matchups once team registration is complete.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(24)
+                    .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                    .cornerRadius(18)
+                    .padding(.horizontal)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(24)
-                .background(Color(red: 0.11, green: 0.13, blue: 0.18))
-                .cornerRadius(18)
-                .padding(.horizontal)
             } else {
                 // Host Pools Status Dashboard
                 poolStatusDashboardView(t: t, division: division, poolAMatches: poolAMatches, poolBMatches: poolBMatches)
@@ -525,9 +547,9 @@ public struct TournamentDetailView: View {
                 // Standings for Pool B
                 poolSectionView(t: t, division: division, poolName: poolBName, matches: poolBMatches)
                 
-                // Advance to Playoff Bracket Button
+                // Advance to Playoff Bracket Button (Host only)
                 let bracketMatches = t.bracketMatches(for: division)
-                if bracketMatches.isEmpty {
+                if bracketMatches.isEmpty && isHostOrAdmin {
                     VStack(spacing: 8) {
                         Text("Ready for Single Elimination Playoffs?")
                             .font(.subheadline)
@@ -1144,20 +1166,22 @@ public struct TournamentDetailView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                     
-                    Button {
-                        dataManager.generatePlayoffBracket(tournamentId: t.id, division: division)
-                    } label: {
-                        HStack {
-                            Image(systemName: "sparkles")
-                            Text("Generate Single Elimination Bracket")
-                                .fontWeight(.bold)
+                    if isHostOrAdmin {
+                        Button {
+                            dataManager.generatePlayoffBracket(tournamentId: t.id, division: division)
+                        } label: {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                Text("Generate Single Elimination Bracket")
+                                    .fontWeight(.bold)
+                            }
+                            .font(.footnote)
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.orange)
+                            .cornerRadius(10)
                         }
-                        .font(.footnote)
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(Color.orange)
-                        .cornerRadius(10)
                     }
                 }
                 .padding(24)

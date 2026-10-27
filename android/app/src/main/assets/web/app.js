@@ -10275,7 +10275,7 @@ window.renderTournamentDetail = function() {
             </div>
           </div>
 
-          ${allPoolsComplete && bracketMatches.length === 0 ? `
+          ${(allPoolsComplete && bracketMatches.length === 0 && isHost) ? `
             <div style="margin-top: 12px; padding: 10px; border-radius: 10px; background: rgba(22,163,74,0.08); border: 1px solid rgba(22,163,74,0.25); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
               <div style="font-size: 12px; font-weight: 700; color: #15803d;">
                 🎉 All pool games finished! Ready to seed playoffs.
@@ -10349,7 +10349,7 @@ window.renderTournamentDetail = function() {
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 14px;">
         ${renderScheduleEstimateCardHTML()}
-        ${!hasPools ? `
+        ${!hasPools ? (isHost ? `
           <div style="text-align: center; padding: 24px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
             <div style="font-size: 32px; margin-bottom: 6px;">🏊</div>
             <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 15px;">Auto Pool Play Generator</div>
@@ -10367,11 +10367,19 @@ window.renderTournamentDetail = function() {
             ` : ''}
           </div>
         ` : `
+          <div style="text-align: center; padding: 24px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
+            <div style="font-size: 32px; margin-bottom: 6px;">⏳</div>
+            <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 15px;">Pool Play Not Yet Generated</div>
+            <div style="font-size: 12px; color: var(--text-muted, #64748b); max-width: 360px; margin: 4px auto 0 auto; line-height: 1.4;">
+              The tournament host will seed and generate pool play matchups once team registration is complete.
+            </div>
+          </div>
+        `) : `
           ${renderPoolStatusDashboard()}
           ${renderStandingsTable(poolAName, standingsA, poolAMatches)}
           ${renderStandingsTable(poolBName, standingsB, poolBMatches)}
 
-          ${bracketMatches.length === 0 ? `
+          ${(isHost && bracketMatches.length === 0) ? `
             <div style="text-align: center; padding: 18px; background: rgba(234,88,12,0.06); border: 1px solid rgba(234,88,12,0.2); border-radius: 14px; margin-top: 6px;">
               <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 14px;">Ready for Single Elimination Playoffs?</div>
               <div style="font-size: 12px; color: var(--text-muted, #64748b); margin: 2px 0 10px 0;">${t.playoffAdvanceMode === 'top_teams' ? 'Top 2 teams from each pool advance to the Semifinals!' : 'Every team advances to the single-elimination playoff bracket seeded by pool finish!'}</div>
@@ -10415,9 +10423,11 @@ window.renderTournamentDetail = function() {
             <div style="font-size: 12px; color: var(--text-muted, #64748b); max-width: 360px; margin: 4px auto 12px auto; line-height: 1.4;">
               ${t.playoffAdvanceMode === 'top_teams' ? 'Complete pool play matches first. Top 2 teams from each pool advance directly to the Semifinals!' : 'Complete pool play matches first. Every single team advances to the single-elimination playoff bracket!'}
             </div>
-            <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 800; font-size: 13px;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
-              ✨ Generate Single Elimination Bracket
-            </button>
+            ${isHost ? `
+              <button type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 800; font-size: 13px;" onclick="window.generatePlayoffBracket('${t.id}', '${currentDiv}')">
+                ✨ Generate Single Elimination Bracket
+              </button>
+            ` : ''}
           </div>
         ` : `
           ${champTeam ? `
@@ -10880,6 +10890,16 @@ window.addDemoTournamentTeams = function(tournamentId, division, count = 4) {
     (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
   );
   if (!t) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can add demo teams.");
+    return;
+  }
+
   t.teams = t.teams || [];
   const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
   const currentDivTeams = t.teams.filter(tm => isSameDiv(tm.division, division));
@@ -10975,6 +10995,21 @@ window.promptAddDemoTeams = function(tournamentId, division) {
 };
 
 window.regeneratePoolPlay = function(tournamentId, division) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
+  );
+  if (!t) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can re-generate pool play.");
+    return;
+  }
+
   if (!confirm(`Re-generate pool play for ${division}? Existing pool match scores will be reset.`)) {
     return;
   }
@@ -10982,14 +11017,24 @@ window.regeneratePoolPlay = function(tournamentId, division) {
 };
 
 window.removePoolPlay = function(tournamentId, division) {
-  if (!confirm(`Are you sure you want to remove pool play for ${division}? All pool matches, scores, and standings will be deleted.`)) {
-    return;
-  }
   const t = (state.tournaments || []).find(item => 
     (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
     (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
   );
   if (!t) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can remove pool play.");
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to remove pool play for ${division}? All pool matches, scores, and standings will be deleted.`)) {
+    return;
+  }
   const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 
   // 1. Clear poolName and poolSeed from teams in this division
@@ -11126,6 +11171,15 @@ window.generatePoolPlay = function(tournamentId, division) {
   );
   if (!t) return;
 
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can generate pool play.");
+    return;
+  }
+
   const isSameDiv = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
   const divTeams = (t.teams || []).filter(tm => isSameDiv(tm.division, division));
   if (divTeams.length < 4) {
@@ -11191,6 +11245,16 @@ window.openEditPoolsModal = function(tournamentId, division) {
     (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
   );
   if (!t) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can edit pools.");
+    return;
+  }
+
   window.activeEditPoolsTournamentId = t.id;
   window.activeEditPoolsDivision = division;
 
@@ -11338,6 +11402,15 @@ window.generatePlayoffBracket = function(tournamentId, division, advanceMode) {
     (item.rawId && String(item.rawId).trim() === String(tournamentId).trim())
   );
   if (!t) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can generate the playoff bracket.");
+    return;
+  }
 
   if (advanceMode) {
     t.playoffAdvanceMode = advanceMode;
@@ -11968,6 +12041,15 @@ window.openManualAddTeamModal = function(tournamentId, division) {
   );
   if (!t) return;
 
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can manually add teams.");
+    return;
+  }
+
   window.activeManualTeamTournId = t.id;
   window.activeManualTeamId = null;
 
@@ -12052,6 +12134,21 @@ window.openEditTeamModal = function(tournamentId, teamId) {
 
   const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
   if (!team) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  const isMember = currentUserId && (
+    isSamePlayer(team.player1Id, currentUserId) ||
+    isSamePlayer(team.player2Id, currentUserId) ||
+    isSamePlayer(team.player3Id, currentUserId) ||
+    isSamePlayer(team.player4Id, currentUserId)
+  );
+  if (!isHost && !isMember) {
+    showToast("Only the tournament host, co-host, or team members can edit this team.");
+    return;
+  }
 
   window.activeManualTeamTournId = t.id;
   window.activeManualTeamId = team.id;

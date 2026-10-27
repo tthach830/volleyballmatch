@@ -2559,6 +2559,9 @@ public class DataManager: ObservableObject {
         count: Int = 4
     ) {
         guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        let t = tournaments[idx]
+        let isHostOrAdmin = (currentUser?.isRoot == true) || t.isHostOrCoHost(currentUser?.id)
+        guard isHostOrAdmin else { return }
         let currentTeams = tournaments[idx].teams.filter { $0.division == division }
         let currentCount = currentTeams.count
         
@@ -2803,6 +2806,12 @@ public class DataManager: ObservableObject {
             return (false, "Tournament not found.")
         }
         
+        let t = tournaments[tIdx]
+        let isHostOrAdmin = (currentUser?.isRoot == true) || t.isHostOrCoHost(currentUser?.id)
+        guard isHostOrAdmin else {
+            return (false, "Only the tournament host or co-host can generate pool play.")
+        }
+        
         var divTeams = tournaments[tIdx].teams.filter { $0.division == division }
         guard divTeams.count >= 4 else {
             return (false, "At least 4 teams are required to generate pool play.")
@@ -2899,6 +2908,9 @@ public class DataManager: ObservableObject {
         division: TournamentDivisionCategory
     ) {
         guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
+        let t = tournaments[tIdx]
+        let isHostOrAdmin = (currentUser?.isRoot == true) || t.isHostOrCoHost(currentUser?.id)
+        guard isHostOrAdmin else { return }
         
         for i in 0..<tournaments[tIdx].teams.count {
             if tournaments[tIdx].teams[i].division == division {
@@ -3038,11 +3050,15 @@ public class DataManager: ObservableObject {
             return (false, "Tournament not found.")
         }
         
+        let t = tournaments[tIdx]
+        let isHostOrAdmin = (currentUser?.isRoot == true) || t.isHostOrCoHost(currentUser?.id)
+        guard isHostOrAdmin else {
+            return (false, "Only the tournament host or co-host can generate the playoff bracket.")
+        }
+        
         if let mode = advanceMode {
             tournaments[tIdx].playoffAdvanceMode = mode
         }
-        
-        let t = tournaments[tIdx]
         let poolAStandings = t.poolStandings(for: division, poolName: "Pool A")
         let poolBStandings = t.poolStandings(for: division, poolName: "Pool B")
         let totalTeams = poolAStandings.count + poolBStandings.count
