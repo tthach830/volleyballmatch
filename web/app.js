@@ -10516,11 +10516,6 @@ window.renderTournamentDetail = function() {
             </div>
             ${isHost ? `
               <div style="display: flex; gap: 6px;">
-                ${divTeams.length > 0 ? `
-                  <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 8px; color: #ef4444; border-color: #fca5a5;" onclick="window.clearTournamentDivisionRosters('${t.id}', '${currentDiv}')">
-                    🗑️ Clear Rosters
-                  </button>
-                ` : ''}
                 <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 8px;" onclick="window.promptAddDemoTeams('${t.id}', '${currentDiv}')">
                   🧪 Demo Teams
                 </button>

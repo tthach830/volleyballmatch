@@ -1362,23 +1362,6 @@ public struct TournamentDetailView: View {
                     Spacer()
                     if isHostOrAdmin {
                         HStack(spacing: 8) {
-                            if !divisionTeams.isEmpty {
-                                Button {
-                                    showClearRostersAlert = true
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "trash")
-                                        Text("Clear Rosters")
-                                    }
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(.red)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(Color.red.opacity(0.15))
-                                    .cornerRadius(8)
-                                }
-                            }
-
                             Button {
                                 dataManager.addDemoTeams(tournamentId: t.id, division: division, count: 4)
                             } label: {
