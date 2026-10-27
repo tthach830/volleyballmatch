@@ -53,6 +53,13 @@ public struct TournamentDetailView: View {
     public init(dataManager: DataManager, tournamentId: UUID) {
         self.dataManager = dataManager
         self.tournamentId = tournamentId
+        
+        let initialTourn = dataManager.tournaments.first(where: { 
+            $0.id == tournamentId || 
+            ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(tournamentId.uuidString) == .orderedSame)
+        })
+        let defaultDiv = initialTourn?.allowedDivisions.first ?? .coedNovice2v2
+        _selectedDivision = State(initialValue: defaultDiv)
     }
     
     private var tournament: Tournament? {

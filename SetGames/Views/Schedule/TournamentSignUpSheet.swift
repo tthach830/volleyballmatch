@@ -111,8 +111,9 @@ public struct TournamentSignUpSheet: View {
                         
                         // Division Options Grid/List
                         VStack(spacing: 10) {
-                            ForEach(TournamentDivisionCategory.allCases) { div in
-                                let isOffered = tournament.allowedDivisions.contains(div)
+                            let availableDivs = tournament.allowedDivisions.isEmpty ? TournamentDivisionCategory.allCases : tournament.allowedDivisions
+                            ForEach(availableDivs) { div in
+                                let isOffered = tournament.allowedDivisions.isEmpty || tournament.allowedDivisions.contains(div)
                                 let isSelected = selectedDivision == div
                                 
                                 Button {
