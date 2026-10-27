@@ -26,6 +26,9 @@ public struct TournamentSignUpSheet: View {
     @State private var selectedPartner: Player? = nil
     @State private var selectedPartner2: Player? = nil
     @State private var selectedPartner3: Player? = nil
+    @State private var partner2ManualName: String = ""
+    @State private var partner3ManualName: String = ""
+    @State private var partner4ManualName: String = ""
     @State private var freeAgentNotes: String = ""
     @State private var activePartnerPickerSlot: ActivePartnerPickerSlot? = nil
     @State private var partnerSearchQuery: String = ""
@@ -239,160 +242,37 @@ public struct TournamentSignUpSheet: View {
                             }
                             .padding(.horizontal)
                             
-                            // Partner Selection
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Your Partner")
-                                    .font(.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.secondary)
-                                
-                                if let partner = selectedPartner {
-                                    HStack(spacing: 12) {
-                                        PlayerAvatarView(player: partner, dimension: 40)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(partner.displayName)
-                                                .font(.headline)
-                                                .foregroundColor(.white)
-                                            Text("\(partner.gender.capitalized) • Rating: \(partner.rating.rawValue)")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        Spacer()
-                                        Button("Change") {
-                                            activePartnerPickerSlot = .teammate2
-                                        }
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                    }
-                                    .padding(12)
-                                    .background(Color(red: 0.12, green: 0.14, blue: 0.19))
-                                    .cornerRadius(14)
-                                } else {
-                                    Button {
-                                        activePartnerPickerSlot = .teammate2
-                                    } label: {
-                                        HStack(spacing: 10) {
-                                            Image(systemName: "person.badge.plus")
-                                                .font(.headline)
-                                            Text("Select Partner from Beach Directory")
-                                                .fontWeight(.bold)
-                                            Spacer()
-                                            Image(systemName: "chevron.right")
-                                        }
-                                        .font(.footnote)
-                                        .foregroundColor(.cyan)
-                                        .padding(14)
-                                        .frame(maxWidth: .infinity)
-                                        .background(Color.cyan.opacity(0.12))
-                                        .cornerRadius(14)
-                                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cyan.opacity(0.3), lineWidth: 1))
-                                    }
-                                }
-                            }
+                            // Partner Selection (Teammate 2)
+                            PartnerSlotCard(
+                                title: "Your Partner (Teammate 2)",
+                                selectedPlayer: $selectedPartner,
+                                manualName: $partner2ManualName,
+                                onOpenDirectory: { activePartnerPickerSlot = .teammate2 },
+                                defaultRating: selectedDivision.isNovice ? .novice : .intermediate,
+                                dataManager: dataManager
+                            )
                             .padding(.horizontal)
                             
                             // Additional teammates for 4v4 Quads
                             if selectedDivision.isQuads {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Teammate 3")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.secondary)
-                                    
-                                    if let partner2 = selectedPartner2 {
-                                        HStack(spacing: 12) {
-                                            PlayerAvatarView(player: partner2, dimension: 40)
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(partner2.displayName)
-                                                    .font(.headline)
-                                                    .foregroundColor(.white)
-                                                Text("\(partner2.gender.capitalized) • Rating: \(partner2.rating.rawValue)")
-                                                    .font(.caption2)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            Spacer()
-                                            Button("Change") {
-                                                activePartnerPickerSlot = .teammate3
-                                            }
-                                            .font(.caption)
-                                            .foregroundColor(.orange)
-                                        }
-                                        .padding(12)
-                                        .background(Color(red: 0.12, green: 0.14, blue: 0.19))
-                                        .cornerRadius(14)
-                                    } else {
-                                        Button {
-                                            activePartnerPickerSlot = .teammate3
-                                        } label: {
-                                            HStack(spacing: 10) {
-                                                Image(systemName: "person.badge.plus")
-                                                    .font(.headline)
-                                                Text("Select Teammate 3")
-                                                    .fontWeight(.bold)
-                                                Spacer()
-                                                Image(systemName: "chevron.right")
-                                            }
-                                            .font(.footnote)
-                                            .foregroundColor(.cyan)
-                                            .padding(14)
-                                            .frame(maxWidth: .infinity)
-                                            .background(Color.cyan.opacity(0.12))
-                                            .cornerRadius(14)
-                                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cyan.opacity(0.3), lineWidth: 1))
-                                        }
-                                    }
-                                }
+                                PartnerSlotCard(
+                                    title: "Teammate 3",
+                                    selectedPlayer: $selectedPartner2,
+                                    manualName: $partner3ManualName,
+                                    onOpenDirectory: { activePartnerPickerSlot = .teammate3 },
+                                    defaultRating: selectedDivision.isNovice ? .novice : .intermediate,
+                                    dataManager: dataManager
+                                )
                                 .padding(.horizontal)
                                 
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Teammate 4")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.secondary)
-                                    
-                                    if let partner3 = selectedPartner3 {
-                                        HStack(spacing: 12) {
-                                            PlayerAvatarView(player: partner3, dimension: 40)
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(partner3.displayName)
-                                                    .font(.headline)
-                                                    .foregroundColor(.white)
-                                                Text("\(partner3.gender.capitalized) • Rating: \(partner3.rating.rawValue)")
-                                                    .font(.caption2)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            Spacer()
-                                            Button("Change") {
-                                                activePartnerPickerSlot = .teammate4
-                                            }
-                                            .font(.caption)
-                                            .foregroundColor(.orange)
-                                        }
-                                        .padding(12)
-                                        .background(Color(red: 0.12, green: 0.14, blue: 0.19))
-                                        .cornerRadius(14)
-                                    } else {
-                                        Button {
-                                            activePartnerPickerSlot = .teammate4
-                                        } label: {
-                                            HStack(spacing: 10) {
-                                                Image(systemName: "person.badge.plus")
-                                                    .font(.headline)
-                                                Text("Select Teammate 4")
-                                                    .fontWeight(.bold)
-                                                Spacer()
-                                                Image(systemName: "chevron.right")
-                                            }
-                                            .font(.footnote)
-                                            .foregroundColor(.cyan)
-                                            .padding(14)
-                                            .frame(maxWidth: .infinity)
-                                            .background(Color.cyan.opacity(0.12))
-                                            .cornerRadius(14)
-                                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cyan.opacity(0.3), lineWidth: 1))
-                                        }
-                                    }
-                                }
+                                PartnerSlotCard(
+                                    title: "Teammate 4",
+                                    selectedPlayer: $selectedPartner3,
+                                    manualName: $partner4ManualName,
+                                    onOpenDirectory: { activePartnerPickerSlot = .teammate4 },
+                                    defaultRating: selectedDivision.isNovice ? .novice : .intermediate,
+                                    dataManager: dataManager
+                                )
                                 .padding(.horizontal)
                             }
                             
@@ -525,6 +405,17 @@ public struct TournamentSignUpSheet: View {
         }
         
         if registrationType == .team || registrationType == .team4 {
+            let defaultTier: RatingTier = div.isNovice ? .novice : .intermediate
+            if selectedPartner == nil && !partner2ManualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                selectedPartner = dataManager.getOrCreateGuestPlayer(name: partner2ManualName, rating: defaultTier)
+            }
+            if selectedPartner2 == nil && !partner3ManualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                selectedPartner2 = dataManager.getOrCreateGuestPlayer(name: partner3ManualName, rating: defaultTier)
+            }
+            if selectedPartner3 == nil && !partner4ManualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                selectedPartner3 = dataManager.getOrCreateGuestPlayer(name: partner4ManualName, rating: defaultTier)
+            }
+            
             // Anti-sandbagging check on teammates
             let teammates = [selectedPartner, selectedPartner2, selectedPartner3].compactMap { $0 }
             if let maxRating = div.maxAllowedRating {
@@ -667,6 +558,124 @@ struct SkillOptionButton: View {
     }
 }
 
+// MARK: - Partner Slot Card (Type Name or Pick from Directory)
+struct PartnerSlotCard: View {
+    let title: String
+    @Binding var selectedPlayer: Player?
+    @Binding var manualName: String
+    let onOpenDirectory: () -> Void
+    let defaultRating: RatingTier
+    let dataManager: DataManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(.secondary)
+            
+            if let player = selectedPlayer {
+                HStack(spacing: 12) {
+                    PlayerAvatarView(player: player, dimension: 40)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(player.displayName)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        Text("\(player.gender.capitalized) • Rating: \(player.rating.rawValue)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button("Change") {
+                        onOpenDirectory()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    
+                    Button {
+                        selectedPlayer = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(12)
+                .background(Color(red: 0.12, green: 0.14, blue: 0.19))
+                .cornerRadius(14)
+            } else {
+                VStack(spacing: 10) {
+                    // Option A: Type in player's name directly
+                    HStack(spacing: 8) {
+                        Image(systemName: "pencil")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 13))
+                        TextField("Type player's full name...", text: $manualName)
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .submitLabel(.done)
+                            .onSubmit {
+                                setManualPlayer()
+                            }
+                        
+                        if !manualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Button("Set") {
+                                setManualPlayer()
+                            }
+                            .font(.caption.bold())
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.orange)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding(10)
+                    .background(Color(red: 0.14, green: 0.16, blue: 0.22))
+                    .cornerRadius(10)
+                    
+                    // Divider
+                    HStack {
+                        Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+                        Text("OR").font(.system(size: 9, weight: .bold)).foregroundColor(.secondary)
+                        Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+                    }
+                    
+                    // Option B: Select from Beach Directory
+                    Button(action: onOpenDirectory) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "person.crop.circle.badge.plus")
+                                .font(.subheadline)
+                            Text("Select from Beach Directory")
+                                .fontWeight(.bold)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption2)
+                        }
+                        .font(.footnote)
+                        .foregroundColor(.cyan)
+                        .padding(11)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.cyan.opacity(0.12))
+                        .cornerRadius(10)
+                    }
+                }
+                .padding(12)
+                .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                .cornerRadius(14)
+            }
+        }
+    }
+    
+    private func setManualPlayer() {
+        let trimmed = manualName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        selectedPlayer = dataManager.getOrCreateGuestPlayer(name: trimmed, rating: defaultRating)
+        manualName = ""
+    }
+}
+
 // Partner Picker Sub-view
 struct PartnerPickerView: View {
     @Environment(\.dismiss) private var dismiss
@@ -676,6 +685,7 @@ struct PartnerPickerView: View {
     let onSelect: (Player) -> Void
     
     @State private var searchQuery: String = ""
+    @State private var customPlayerName: String = ""
     
     private var eligiblePlayers: [Player] {
         let currentUserId = dataManager.currentUser?.id
@@ -702,24 +712,76 @@ struct PartnerPickerView: View {
     
     var body: some View {
         NavigationStack {
-            List(eligiblePlayers) { player in
-                Button {
-                    onSelect(player)
-                } label: {
-                    HStack(spacing: 12) {
-                        PlayerAvatarView(player: player, dimension: 40)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(player.displayName)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            Text("\(player.gender.capitalized) • \(player.homeBeach) • Elo: \(player.eloRating)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+            List {
+                Section("Type Player's Name Directly") {
+                    HStack(spacing: 8) {
+                        Image(systemName: "pencil")
+                            .foregroundColor(.orange)
+                        TextField("Enter teammate's full name...", text: $customPlayerName)
+                            .submitLabel(.done)
+                            .onSubmit {
+                                addAndSelectCustom(customPlayerName)
+                            }
+                        if !customPlayerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Button("Use") {
+                                addAndSelectCustom(customPlayerName)
+                            }
+                            .font(.caption.bold())
+                            .foregroundColor(.orange)
                         }
-                        Spacer()
-                        RatingBadge(rating: player.rating)
                     }
-                    .padding(.vertical, 4)
+                }
+                
+                if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !eligiblePlayers.contains(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+                        Section("Add as Unregistered Player") {
+                            Button {
+                                addAndSelectCustom(trimmed)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "person.badge.plus")
+                                        .font(.title3)
+                                        .foregroundColor(.orange)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Use \"\(trimmed)\"")
+                                            .font(.headline)
+                                            .foregroundColor(.orange)
+                                        Text("Add as unregistered / guest player")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundColor(.orange)
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                }
+                
+                Section("Beach Directory (\(eligiblePlayers.count))") {
+                    ForEach(eligiblePlayers) { player in
+                        Button {
+                            onSelect(player)
+                        } label: {
+                            HStack(spacing: 12) {
+                                PlayerAvatarView(player: player, dimension: 40)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(player.displayName)
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("\(player.gender.capitalized) • \(player.homeBeach) • Elo: \(player.eloRating)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                RatingBadge(rating: player.rating)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
                 }
             }
             .searchable(text: $searchQuery, prompt: "Search beach players...")
@@ -731,5 +793,13 @@ struct PartnerPickerView: View {
                 }
             }
         }
+    }
+    
+    private func addAndSelectCustom(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let guest = dataManager.getOrCreateGuestPlayer(name: trimmed, rating: maxAllowedRating ?? .novice)
+        onSelect(guest)
+        dismiss()
     }
 }

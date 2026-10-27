@@ -12551,18 +12551,25 @@ window.renderTournamentSignUpBody = function() {
   }).sort((a, b) => a.name.localeCompare(b.name));
 
   const partnerOption = (partners, selectId) => `
-    <select id="${selectId}" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="const g = document.getElementById('${selectId}-guest'); if (g) g.style.display = (this.value === '__guest__' ? 'block' : 'none');">
-      <option value="">-- Looking for Teammate / TBD --</option>
-      <option value="__guest__">➕ Enter Unregistered / Guest Teammate...</option>
-      ${partners.map(p => {
-        const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
-        const firstName = (p.name || "").split(/\s+/)[0] || "";
-        const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== firstName.toLowerCase()) ? ` "${p.nickname}"` : "";
-        const pPhone = p.phoneNumber ? ` • 📞 ${window.formatPhoneNumber(p.phoneNumber)}` : "";
-        return `<option value="${p.id}">${name}${pNick}${pPhone} (${p.gender ? p.gender.toUpperCase() : '?'}, Rating: ${p.rating || 'Novice'})</option>`;
-      }).join('')}
-    </select>
-    <input type="text" id="${selectId}-guest" placeholder="Enter teammate's full name (Guest / Unregistered)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
+    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+      <select id="${selectId}" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px;" onchange="const g = document.getElementById('${selectId}-guest'); if (g) { g.style.display = (this.value === '__guest__' ? 'block' : 'none'); if (this.value === '__guest__') g.focus(); }">
+        <option value="">-- Looking for Teammate / TBD --</option>
+        <option value="__guest__">✍️ Type Teammate's Name Directly (Guest / Unregistered)...</option>
+        ${partners.map(p => {
+          const name = window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name;
+          const firstName = (p.name || "").split(/\s+/)[0] || "";
+          const pNick = (p.nickname && p.nickname.toLowerCase() !== "player" && p.nickname.toLowerCase() !== firstName.toLowerCase()) ? ` "${p.nickname}"` : "";
+          const pPhone = p.phoneNumber ? ` • 📞 ${window.formatPhoneNumber(p.phoneNumber)}` : "";
+          return `<option value="${p.id}">${name}${pNick}${pPhone} (${p.gender ? p.gender.toUpperCase() : '?'}, Rating: ${p.rating || 'Novice'})</option>`;
+        }).join('')}
+      </select>
+      <input type="text" id="${selectId}-guest" placeholder="Type teammate's full name..." class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #ea580c; display: none;">
+      <div style="display: flex; justify-content: flex-end;">
+        <button type="button" style="background: none; border: none; color: #ea580c; font-size: 11px; font-weight: 700; cursor: pointer; padding: 2px;" onclick="const s = document.getElementById('${selectId}'); const g = document.getElementById('${selectId}-guest'); if (s && g) { s.value = '__guest__'; g.style.display = 'block'; g.focus(); }">
+          ✍️ Type Player Name Instead
+        </button>
+      </div>
+    </div>
   `;
 
   container.innerHTML = `
@@ -12663,9 +12670,8 @@ window.submitTournamentTeamRegistration = function(e) {
 
   const resolveTeammateId = (selectId) => {
     const val = document.getElementById(selectId)?.value || null;
-    if (!val) return null;
-    if (val === "__guest__") {
-      const gName = document.getElementById(`${selectId}-guest`)?.value.trim();
+    const gName = document.getElementById(`${selectId}-guest`)?.value.trim();
+    if (gName || val === "__guest__") {
       if (gName) {
         let guestP = (state.players || []).find(p => p.name.toLowerCase() === gName.toLowerCase());
         if (!guestP) {

@@ -596,41 +596,76 @@ public struct GamePlayerPickerSheet: View {
     
     public var body: some View {
         NavigationStack {
-            List(eligiblePlayers) { player in
-                Button {
-                    onPlayerSelected(player)
-                    dismiss()
-                } label: {
-                    HStack(spacing: 12) {
-                        PlayerAvatarView(player: player, dimension: 42)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(formattedPlayerName(player))
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            HStack(spacing: 6) {
-                                Text(player.rating.rawValue)
-                                    .font(.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(player.rating.badgeColor)
-                                Text("•")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text(player.homeBeach.isEmpty ? "Main Beach" : player.homeBeach)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                Text("•")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text("Elo: \(player.eloRating)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+            List {
+                if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !eligiblePlayers.contains(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+                        Section("Add Guest Player") {
+                            Button {
+                                let guest = dataManager.getOrCreateGuestPlayer(name: trimmed, rating: .intermediate)
+                                onPlayerSelected(guest)
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "person.badge.plus")
+                                        .font(.title3)
+                                        .foregroundColor(.orange)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Add \"\(trimmed)\"")
+                                            .font(.headline)
+                                            .foregroundColor(.orange)
+                                        Text("Add as unregistered / guest player")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundColor(.orange)
+                                }
+                                .padding(.vertical, 2)
                             }
                         }
-                        Spacer()
-                        RatingBadge(rating: player.rating)
                     }
-                    .padding(.vertical, 4)
+                }
+                
+                Section("Players (\(eligiblePlayers.count))") {
+                    ForEach(eligiblePlayers) { player in
+                        Button {
+                            onPlayerSelected(player)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 12) {
+                                PlayerAvatarView(player: player, dimension: 42)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(formattedPlayerName(player))
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    HStack(spacing: 6) {
+                                        Text(player.rating.rawValue)
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(player.rating.badgeColor)
+                                        Text("•")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(player.homeBeach.isEmpty ? "Main Beach" : player.homeBeach)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                        Text("•")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("Elo: \(player.eloRating)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                RatingBadge(rating: player.rating)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
                 }
             }
             .searchable(text: $searchQuery, prompt: "Search player by name or nickname...")
