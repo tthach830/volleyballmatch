@@ -388,6 +388,171 @@ public struct TournamentQRCodeSheet: View {
     }
 }
 
+// MARK: - Team QR Code & Invite Sheet
+public struct TeamQRCodeSheet: View {
+    let tournament: Tournament
+    let team: TournamentTeam
+    @Environment(\.dismiss) private var dismiss
+    @State private var copiedToClipboard: Bool = false
+    
+    private var shareTitle: String {
+        "Join \(team.teamName) (\(team.division.displayName))"
+    }
+    
+    private var shareURLString: String {
+        "https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=\(tournament.id.uuidString)&teamId=\(team.id.uuidString)"
+    }
+    
+    public init(tournament: Tournament, team: TournamentTeam) {
+        self.tournament = tournament
+        self.team = team
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Team summary card
+                    VStack(spacing: 6) {
+                        Text(team.teamName)
+                            .font(.system(size: 22, weight: .bold))
+                            .multilineTextAlignment(.center)
+                        
+                        Text(tournament.title)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.orange)
+                        
+                        HStack(spacing: 6) {
+                            Text(team.division.displayName)
+                                .font(.system(size: 13, weight: .medium))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Color.orange.opacity(0.15)))
+                                .foregroundColor(.orange)
+                            if let pool = team.poolName {
+                                Text(pool)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Capsule().fill(Color.cyan.opacity(0.15)))
+                                    .foregroundColor(.cyan)
+                            }
+                        }
+                    }
+                    .padding(.top, 12)
+                    
+                    // QR Code Card
+                    VStack(spacing: 16) {
+                        if let qrImage = generateQRCodeImage(from: shareURLString) {
+                            Image(uiImage: qrImage)
+                                .interpolation(.none)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 220, height: 220)
+                                .padding(16)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
+                        } else {
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(width: 220, height: 220)
+                                .overlay(Text("Unable to generate QR code").font(.caption).foregroundColor(.secondary))
+                        }
+                        
+                        // Instructions
+                        VStack(spacing: 6) {
+                            Text("Invite Teammates to Join")
+                                .font(.system(size: 16, weight: .bold))
+                            
+                            Text("Share this link or QR code with your partner or teammates. If they don't have an account yet, they can sign up directly to join your team!")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                    
+                    // Actions
+                    VStack(spacing: 12) {
+                        // Native iOS ShareLink
+                        if let shareURL = URL(string: shareURLString) {
+                            ShareLink(
+                                item: shareURL,
+                                subject: Text("Join \(team.teamName)"),
+                                message: Text("Join my team '\(team.teamName)' for \(tournament.title)! Click the link or scan the QR code to join:")
+                            ) {
+                                Label("Share Team Invite Link", systemImage: "square.and.arrow.up")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.orange)
+                                    .foregroundColor(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+                        
+                        // Copy Link button
+                        Button(action: {
+                            UIPasteboard.general.string = shareURLString
+                            copiedToClipboard = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                copiedToClipboard = false
+                            }
+                        }) {
+                            Label(
+                                copiedToClipboard ? "Invite Link Copied!" : "Copy Invite Link",
+                                systemImage: copiedToClipboard ? "checkmark" : "doc.on.doc"
+                            )
+                            .font(.system(size: 15, weight: .medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .foregroundColor(.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Direct URL preview
+                    Text(shareURLString)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .padding(.horizontal, 30)
+                        .padding(.bottom, 20)
+                }
+            }
+            .navigationTitle("Team Invite")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func generateQRCodeImage(from string: String) -> UIImage? {
+        let data = Data(string.utf8)
+        guard let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        filter.setValue(data, forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        
+        guard let outputImage = filter.outputImage else { return nil }
+        let transform = CGAffineTransform(scaleX: 10, y: 10)
+        let scaledImage = outputImage.transformed(by: transform)
+        
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+}
+
 // MARK: - Game Player Picker Sheet (Host / Admin manual player addition)
 public struct GamePlayerPickerSheet: View {
     @Environment(\.dismiss) private var dismiss

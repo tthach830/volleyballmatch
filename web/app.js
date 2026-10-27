@@ -6074,7 +6074,18 @@ window.handlePhoneLogin = (e) => {
     renderMatches();
     showToast(`Welcome back, ${player.nickname || player.name}!`);
 
-    if (window.pendingTournamentSignUpId) {
+    if (window.pendingJoinTeam) {
+      const { tournamentId, teamId } = window.pendingJoinTeam;
+      window.pendingJoinTeam = null;
+      setTimeout(() => {
+        if (window.openTournamentDetail) {
+          window.openTournamentDetail(tournamentId);
+        }
+        if (window.joinTournamentTeam) {
+          window.joinTournamentTeam(tournamentId, teamId);
+        }
+      }, 350);
+    } else if (window.pendingTournamentSignUpId) {
       const targetTournId = window.pendingTournamentSignUpId;
       window.pendingTournamentSignUpId = null;
       setTimeout(() => {
@@ -6179,7 +6190,18 @@ window.handlePhoneSignUp = (e) => {
   renderMatches();
   showToast(`Welcome to Volleyball Match, ${newPlayer.name}! 🏐`);
 
-  if (window.pendingTournamentSignUpId) {
+  if (window.pendingJoinTeam) {
+    const { tournamentId, teamId } = window.pendingJoinTeam;
+    window.pendingJoinTeam = null;
+    setTimeout(() => {
+      if (window.openTournamentDetail) {
+        window.openTournamentDetail(tournamentId);
+      }
+      if (window.joinTournamentTeam) {
+        window.joinTournamentTeam(tournamentId, teamId);
+      }
+    }, 350);
+  } else if (window.pendingTournamentSignUpId) {
     const targetTournId = window.pendingTournamentSignUpId;
     window.pendingTournamentSignUpId = null;
     setTimeout(() => {
@@ -7293,6 +7315,7 @@ window.openTournamentQRCodeModal = (tournamentId) => {
 export function handleIncomingGameRoute() {
   const params = new URLSearchParams(window.location.search);
   const targetTournamentId = params.get("tournamentId") || params.get("tournId");
+  const targetTeamId = params.get("teamId") || params.get("team") || params.get("joinTeam");
   const targetGameId = params.get("gameId") || params.get("id") || params.get("join");
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -7302,7 +7325,9 @@ export function handleIncomingGameRoute() {
       const banner = document.getElementById("ios-app-banner");
       const link = document.getElementById("ios-app-link");
       if (banner && link) {
-        link.href = `setgames://tournament?id=${targetTournamentId}`;
+        link.href = targetTeamId 
+          ? `setgames://tournament?id=${targetTournamentId}&teamId=${targetTeamId}`
+          : `setgames://tournament?id=${targetTournamentId}`;
         banner.style.display = "flex";
       }
     }
@@ -7316,6 +7341,26 @@ export function handleIncomingGameRoute() {
 
       if (window.openTournamentDetail) {
         window.openTournamentDetail(tourn.id || targetTournamentId);
+      }
+
+      if (targetTeamId) {
+        const team = (tourn.teams || []).find(tm => isSamePlayer(tm.id, targetTeamId));
+        if (team) {
+          window.activeTournamentDivision = team.division;
+          window.activeTournamentSubTab = "roster";
+          if (window.renderTournamentDetail) {
+            window.renderTournamentDetail();
+          }
+
+          if (!state.currentUser) {
+            window.pendingJoinTeam = { tournamentId: tourn.id, teamId: team.id };
+            showToast(`Sign up or log in to join ${team.teamName}!`);
+            window.showAuthModal();
+            window.switchAuthMode("signup");
+          } else {
+            window.joinTournamentTeam(tourn.id, team.id);
+          }
+        }
       }
 
       setTimeout(() => {
@@ -10501,14 +10546,25 @@ window.renderTournamentDetail = function() {
                 const p2Name = p2 ? getPlayerDisplayName(p2) : null;
                 const p3Name = p3 ? getPlayerDisplayName(p3) : null;
                 const p4Name = p4 ? getPlayerDisplayName(p4) : null;
-                const playerLine1 = `${p1?.avatarEmoji || '🏐'} ${p1Name} & ${p2 ? `${p2.avatarEmoji || '🏐'} ${p2Name}` : '<i style="color: #ea580c;">Looking for partner</i>'}`;
-                const playerLine2 = is4v4 ? `${p3 ? `${p3.avatarEmoji || '🏐'} ${p3Name}` : '<i style="color: #ea580c;">+ Open Spot</i>'} & ${p4 ? `${p4.avatarEmoji || '🏐'} ${p4Name}` : '<i style="color: #ea580c;">+ Open Spot</i>'}` : '';
                 const isMyTeam = state.currentUser && (
                   isSamePlayer(team.player1Id, state.currentUser.id) ||
                   isSamePlayer(team.player2Id, state.currentUser.id) ||
                   isSamePlayer(team.player3Id, state.currentUser.id) ||
                   isSamePlayer(team.player4Id, state.currentUser.id)
                 );
+                const canInvite = isHost || isMyTeam;
+                const openPartnerHTML = canInvite 
+                  ? `<i style="color: #ea580c; cursor: pointer; text-decoration: underline;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite a teammate">Looking for partner (Tap to Invite)</i>`
+                  : `<i style="color: #ea580c;">Looking for partner</i>`;
+                const openSpot3HTML = canInvite 
+                  ? `<i style="color: #ea580c; cursor: pointer; text-decoration: underline;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite a teammate">+ Open Spot (Tap to Invite)</i>`
+                  : `<i style="color: #ea580c;">+ Open Spot</i>`;
+                const openSpot4HTML = canInvite 
+                  ? `<i style="color: #ea580c; cursor: pointer; text-decoration: underline;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite a teammate">+ Open Spot (Tap to Invite)</i>`
+                  : `<i style="color: #ea580c;">+ Open Spot</i>`;
+                const playerLine1 = `${p1?.avatarEmoji || '🏐'} ${p1Name} & ${p2 ? `${p2.avatarEmoji || '🏐'} ${p2Name}` : openPartnerHTML}`;
+                const playerLine2 = is4v4 ? `${p3 ? `${p3.avatarEmoji || '🏐'} ${p3Name}` : openSpot3HTML} & ${p4 ? `${p4.avatarEmoji || '🏐'} ${p4Name}` : openSpot4HTML}` : '';
+
                 return `
                   <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 10px 14px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -10527,7 +10583,10 @@ window.renderTournamentDetail = function() {
                       </div>
                     </div>
                     <div style="display: flex; gap: 6px; align-items: center;">
-                      ${(isHost || isMyTeam) ? `
+                      ${canInvite ? `
+                        <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite Teammates via Link">
+                          🔗 Invite
+                        </button>
                         <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px;" onclick="window.openEditTeamModal('${t.id}', '${team.id}')" title="Edit Team & Players">
                           ✏️ Edit
                         </button>
@@ -12699,9 +12758,130 @@ window.submitTournamentTeamRegistration = function(e) {
   saveTournamentToFirestore(t);
   pushTournamentsToDevice();
 
-  showToast(`🎉 Registered for ${currentDiv}!`);
   window.closeTournamentSignUpModal();
   window.renderTournamentDetail();
+  window.renderTournamentsList();
+
+  const is4v4 = (currentDiv.includes("4v4") || getEffectiveTournamentFormat(t) === "4v4");
+  const hasOpenSpots = !partnerId || (is4v4 && (!partner3Id || !partner4Id));
+  if (hasOpenSpots) {
+    showToast(`🎉 Team registered! Tap '🔗 Invite' to share your team link with teammates.`);
+    setTimeout(() => {
+      window.shareTeamInviteLink(t.id, newTeam.id);
+    }, 450);
+  } else {
+    showToast(`🎉 Registered for ${currentDiv}!`);
+  }
+};
+
+window.shareTeamInviteLink = async function(tournamentId, teamId) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
+  );
+  if (!t) return;
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) return;
+
+  const inviteUrl = `https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=${t.id}&teamId=${team.id}`;
+  const shareTitle = `Join my team '${team.teamName}' for ${t.title}!`;
+  const shareText = `Hey! Join my volleyball team '${team.teamName}' for ${t.title} (${team.division}). Tap to join or sign up:\n${inviteUrl}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: inviteUrl
+      });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(shareText);
+    showToast(`📋 Invite link for ${team.teamName} copied to clipboard!`);
+  } catch (err) {
+    prompt("Copy team invite link:", inviteUrl);
+  }
+};
+
+window.joinTournamentTeam = function(tournamentId, teamId) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
+  );
+  if (!t) {
+    showToast("Tournament not found.");
+    return;
+  }
+  if (!state.currentUser) {
+    window.pendingJoinTeam = { tournamentId: t.id, teamId };
+    showToast("Please sign up or log in first to join this team!");
+    window.showAuthModal();
+    window.switchAuthMode("signup");
+    return;
+  }
+
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) {
+    showToast("Team not found in this tournament.");
+    return;
+  }
+
+  const userId = state.currentUser.id;
+
+  // Check if user is already on this team
+  if (isSamePlayer(team.player1Id, userId) ||
+      isSamePlayer(team.player2Id, userId) ||
+      isSamePlayer(team.player3Id, userId) ||
+      isSamePlayer(team.player4Id, userId)) {
+    showToast(`You are already a member of ${team.teamName}!`);
+    return;
+  }
+
+  const is4v4 = (getEffectiveTournamentFormat(t) === '4v4') || (team.division || '').includes('4v4');
+
+  // Find next available slot
+  let assignedSlot = null;
+  if (!team.player2Id) {
+    team.player2Id = userId;
+    assignedSlot = "Teammate (Player 2)";
+  } else if (is4v4 && !team.player3Id) {
+    team.player3Id = userId;
+    assignedSlot = "Player 3";
+  } else if (is4v4 && !team.player4Id) {
+    team.player4Id = userId;
+    assignedSlot = "Player 4";
+  } else {
+    alert(`Sorry, ${team.teamName} is already full! (All player slots are filled)`);
+    return;
+  }
+
+  // Remove user from any other team or free agent slot in this tournament
+  t.teams = (t.teams || []).map(tm => {
+    if (tm.id === team.id) return tm;
+    if (isSamePlayer(tm.player2Id, userId)) tm.player2Id = null;
+    if (isSamePlayer(tm.player3Id, userId)) tm.player3Id = null;
+    if (isSamePlayer(tm.player4Id, userId)) tm.player4Id = null;
+    return tm;
+  });
+  t.freeAgents = (t.freeAgents || []).filter(fa => !isSamePlayer(fa.playerId, userId));
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  if (typeof window.pushTournamentsToDevice === "function") {
+    window.pushTournamentsToDevice();
+  }
+
+  showToast(`🎉 You joined ${team.teamName} as ${assignedSlot}!`);
+  window.activeTournamentDivision = team.division;
+  window.activeTournamentSubTab = "roster";
+  if (window.openTournamentDetail) {
+    window.openTournamentDetail(t.id);
+  }
   window.renderTournamentsList();
 };
 

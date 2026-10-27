@@ -14,6 +14,7 @@ public struct TournamentDetailView: View {
         case addTeam
         case editTeam(TournamentTeam)
         case editPools
+        case teamInvite(TournamentTeam)
         
         public var id: String {
             switch self {
@@ -25,6 +26,7 @@ public struct TournamentDetailView: View {
             case .addTeam: return "addTeam"
             case .editTeam(let team): return "editTeam-\(team.id.uuidString)"
             case .editPools: return "editPools"
+            case .teamInvite(let team): return "teamInvite-\(team.id.uuidString)"
             }
         }
     }
@@ -236,6 +238,8 @@ public struct TournamentDetailView: View {
                         ManualTeamEditSheet(dataManager: dataManager, tournament: t, preselectedDivision: team.division, teamToEdit: team)
                     case .editPools:
                         EditPoolPlaySheet(tournament: t, division: activeDivision, dataManager: dataManager)
+                    case .teamInvite(let team):
+                        TeamQRCodeSheet(tournament: t, team: team)
                     }
                 }
                 .sheet(item: $selectedTeamForRoster) { team in
@@ -1430,6 +1434,9 @@ public struct TournamentDetailView: View {
                                 team: team,
                                 seedNumber: team.seed ?? (index + 1),
                                 players: dataManager.players,
+                                onInvite: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
+                                    activeSheet = .teamInvite(team)
+                                } : nil,
                                 onEdit: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
                                     activeSheet = .editTeam(team)
                                 } : nil,
@@ -1530,6 +1537,7 @@ struct TournamentTeamRowView: View {
     let team: TournamentTeam
     let seedNumber: Int
     let players: [Player]
+    var onInvite: (() -> Void)? = nil
     var onEdit: (() -> Void)? = nil
     var onRemove: (() -> Void)? = nil
     
@@ -1571,38 +1579,60 @@ struct TournamentTeamRowView: View {
                     if let p2 = p2 {
                         playerLabel(player: p2, fallback: "Player 2")
                     } else {
-                        Text("Looking for Partner")
+                        Button(action: { onInvite?() }) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "person.badge.plus")
+                                    .font(.system(size: 9))
+                                Text("Looking for Partner")
+                            }
                             .font(.caption2)
                             .italic()
                             .foregroundColor(.orange)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(onInvite == nil)
                     }
                 }
                 
                 // Row 2: Player 3 & Player 4 (4v4 only)
-                if team.player3Id != nil || team.player4Id != nil {
+                if team.player3Id != nil || team.player4Id != nil || team.division.isQuads {
                     HStack(spacing: 8) {
                         if let p3 = p3 {
                             playerLabel(player: p3, fallback: "Player 3")
-                        } else if team.player3Id != nil {
-                            Text("+ Open Spot")
+                        } else {
+                            Button(action: { onInvite?() }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "person.badge.plus")
+                                        .font(.system(size: 9))
+                                    Text("+ Open Spot")
+                                }
                                 .font(.caption2)
                                 .italic()
                                 .foregroundColor(.orange)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(onInvite == nil)
                         }
                         
-                        if team.player4Id != nil || team.player3Id != nil {
-                            Text("&")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
+                        Text("&")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                         
                         if let p4 = p4 {
                             playerLabel(player: p4, fallback: "Player 4")
                         } else {
-                            Text("+ Open Spot")
+                            Button(action: { onInvite?() }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "person.badge.plus")
+                                        .font(.system(size: 9))
+                                    Text("+ Open Spot")
+                                }
                                 .font(.caption2)
                                 .italic()
                                 .foregroundColor(.orange)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(onInvite == nil)
                         }
                     }
                 }
@@ -1611,6 +1641,18 @@ struct TournamentTeamRowView: View {
             Spacer()
             
             HStack(spacing: 8) {
+                if let onInvite = onInvite {
+                    Button(action: onInvite) {
+                        Image(systemName: "person.badge.plus")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.cyan)
+                            .padding(8)
+                            .background(Color.cyan.opacity(0.12))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                
                 if let onEdit = onEdit {
                     Button(action: onEdit) {
                         Image(systemName: "pencil")
@@ -3153,6 +3195,27 @@ struct TeamRosterSheet: View {
                                 }
                             }
                             .padding(.vertical, 2)
+                        }
+                    }
+                }
+                
+                Section {
+                    let shareURLString = "https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=\(tournament.id.uuidString)&teamId=\(team.id.uuidString)"
+                    if let url = URL(string: shareURLString) {
+                        ShareLink(
+                            item: url,
+                            subject: Text("Join \(team.teamName)"),
+                            message: Text("Join my team '\(team.teamName)' for \(tournament.title)!\n\(shareURLString)")
+                        ) {
+                            HStack {
+                                Label("Invite Teammates to Join", systemImage: "person.badge.plus")
+                                    .foregroundColor(.orange)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }

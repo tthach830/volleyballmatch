@@ -2720,6 +2720,62 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    public func joinTournamentTeam(
+        tournamentId: UUID,
+        teamId: UUID,
+        playerId: UUID
+    ) -> (success: Bool, message: String) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId || ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(tournamentId.uuidString) == .orderedSame) }) else {
+            return (false, "Tournament not found.")
+        }
+        guard let tmIdx = tournaments[tIdx].teams.firstIndex(where: { $0.id == teamId }) else {
+            return (false, "Team not found in this tournament.")
+        }
+        
+        var team = tournaments[tIdx].teams[tmIdx]
+        if team.containsPlayer(playerId) {
+            return (true, "You are already a member of \(team.teamName).")
+        }
+        
+        let isQuads = team.division.isQuads
+        var assignedSlot = ""
+        if team.player2Id == nil {
+            team.player2Id = playerId
+            assignedSlot = "Partner"
+        } else if isQuads && team.player3Id == nil {
+            team.player3Id = playerId
+            assignedSlot = "Player 3"
+        } else if isQuads && team.player4Id == nil {
+            team.player4Id = playerId
+            assignedSlot = "Player 4"
+        } else {
+            return (false, "\(team.teamName) is already full!")
+        }
+        
+        // Remove from other teams or free agent list in this tournament
+        for i in 0..<tournaments[tIdx].teams.count {
+            if tournaments[tIdx].teams[i].id != team.id {
+                if tournaments[tIdx].teams[i].player2Id == playerId { tournaments[tIdx].teams[i].player2Id = nil }
+                if tournaments[tIdx].teams[i].player3Id == playerId { tournaments[tIdx].teams[i].player3Id = nil }
+                if tournaments[tIdx].teams[i].player4Id == playerId { tournaments[tIdx].teams[i].player4Id = nil }
+            }
+        }
+        tournaments[tIdx].freeAgents.removeAll { $0.playerId == playerId }
+        
+        tournaments[tIdx].teams[tmIdx] = team
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        let player = self.player(for: playerId)
+        postNotification(
+            title: "Joined Team! 🏐",
+            message: "\(player.displayName) joined \(team.teamName) as \(assignedSlot)!",
+            type: .tournament
+        )
+        return (true, "Joined \(team.teamName) successfully as \(assignedSlot)!")
+    }
+    
+    @discardableResult
     public func clearTournamentDivisionRosters(
         tournamentId: UUID,
         division: TournamentDivisionCategory

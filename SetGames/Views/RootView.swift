@@ -7,6 +7,7 @@ public struct RootView: View {
     @State private var deepLinkedGame: SetGame? = nil
     @State private var deepLinkedTournament: Tournament? = nil
     @State private var pendingDeepLinkURL: URL? = nil
+    @State private var pendingJoinTeamInfo: (tournamentId: UUID, teamId: UUID)? = nil
     
     public init() {}
     
@@ -77,6 +78,16 @@ public struct RootView: View {
                 if oldId == nil && newId != nil {
                     // Fresh login: navigate to Set Games
                     selectedTab = 0
+                    if let pending = pendingJoinTeamInfo, let user = dataManager.currentUser {
+                        let res = dataManager.joinTournamentTeam(tournamentId: pending.tournamentId, teamId: pending.teamId, playerId: user.id)
+                        if !res.success {
+                            dataManager.postNotification(title: "Team Invite", message: res.message, type: .tournament)
+                        }
+                        if let targetTournament = dataManager.tournaments.first(where: { $0.id == pending.tournamentId }) {
+                            deepLinkedTournament = targetTournament
+                        }
+                        pendingJoinTeamInfo = nil
+                    }
                 } else if oldId != nil && newId == nil {
                     // Logged out: fallback to Ladders
                     selectedTab = 1
@@ -123,15 +134,20 @@ public struct RootView: View {
     private func handleIncomingURL(_ url: URL) {
         // Supported formats:
         // setgames://game?id=<uuid>
-        // setgames://tournament?id=<uuid>
+        // setgames://tournament?id=<uuid>&teamId=<uuid>
         // https://volleyballmatch-13d66.web.app/?gameId=<uuid>
-        // https://volleyballmatch-13d66.web.app/?tournamentId=<uuid>
-        // https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=<uuid>
+        // https://volleyballmatch-13d66.web.app/?tournamentId=<uuid>&teamId=<uuid>
+        // https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=<uuid>&teamId=<uuid>
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return }
         
         let tournamentIdParam = components.queryItems?.first(where: {
             let name = $0.name.lowercased()
             return name == "tournamentid" || name == "tournid"
+        })?.value
+        
+        let teamIdParam = components.queryItems?.first(where: {
+            let name = $0.name.lowercased()
+            return name == "teamid" || name == "team" || name == "jointeam"
         })?.value
         
         if let tournIdString = tournamentIdParam?.trimmingCharacters(in: .whitespacesAndNewlines), !tournIdString.isEmpty {
@@ -142,6 +158,7 @@ public struct RootView: View {
                 pendingDeepLinkURL = nil
                 selectedTab = 0
                 deepLinkedTournament = targetTournament
+                handleTeamJoinIfPresent(tournament: targetTournament, teamIdParam: teamIdParam)
                 return
             } else {
                 pendingDeepLinkURL = url
@@ -165,6 +182,7 @@ public struct RootView: View {
                 pendingDeepLinkURL = nil
                 selectedTab = 0
                 deepLinkedTournament = targetTournament
+                handleTeamJoinIfPresent(tournament: targetTournament, teamIdParam: teamIdParam)
                 return
             } else {
                 pendingDeepLinkURL = url
@@ -185,8 +203,38 @@ public struct RootView: View {
             pendingDeepLinkURL = nil
             selectedTab = 0
             deepLinkedTournament = targetTournament
+            handleTeamJoinIfPresent(tournament: targetTournament, teamIdParam: teamIdParam)
         } else {
             pendingDeepLinkURL = url
+        }
+    }
+    
+    private func handleTeamJoinIfPresent(tournament: Tournament, teamIdParam: String?) {
+        guard let rawTeamId = teamIdParam?.trimmingCharacters(in: .whitespacesAndNewlines), !rawTeamId.isEmpty else { return }
+        let matchedTeam = tournament.teams.first(where: {
+            $0.id.uuidString.lowercased() == rawTeamId.lowercased() ||
+            $0.teamName.caseInsensitiveCompare(rawTeamId) == .orderedSame
+        })
+        guard let targetTeam = matchedTeam else { return }
+        
+        if let user = dataManager.currentUser {
+            let result = dataManager.joinTournamentTeam(tournamentId: tournament.id, teamId: targetTeam.id, playerId: user.id)
+            if !result.success {
+                dataManager.postNotification(
+                    title: "Team Invite",
+                    message: result.message,
+                    type: .tournament
+                )
+            }
+            pendingJoinTeamInfo = nil
+        } else {
+            pendingJoinTeamInfo = (tournamentId: tournament.id, teamId: targetTeam.id)
+            dataManager.postNotification(
+                title: "Join \(targetTeam.teamName)! 🏐",
+                message: "Sign up or log in to join \(targetTeam.teamName)!",
+                type: .tournament
+            )
+            selectedTab = 3 // Direct user to Profile / Auth tab
         }
     }
     
