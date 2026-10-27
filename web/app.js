@@ -10444,6 +10444,11 @@ window.renderTournamentDetail = function() {
             </div>
             ${isHost ? `
               <div style="display: flex; gap: 6px;">
+                ${divTeams.length > 0 ? `
+                  <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 8px; color: #ef4444; border-color: #fca5a5;" onclick="window.clearTournamentDivisionRosters('${t.id}', '${currentDiv}')">
+                    🗑️ Clear Rosters
+                  </button>
+                ` : ''}
                 <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 8px;" onclick="window.promptAddDemoTeams('${t.id}', '${currentDiv}')">
                   🧪 Demo Teams
                 </button>
@@ -11864,6 +11869,49 @@ window.removeTournamentTeam = function(tournamentId, teamId) {
   saveTournamentToFirestore(t);
   pushTournamentsToDevice();
   showToast(`Removed team '${teamLabel}' from tournament.`);
+  window.renderTournamentDetail();
+  window.renderTournamentsList();
+};
+
+window.clearTournamentDivisionRosters = function(tournamentId, division) {
+  if (!state.currentUser) {
+    showToast("Please log in first.");
+    return;
+  }
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim() === targetId) ||
+    (item.rawId && String(item.rawId).trim() === targetId)
+  );
+  if (!t) return;
+
+  const currentUserId = state.currentUser.id;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+
+  if (!isHost) {
+    showToast("Only the tournament host, co-host, or admin can clear rosters.");
+    return;
+  }
+
+  const teamCount = (t.teams || []).filter(tm => tm.division === division).length;
+  if (!confirm(`Are you sure you want to remove all ${teamCount} teams from ${division}? This will also delete matches in this division.`)) {
+    return;
+  }
+
+  t.teams = (t.teams || []).filter(tm => tm.division !== division);
+  if (Array.isArray(t.matches)) {
+    t.matches = t.matches.filter(m => m.division !== division);
+  }
+  if ((t.matches || []).length === 0) {
+    t.status = "registration_open";
+  }
+
+  state.saveLocal();
+  saveTournamentToFirestore(t);
+  pushTournamentsToDevice();
+  showToast(`Cleared all rosters for ${division}.`);
   window.renderTournamentDetail();
   window.renderTournamentsList();
 };

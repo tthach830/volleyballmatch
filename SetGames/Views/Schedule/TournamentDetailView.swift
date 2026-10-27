@@ -40,6 +40,7 @@ public struct TournamentDetailView: View {
     @State private var showRemoveFreeAgentAlert: Bool = false
     @State private var showRegeneratePoolsAlert: Bool = false
     @State private var showRemovePoolsAlert: Bool = false
+    @State private var showClearRostersAlert: Bool = false
     @State private var selectedTeamForRoster: TournamentTeam? = nil
     
     public enum SubTab: String, CaseIterable {
@@ -69,11 +70,12 @@ public struct TournamentDetailView: View {
     public var body: some View {
         Group {
             if let t = tournament {
+                let activeDivision = t.allowedDivisions.contains(selectedDivision) ? selectedDivision : (t.allowedDivisions.first ?? selectedDivision)
                 ZStack(alignment: .bottom) {
                     ScrollView {
                         VStack(spacing: 16) {
                             headerCard(t: t)
-                            divisionSelector(t: t)
+                            divisionSelector(t: t, activeDivision: activeDivision)
                             
                             // SUB-TAB PICKER (Pools, Bracket, Rosters, Info)
                             Picker("View Mode", selection: $selectedSubTab) {
@@ -86,17 +88,17 @@ public struct TournamentDetailView: View {
                             
                             // SCHEDULE ESTIMATE BANNER
                             if selectedSubTab == .pools || selectedSubTab == .bracket {
-                                scheduleEstimateCard(t: t, division: selectedDivision)
+                                scheduleEstimateCard(t: t, division: activeDivision)
                             }
                             
                             // TAB CONTENT
                             switch selectedSubTab {
                             case .pools:
-                                poolsView(t: t, division: selectedDivision)
+                                poolsView(t: t, division: activeDivision)
                             case .bracket:
-                                bracketView(t: t, division: selectedDivision)
+                                bracketView(t: t, division: activeDivision)
                             case .roster:
-                                rosterView(t: t, division: selectedDivision)
+                                rosterView(t: t, division: activeDivision)
                             case .info:
                                 infoView(t: t)
                             }
@@ -141,7 +143,7 @@ public struct TournamentDetailView: View {
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "plus.circle.fill")
-                                    Text("Sign Up for \(selectedDivision.displayName)")
+                                    Text("Sign Up for \(activeDivision.displayName)")
                                         .fontWeight(.heavy)
                                 }
                                 .font(.headline)
@@ -212,7 +214,7 @@ public struct TournamentDetailView: View {
                 .sheet(item: $activeSheet) { sheet in
                     switch sheet {
                     case .signUp:
-                        TournamentSignUpSheet(dataManager: dataManager, tournament: t, preselectedDivision: selectedDivision)
+                        TournamentSignUpSheet(dataManager: dataManager, tournament: t, preselectedDivision: activeDivision)
                     case .editTournament:
                         CreateTournamentSheet(dataManager: dataManager, tournamentToEdit: t)
                     case .manageCoHosts:
@@ -222,15 +224,25 @@ public struct TournamentDetailView: View {
                     case .qrCode:
                         TournamentQRCodeSheet(tournament: t)
                     case .addTeam:
-                        ManualTeamEditSheet(dataManager: dataManager, tournament: t, preselectedDivision: selectedDivision, teamToEdit: nil)
+                        ManualTeamEditSheet(dataManager: dataManager, tournament: t, preselectedDivision: activeDivision, teamToEdit: nil)
                     case .editTeam(let team):
                         ManualTeamEditSheet(dataManager: dataManager, tournament: t, preselectedDivision: team.division, teamToEdit: team)
                     case .editPools:
-                        EditPoolPlaySheet(tournament: t, division: selectedDivision, dataManager: dataManager)
+                        EditPoolPlaySheet(tournament: t, division: activeDivision, dataManager: dataManager)
                     }
                 }
                 .sheet(item: $selectedTeamForRoster) { team in
                     TeamRosterSheet(team: team, tournament: t, dataManager: dataManager)
+                }
+                .onAppear {
+                    if let first = t.allowedDivisions.first, !t.allowedDivisions.contains(selectedDivision) {
+                        selectedDivision = first
+                    }
+                }
+                .onChange(of: t.allowedDivisions) { newDivs in
+                    if let first = newDivs.first, !newDivs.contains(selectedDivision) {
+                        selectedDivision = first
+                    }
                 }
                 .alert("Leave Tournament?", isPresented: $showLeaveAlert) {
                     Button("Cancel", role: .cancel) {}
@@ -376,7 +388,7 @@ public struct TournamentDetailView: View {
     }
 
     @ViewBuilder
-    private func divisionSelector(t: Tournament) -> some View {
+    private func divisionSelector(t: Tournament, activeDivision: TournamentDivisionCategory) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("DIVISIONS")
                 .font(.system(size: 11, weight: .black))
@@ -386,7 +398,7 @@ public struct TournamentDetailView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(t.allowedDivisions) { div in
-                        divisionPill(t: t, div: div)
+                        divisionPill(t: t, div: div, activeDivision: activeDivision)
                     }
                 }
                 .padding(.horizontal)
@@ -395,9 +407,9 @@ public struct TournamentDetailView: View {
     }
 
     @ViewBuilder
-    private func divisionPill(t: Tournament, div: TournamentDivisionCategory) -> some View {
+    private func divisionPill(t: Tournament, div: TournamentDivisionCategory, activeDivision: TournamentDivisionCategory) -> some View {
         let count = t.teams(for: div).count
-        let isSelected = selectedDivision == div
+        let isSelected = activeDivision == div
         Button {
             selectedDivision = div
         } label: {
@@ -1315,8 +1327,25 @@ public struct TournamentDetailView: View {
                     Spacer()
                     if isHostOrAdmin {
                         HStack(spacing: 8) {
+                            if !divisionTeams.isEmpty {
+                                Button {
+                                    showClearRostersAlert = true
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "trash")
+                                        Text("Clear Rosters")
+                                    }
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.red.opacity(0.15))
+                                    .cornerRadius(8)
+                                }
+                            }
+
                             Button {
-                                dataManager.addDemoTeams(tournamentId: t.id, division: selectedDivision, count: 4)
+                                dataManager.addDemoTeams(tournamentId: t.id, division: division, count: 4)
                             } label: {
                                 HStack(spacing: 4) {
                                     Image(systemName: "flask.fill")
@@ -1415,6 +1444,14 @@ public struct TournamentDetailView: View {
                     .padding(.horizontal)
                 }
             }
+        }
+        .alert("Clear All Rosters?", isPresented: $showClearRostersAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Clear All", role: .destructive) {
+                dataManager.clearTournamentDivisionRosters(tournamentId: t.id, division: division)
+            }
+        } message: {
+            Text("Are you sure you want to remove all \(divisionTeams.count) teams and matches from \(division.displayName)?")
         }
     }
     

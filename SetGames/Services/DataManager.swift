@@ -2717,6 +2717,35 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    public func clearTournamentDivisionRosters(
+        tournamentId: UUID,
+        division: TournamentDivisionCategory
+    ) -> (success: Bool, message: String) {
+        guard let user = currentUser,
+              let idx = tournaments.firstIndex(where: { $0.id == tournamentId || ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(tournamentId.uuidString) == .orderedSame) }) else {
+            return (false, "Tournament not found.")
+        }
+        
+        let t = tournaments[idx]
+        let canManage = t.isHostOrCoHost(user.id) || user.isRoot
+        guard canManage else {
+            return (false, "Only the tournament host, co-host, or admin can clear rosters.")
+        }
+        
+        let removedCount = tournaments[idx].teams.filter { $0.division == division }.count
+        tournaments[idx].teams.removeAll { $0.division == division }
+        tournaments[idx].matches.removeAll { $0.division == division }
+        if tournaments[idx].matches.isEmpty {
+            tournaments[idx].status = "registration_open"
+        }
+        
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+        
+        return (true, "Cleared \(removedCount) teams from \(division.displayName).")
+    }
+    
+    @discardableResult
     public func removeTournamentFreeAgent(
         tournamentId: UUID,
         playerId: UUID
