@@ -60,10 +60,34 @@ public struct Player: Identifiable, Codable, Hashable {
     
     public var displayName: String {
         let trimmedNick = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedNick.isEmpty && trimmedNick.caseInsensitiveCompare("Player") != .orderedSame {
+            .replacingOccurrences(of: "^\\((.*)\\)$", with: "$1", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmedName.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        let firstPart = parts.first ?? ""
+        
+        // 1. If custom nickname is available (and not "Player", not first name, not full name)
+        if !trimmedNick.isEmpty &&
+            trimmedNick.caseInsensitiveCompare("Player") != .orderedSame &&
+            trimmedNick.caseInsensitiveCompare(trimmedName) != .orderedSame &&
+            trimmedNick.caseInsensitiveCompare(firstPart) != .orderedSame {
             return trimmedNick
         }
-        return firstName
+        
+        // 2. Otherwise, first part of fullname plus first initial of the second part (e.g. "Peter T")
+        if parts.count >= 2 {
+            if let initial = parts[1].first {
+                return "\(parts[0]) \(initial.uppercased())"
+            }
+            return parts[0]
+        } else if !firstPart.isEmpty {
+            return firstPart
+        } else if !trimmedNick.isEmpty && trimmedNick.caseInsensitiveCompare("Player") != .orderedSame {
+            return trimmedNick
+        }
+        
+        return "Player"
     }
     
     public var ladderDisplayName: String {

@@ -3595,14 +3595,31 @@ export function isRootUser(user) {
 
 export function getPlayerDisplayName(player) {
   if (!player) return "Player";
-  const nick = String(player.nickname || "").trim();
-  if (nick && nick.toLowerCase() !== "player") {
-    return nick;
-  }
+  let nick = String(player.nickname || "").trim();
+  nick = nick.replace(/^\((.*)\)$/, '$1').trim();
+
   const name = String(player.name || "").trim();
   const parts = name.split(/\s+/).filter(Boolean);
-  const firstName = parts[0] || nick || "Player";
-  return firstName;
+  const firstPart = parts[0] || "";
+
+  // 1. If custom nickname is available (and not "Player", not first name, not full name)
+  if (nick && 
+      nick.toLowerCase() !== "player" && 
+      nick.toLowerCase() !== name.toLowerCase() && 
+      nick.toLowerCase() !== firstPart.toLowerCase()) {
+    return nick;
+  }
+
+  // 2. Otherwise: first part of fullname plus first initial of the second part (e.g. "Peter T")
+  if (parts.length >= 2) {
+    const initial = parts[1].charAt(0).toUpperCase();
+    return `${parts[0]} ${initial}`;
+  } else if (parts.length === 1) {
+    return parts[0];
+  } else if (nick && nick.toLowerCase() !== "player") {
+    return nick;
+  }
+  return "Player";
 }
 
 export function getLadderDisplayName(player) {
@@ -9999,8 +10016,11 @@ window.formatPhoneNumber = function(phone) {
 };
 
 window.formatFirstLastInit = function(fullName) {
-  if (!fullName || typeof fullName !== 'string') return '';
-  const trimmed = fullName.trim();
+  if (!fullName) return '';
+  if (typeof fullName === 'object') {
+    return getPlayerDisplayName(fullName);
+  }
+  const trimmed = String(fullName).trim();
   if (!trimmed) return '';
 
   if (trimmed.includes('/')) {
@@ -10013,13 +10033,10 @@ window.formatFirstLastInit = function(fullName) {
   }
 
   const first = parts[0];
-  const last = parts[parts.length - 1];
+  const second = parts[1];
+  const initial = second.charAt(0).toUpperCase();
 
-  if (/^[A-Za-z]\.?$/.test(last)) {
-    return `${first} ${last.replace('.', '')}.`;
-  }
-
-  return `${first} ${last.charAt(0).toUpperCase()}.`;
+  return `${first} ${initial}`;
 };
 
 window.getTeamPlayerDisplay = function(team, tournament) {
@@ -10073,7 +10090,7 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
 
   slots.forEach(slot => {
     const p = slot.id ? (state.players || []).find(pl => isSamePlayer(pl.id, slot.id)) : null;
-    const displayName = p ? getPlayerDisplayName(p) : (slot.directName || 'Player');
+    const displayName = p ? getPlayerDisplayName(p) : (slot.directName ? window.formatFirstLastInit(slot.directName) : 'Player');
     const avatar = p?.avatarEmoji || '🏐';
     const rating = p?.rating || 'Player';
     const elo = p?.eloRating || 1500;
@@ -10125,9 +10142,9 @@ window.renderTournamentDetail = function() {
   if (headerContainer) {
     const d = new Date(t.date);
     const hostPlayer = t.hostPlayerId ? state.getPlayer(t.hostPlayerId) : null;
-    const hostName = hostPlayer ? (window.formatFirstLastInit ? window.formatFirstLastInit(hostPlayer.name) : hostPlayer.name) : "Organizer";
+    const hostName = hostPlayer ? getPlayerDisplayName(hostPlayer) : "Organizer";
     const coHosts = (t.coHostPlayerIds || []).map(id => state.getPlayer(id)).filter(Boolean);
-    const coHostNames = coHosts.map(p => window.formatFirstLastInit ? window.formatFirstLastInit(p.name) : p.name).join(', ');
+    const coHostNames = coHosts.map(p => getPlayerDisplayName(p)).join(', ');
 
     headerContainer.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
@@ -10537,10 +10554,10 @@ window.renderTournamentDetail = function() {
                 const p3 = team.player3Id ? state.players.find(p => isSamePlayer(p.id, team.player3Id)) : null;
                 const p4 = team.player4Id ? state.players.find(p => isSamePlayer(p.id, team.player4Id)) : null;
                 const is4v4 = (getEffectiveTournamentFormat(t) === '4v4');
-                const p1Name = p1 ? getPlayerDisplayName(p1) : 'Player 1';
-                const p2Name = p2 ? getPlayerDisplayName(p2) : null;
-                const p3Name = p3 ? getPlayerDisplayName(p3) : null;
-                const p4Name = p4 ? getPlayerDisplayName(p4) : null;
+                const p1Name = p1 ? getPlayerDisplayName(p1) : (team.p1Name ? window.formatFirstLastInit(team.p1Name) : 'Player 1');
+                const p2Name = p2 ? getPlayerDisplayName(p2) : (team.p2Name ? window.formatFirstLastInit(team.p2Name) : null);
+                const p3Name = p3 ? getPlayerDisplayName(p3) : (team.p3Name ? window.formatFirstLastInit(team.p3Name) : null);
+                const p4Name = p4 ? getPlayerDisplayName(p4) : (team.p4Name ? window.formatFirstLastInit(team.p4Name) : null);
                 const isMyTeam = state.currentUser && (
                   isSamePlayer(team.player1Id, state.currentUser.id) ||
                   isSamePlayer(team.player2Id, state.currentUser.id) ||
