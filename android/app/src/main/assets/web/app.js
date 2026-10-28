@@ -10098,7 +10098,6 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
 
     html += `
       <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 10px;">
-        <div style="font-size: 24px;">${avatar}</div>
         <div style="flex: 1; min-width: 0;">
           <div style="display: flex; align-items: center; gap: 6px;">
             <span style="font-weight: 800; font-size: 13px; color: var(--text-main, #0f172a);">${displayName}</span>
@@ -10587,8 +10586,8 @@ window.renderTournamentDetail = function() {
                 const openPartnerHTML = `<i style="color: #ea580c;">Looking for partner</i>`;
                 const openSpot3HTML = `<i style="color: #ea580c;">+ Open Spot</i>`;
                 const openSpot4HTML = `<i style="color: #ea580c;">+ Open Spot</i>`;
-                const playerLine1 = `${p1?.avatarEmoji || '🏐'} ${p1Name} & ${p2 ? `${p2.avatarEmoji || '🏐'} ${p2Name}` : openPartnerHTML}`;
-                const playerLine2 = is4v4 ? `${p3 ? `${p3.avatarEmoji || '🏐'} ${p3Name}` : openSpot3HTML} & ${p4 ? `${p4.avatarEmoji || '🏐'} ${p4Name}` : openSpot4HTML}` : '';
+                const playerLine1 = `${p1Name} & ${p2 ? p2Name : openPartnerHTML}`;
+                const playerLine2 = is4v4 ? `${p3 ? p3Name : openSpot3HTML} & ${p4 ? p4Name : openSpot4HTML}` : '';
 
                 return `
                   <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 10px 14px;">
@@ -10645,7 +10644,6 @@ window.renderTournamentDetail = function() {
                 return `
                   <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 8px 12px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                      <span style="font-size: 20px;">${p?.avatarEmoji || '🏐'}</span>
                       <div>
                         <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">${p ? getPlayerDisplayName(p) : 'Beach Player'}</div>
                         ${fa.notes ? `<div style="font-size: 11px; color: var(--text-muted, #64748b); font-style: italic;">"${fa.notes}"</div>` : ''}
@@ -12178,7 +12176,7 @@ window.openManualAddTeamModal = function(tournamentId, division) {
         <select id="manual-team-p1" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p1-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');" required>
           <option value="">Select Captain...</option>
           <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
-          ${allPlayers.map(p => `<option value="${p.id}">${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+          ${allPlayers.map(p => `<option value="${p.id}">${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
         </select>
         <input type="text" id="manual-team-p1-guest" placeholder="Enter captain's full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
       </div>
@@ -12188,7 +12186,7 @@ window.openManualAddTeamModal = function(tournamentId, division) {
         <select id="manual-team-p2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p2-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
           <option value="">(None / Looking for partner)</option>
           <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
-          ${allPlayers.map(p => `<option value="${p.id}">${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+          ${allPlayers.map(p => `<option value="${p.id}">${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
         </select>
         <input type="text" id="manual-team-p2-guest" placeholder="Enter partner's full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
       </div>
@@ -12278,7 +12276,7 @@ window.openEditTeamModal = function(tournamentId, teamId) {
         <select id="manual-team-p1" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p1-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');" required>
           <option value="">Select Captain...</option>
           <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
-          ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, team.player1Id) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+          ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, team.player1Id) ? 'selected' : ''}>${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
         </select>
         <input type="text" id="manual-team-p1-guest" placeholder="Enter captain's full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
       </div>
@@ -12288,7 +12286,7 @@ window.openEditTeamModal = function(tournamentId, teamId) {
         <select id="manual-team-p2" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p2-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
           <option value="">(None / Looking for partner)</option>
           <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
-          ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, team.player2Id) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+          ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, team.player2Id) ? 'selected' : ''}>${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
         </select>
         <input type="text" id="manual-team-p2-guest" placeholder="Enter partner's full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
       </div>
@@ -12331,7 +12329,7 @@ window.updateManualTeamPlayerSlots = function(existingTeam) {
       <select id="manual-team-p3" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p3-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
         <option value="">(None / Open spot)</option>
         <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
-        ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p3Selected) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+        ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p3Selected) ? 'selected' : ''}>${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
       </select>
       <input type="text" id="manual-team-p3-guest" placeholder="Enter player 3 full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
     </div>
@@ -12341,7 +12339,7 @@ window.updateManualTeamPlayerSlots = function(existingTeam) {
       <select id="manual-team-p4" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p4-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
         <option value="">(None / Open spot)</option>
         <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
-        ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p4Selected) ? 'selected' : ''}>${p.avatarEmoji || '🏐'} ${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+        ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p4Selected) ? 'selected' : ''}>${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
       </select>
       <input type="text" id="manual-team-p4-guest" placeholder="Enter player 4 full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
     </div>

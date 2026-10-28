@@ -1650,12 +1650,9 @@ struct TournamentTeamRowView: View {
     @ViewBuilder
     private func playerLabel(player: Player?, fallback: String) -> some View {
         if let p = player {
-            HStack(spacing: 4) {
-                PlayerAvatarView(player: p, dimension: 20, showBadge: false)
-                Text(p.displayName)
-                    .font(.caption2)
-                    .foregroundColor(.white.opacity(0.85))
-            }
+            Text(p.displayName)
+                .font(.caption2)
+                .foregroundColor(.white.opacity(0.85))
         } else {
             Text(fallback)
                 .font(.caption2)
@@ -1672,7 +1669,6 @@ struct TournamentFreeAgentRowView: View {
     var body: some View {
         if let p = players.first(where: { $0.id == freeAgent.playerId }) {
             HStack(spacing: 12) {
-                PlayerAvatarView(player: p, dimension: 36, showBadge: false)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(p.displayName)
                         .font(.subheadline)
@@ -3146,7 +3142,6 @@ struct TeamRosterSheet: View {
                         if let pid = slot.id {
                             let player = dataManager.player(for: pid)
                             HStack(spacing: 12) {
-                                PlayerAvatarView(player: player, dimension: 40)
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack(spacing: 6) {
                                         Text(player.displayName).font(.subheadline).fontWeight(.bold)

@@ -576,7 +576,6 @@ struct PartnerSlotCard: View {
             
             if let player = selectedPlayer {
                 HStack(spacing: 12) {
-                    PlayerAvatarView(player: player, dimension: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(player.displayName)
                             .font(.headline)
@@ -767,7 +766,6 @@ struct PartnerPickerView: View {
                             onSelect(player)
                         } label: {
                             HStack(spacing: 12) {
-                                PlayerAvatarView(player: player, dimension: 40)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(player.displayName)
                                         .font(.headline)
