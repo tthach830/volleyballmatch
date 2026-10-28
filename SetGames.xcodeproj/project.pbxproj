@@ -61,7 +61,6 @@
 		A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000528B47E2001AB0005 /* TournamentHubView.swift */; };
 		A001000628B47E2001AB0006 /* VolleyballWeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */; };
 		A001000728B47E2001AB0007 /* SmartForecastsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000728B47E2001AB0007 /* SmartForecastsSheet.swift */; };
-		A001000828B47E2001AB0008 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000828B47E2001AB0008 /* AppTheme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -118,7 +117,6 @@
 		B001000528B47E2001AB0005 /* TournamentHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentHubView.swift; sourceTree = "<group>"; };
 		B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolleyballWeatherView.swift; sourceTree = "<group>"; };
 		B001000728B47E2001AB0007 /* SmartForecastsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartForecastsSheet.swift; sourceTree = "<group>"; };
-		B001000828B47E2001AB0008 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -184,7 +182,6 @@
 		31BF51F12D5C8C6D29121EBD /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				B001000828B47E2001AB0008 /* AppTheme.swift */,
 				8E7DE5288CD0C4AC66B2C578 /* CourtAvatarIconView.swift */,
 				E510849A6B785C698215EF7C /* NotificationToastView.swift */,
 				E1ACEC153DA835530CE13CAD /* PlayerAvatarView.swift */,
@@ -438,7 +435,6 @@
 				A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */,
 				A001000628B47E2001AB0006 /* VolleyballWeatherView.swift in Sources */,
 				A001000728B47E2001AB0007 /* SmartForecastsSheet.swift in Sources */,
-				A001000828B47E2001AB0008 /* AppTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

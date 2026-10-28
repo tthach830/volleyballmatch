@@ -129,7 +129,6 @@ public struct RootView: View {
         .onOpenURL { url in
             handleIncomingURL(url)
         }
-        .preferredColorScheme(.light)
     }
     
     private func handleIncomingURL(_ url: URL) {

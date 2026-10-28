@@ -117,37 +117,31 @@ public struct ConfirmedGamesView: View {
                     }
                     .padding(.top, 4)
 
-                    // Custom Light Capsule Filter Bar
+                    // Custom Dark Capsule Filter Bar
                     HStack(spacing: 0) {
                         ForEach(Array(GameFilter.allCases.enumerated()), id: \.offset) { index, filter in
-                            if index > 0 && selectedFilter != filter && selectedFilter != GameFilter.allCases[index - 1] {
+                            if index > 0 {
                                 Rectangle()
-                                    .fill(AppTheme.cardBorder)
+                                    .fill(Color.white.opacity(0.18))
                                     .frame(width: 1, height: 14)
                             }
                             Button {
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    selectedFilter = filter
-                                }
+                                selectedFilter = filter
                             } label: {
                                 Text(filter.rawValue)
-                                    .font(.system(size: 13, weight: selectedFilter == filter ? .bold : .semibold))
-                                    .foregroundColor(selectedFilter == filter ? AppTheme.textPrimary : AppTheme.textSecondary)
+                                    .font(.system(size: 13, weight: selectedFilter == filter ? .bold : .medium))
+                                    .foregroundColor(selectedFilter == filter ? .white : .white.opacity(0.65))
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 7)
-                                    .background(selectedFilter == filter ? Color.white : Color.clear)
-                                    .clipShape(Capsule())
-                                    .shadow(color: selectedFilter == filter ? AppTheme.cardShadow : Color.clear, radius: 2, y: 1)
+                                    .padding(.vertical, 8)
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(3)
-                    .background(AppTheme.capsuleBackground)
+                    .background(Color(red: 0.11, green: 0.13, blue: 0.17))
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
-                            .stroke(AppTheme.cardBorder, lineWidth: 0.8)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 0.8)
                     )
                     .padding(.horizontal)
                     
@@ -260,7 +254,7 @@ public struct ConfirmedGamesView: View {
                 .padding(.bottom, 30)
             }
             }
-            .background(AppTheme.screenBackground.ignoresSafeArea())
+            .background(Color(red: 0.08, green: 0.09, blue: 0.12).ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { gameId in
                 GameDetailView(dataManager: dataManager, gameId: gameId)
@@ -434,17 +428,17 @@ public struct ConfirmedGamesView: View {
                             PlayerAvatarView(player: user, dimension: 24, showBadge: false)
                             Text(user.displayName)
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(AppTheme.textPrimary)
+                                .foregroundColor(.white)
                                 .lineLimit(1)
                             RatingBadge(rating: user.rating, size: .small)
                         }
                         .padding(.leading, 4)
                         .padding(.trailing, 8)
                         .padding(.vertical, 4)
-                        .background(AppTheme.capsuleBackground)
+                        .background(Color(red: 0.13, green: 0.15, blue: 0.20))
                         .clipShape(Capsule())
                         .overlay(
-                            Capsule().stroke(AppTheme.cardBorder, lineWidth: 1)
+                            Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
@@ -571,7 +565,7 @@ public struct ConfirmedGamesView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(displayName)
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(.white)
                     .lineLimit(1)
                 
                 HStack(spacing: 5) {
@@ -613,7 +607,7 @@ public struct ConfirmedGamesView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(minHeight: 52)
-        .background(isTeam1 ? Color(red: 1.0, green: 0.97, blue: 0.97) : Color(red: 0.95, green: 0.98, blue: 1.0))
+        .background(Color(red: 0.07, green: 0.09, blue: 0.13))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -622,7 +616,7 @@ public struct ConfirmedGamesView: View {
     }
 
     private func emptyPlayerSpotTile(game: SetGame, isTeam1: Bool, slotIndex: Int = 0) -> some View {
-        let borderColor = isTeam1 ? Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.8) : Color(red: 0.02, green: 0.52, blue: 0.78).opacity(0.8)
+        let borderColor = isTeam1 ? Color(red: 0.94, green: 0.27, blue: 0.27).opacity(0.6) : Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6)
         let labelText = game.openSpotLabel(isTeam1: isTeam1, slotIndex: slotIndex, allPlayers: dataManager.players)
         
         let isHost = game.isHostOrCoHost(dataManager.currentUser?.id) || (game.team1PlayerIds.first == dataManager.currentUser?.id)
@@ -645,9 +639,9 @@ public struct ConfirmedGamesView: View {
                     .font(.system(size: 12, weight: .bold))
                     .lineLimit(1)
             }
-            .foregroundColor(borderColor)
+            .foregroundColor(.white.opacity(0.7))
             .frame(maxWidth: .infinity, minHeight: 52)
-            .background(isTeam1 ? Color(red: 1.0, green: 0.96, blue: 0.96) : Color(red: 0.94, green: 0.98, blue: 1.0))
+            .background(Color(red: 0.07, green: 0.09, blue: 0.13).opacity(0.6))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -665,7 +659,7 @@ public struct ConfirmedGamesView: View {
             } label: {
                 Text(game.title.isEmpty ? "Match" : game.title)
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(.white)
             }
             .buttonStyle(.plain)
             
@@ -743,9 +737,9 @@ public struct ConfirmedGamesView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(.white.opacity(0.85))
                     .frame(width: 32, height: 32)
-                    .background(AppTheme.capsuleBackground)
+                    .background(Color.white.opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
@@ -766,7 +760,7 @@ public struct ConfirmedGamesView: View {
                     .font(.system(size: 14))
                 Text("\(game.courtLocation) - \(formatCourt(game.courtNumber))")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(.white)
                 
                 // Inline compact weather chip
                 let forecast = weatherService.cachedForecast(for: game.courtLocation, on: game.scheduledDate)
@@ -776,25 +770,25 @@ public struct ConfirmedGamesView: View {
                             .font(.system(size: 11))
                         Text("\(w.tempF)°F")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                         Text("•")
                             .font(.system(size: 10))
-                            .foregroundColor(AppTheme.textSecondary)
+                            .foregroundColor(.white.opacity(0.4))
                         Text("UV \(Int(w.uvIndex.rounded()))")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(w.uvColor)
                         Text("•")
                             .font(.system(size: 10))
-                            .foregroundColor(AppTheme.textSecondary)
+                            .foregroundColor(.white.opacity(0.4))
                         Text("💨 \(w.windMph) mph")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(AppTheme.cardBackgroundSecondary)
+                    .background(Color.white.opacity(0.08))
                     .clipShape(Capsule())
-                    .overlay(Capsule().stroke(AppTheme.cardBorder, lineWidth: 1))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
                 }
             }
             .onAppear {
@@ -805,7 +799,7 @@ public struct ConfirmedGamesView: View {
             HStack(spacing: 6) {
                 Text("\(formatStr) • \(game.genderCategory.rawValue) • Skill: \(skillStr)")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.9))
                 if game.isLevelLocked {
                     HStack(spacing: 2) {
                         Image(systemName: "lock.fill")
@@ -815,7 +809,7 @@ public struct ConfirmedGamesView: View {
                     }
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
-                    .background(Color.orange.opacity(0.15))
+                    .background(Color.orange.opacity(0.2))
                     .foregroundColor(.orange)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
@@ -825,7 +819,7 @@ public struct ConfirmedGamesView: View {
             HStack(spacing: 6) {
                 Text("Host: \(hostName)")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.85))
                 HStack(spacing: 3) {
                     Text("⭐")
                         .font(.system(size: 12))
@@ -840,7 +834,7 @@ public struct ConfirmedGamesView: View {
                         Text("Private Games")
                             .font(.system(size: 13, weight: .semibold))
                     }
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.85))
                 }
             }
         }
@@ -860,7 +854,7 @@ public struct ConfirmedGamesView: View {
                         .font(.system(size: 16))
                     Text("\(w.tempF)°F")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(AppTheme.textPrimary)
+                        .foregroundColor(.white)
                 }
                 Spacer()
                 // Section 2: UV
@@ -870,7 +864,7 @@ public struct ConfirmedGamesView: View {
                             .font(.system(size: 12))
                         Text("UV \(Int(w.uvIndex.rounded()))")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                     }
                     Text("(\(w.uvCategory))")
                         .font(.system(size: 11, weight: .medium))
@@ -884,11 +878,11 @@ public struct ConfirmedGamesView: View {
                             .font(.system(size: 12))
                         Text("\(w.windMph) mph \(w.windDirection)")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                     }
                     Text("(\(w.windCategory))")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(AppTheme.accentCyan)
+                        .foregroundColor(Color(red: 0.35, green: 0.65, blue: 0.95))
                 }
             } else {
                 HStack(spacing: 6) {
@@ -896,7 +890,7 @@ public struct ConfirmedGamesView: View {
                         .font(.system(size: 14))
                     Text("Loading forecast...")
                         .font(.system(size: 12))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(.white.opacity(0.6))
                 }
                 .padding(.vertical, 4)
             }
@@ -904,11 +898,11 @@ public struct ConfirmedGamesView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(AppTheme.cardBackgroundSecondary)
+        .background(Color(red: 0.05, green: 0.07, blue: 0.10))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(AppTheme.cardBorder, lineWidth: 1)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
         .onAppear {
             weatherService.loadForecast(for: game.courtLocation, on: game.scheduledDate)
@@ -1030,25 +1024,25 @@ public struct ConfirmedGamesView: View {
                                 Text("Open Spot\(suffix) (\(game.spotsRemaining) remaining)")
                                     .font(.system(size: 11, weight: .bold))
                             }
-                            .foregroundColor(Color(red: 0.02, green: 0.52, blue: 0.78))
+                            .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97))
                             .frame(maxWidth: .infinity, minHeight: 36)
-                            .background(Color.white)
+                            .background(Color(red: 0.07, green: 0.09, blue: 0.13))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
                                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                                    .foregroundColor(Color(red: 0.02, green: 0.52, blue: 0.78).opacity(0.6))
+                                    .foregroundColor(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.5))
                             )
                         }
                         .buttonStyle(.borderless)
                     }
                 }
                 .padding(8)
-                .background(AppTheme.cardBackgroundSecondary)
+                .background(Color(red: 0.10, green: 0.12, blue: 0.16).opacity(0.6))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(AppTheme.cardBorder, lineWidth: 1)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
                 )
             }
         }
@@ -1105,9 +1099,9 @@ public struct ConfirmedGamesView: View {
                             Text("Private Game • Invite Only")
                                 .font(.system(size: 12, weight: .bold))
                         }
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(AppTheme.cardBackgroundSecondary)
+                        .background(Color(red: 0.12, green: 0.14, blue: 0.19))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     } else {
                         Button {
@@ -1151,10 +1145,10 @@ public struct ConfirmedGamesView: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(wpName)
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(AppTheme.textPrimary)
+                                .foregroundColor(.white)
                             Text(wp.rating.gameDisplay)
                                 .font(.system(size: 9))
-                                .foregroundColor(AppTheme.textSecondary)
+                                .foregroundColor(.white.opacity(0.7))
                         }
                         Spacer()
                         
@@ -1194,7 +1188,7 @@ public struct ConfirmedGamesView: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(AppTheme.cardBackgroundSecondary)
+                    .background(Color(red: 0.12, green: 0.14, blue: 0.19))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             }
@@ -1228,14 +1222,14 @@ public struct ConfirmedGamesView: View {
                 HStack(spacing: 6) {
                     Text(displayName)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(AppTheme.textPrimary)
+                        .foregroundColor(.white)
                     
                     if isGameHost {
                         Text("HOST")
                             .font(.system(size: 8, weight: .bold))
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
-                            .background(Color.orange.opacity(0.15))
+                            .background(Color.orange.opacity(0.2))
                             .foregroundColor(.orange)
                             .clipShape(Capsule())
                     }
@@ -1275,11 +1269,11 @@ public struct ConfirmedGamesView: View {
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 8)
-        .background(Color.white)
+        .background(Color(white: 0.12).opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(AppTheme.cardBorder, lineWidth: 0.8)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
         )
     }
 
@@ -1298,11 +1292,11 @@ public struct ConfirmedGamesView: View {
                 HStack {
                     Text("🥎 MATCHES IN THIS GAME (\(game.subMatches.count))")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(Color.white.opacity(0.9))
                     Spacer()
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(Color.white.opacity(0.8))
                 }
             }
             .buttonStyle(.plain)
@@ -1321,15 +1315,15 @@ public struct ConfirmedGamesView: View {
                         .font(.system(size: 14))
                     Text("Match Schedule (\(game.subMatches.count))")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(AppTheme.textPrimary)
+                        .foregroundColor(.white)
                     Spacer()
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(.white.opacity(0.6))
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(AppTheme.cardBackgroundSecondary)
+                .background(Color(red: 0.08, green: 0.10, blue: 0.14))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(.plain)
@@ -1339,7 +1333,7 @@ public struct ConfirmedGamesView: View {
                     VStack(spacing: 8) {
                         Text("No match rotations generated yet.")
                             .font(.system(size: 11))
-                            .foregroundColor(AppTheme.textSecondary)
+                            .foregroundColor(.white.opacity(0.6))
                         
                         Button {
                             gameForRandomTeams = game
@@ -1431,7 +1425,7 @@ public struct ConfirmedGamesView: View {
                         .font(.system(size: 12))
                     Text(game.formattedDate)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(Color.white.opacity(0.65))
                 }
                 Spacer()
                 
@@ -1503,7 +1497,7 @@ public struct ConfirmedGamesView: View {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 8, weight: .bold))
                     }
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.75))
                 }
                 .buttonStyle(.borderless)
             }
@@ -1523,8 +1517,8 @@ public struct ConfirmedGamesView: View {
                             .lineSpacing(-2)
                     }
                     .frame(width: 54, height: 54)
-                    .background(AppTheme.capsuleBackground)
-                    .foregroundColor(AppTheme.textPrimary)
+                    .background(Color.white)
+                    .foregroundColor(Color(red: 0.08, green: 0.09, blue: 0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.borderless)
@@ -1664,13 +1658,13 @@ public struct ConfirmedGamesView: View {
             cardFooter(game: game, isMyGame: isMyGame, isHost: isHost, currentUserId: currentUserId)
         }
         .padding(16)
-        .background(AppTheme.cardBackground)
+        .background(Color(red: 0.11, green: 0.13, blue: 0.17))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(AppTheme.cardBorder, lineWidth: 1)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
-        .shadow(color: AppTheme.cardShadow, radius: 8, y: 3)
+        .shadow(color: Color.black.opacity(0.3), radius: 10, y: 4)
     }
 }
 
@@ -1724,7 +1718,7 @@ private struct SubMatchScoreRowView: View {
                         .font(.system(size: 13, weight: .black))
                         .foregroundColor(Color(red: 0.98, green: 0.45, blue: 0.45))
                         .frame(width: 44, height: 32)
-                        .background(Color.white)
+                        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)
@@ -1736,19 +1730,19 @@ private struct SubMatchScoreRowView: View {
                     
                     Text("VS")
                         .font(.system(size: 9, weight: .black))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(Color.white.opacity(0.4))
                     
                     TextField("T2", text: $team2ScoreText)
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.center)
                         .font(.system(size: 13, weight: .black))
-                        .foregroundColor(Color(red: 0.02, green: 0.52, blue: 0.78))
+                        .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98))
                         .frame(width: 44, height: 32)
-                        .background(Color.white)
+                        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color(red: 0.02, green: 0.52, blue: 0.78).opacity(0.6), lineWidth: 1.5)
+                                .stroke(Color(red: 0.22, green: 0.74, blue: 0.97).opacity(0.6), lineWidth: 1.5)
                         )
                         .onChange(of: team2ScoreText) {
                             autoSaveScore()
@@ -1758,7 +1752,7 @@ private struct SubMatchScoreRowView: View {
                 
                 Text(resolveNames(sm.team2PlayerIds, sm.winningTeam == 2))
                     .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(Color(red: 0.02, green: 0.52, blue: 0.78))
+                    .foregroundColor(Color(red: 0.38, green: 0.75, blue: 0.98))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -1770,11 +1764,11 @@ private struct SubMatchScoreRowView: View {
             }
         }
         .padding(8)
-        .background(AppTheme.cardBackgroundSecondary)
+        .background(Color(red: 0.08, green: 0.10, blue: 0.14))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(AppTheme.cardBorder, lineWidth: 0.8)
+                .stroke(Color.white.opacity(0.1), lineWidth: 0.8)
         )
         .onAppear {
             syncScores()

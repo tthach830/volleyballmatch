@@ -5,16 +5,16 @@
   --accent: #ff6a00;
   --accent-orange: #ff6a00;
   --accent-light: #fff3e6;
-  --bg: #ffffff;
-  --bg-main: #ffffff;
+  --bg: #f2f2f7;
+  --bg-main: #f2f2f7;
   --card-bg: #ffffff;
   --bg-card: #ffffff;
   --surface: #ffffff;
   --bg-alt: #f8fafc;
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --border: rgba(0, 0, 0, 0.08);
-  --border-subtle: rgba(0, 0, 0, 0.05);
+  --text-main: #000000;
+  --text-muted: #8e8e93;
+  --border: rgba(60, 60, 67, 0.12);
+  --border-subtle: rgba(60, 60, 67, 0.08);
   --success: #34c759;
   --warning: #ff9500;
   --danger: #ff3b30;
@@ -83,11 +83,11 @@ body {
 header {
   position: sticky;
   top: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(242, 242, 247, 0.94);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   z-index: 100;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.18);
   padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
   display: flex;
   align-items: center;
@@ -376,8 +376,8 @@ header {
 .segmented-control-dark {
   display: flex;
   align-items: center;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: #181c25;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 9999px;
   padding: 4px 6px;
   margin: 4px 16px 16px;
@@ -386,7 +386,7 @@ header {
   flex: 1;
   background: transparent;
   border: none;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
   font-weight: 600;
   padding: 7px 4px;
@@ -397,34 +397,32 @@ header {
   white-space: nowrap;
 }
 .segmented-item-dark.active {
-  background: #ffffff;
-  color: #0f172a;
+  color: #ffffff;
   font-weight: 700;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 .segmented-divider {
   width: 1px;
   height: 14px;
-  background: #cbd5e1;
+  background: rgba(255, 255, 255, 0.25);
   flex-shrink: 0;
 }
 
 .games-white-gap {
   height: 10px;
-  background: #f8fafc;
+  background: #ffffff;
   margin: 0 16px 16px;
   border-radius: 5px;
 }
 
 .game-details-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #181c26;
+  border: 1px solid #283042;
   border-radius: 18px;
   padding: 16px;
   margin: 0 16px 16px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   position: relative;
-  color: #0f172a;
+  color: #f8fafc;
 }
 
 .card-header-row {
@@ -438,7 +436,7 @@ header {
 .card-date-title {
   font-size: 18px;
   font-weight: 700;
-  color: #0f172a;
+  color: #ffffff;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -446,10 +444,10 @@ header {
 }
 
 .card-more-btn {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
   border-radius: 8px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.85);
   font-size: 14px;
   font-weight: 800;
   width: 32px;
@@ -461,7 +459,7 @@ header {
   transition: background 0.15s ease;
 }
 .card-more-btn:hover {
-  background: #e2e8f0;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .card-dropdown-menu {
@@ -470,8 +468,7 @@ header {
   right: 0;
   background: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   padding: 6px 0;
   z-index: 100;
   min-width: 170px;
@@ -502,7 +499,7 @@ header {
   gap: 5px;
   font-size: 14px;
   font-weight: 600;
-  color: #64748b;
+  color: #e2e8f0;
   margin-bottom: 10px;
   cursor: pointer;
 }
@@ -513,8 +510,8 @@ header {
 }
 
 .weather-capsule-dark {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #0d1017;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 8px 16px;
   margin: 6px 0 12px;
@@ -522,7 +519,6 @@ header {
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  color: #0f172a;
 }
 .weather-capsule-sec {
   display: flex;
@@ -539,8 +535,8 @@ header {
 }
 .player-pool-list-container {
   margin-bottom: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 10px 12px;
 }
@@ -553,7 +549,7 @@ header {
 .player-pool-list-title {
   font-size: 11px;
   font-weight: 800;
-  color: #0284c7;
+  color: #38bdf8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: flex;
@@ -573,15 +569,13 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #12151f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 6px 10px;
-  color: #0f172a;
 }
 .player-tile-dark {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #12151f;
   border-radius: 12px;
   padding: 8px 10px;
   display: flex;
@@ -593,32 +587,30 @@ header {
 }
 .player-tile-team1 {
   border: 1.5px solid #ef4444;
-  background: #fff5f5;
 }
 .player-tile-team2 {
-  border: 1.5px solid #0284c7;
-  background: #f0f9ff;
+  border: 1.5px solid #38bdf8;
 }
 .player-tile-empty-t1 {
-  border: 1.5px dashed rgba(239, 68, 68, 0.5);
-  background: #fef2f2;
+  border: 1.5px dashed rgba(239, 68, 68, 0.6);
+  background: rgba(18, 21, 31, 0.6);
   justify-content: center;
-  color: #dc2626;
+  color: #f87171;
   cursor: pointer;
   font-weight: 700;
   font-size: 12px;
 }
 .player-tile-empty-t2 {
-  border: 1.5px dashed rgba(2, 132, 199, 0.5);
-  background: #f0f9ff;
+  border: 1.5px dashed rgba(56, 189, 248, 0.6);
+  background: rgba(18, 21, 31, 0.6);
   justify-content: center;
-  color: #0284c7;
+  color: #38bdf8;
   cursor: pointer;
   font-weight: 700;
   font-size: 12px;
 }
 .player-tile-dark .player-tile-name {
-  color: #0f172a;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
@@ -691,12 +683,12 @@ header {
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.9);
   text-transform: uppercase;
 }
 .matches-schedule-pill {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #141822;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   padding: 10px 14px;
   display: flex;
@@ -704,13 +696,13 @@ header {
   align-items: center;
   cursor: pointer;
   margin-bottom: 12px;
-  color: #0f172a;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 700;
 }
 
 .card-footer-dark {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 12px;
   margin-top: 6px;
 }
@@ -720,13 +712,13 @@ header {
   align-items: center;
   margin-bottom: 12px;
   font-size: 12px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.65);
   font-weight: 600;
 }
 .card-footer-admin-trigger {
   font-size: 11px;
   font-weight: 800;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1763,9 +1755,7 @@ nav#bottom-nav {
   font-size: 13px !important;
   font-weight: 800 !important;
   text-align: center !important;
-  background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #0f172a !important;
+  background: #1e2433 !important;
   border-radius: 6px !important;
   -moz-appearance: textfield;
 }
@@ -2086,71 +2076,70 @@ nav#bottom-nav {
 }
 
 /* ==========================================================================
-   TOURNAMENT MODAL LIGHT THEME (Matches iOS TournamentHubView & TournamentDetailView)
+   TOURNAMENT MODAL DARK THEME (Matches iOS TournamentHubView & TournamentDetailView)
    ========================================================================== */
 .tournament-modal-card {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid #e2e8f0 !important;
-  --card-bg: #ffffff;
-  --surface: #ffffff;
-  --bg-card: #ffffff;
-  --bg-alt: #f8fafc;
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --border: #e2e8f0;
+  background: #141722 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  --card-bg: #141722;
+  --surface: #1a1e2c;
+  --bg-card: #1a1e2c;
+  --bg-alt: #1e2434;
+  --text-main: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.65);
+  --border: rgba(255, 255, 255, 0.12);
 }
 
 .tournament-modal-card h2,
 .tournament-modal-card h3,
 .tournament-modal-card h4,
 .tournament-modal-card .modal-title {
-  color: #0f172a !important;
+  color: #ffffff !important;
 }
 
 .tournament-modal-card input,
 .tournament-modal-card select,
 .tournament-modal-card textarea {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid #cbd5e1 !important;
+  background: #1e2434 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
 }
 
 .tournament-modal-card input:focus,
 .tournament-modal-card select:focus,
 .tournament-modal-card textarea:focus {
   border-color: #ea580c !important;
-  background: #ffffff !important;
-  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.2) !important;
+  background: #232a3d !important;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.25) !important;
 }
 
 .tournament-modal-card input::placeholder,
 .tournament-modal-card textarea::placeholder {
-  color: #94a3b8 !important;
+  color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .tournament-modal-card option {
-  background: #ffffff;
-  color: #0f172a;
+  background: #1e2434;
+  color: #ffffff;
 }
 
 .tournament-modal-card .modal-close {
-  color: #64748b;
-  background: #f1f5f9;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .tournament-modal-card .modal-close:hover {
-  color: #0f172a;
-  background: #e2e8f0;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .tournament-modal-card .ios-segmented-control {
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
   margin: 0 0 14px 0;
   border-radius: 10px;
   padding: 3px;
   gap: 2px;
-  border: 1px solid #e2e8f0;
 }
 
 .ios-segment-btn {
@@ -2160,7 +2149,7 @@ nav#bottom-nav {
   font-size: 12px;
   font-weight: 700;
   border-radius: 7px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.7);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -2169,14 +2158,14 @@ nav#bottom-nav {
 }
 
 .ios-segment-btn:hover {
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .ios-segment-btn.active {
-  background: #ffffff;
-  color: #0f172a;
+  background: #ea580c;
+  color: #ffffff;
   font-weight: 800;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 /* ==========================================================================
@@ -2219,21 +2208,21 @@ nav#bottom-nav {
   align-items: center;
   padding: 10px 2px;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
   box-sizing: border-box;
 }
 .vb-chart-col:hover {
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
 }
 .vb-chart-col.selected {
-  background: #fff7ed;
+  background: rgba(234, 88, 12, 0.15);
   border-color: #ea580c;
-  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.15);
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
 }
 
 .vb-chart-dot-ring {
@@ -2246,13 +2235,13 @@ nav#bottom-nav {
   margin-bottom: 8px;
 }
 .vb-chart-dot-ring.good {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgba(34, 197, 94, 0.2);
 }
 .vb-chart-dot-ring.fair {
-  background: rgba(234, 179, 8, 0.15);
+  background: rgba(234, 179, 8, 0.2);
 }
 .vb-chart-dot-ring.poor {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.2);
 }
 
 .vb-chart-temp-bar {
@@ -2264,22 +2253,22 @@ nav#bottom-nav {
 }
 
 .vb-day-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #181c26;
+  border: 1px solid #283042;
   border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
   transition: all 0.2s ease;
-  color: #0f172a;
+  color: #f8fafc;
 }
 .vb-day-card:hover {
-  border-color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.22);
   transform: translateY(-1px);
 }
 .vb-day-card.selected {
   border: 2px solid #ea580c;
-  background: #fffaf5;
-  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.15);
+  background: #1c2232;
+  box-shadow: 0 6px 20px rgba(234, 88, 12, 0.25);
 }
 
 .vb-metric-chip {
@@ -2290,24 +2279,24 @@ nav#bottom-nav {
   border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #0f172a;
+  background: #222938;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
 }
 .vb-metric-chip.ok {
-  color: #16a34a;
+  color: #4ade80;
   border-color: rgba(34, 197, 94, 0.4);
-  background: rgba(34, 197, 94, 0.1);
+  background: rgba(34, 197, 94, 0.16);
 }
 .vb-metric-chip.warn {
-  color: #ca8a04;
+  color: #facc15;
   border-color: rgba(234, 179, 8, 0.4);
-  background: rgba(234, 179, 8, 0.1);
+  background: rgba(234, 179, 8, 0.16);
 }
 .vb-metric-chip.bad {
-  color: #dc2626;
+  color: #f87171;
   border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.16);
 }
 
 /* Hourly Daytime Chart Styles - Responsive Grid to Best Fit Screen Without Horizontal Scrolling */
@@ -2329,21 +2318,21 @@ nav#bottom-nav {
   gap: 4px;
   padding: 8px 2px;
   border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
   box-sizing: border-box;
 }
 .vb-hour-card:hover {
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
 }
 .vb-hour-card.selected {
-  background: #fff7ed;
+  background: rgba(234, 88, 12, 0.15);
   border-color: #ea580c;
-  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.15);
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
 }
 
 .vb-hour-card.status-green {
@@ -2359,7 +2348,7 @@ nav#bottom-nav {
 .vb-hour-label {
   font-size: 10px;
   font-weight: 800;
-  color: #64748b;
+  color: var(--text-muted, rgba(255, 255, 255, 0.7));
   text-transform: uppercase;
 }
 
@@ -2371,13 +2360,13 @@ nav#bottom-nav {
 .vb-hour-temp {
   font-size: 12px;
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .vb-hour-wind {
   font-size: 9px;
   font-weight: 700;
-  color: #0284c7;
+  color: #38bdf8;
   display: flex;
   align-items: center;
   gap: 1px;
@@ -2386,7 +2375,7 @@ nav#bottom-nav {
 .vb-hour-uv {
   font-size: 9px;
   font-weight: 700;
-  color: #d97706;
+  color: #facc15;
 }
 
 @media (max-width: 440px) {
@@ -2413,31 +2402,29 @@ nav#bottom-nav {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #475569;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .vb-full-day-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #181c26;
+  border: 1px solid #283042;
   border-radius: 18px;
   padding: 16px 16px 18px 16px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   box-sizing: border-box;
   margin-bottom: 20px;
   transition: border-color 0.2s ease;
-  color: #0f172a;
 }
 
 .vb-hour-callout-box {
-  background: #f8fafc;
+  background: #111520;
   border-radius: 14px;
   padding: 14px 16px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   box-sizing: border-box;
-  color: #0f172a;
 }
 
 .best-window-pill {
@@ -2448,35 +2435,37 @@ nav#bottom-nav {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-.best-window-pill.status-green {
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
   border: 1px solid rgba(34, 197, 94, 0.35);
 }
+.best-window-pill.status-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+}
 .best-window-pill.status-yellow {
-  background: rgba(234, 179, 8, 0.12);
-  color: #ca8a04;
-  border: 1px solid rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.2);
 }
 .best-window-pill.status-red {
-  background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
 }
 
 /* Quick Glance Weekly Highlight Card */
 .vb-week-highlight-card {
-  background: #ffffff;
+  background: #181c26;
   border: 1.5px solid rgba(245, 158, 11, 0.4);
   border-radius: 16px;
   padding: 14px 16px;
   margin-bottom: 14px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-  color: #0f172a;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .vb-highlight-pill {
@@ -2485,15 +2474,14 @@ nav#bottom-nav {
   gap: 8px;
   padding: 8px 14px;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #232938;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #0f172a;
 }
 .vb-highlight-pill:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: #2d3548;
+  border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-1px);
 }
 
@@ -2509,28 +2497,31 @@ nav#bottom-nav {
   white-space: nowrap;
 }
 .vb-best-badge.status-green {
-  background: rgba(34, 197, 94, 0.15);
-  color: #16a34a;
+  background: rgba(34, 197, 94, 0.22);
+  color: #4ade80;
   border: 1.5px solid #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
 }
 .vb-best-badge.status-yellow {
-  background: rgba(234, 179, 8, 0.15);
-  color: #ca8a04;
+  background: rgba(234, 179, 8, 0.22);
+  color: #facc15;
   border: 1.5px solid #eab308;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.2);
 }
 .vb-best-badge.status-red {
-  background: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
+  background: rgba(239, 68, 68, 0.22);
+  color: #f87171;
   border: 1.5px solid #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
 }
 
 /* Mini Daytime Timeline on Each Day Card */
 .vb-timeline-container {
   margin-top: 12px;
   padding: 10px 12px;
-  background: #f8fafc;
+  background: #0f131c;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .vb-timeline-track {
@@ -2547,35 +2538,34 @@ nav#bottom-nav {
   gap: 3px;
   padding: 5px 6px;
   border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #1c2230;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   min-width: 38px;
   text-align: center;
   cursor: pointer;
   transition: all 0.15s ease;
-  color: #0f172a;
 }
 .vb-timeline-hour:hover {
-  background: #f1f5f9;
+  background: #283247;
   transform: translateY(-1px);
 }
 .vb-timeline-hour.is-ideal {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgba(34, 197, 94, 0.2);
   border-color: rgba(34, 197, 94, 0.5);
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.25);
 }
 
 .vb-timeline-hour-text {
   font-size: 10px;
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
   text-transform: uppercase;
 }
 
 .vb-timeline-hour-temp {
   font-size: 10px;
   font-weight: 700;
-  color: #64748b;
+  color: #cbd5e1;
 }
 
 /* ==========================================================================
@@ -2584,13 +2574,12 @@ nav#bottom-nav {
 .sf-modal-card {
   max-width: 480px;
   padding: 20px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #151923;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   max-height: 90vh;
   overflow-y: auto;
-  color: #0f172a;
 }
 
 .sf-nav-bar {
@@ -2603,7 +2592,7 @@ nav#bottom-nav {
 .sf-close-btn {
   background: none;
   border: none;
-  color: #0284c7;
+  color: #38bdf8;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -2617,7 +2606,7 @@ nav#bottom-nav {
 .sf-modal-title {
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
   margin: 0;
   letter-spacing: -0.2px;
 }
@@ -2640,9 +2629,9 @@ nav#bottom-nav {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -2651,13 +2640,13 @@ nav#bottom-nav {
   transition: all 0.15s ease;
 }
 .sf-preset-chip:hover {
-  background: #e2e8f0;
+  background: rgba(255, 255, 255, 0.1);
 }
 .sf-preset-chip.active {
-  background: rgba(56, 189, 248, 0.15);
-  color: #0284c7;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
   border-color: rgba(56, 189, 248, 0.5);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
 }
 
 /* Sections & Steps */
@@ -2675,19 +2664,19 @@ nav#bottom-nav {
 .sf-step-num {
   font-size: 32px;
   font-weight: 300;
-  color: #cbd5e1;
+  color: rgba(255, 255, 255, 0.4);
   line-height: 1;
 }
 
 .sf-step-title {
   font-size: 16px;
   font-weight: 600;
-  color: #0f172a;
+  color: #ffffff;
   line-height: 1.25;
 }
 .sf-step-title b {
   font-weight: 800;
-  color: #d97706;
+  color: #fbbf24;
 }
 
 /* Equation Row */
@@ -2714,19 +2703,18 @@ nav#bottom-nav {
 .sf-card-box {
   width: 58px;
   height: 58px;
-  background: #f1f5f9;
+  background: #e2e8f0;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border: 2px solid #e2e8f0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  border: 2px solid transparent;
   transition: all 0.2s ease;
 }
 .sf-card.active .sf-card-box {
-  border-color: #0284c7;
-  background: #f0f9ff;
-  box-shadow: 0 0 12px rgba(2, 132, 199, 0.2);
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
 }
 
 .sf-card-icon {
@@ -2736,7 +2724,7 @@ nav#bottom-nav {
 .sf-card-label {
   font-size: 11px;
   font-weight: 800;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.9);
   margin-top: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2745,7 +2733,7 @@ nav#bottom-nav {
 .sf-card-val {
   font-size: 10px;
   font-weight: 700;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.6);
   margin-top: 2px;
   white-space: nowrap;
 }
@@ -2753,7 +2741,7 @@ nav#bottom-nav {
 .sf-operator {
   font-size: 20px;
   font-weight: 600;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .sf-activity-badge {
@@ -2771,21 +2759,21 @@ nav#bottom-nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border: 2px solid #0284c7;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  border: 2px solid #38bdf8;
   font-size: 26px;
 }
 
 .sf-divider {
   height: 1px;
-  background: #e2e8f0;
+  background: rgba(255, 255, 255, 0.1);
   margin: 16px 0;
 }
 
 /* Step 2: Highlight Bars vs Muted Dots Chart */
 .sf-chart-wrapper {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   padding: 18px 12px 12px 12px;
   margin-top: 10px;
@@ -2797,7 +2785,7 @@ nav#bottom-nav {
   justify-content: space-between;
   height: 85px;
   padding-bottom: 6px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   gap: 3px;
 }
 
@@ -2817,7 +2805,7 @@ nav#bottom-nav {
   max-width: 14px;
   background: linear-gradient(to top, #d97706, #fbbf24);
   border-radius: 4px 4px 2px 2px;
-  box-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
   transition: height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -2825,7 +2813,7 @@ nav#bottom-nav {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #cbd5e1;
+  background: #64748b;
   margin-bottom: 4px;
   transition: all 0.2s ease;
 }
@@ -2842,7 +2830,7 @@ nav#bottom-nav {
   padding: 0 4px;
   font-size: 10px;
   font-weight: 700;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .sf-timeline-day-label {
@@ -2850,7 +2838,7 @@ nav#bottom-nav {
   margin-top: 6px;
   font-size: 10px;
   font-weight: 800;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.45);
   letter-spacing: 1px;
   text-transform: uppercase;
 }
@@ -2858,11 +2846,11 @@ nav#bottom-nav {
 .sf-highlight-summary {
   margin-top: 10px;
   padding: 8px 12px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
   border-radius: 8px;
   font-size: 11px;
-  color: #b45309;
+  color: #fbbf24;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2876,7 +2864,7 @@ nav#bottom-nav {
 
 .sf-footer-text {
   font-size: 13px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.85);
   line-height: 1.4;
   margin-bottom: 12px;
 }
@@ -2896,10 +2884,10 @@ nav#bottom-nav {
   border: 1.5px solid transparent;
 }
 .vb-glanceable-col:hover {
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.04);
 }
 .vb-glanceable-col.selected {
-  background: #fff7ed;
+  background: rgba(234, 88, 12, 0.14);
   border-color: #ea580c;
 }
 .vb-glanceable-pill {
@@ -2915,21 +2903,21 @@ nav#bottom-nav {
   line-height: 1.1;
 }
 .vb-glanceable-pill.good {
-  background: rgba(34, 197, 94, 0.15);
-  color: #16a34a;
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
 }
 .vb-glanceable-pill.fair {
-  background: rgba(234, 179, 8, 0.15);
-  color: #ca8a04;
+  background: rgba(234, 179, 8, 0.2);
+  color: #facc15;
 }
 .vb-glanceable-pill.poor {
-  background: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
 }
 .vb-temp-track {
   width: 8px;
   height: 52px;
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   position: relative;
   display: flex;

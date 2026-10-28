@@ -58,7 +58,7 @@ public struct SmartForecastsSheet: View {
                     // Step 1: String together multiple conditions
                     stepOneSection
                     
-                    Divider().background(AppTheme.borderSubtle)
+                    Divider().background(Color.white.opacity(0.12))
                     
                     // Step 2: We'll highlight when those conditions are met
                     stepTwoSection
@@ -68,7 +68,7 @@ public struct SmartForecastsSheet: View {
                 }
                 .padding(18)
             }
-            .background(AppTheme.screenBackground.ignoresSafeArea())
+            .background(Color(red: 0.09, green: 0.11, blue: 0.16).ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -76,13 +76,13 @@ public struct SmartForecastsSheet: View {
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.orange)
+                    .foregroundColor(.cyan)
                 }
                 
                 ToolbarItem(placement: .principal) {
                     Text("Beach Volleyball Smart Forecast")
                         .font(.system(size: 15, weight: .black))
-                        .foregroundColor(AppTheme.textPrimary)
+                        .foregroundColor(.white)
                 }
             }
         }
@@ -108,12 +108,12 @@ public struct SmartForecastsSheet: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .background(isSelected ? Color.cyan.opacity(0.15) : AppTheme.cardBackgroundSecondary)
-                        .foregroundColor(isSelected ? .cyan : AppTheme.textPrimary)
+                        .background(isSelected ? Color.cyan.opacity(0.2) : Color.white.opacity(0.06))
+                        .foregroundColor(isSelected ? .cyan : Color.white.opacity(0.8))
                         .cornerRadius(999)
                         .overlay(
                             RoundedRectangle(cornerRadius: 999)
-                                .stroke(isSelected ? Color.cyan.opacity(0.6) : AppTheme.cardBorder, lineWidth: 1)
+                                .stroke(isSelected ? Color.cyan.opacity(0.6) : Color.white.opacity(0.1), lineWidth: 1)
                         )
                     }
                 }
@@ -127,11 +127,11 @@ public struct SmartForecastsSheet: View {
             HStack(alignment: .top, spacing: 12) {
                 Text("1")
                     .font(.system(size: 32, weight: .light))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.4))
                 
                 Text("String together\nbeach volleyball conditions")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(.white)
                     .lineSpacing(2)
             }
             
@@ -146,7 +146,7 @@ public struct SmartForecastsSheet: View {
                 
                 Text("+")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.4))
                 
                 conditionBox(
                     icon: "wind",
@@ -157,7 +157,7 @@ public struct SmartForecastsSheet: View {
                 
                 Text("+")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.4))
                 
                 conditionBox(
                     icon: "sun.max.fill",
@@ -168,7 +168,7 @@ public struct SmartForecastsSheet: View {
                 
                 Text("=")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.4))
                 
                 // Activity Circle Badge
                 VStack(spacing: 4) {
@@ -176,7 +176,7 @@ public struct SmartForecastsSheet: View {
                         Circle()
                             .fill(Color.white)
                             .frame(width: 50, height: 50)
-                            .shadow(color: Color.black.opacity(0.15), radius: 4)
+                            .shadow(color: Color.black.opacity(0.3), radius: 4)
                             .overlay(Circle().stroke(Color.cyan, lineWidth: 2))
                         
                         Text(selectedPreset.icon)
@@ -185,7 +185,7 @@ public struct SmartForecastsSheet: View {
                     
                     Text(selectedPreset.label)
                         .font(.system(size: 8, weight: .black))
-                        .foregroundColor(AppTheme.textPrimary)
+                        .foregroundColor(.white)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity)
@@ -198,7 +198,7 @@ public struct SmartForecastsSheet: View {
                     HStack {
                         Text("🌡️ Temperature Range")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                         Spacer()
                         Text("\(localMinTemp)°F – \(localMaxTemp)°F")
                             .font(.system(size: 11, weight: .black))
@@ -218,7 +218,7 @@ public struct SmartForecastsSheet: View {
                     HStack {
                         Text("💨 Max Wind Speed")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                         Spacer()
                         Text("Below \(localMaxWind) mph")
                             .font(.system(size: 11, weight: .black))
@@ -233,7 +233,7 @@ public struct SmartForecastsSheet: View {
                     HStack {
                         Text("☀️ Max UV Index")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                         Spacer()
                         Text("Below \(String(format: "%.1f", localMaxUV))")
                             .font(.system(size: 11, weight: .black))
@@ -244,10 +244,9 @@ public struct SmartForecastsSheet: View {
                 }
             }
             .padding(12)
-            .background(AppTheme.cardBackground)
+            .background(Color.black.opacity(0.3))
             .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.cardBorder, lineWidth: 1))
-            .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08), lineWidth: 1))
         }
     }
     
@@ -255,24 +254,23 @@ public struct SmartForecastsSheet: View {
         VStack(spacing: 4) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(AppTheme.cardBackgroundSecondary)
+                    .fill(Color(red: 0.88, green: 0.91, blue: 0.95))
                     .frame(width: 50, height: 50)
-                    .shadow(color: AppTheme.cardShadow, radius: 2)
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(AppTheme.cardBorder, lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.3), radius: 3)
                 
                 Image(systemName: icon)
                     .font(.system(size: 22))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(Color(red: 0.15, green: 0.18, blue: 0.25))
             }
             
             Text(label)
                 .font(.system(size: 8, weight: .black))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(.white)
                 .tracking(0.5)
             
             Text(value)
                 .font(.system(size: 8, weight: .bold))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(Color.white.opacity(0.6))
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
@@ -287,23 +285,23 @@ public struct SmartForecastsSheet: View {
             HStack(alignment: .top, spacing: 12) {
                 Text("2")
                     .font(.system(size: 32, weight: .light))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.4))
                 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
                         Text("We'll")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                         Text("highlight")
                             .font(.system(size: 16, weight: .black))
-                            .foregroundColor(.orange)
+                            .foregroundColor(.yellow)
                         Text("when those")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(.white)
                     }
                     Text("conditions are met.")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(AppTheme.textPrimary)
+                        .foregroundColor(.white)
                 }
             }
             
@@ -333,11 +331,11 @@ public struct SmartForecastsSheet: View {
                                             LinearGradient(colors: [Color.yellow.opacity(0.8), Color.orange.opacity(0.6)], startPoint: .top, endPoint: .bottom)
                                         )
                                         .frame(maxWidth: 12, minHeight: barHeight, maxHeight: barHeight)
-                                        .shadow(color: isMatch ? Color.orange.opacity(0.4) : .clear, radius: 4)
+                                        .shadow(color: isMatch ? Color.orange.opacity(0.6) : .clear, radius: 4)
                                 } else {
                                     // Muted circular dot
                                     Circle()
-                                        .fill(AppTheme.borderSubtle)
+                                        .fill(Color.white.opacity(0.25))
                                         .frame(width: 5, height: 5)
                                         .padding(.bottom, 2)
                                 }
@@ -350,7 +348,7 @@ public struct SmartForecastsSheet: View {
                 .padding(.bottom, 4)
                 .overlay(
                     Rectangle()
-                        .fill(AppTheme.borderSubtle)
+                        .fill(Color.white.opacity(0.12))
                         .frame(height: 1),
                     alignment: .bottom
                 )
@@ -360,17 +358,17 @@ public struct SmartForecastsSheet: View {
                     HStack {
                         Text(daylight.first?.hourLabel.replacingOccurrences(of: " ", with: "") ?? "7A")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(AppTheme.textSecondary)
+                            .foregroundColor(Color.white.opacity(0.5))
                         Spacer()
                         if daylight.count > 4 {
                             Text(daylight[daylight.count / 2].hourLabel.replacingOccurrences(of: " ", with: ""))
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(AppTheme.textSecondary)
+                                .foregroundColor(Color.white.opacity(0.5))
                             Spacer()
                         }
                         Text(daylight.last?.hourLabel.replacingOccurrences(of: " ", with: "") ?? "7P")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(AppTheme.textSecondary)
+                            .foregroundColor(Color.white.opacity(0.5))
                     }
                     .padding(.horizontal, 4)
                 }
@@ -378,14 +376,13 @@ public struct SmartForecastsSheet: View {
                 // Day name
                 Text(day?.dayName.uppercased() ?? "TODAY")
                     .font(.system(size: 10, weight: .black))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(Color.white.opacity(0.4))
                     .tracking(1)
             }
             .padding(14)
-            .background(AppTheme.cardBackground)
+            .background(Color.black.opacity(0.35))
             .cornerRadius(14)
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
-            .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.08), lineWidth: 1))
             
             // Highlighted window pill
             if windowInfo.suitability != .poor {
@@ -394,16 +391,16 @@ public struct SmartForecastsSheet: View {
                         .font(.system(size: 12))
                     Text("Highlighted Window: \(windowInfo.windowText)")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.orange)
+                        .foregroundColor(.yellow)
                     Spacer()
                     Text(windowInfo.summaryText)
                         .font(.system(size: 9))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(Color.white.opacity(0.65))
                 }
                 .padding(10)
-                .background(Color.orange.opacity(0.12))
+                .background(Color.yellow.opacity(0.12))
                 .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.orange.opacity(0.25), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.yellow.opacity(0.25), lineWidth: 1))
             }
         }
     }
@@ -413,7 +410,7 @@ public struct SmartForecastsSheet: View {
         VStack(spacing: 12) {
             Text("Personalized weather and wind forecasts for beach volleyball.")
                 .font(.system(size: 13))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(Color.white.opacity(0.85))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
             

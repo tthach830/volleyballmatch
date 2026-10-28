@@ -57,35 +57,28 @@ public struct TournamentHubView: View {
                 VStack(spacing: 16) {
                     
                     // Filter Capsule Bar
-                    // Custom Light Capsule Filter Bar
                     HStack(spacing: 0) {
                         ForEach(Array(TournamentFilter.allCases.enumerated()), id: \.offset) { index, filter in
-                            if index > 0 && selectedFilter != filter && selectedFilter != TournamentFilter.allCases[index - 1] {
+                            if index > 0 {
                                 Rectangle()
-                                    .fill(AppTheme.cardBorder)
+                                    .fill(Color.white.opacity(0.18))
                                     .frame(width: 1, height: 14)
                             }
                             Button {
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    selectedFilter = filter
-                                }
+                                selectedFilter = filter
                             } label: {
                                 Text(filter.rawValue)
-                                    .font(.system(size: 13, weight: selectedFilter == filter ? .bold : .semibold))
-                                    .foregroundColor(selectedFilter == filter ? AppTheme.textPrimary : AppTheme.textSecondary)
+                                    .font(.system(size: 13, weight: selectedFilter == filter ? .bold : .medium))
+                                    .foregroundColor(selectedFilter == filter ? .white : .white.opacity(0.65))
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 7)
-                                    .background(selectedFilter == filter ? Color.white : Color.clear)
-                                    .clipShape(Capsule())
-                                    .shadow(color: selectedFilter == filter ? AppTheme.cardShadow : Color.clear, radius: 2, y: 1)
+                                    .padding(.vertical, 8)
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(3)
-                    .background(AppTheme.capsuleBackground)
+                    .background(Color(red: 0.11, green: 0.13, blue: 0.17))
                     .clipShape(Capsule())
-                    .overlay(Capsule().stroke(AppTheme.cardBorder, lineWidth: 0.8))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 0.8))
                     .padding(.horizontal)
                     .padding(.top, 4)
                     
@@ -97,7 +90,7 @@ public struct TournamentHubView: View {
                                 .foregroundColor(.orange.opacity(0.6))
                             Text("No Tournaments in this view")
                                 .font(.headline)
-                                .foregroundColor(AppTheme.textPrimary)
+                                .foregroundColor(.white)
                             Text("Tap '+ Host Tournament' to organize a beach tournament!")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -158,7 +151,7 @@ public struct TournamentHubView: View {
                 }
                 .padding(.bottom, 30)
             }
-            .background(AppTheme.screenBackground.ignoresSafeArea())
+            .background(Color(red: 0.08, green: 0.09, blue: 0.12).ignoresSafeArea())
             .navigationTitle("Beach Tournaments")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -261,7 +254,7 @@ public struct TournamentCardView: View {
                 Text(tournament.title)
                     .font(.headline)
                     .fontWeight(.black)
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(.white)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 if let pool = poolStatusBadge {
@@ -269,7 +262,7 @@ public struct TournamentCardView: View {
                         .font(.system(size: 10, weight: .bold))
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(pool.played == pool.total ? Color.green.opacity(0.15) : Color.orange.opacity(0.15)))
+                        .background(Capsule().fill(pool.played == pool.total ? Color.green.opacity(0.2) : Color.orange.opacity(0.2)))
                         .foregroundColor(pool.played == pool.total ? .green : .orange)
                 }
             }
@@ -283,14 +276,14 @@ public struct TournamentCardView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(Capsule().fill(Color.yellow.opacity(0.2)))
-                            .foregroundColor(.orange)
+                            .foregroundColor(.yellow)
                     } else if isUserCoHost {
                         Text("👥 Co-Host")
                             .font(.system(size: 10, weight: .black))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Capsule().fill(Color.blue.opacity(0.15)))
-                            .foregroundColor(AppTheme.accentCyan)
+                            .background(Capsule().fill(Color.blue.opacity(0.2)))
+                            .foregroundColor(.cyan)
                     }
                     
                     if isUserRegistered {
@@ -298,7 +291,7 @@ public struct TournamentCardView: View {
                             .font(.system(size: 10, weight: .black))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Capsule().fill(Color.green.opacity(0.15)))
+                            .background(Capsule().fill(Color.green.opacity(0.2)))
                             .foregroundColor(.green)
                     }
                     
@@ -306,8 +299,8 @@ public struct TournamentCardView: View {
                         .font(.system(size: 10, weight: .black))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.cyan.opacity(0.15)))
-                        .foregroundColor(AppTheme.accentCyan)
+                        .background(Capsule().fill(Color.cyan.opacity(0.2)))
+                        .foregroundColor(.cyan)
                     
                     ForEach(tournament.allowedDivisions) { div in
                         HStack(spacing: 4) {
@@ -317,8 +310,8 @@ public struct TournamentCardView: View {
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(AppTheme.capsuleBackground)
-                        .foregroundColor(AppTheme.textSecondary)
+                        .background(Color.white.opacity(0.08))
+                        .foregroundColor(.white)
                         .clipShape(Capsule())
                     }
                 }
@@ -332,7 +325,7 @@ public struct TournamentCardView: View {
                         .foregroundColor(.orange)
                     Text(tournament.formattedDate)
                         .font(.caption)
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(.white.opacity(0.9))
                 }
                 
                 HStack(spacing: 6) {
@@ -345,7 +338,7 @@ public struct TournamentCardView: View {
                 }
             }
             
-            Divider().background(AppTheme.borderSubtle)
+            Divider().background(Color.white.opacity(0.1))
             
             // Footer: Teams Count
             HStack {
@@ -359,9 +352,14 @@ public struct TournamentCardView: View {
             }
         }
         .padding(16)
-        .background(AppTheme.cardBackground)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.12, green: 0.14, blue: 0.19), Color(red: 0.08, green: 0.10, blue: 0.15)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
         .cornerRadius(18)
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(AppTheme.cardBorder, lineWidth: 1))
-        .shadow(color: AppTheme.cardShadow, radius: 8, y: 3)
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.08), lineWidth: 1))
     }
 }
