@@ -10111,6 +10111,25 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
   });
 
   html += `</div>`;
+
+  const isRoot = isRootUser(state.currentUser);
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, state.currentUser?.id)) || isRoot;
+  const isMyTeam = state.currentUser && (
+    isSamePlayer(tm.player1Id, state.currentUser.id) ||
+    isSamePlayer(tm.player2Id, state.currentUser.id) ||
+    isSamePlayer(tm.player3Id, state.currentUser.id) ||
+    isSamePlayer(tm.player4Id, state.currentUser.id)
+  );
+  if (isHost || isMyTeam) {
+    html += `
+      <div style="margin-top: 14px; border-top: 1px solid var(--border, #e2e8f0); padding-top: 12px;">
+        <button type="button" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.shareTeamInviteLink('${t.id}', '${tm.id}')">
+          🔗 Share Team Invite Link
+        </button>
+      </div>
+    `;
+  }
+
   content.innerHTML = html;
   modal.classList.add("active");
 };
@@ -10565,15 +10584,9 @@ window.renderTournamentDetail = function() {
                   isSamePlayer(team.player4Id, state.currentUser.id)
                 );
                 const canInvite = isHost || isMyTeam;
-                const openPartnerHTML = canInvite 
-                  ? `<i style="color: #ea580c; cursor: pointer; text-decoration: underline;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite a teammate">Looking for partner (Tap to Invite)</i>`
-                  : `<i style="color: #ea580c;">Looking for partner</i>`;
-                const openSpot3HTML = canInvite 
-                  ? `<i style="color: #ea580c; cursor: pointer; text-decoration: underline;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite a teammate">+ Open Spot (Tap to Invite)</i>`
-                  : `<i style="color: #ea580c;">+ Open Spot</i>`;
-                const openSpot4HTML = canInvite 
-                  ? `<i style="color: #ea580c; cursor: pointer; text-decoration: underline;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite a teammate">+ Open Spot (Tap to Invite)</i>`
-                  : `<i style="color: #ea580c;">+ Open Spot</i>`;
+                const openPartnerHTML = `<i style="color: #ea580c;">Looking for partner</i>`;
+                const openSpot3HTML = `<i style="color: #ea580c;">+ Open Spot</i>`;
+                const openSpot4HTML = `<i style="color: #ea580c;">+ Open Spot</i>`;
                 const playerLine1 = `${p1?.avatarEmoji || '🏐'} ${p1Name} & ${p2 ? `${p2.avatarEmoji || '🏐'} ${p2Name}` : openPartnerHTML}`;
                 const playerLine2 = is4v4 ? `${p3 ? `${p3.avatarEmoji || '🏐'} ${p3Name}` : openSpot3HTML} & ${p4 ? `${p4.avatarEmoji || '🏐'} ${p4Name}` : openSpot4HTML}` : '';
 
@@ -12802,8 +12815,8 @@ window.shareTeamInviteLink = async function(tournamentId, teamId) {
   if (!team) return;
 
   const inviteUrl = `https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=${t.id}&teamId=${team.id}`;
-  const shareTitle = `Join my team '${team.teamName}' for ${t.title}!`;
-  const shareText = `Hey! Join my volleyball team '${team.teamName}' for ${t.title} (${team.division}). Tap to join or sign up:\n${inviteUrl}`;
+  const shareTitle = `Join ${team.teamName} (${t.title})`;
+  const shareText = `Hey! Join my volleyball team '${team.teamName}' for ${t.title} (${team.division}). One team link — tap to join or sign up:\n${inviteUrl}`;
 
   if (navigator.share) {
     try {

@@ -462,10 +462,10 @@ public struct TeamQRCodeSheet: View {
                         
                         // Instructions
                         VStack(spacing: 6) {
-                            Text("Invite Teammates to Join")
+                            Text("Team Invite Link")
                                 .font(.system(size: 16, weight: .bold))
                             
-                            Text("Share this link or QR code with your partner or teammates. If they don't have an account yet, they can sign up directly to join your team!")
+                            Text("One link for your entire team. Share this single link or QR code with your partner and teammates. When they open it, they can join or sign up to automatically fill the open spots on your team!")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)

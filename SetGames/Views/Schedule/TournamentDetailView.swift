@@ -1562,18 +1562,10 @@ struct TournamentTeamRowView: View {
                     if let p2 = p2 {
                         playerLabel(player: p2, fallback: "Player 2")
                     } else {
-                        Button(action: { onInvite?() }) {
-                            HStack(spacing: 3) {
-                                Image(systemName: "person.badge.plus")
-                                    .font(.system(size: 9))
-                                Text("Looking for Partner")
-                            }
+                        Text("Looking for Partner")
                             .font(.caption2)
                             .italic()
-                            .foregroundColor(.orange)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(onInvite == nil)
+                            .foregroundColor(.orange.opacity(0.85))
                     }
                 }
                 
@@ -1583,18 +1575,10 @@ struct TournamentTeamRowView: View {
                         if let p3 = p3 {
                             playerLabel(player: p3, fallback: "Player 3")
                         } else {
-                            Button(action: { onInvite?() }) {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "person.badge.plus")
-                                        .font(.system(size: 9))
-                                    Text("+ Open Spot")
-                                }
+                            Text("+ Open Spot")
                                 .font(.caption2)
                                 .italic()
-                                .foregroundColor(.orange)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(onInvite == nil)
+                                .foregroundColor(.orange.opacity(0.85))
                         }
                         
                         Text("&")
@@ -1604,18 +1588,10 @@ struct TournamentTeamRowView: View {
                         if let p4 = p4 {
                             playerLabel(player: p4, fallback: "Player 4")
                         } else {
-                            Button(action: { onInvite?() }) {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "person.badge.plus")
-                                        .font(.system(size: 9))
-                                    Text("+ Open Spot")
-                                }
+                            Text("+ Open Spot")
                                 .font(.caption2)
                                 .italic()
-                                .foregroundColor(.orange)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(onInvite == nil)
+                                .foregroundColor(.orange.opacity(0.85))
                         }
                     }
                 }
@@ -1626,12 +1602,17 @@ struct TournamentTeamRowView: View {
             HStack(spacing: 8) {
                 if let onInvite = onInvite {
                     Button(action: onInvite) {
-                        Image(systemName: "person.badge.plus")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.cyan)
-                            .padding(8)
-                            .background(Color.cyan.opacity(0.12))
-                            .clipShape(Circle())
+                        HStack(spacing: 4) {
+                            Image(systemName: "link")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("Invite")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundColor(.cyan)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.cyan.opacity(0.12))
+                        .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
                 }
