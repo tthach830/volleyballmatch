@@ -114,7 +114,7 @@ public struct TournamentDetailView: View {
                         }
                         .padding(.bottom, 90)
                     }
-                    .background(Color(red: 0.08, green: 0.09, blue: 0.12).ignoresSafeArea())
+                    .background(AppTheme.screenBackground.ignoresSafeArea())
                     
                     // BOTTOM STICKY ACTION BAR
                     VStack {
@@ -127,7 +127,7 @@ public struct TournamentDetailView: View {
                                         .foregroundColor(.green)
                                     Text("You are active in this tournament")
                                         .font(.caption)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(AppTheme.textPrimary)
                                 }
                                 Spacer()
                                 Button("Leave") {
@@ -142,9 +142,9 @@ public struct TournamentDetailView: View {
                                 .clipShape(Capsule())
                             }
                             .padding(14)
-                            .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                            .background(AppTheme.cardBackground)
                             .cornerRadius(16)
-                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
                             .padding(.horizontal)
                         } else {
                             Button {
@@ -169,7 +169,7 @@ public struct TournamentDetailView: View {
                     .padding(.bottom, 12)
                     .background(
                         LinearGradient(
-                            colors: [Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0), Color(red: 0.08, green: 0.09, blue: 0.12)],
+                            colors: [AppTheme.screenBackground.opacity(0), AppTheme.screenBackground],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -386,15 +386,10 @@ public struct TournamentDetailView: View {
             }
         }
         .padding(18)
-        .background(
-            LinearGradient(
-                colors: [Color(red: 0.14, green: 0.16, blue: 0.22), Color(red: 0.08, green: 0.10, blue: 0.15)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(AppTheme.cardBackground)
         .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .shadow(color: AppTheme.cardShadow, radius: 8, y: 3)
         .padding(.horizontal)
     }
 
@@ -433,15 +428,15 @@ public struct TournamentDetailView: View {
                     .font(.system(size: 10, weight: .black))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Capsule().fill(isSelected ? Color.white.opacity(0.3) : Color.white.opacity(0.1)))
+                    .background(Capsule().fill(isSelected ? Color.white.opacity(0.3) : AppTheme.cardBorder))
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(isSelected ? Color.orange : Color(red: 0.12, green: 0.14, blue: 0.19))
-            .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+            .background(isSelected ? Color.orange : AppTheme.capsuleBackground)
+            .foregroundColor(isSelected ? .white : AppTheme.textSecondary)
             .clipShape(Capsule())
             .overlay(
-                Capsule().stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: 1)
+                Capsule().stroke(isSelected ? Color.orange : AppTheme.cardBorder, lineWidth: 1)
             )
         }
     }
@@ -517,8 +512,9 @@ public struct TournamentDetailView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(24)
-                    .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                    .background(AppTheme.cardBackground)
                     .cornerRadius(18)
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(AppTheme.cardBorder, lineWidth: 1))
                     .padding(.horizontal)
                 } else {
                     VStack(spacing: 12) {
@@ -528,7 +524,7 @@ public struct TournamentDetailView: View {
                         
                         Text("Pool Play Not Yet Generated")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.textPrimary)
                         
                         Text("The tournament host will seed and generate pool play matchups once team registration is complete.")
                             .font(.caption)
@@ -537,8 +533,9 @@ public struct TournamentDetailView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(24)
-                    .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                    .background(AppTheme.cardBackground)
                     .cornerRadius(18)
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(AppTheme.cardBorder, lineWidth: 1))
                     .padding(.horizontal)
                 }
             } else {
@@ -558,7 +555,7 @@ public struct TournamentDetailView: View {
                         Text("Ready for Single Elimination Playoffs?")
                             .font(.subheadline)
                             .fontWeight(.bold)
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.textPrimary)
                         Text(t.playoffAdvanceMode == .allTeams ? "Every team advances to the single-elimination playoff bracket seeded by pool finish!" : "The top 2 teams from each pool advance directly to the Semifinals!")
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -583,9 +580,9 @@ public struct TournamentDetailView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(16)
-                    .background(Color(red: 0.12, green: 0.15, blue: 0.22))
+                    .background(AppTheme.cardBackgroundSecondary)
                     .cornerRadius(14)
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.orange.opacity(0.3), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
                     .padding(.horizontal)
                 }
                 
@@ -772,12 +769,14 @@ public struct TournamentDetailView: View {
                     .padding(.vertical, 9)
                     
                     if index < standings.count - 1 {
-                        Divider().background(Color.white.opacity(0.04))
+                        Divider().background(AppTheme.borderSubtle)
                     }
                 }
             }
-            .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+            .background(AppTheme.cardBackground)
             .cornerRadius(14)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
+            .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
             .padding(.horizontal)
             
             // Matches in this pool
@@ -927,18 +926,13 @@ public struct TournamentDetailView: View {
             }
         }
         .padding(12)
-        .background(
-            LinearGradient(
-                colors: [Color(red: 0.12, green: 0.14, blue: 0.20), Color(red: 0.09, green: 0.11, blue: 0.16)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(AppTheme.cardBackground)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(AppTheme.cardBorder, lineWidth: 1)
         )
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
         .padding(.horizontal)
     }
     
@@ -1132,18 +1126,13 @@ public struct TournamentDetailView: View {
             }
         }
         .padding(16)
-        .background(
-            LinearGradient(
-                colors: [Color(red: 0.12, green: 0.14, blue: 0.20), Color(red: 0.09, green: 0.11, blue: 0.16)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(AppTheme.cardBackground)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(isComplete ? Color.green.opacity(0.3) : Color.cyan.opacity(0.2), lineWidth: 1)
+                .stroke(isComplete ? Color.green.opacity(0.3) : AppTheme.cardBorder, lineWidth: 1)
         )
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
         .padding(.horizontal)
     }
     
@@ -1162,7 +1151,7 @@ public struct TournamentDetailView: View {
                     
                     Text("Playoff Bracket Not Yet Generated")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                     
                     Text(t.playoffAdvanceMode == .allTeams ? "Complete pool play matches first. Every single team advances to the single-elimination playoff bracket!" : "Complete pool play matches first. Top 2 teams from each pool advance to the Semifinals!")
                         .font(.caption)
@@ -1180,7 +1169,7 @@ public struct TournamentDetailView: View {
                                     .fontWeight(.bold)
                             }
                             .font(.footnote)
-                            .foregroundColor(.black)
+                            .foregroundColor(.white)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
                             .background(Color.orange)
@@ -1190,8 +1179,10 @@ public struct TournamentDetailView: View {
                 }
                 .padding(24)
                 .frame(maxWidth: .infinity)
-                .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                .background(AppTheme.cardBackground)
                 .cornerRadius(16)
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+                .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
                 .padding(.horizontal)
             } else {
                 // Champion Trophy Banner if final completed
@@ -1211,7 +1202,7 @@ public struct TournamentDetailView: View {
                                     Text(champTeam.teamName)
                                         .font(.title2)
                                         .fontWeight(.heavy)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(AppTheme.textPrimary)
                                         .underline(pattern: .dot, color: .orange.opacity(0.6))
                                 }
                                 .buttonStyle(.plain)
@@ -1222,13 +1213,14 @@ public struct TournamentDetailView: View {
                     .padding(16)
                     .background(
                         LinearGradient(
-                            colors: [Color.orange.opacity(0.25), Color(red: 0.14, green: 0.12, blue: 0.08)],
+                            colors: [Color.orange.opacity(0.15), Color.white],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .cornerRadius(16)
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.orange.opacity(0.5), lineWidth: 1.5))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.orange.opacity(0.4), lineWidth: 1.5))
+                    .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
                     .padding(.horizontal)
                 }
                 
@@ -1407,8 +1399,10 @@ public struct TournamentDetailView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(30)
-                    .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                    .background(AppTheme.cardBackground)
                     .cornerRadius(16)
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+                    .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
                     .padding(.horizontal)
                 } else {
                     VStack(spacing: 8) {
@@ -1486,18 +1480,20 @@ public struct TournamentDetailView: View {
                     .foregroundColor(.orange)
                 Text(t.notes)
                     .font(.footnote)
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(AppTheme.textPrimary)
                     .lineSpacing(3)
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+            .background(AppTheme.cardBackground)
             .cornerRadius(14)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
+            .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
             
             VStack(alignment: .leading, spacing: 8) {
                 Text("STANDARD BEACH RULES")
                     .font(.system(size: 11, weight: .black))
-                    .foregroundColor(.cyan)
+                    .foregroundColor(AppTheme.accentCyan)
                 
                 RuleBulletPoint(text: "Rally scoring to 21 points (win by 2, cap at 23).")
                 RuleBulletPoint(text: "Switch sides every 7 points to equalize sun & wind conditions.")
@@ -1508,8 +1504,10 @@ public struct TournamentDetailView: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+            .background(AppTheme.cardBackground)
             .cornerRadius(14)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
+            .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
         }
         .padding(.horizontal)
     }
@@ -1540,14 +1538,14 @@ struct TournamentTeamRowView: View {
                 HStack {
                     Text(team.teamName)
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                     if let pool = team.poolName {
                         Text(pool)
                             .font(.system(size: 10, weight: .black))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.cyan.opacity(0.2)))
-                            .foregroundColor(.cyan)
+                            .background(Capsule().fill(Color.cyan.opacity(0.15)))
+                            .foregroundColor(AppTheme.accentCyan)
                     }
                 }
                 
@@ -1643,8 +1641,10 @@ struct TournamentTeamRowView: View {
             }
         }
         .padding(12)
-        .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+        .background(AppTheme.cardBackground)
         .cornerRadius(14)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
     }
     
     @ViewBuilder
@@ -1652,11 +1652,11 @@ struct TournamentTeamRowView: View {
         if let p = player {
             Text(p.displayName)
                 .font(.caption2)
-                .foregroundColor(.white.opacity(0.85))
+                .foregroundColor(AppTheme.textSecondary)
         } else {
             Text(fallback)
                 .font(.caption2)
-                .foregroundColor(.white.opacity(0.85))
+                .foregroundColor(AppTheme.textSecondary)
         }
     }
 }
@@ -1673,12 +1673,12 @@ struct TournamentFreeAgentRowView: View {
                     Text(p.displayName)
                         .font(.subheadline)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                     if !freeAgent.notes.isEmpty {
                         Text("\"\(freeAgent.notes)\"")
                             .font(.caption2)
                             .italic()
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(AppTheme.textSecondary)
                     }
                 }
                 Spacer()
@@ -1697,8 +1697,10 @@ struct TournamentFreeAgentRowView: View {
                 }
             }
             .padding(10)
-            .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+            .background(AppTheme.cardBackground)
             .cornerRadius(12)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.cardBorder, lineWidth: 1))
+            .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
         }
     }
 }
@@ -1853,12 +1855,13 @@ struct TournamentMatchRowView: View {
             }
         }
         .padding(12)
-        .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+        .background(AppTheme.cardBackground)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isFinal ? Color.green.opacity(0.2) : Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(isFinal ? Color.green.opacity(0.4) : AppTheme.cardBorder, lineWidth: 1)
         )
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
         .padding(.horizontal)
     }
 }
@@ -1891,7 +1894,7 @@ struct TournamentScoreSheet: View {
         
         NavigationView {
             ZStack {
-                Color(red: 0.08, green: 0.09, blue: 0.12).ignoresSafeArea()
+                AppTheme.screenBackground.ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 24) {
@@ -1904,7 +1907,7 @@ struct TournamentScoreSheet: View {
                             Text("Official Score Report")
                                 .font(.title3)
                                 .fontWeight(.black)
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.textPrimary)
                             
                             if let pool = match.poolName {
                                 Text("\(pool) • Match #\(match.matchNumber)")
@@ -1923,14 +1926,16 @@ struct TournamentScoreSheet: View {
                             // Team 1 Stepper
                             scoreStepperRow(teamName: t1Name, score: $team1Score, isLeading: team1Score > team2Score)
                             
-                            Divider().background(Color.white.opacity(0.1))
+                            Divider().background(AppTheme.borderSubtle)
                             
                             // Team 2 Stepper
                             scoreStepperRow(teamName: t2Name, score: $team2Score, isLeading: team2Score > team1Score)
                         }
                         .padding(18)
-                        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+                        .background(AppTheme.cardBackground)
                         .cornerRadius(18)
+                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(AppTheme.cardBorder, lineWidth: 1))
+                        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
                         .padding(.horizontal)
                         
                         // Quick Presets
@@ -2229,9 +2234,9 @@ struct PlayoffBracketChartView: View {
                     .padding(.horizontal, 12)
                 }
                 .padding(.vertical, 8)
-                .background(Color(red: 0.08, green: 0.10, blue: 0.14))
+                .background(AppTheme.cardBackgroundSecondary)
                 .cornerRadius(16)
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
                 .padding(.horizontal)
             }
         }
@@ -2334,12 +2339,13 @@ struct PlayoffBracketChartView: View {
                 }
             }
             .padding(7)
-            .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+            .background(Color.white)
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isDone ? Color.green.opacity(0.4) : Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(isDone ? Color.green.opacity(0.4) : AppTheme.cardBorder, lineWidth: 1)
             )
+            .shadow(color: AppTheme.cardShadow, radius: 2, y: 1)
         }
         .buttonStyle(.plain)
     }
@@ -2534,12 +2540,13 @@ struct PlayoffCleanMatchCardView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+            .background(AppTheme.cardBackground)
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(AppTheme.cardBorder, lineWidth: 1)
             )
+            .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
         }
         .buttonStyle(.plain)
         .padding(.horizontal)

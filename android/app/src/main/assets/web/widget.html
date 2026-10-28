@@ -501,14 +501,14 @@
       // Parse Query Parameters
       const params = new URLSearchParams(window.location.search);
       const beachName = params.get('beach') || params.get('court') || 'Main Beach';
-      const theme = params.get('theme') || 'dark';
+      const theme = params.get('theme') || 'light';
       const view = params.get('view') || 'full'; // 'full' or 'compact'
       const minTemp = Number(params.get('minTemp')) || 60;
       const maxTemp = Number(params.get('maxTemp')) || 80;
       const maxWind = Number(params.get('maxWind')) || 10;
       const maxUv = Number(params.get('maxUv')) || 4.0;
 
-      if (theme === 'light') {
+      if (theme !== 'dark') {
         document.body.classList.add('theme-light');
       }
 

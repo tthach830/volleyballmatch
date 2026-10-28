@@ -64,7 +64,7 @@ public struct VolleyballWeatherView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 90)
             }
-            .background(Color(red: 0.08, green: 0.09, blue: 0.13).ignoresSafeArea())
+            .background(AppTheme.screenBackground.ignoresSafeArea())
             .navigationTitle("Volleyball?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -241,7 +241,7 @@ public struct VolleyballWeatherView: View {
                             // Day Name (e.g. TODAY, THU, FRI)
                             Text(colDayName)
                                 .font(.system(size: 10, weight: .heavy))
-                                .foregroundColor(isSelected ? .orange : Color.white.opacity(0.85))
+                                .foregroundColor(isSelected ? .orange : AppTheme.textPrimary)
                                 .lineLimit(1)
                             
                             // Weather Emoji
@@ -251,7 +251,7 @@ public struct VolleyballWeatherView: View {
                             // Best Time Pill
                             Text(pillText)
                                 .font(.system(size: 8, weight: .heavy))
-                                .foregroundColor(windowInfo.suitability == .good ? Color(red: 0.29, green: 0.87, blue: 0.5) : (windowInfo.suitability == .fair ? Color(red: 0.98, green: 0.8, blue: 0.08) : Color(red: 0.97, green: 0.44, blue: 0.44)))
+                                .foregroundColor(windowInfo.suitability == .good ? Color(red: 0.1, green: 0.65, blue: 0.3) : (windowInfo.suitability == .fair ? Color(red: 0.85, green: 0.55, blue: 0.05) : Color(red: 0.85, green: 0.25, blue: 0.25)))
                                 .padding(.horizontal, 3)
                                 .padding(.vertical, 2)
                                 .frame(maxWidth: .infinity)
@@ -265,7 +265,7 @@ public struct VolleyballWeatherView: View {
                             // Vertical Thermometer Bar
                             ZStack(alignment: .bottom) {
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color.white.opacity(0.08))
+                                    .fill(AppTheme.capsuleBackground)
                                     .frame(width: 8, height: 50)
                                 
                                 RoundedRectangle(cornerRadius: 3)
@@ -282,21 +282,21 @@ public struct VolleyballWeatherView: View {
                             // Max Temp
                             Text("\(day.tempMax)°")
                                 .font(.system(size: 12, weight: .heavy))
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.textPrimary)
                             
                             // Min Temp
                             Text("\(day.tempMin)°")
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(Color.white.opacity(0.55))
+                                .foregroundColor(AppTheme.textSecondary)
                         }
                         .padding(.vertical, 8)
                         .padding(.horizontal, 2)
                         .frame(maxWidth: .infinity)
-                        .background(isSelected ? Color(red: 0.22, green: 0.14, blue: 0.12) : Color.clear)
+                        .background(isSelected ? Color.orange.opacity(0.12) : Color.clear)
                         .cornerRadius(10)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10)
-                                .stroke(isSelected ? Color(red: 0.9, green: 0.45, blue: 0.25) : Color.clear, lineWidth: 1.5)
+                                .stroke(isSelected ? Color.orange : Color.clear, lineWidth: 1.5)
                         )
                     }
                     .buttonStyle(.plain)
@@ -304,9 +304,10 @@ public struct VolleyballWeatherView: View {
             }
         }
         .padding(14)
-        .background(Color(red: 0.09, green: 0.11, blue: 0.15))
+        .background(AppTheme.cardBackground)
         .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0.16, green: 0.19, blue: 0.26), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
     }
     
     // MARK: - Customizable Criteria Card
@@ -322,27 +323,27 @@ public struct VolleyballWeatherView: View {
                         .foregroundColor(.orange)
                     Text("Your Ideal Playing Conditions")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                     Spacer()
                     Text("\(minTemp)-\(maxTemp)°F • <\(maxWind)mph • UV <\(String(format: "%.0f", maxUV))")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary)
                     Image(systemName: showSettings ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textSecondary)
                 }
             }
             
             if showSettings {
                 VStack(spacing: 14) {
-                    Divider().background(Color.white.opacity(0.1))
+                    Divider().background(AppTheme.borderSubtle)
                     
                     // Temperature Range
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text("🌡️ Temperature Range")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.textPrimary)
                             Spacer()
                             Text("\(minTemp)°F – \(maxTemp)°F")
                                 .font(.system(size: 12, weight: .black))
@@ -350,13 +351,13 @@ public struct VolleyballWeatherView: View {
                         }
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("MIN: \(minTemp)°F").font(.caption2).foregroundColor(.secondary)
+                                Text("MIN: \(minTemp)°F").font(.caption2).foregroundColor(AppTheme.textSecondary)
                                 Stepper("", value: $minTemp, in: 45...max(45, maxTemp - 5))
                                     .labelsHidden()
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text("MAX: \(maxTemp)°F").font(.caption2).foregroundColor(.secondary)
+                                Text("MAX: \(maxTemp)°F").font(.caption2).foregroundColor(AppTheme.textSecondary)
                                 Stepper("", value: $maxTemp, in: min(95, minTemp + 5)...95)
                                     .labelsHidden()
                             }
@@ -368,7 +369,7 @@ public struct VolleyballWeatherView: View {
                         HStack {
                             Text("💨 Max Wind Speed")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.textPrimary)
                             Spacer()
                             Text("Below \(maxWind) mph")
                                 .font(.system(size: 12, weight: .black))
@@ -377,11 +378,11 @@ public struct VolleyballWeatherView: View {
                         Slider(value: Binding(get: { Double(maxWind) }, set: { maxWind = Int($0) }), in: 5...25, step: 1)
                             .tint(.cyan)
                         HStack {
-                            Text("5 mph (Calm)").font(.caption2).foregroundColor(.secondary)
+                            Text("5 mph (Calm)").font(.caption2).foregroundColor(AppTheme.textSecondary)
                             Spacer()
-                            Text("10 mph (Default)").font(.caption2).foregroundColor(.secondary)
+                            Text("10 mph (Default)").font(.caption2).foregroundColor(AppTheme.textSecondary)
                             Spacer()
-                            Text("25 mph (Gale)").font(.caption2).foregroundColor(.secondary)
+                            Text("25 mph (Gale)").font(.caption2).foregroundColor(AppTheme.textSecondary)
                         }
                     }
                     
@@ -390,7 +391,7 @@ public struct VolleyballWeatherView: View {
                         HStack {
                             Text("☀️ Max UV Index")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.textPrimary)
                             Spacer()
                             Text("Below \(String(format: "%.1f", maxUV))")
                                 .font(.system(size: 12, weight: .black))
@@ -399,11 +400,11 @@ public struct VolleyballWeatherView: View {
                         Slider(value: $maxUV, in: 1...11, step: 0.5)
                             .tint(.yellow)
                         HStack {
-                            Text("1 (Low)").font(.caption2).foregroundColor(.secondary)
+                            Text("1 (Low)").font(.caption2).foregroundColor(AppTheme.textSecondary)
                             Spacer()
-                            Text("4 (Default: Mod)").font(.caption2).foregroundColor(.secondary)
+                            Text("4 (Default: Mod)").font(.caption2).foregroundColor(AppTheme.textSecondary)
                             Spacer()
-                            Text("11 (Extreme)").font(.caption2).foregroundColor(.secondary)
+                            Text("11 (Extreme)").font(.caption2).foregroundColor(AppTheme.textSecondary)
                         }
                     }
                     
@@ -423,9 +424,10 @@ public struct VolleyballWeatherView: View {
             }
         }
         .padding(14)
-        .background(Color(red: 0.12, green: 0.14, blue: 0.20))
+        .background(AppTheme.cardBackground)
         .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
     }
     
     private func activeHourIndex(for day: DailyVolleyballWeather, dayIndex: Int) -> Int? {
@@ -577,7 +579,7 @@ public struct VolleyballWeatherView: View {
                                             )
                                     } else {
                                         Circle()
-                                            .fill(isSelected ? Color.cyan : Color.white.opacity(0.25))
+                                            .fill(isSelected ? Color.orange : AppTheme.borderSubtle)
                                             .frame(width: isSelected ? 7 : 5, height: isSelected ? 7 : 5)
                                             .padding(.bottom, 2)
                                     }
@@ -590,7 +592,7 @@ public struct VolleyballWeatherView: View {
                     .padding(.bottom, 4)
                     .overlay(
                         Rectangle()
-                            .fill(Color.white.opacity(0.1))
+                            .fill(AppTheme.borderSubtle)
                             .frame(height: 1),
                         alignment: .bottom
                     )
@@ -598,24 +600,24 @@ public struct VolleyballWeatherView: View {
                     HStack {
                         Text(day.daylightHours.first?.hourLabel.replacingOccurrences(of: " ", with: "") ?? "7A")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(Color.white.opacity(0.5))
+                            .foregroundColor(AppTheme.textSecondary)
                         Spacer()
                         if day.daylightHours.count > 4 {
                             Text(day.daylightHours[day.daylightHours.count / 2].hourLabel.replacingOccurrences(of: " ", with: ""))
                                 .font(.system(size: 8, weight: .bold))
-                                .foregroundColor(Color.white.opacity(0.5))
+                                .foregroundColor(AppTheme.textSecondary)
                             Spacer()
                         }
                         Text(day.daylightHours.last?.hourLabel.replacingOccurrences(of: " ", with: "") ?? "7P")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(Color.white.opacity(0.5))
+                            .foregroundColor(AppTheme.textSecondary)
                     }
                     .padding(.horizontal, 2)
                 }
                 .padding(10)
-                .background(Color.black.opacity(0.3))
+                .background(AppTheme.cardBackgroundSecondary)
                 .cornerRadius(12)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.06), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.cardBorder, lineWidth: 1))
             }
             
             // Hourly horizontal track
@@ -641,9 +643,10 @@ public struct VolleyballWeatherView: View {
             }
         }
         .padding(14)
-        .background(Color(red: 0.09, green: 0.11, blue: 0.15))
+        .background(AppTheme.cardBackground)
         .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0.16, green: 0.19, blue: 0.26), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
     }
     
     // MARK: - Hourly Card (Fits Screen Width without Horizontal Scroll)
@@ -659,7 +662,7 @@ public struct VolleyballWeatherView: View {
                 // Hour label (e.g., 7 AM)
                 Text(hour.hourLabel)
                     .font(.system(size: 10, weight: .black))
-                    .foregroundColor(isSelected ? .orange : .white)
+                    .foregroundColor(isSelected ? .orange : AppTheme.textPrimary)
                     .lineLimit(1)
                 
                 // Suitability Dot with Glow
@@ -680,7 +683,7 @@ public struct VolleyballWeatherView: View {
                 // Temp
                 Text("\(hour.temp)°")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(hour.temp > criteria.maxTemp ? .red : (hour.temp < criteria.minTemp ? .blue : .white))
+                    .foregroundColor(hour.temp > criteria.maxTemp ? .red : (hour.temp < criteria.minTemp ? .blue : AppTheme.textPrimary))
                     .lineLimit(1)
                 
                 // Wind
@@ -706,11 +709,11 @@ public struct VolleyballWeatherView: View {
             .padding(.vertical, 6)
             .padding(.horizontal, 2)
             .frame(maxWidth: .infinity)
-            .background(isSelected ? Color.orange.opacity(0.2) : Color.white.opacity(0.04))
+            .background(isSelected ? Color.orange.opacity(0.15) : AppTheme.cardBackgroundSecondary)
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(isSelected ? Color.orange : AppTheme.cardBorder, lineWidth: isSelected ? 1.5 : 1)
             )
         }
         .buttonStyle(.plain)
@@ -723,7 +726,7 @@ public struct VolleyballWeatherView: View {
             HStack {
                 Text("\(hour.hourLabel) Conditions & Suitability")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textPrimary)
                 
                 Spacer()
                 
@@ -767,15 +770,15 @@ public struct VolleyballWeatherView: View {
                     .font(.system(size: 11))
                 Text(eval.tip)
                     .font(.system(size: 11))
-                    .foregroundColor(Color.white.opacity(0.9))
+                    .foregroundColor(AppTheme.textPrimary)
             }
             .padding(8)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.04))
+            .background(AppTheme.screenBackground)
             .cornerRadius(6)
         }
         .padding(10)
-        .background(Color(red: 0.15, green: 0.17, blue: 0.24))
+        .background(AppTheme.cardBackgroundSecondary)
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
@@ -826,14 +829,14 @@ public struct VolleyballWeatherView: View {
                                     HStack(spacing: 4) {
                                         Text("\(item.day.dayName):")
                                             .font(.system(size: 11, weight: .bold))
-                                            .foregroundColor(.white)
+                                            .foregroundColor(AppTheme.textPrimary)
                                         Text(item.info.windowText)
                                             .font(.system(size: 11, weight: .black))
-                                            .foregroundColor(item.info.suitability == .good ? .green : .yellow)
+                                            .foregroundColor(item.info.suitability == .good ? .green : .orange)
                                     }
                                     Text(item.info.summaryText)
                                         .font(.system(size: 9))
-                                        .foregroundColor(Color.white.opacity(0.65))
+                                        .foregroundColor(AppTheme.textSecondary)
                                         .lineLimit(1)
                                 }
                                 
@@ -841,14 +844,14 @@ public struct VolleyballWeatherView: View {
                                 
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 9, weight: .bold))
-                                    .foregroundColor(Color.white.opacity(0.4))
+                                    .foregroundColor(AppTheme.textSecondary)
                             }
                             .padding(8)
-                            .background(Color.white.opacity(0.05))
+                            .background(AppTheme.cardBackground)
                             .cornerRadius(8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke((item.info.suitability == .good ? Color.green : Color.yellow).opacity(0.25), lineWidth: 1)
+                                    .stroke((item.info.suitability == .good ? Color.green : Color.orange).opacity(0.25), lineWidth: 1)
                             )
                         }
                         .buttonStyle(.plain)
@@ -858,7 +861,7 @@ public struct VolleyballWeatherView: View {
             .padding(12)
             .background(
                 LinearGradient(
-                    colors: [Color(red: 0.16, green: 0.13, blue: 0.08), Color(red: 0.12, green: 0.14, blue: 0.20)],
+                    colors: [Color.orange.opacity(0.12), Color.yellow.opacity(0.06)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -866,7 +869,7 @@ public struct VolleyballWeatherView: View {
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
             )
         }
     }
@@ -1049,12 +1052,12 @@ public struct VolleyballWeatherView: View {
                     .font(.system(size: 13))
                 Text(eval.tip)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color.white.opacity(0.85))
+                    .foregroundColor(AppTheme.textPrimary)
                     .lineSpacing(2)
             }
             .padding(9)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.04))
+            .background(AppTheme.screenBackground)
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
@@ -1062,12 +1065,13 @@ public struct VolleyballWeatherView: View {
             )
         }
         .padding(12)
-        .background(isSelected ? Color.orange.opacity(0.08) : Color(red: 0.12, green: 0.14, blue: 0.20))
+        .background(isSelected ? Color.orange.opacity(0.12) : AppTheme.cardBackground)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isSelected ? Color.orange.opacity(0.6) : Color.white.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
+                .stroke(isSelected ? Color.orange : AppTheme.cardBorder, lineWidth: isSelected ? 1.5 : 1)
         )
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
         .onTapGesture {
             withAnimation(.spring(response: 0.25)) {
                 selectedDayIndex = index
@@ -1084,10 +1088,10 @@ public struct VolleyballWeatherView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textPrimary)
                 Text(subtitle)
                     .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.textSecondary)
             }
         }
         .padding(.horizontal, 8)
@@ -1164,23 +1168,24 @@ public struct WidgetEmbedSheet: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Embed on Any Website")
                                 .font(.headline)
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.textPrimary)
                             Text("Works on Squarespace, WordPress, Wix, or custom websites")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.textSecondary)
                         }
                     }
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(red: 0.12, green: 0.14, blue: 0.19))
+                    .background(AppTheme.cardBackground)
                     .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.cardBorder, lineWidth: 1))
                     
                     // Options
                     VStack(alignment: .leading, spacing: 12) {
                         Text("WIDGET SETTINGS")
                             .font(.caption2)
                             .fontWeight(.bold)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondary)
                         
                         // Beach Selector
                         Picker("Beach", selection: $selectedCourt) {
@@ -1191,14 +1196,14 @@ public struct WidgetEmbedSheet: View {
                         .pickerStyle(.menu)
                         .padding(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(red: 0.14, green: 0.16, blue: 0.22))
+                        .background(AppTheme.cardBackgroundSecondary)
                         .cornerRadius(10)
                         
                         // Theme & View Pickers
                         HStack(spacing: 10) {
                             Picker("Theme", selection: $selectedTheme) {
-                                Text("Dark Theme").tag("dark")
                                 Text("Light Theme").tag("light")
+                                Text("Dark Theme").tag("dark")
                             }
                             .pickerStyle(.segmented)
                             
@@ -1226,7 +1231,7 @@ public struct WidgetEmbedSheet: View {
                 }
                 .padding(16)
             }
-            .background(Color(red: 0.08, green: 0.09, blue: 0.13).ignoresSafeArea())
+            .background(AppTheme.screenBackground.ignoresSafeArea())
             .navigationTitle("Website Widget")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1247,7 +1252,7 @@ public struct WidgetEmbedSheet: View {
                 Text(title)
                     .font(.footnote)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textPrimary)
                 Spacer()
                 Button {
                     UIPasteboard.general.string = code
@@ -1272,16 +1277,18 @@ public struct WidgetEmbedSheet: View {
             
             Text(code)
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.cyan)
+                .foregroundColor(AppTheme.textPrimary)
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(red: 0.05, green: 0.06, blue: 0.09))
+                .background(AppTheme.cardBackgroundSecondary)
                 .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppTheme.borderSubtle, lineWidth: 1))
         }
         .padding(12)
-        .background(Color(red: 0.12, green: 0.14, blue: 0.19))
+        .background(AppTheme.cardBackground)
         .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
     }
 }
 

@@ -88,7 +88,7 @@ public struct TournamentSignUpSheet: View {
                         
                         Text(tournament.title)
                             .font(.system(size: 20, weight: .heavy, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.textPrimary)
                         
                         HStack(spacing: 4) {
                             Image(systemName: "mappin.and.ellipse")
@@ -96,13 +96,14 @@ public struct TournamentSignUpSheet: View {
                                 .foregroundColor(.cyan)
                             Text(tournament.location)
                                 .font(.caption)
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(AppTheme.textSecondary)
                         }
                     }
                     .padding(16)
-                    .background(Color(red: 0.12, green: 0.14, blue: 0.19))
+                    .background(AppTheme.cardBackground)
                     .cornerRadius(18)
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.08), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(AppTheme.cardBorder, lineWidth: 1))
+                    .shadow(color: AppTheme.cardShadow, radius: 4, y: 2)
                     .padding(.horizontal)
                     
                     // SECTION 1: DIVISION SELECTION
@@ -184,12 +185,13 @@ public struct TournamentSignUpSheet: View {
                                         }
                                     }
                                     .padding(14)
-                                    .background(isSelected ? Color.orange.opacity(0.2) : Color(red: 0.12, green: 0.14, blue: 0.19))
+                                    .background(isSelected ? Color.orange.opacity(0.15) : AppTheme.cardBackground)
                                     .cornerRadius(14)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14)
-                                            .stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
+                                            .stroke(isSelected ? Color.orange : AppTheme.cardBorder, lineWidth: isSelected ? 1.5 : 1)
                                     )
+                                    .shadow(color: AppTheme.cardShadow, radius: 2, y: 1)
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(!isOffered)
@@ -199,7 +201,7 @@ public struct TournamentSignUpSheet: View {
                         .padding(.horizontal)
                     }
                     
-                    Divider().background(Color.white.opacity(0.1))
+                    Divider().background(AppTheme.borderSubtle)
                     
                     // SECTION 2: REGISTRATION TYPE (Team vs Free Agent)
                     VStack(alignment: .leading, spacing: 14) {
@@ -236,8 +238,8 @@ public struct TournamentSignUpSheet: View {
                                 
                                 TextField("e.g. Setting Ducks, Sand Storm", text: $teamName)
                                     .padding(12)
-                                    .background(Color(red: 0.12, green: 0.14, blue: 0.19))
-                                    .foregroundColor(.white)
+                                    .background(AppTheme.inputBackground)
+                                    .foregroundColor(AppTheme.textPrimary)
                                     .cornerRadius(12)
                             }
                             .padding(.horizontal)
@@ -286,8 +288,8 @@ public struct TournamentSignUpSheet: View {
                                 
                                 TextField("e.g. Left-side hitter, solid blocker, ready to play!", text: $freeAgentNotes)
                                     .padding(12)
-                                    .background(Color(red: 0.12, green: 0.14, blue: 0.19))
-                                    .foregroundColor(.white)
+                                    .background(AppTheme.inputBackground)
+                                    .foregroundColor(AppTheme.textPrimary)
                                     .cornerRadius(12)
                                 
                                 Text("You will be placed in the Free Agent pool and paired by the tournament organizer or available solo players.")
@@ -321,7 +323,7 @@ public struct TournamentSignUpSheet: View {
                 }
                 .padding(.vertical, 20)
             }
-            .background(Color(red: 0.08, green: 0.09, blue: 0.12).ignoresSafeArea())
+            .background(AppTheme.screenBackground.ignoresSafeArea())
             .navigationTitle("Tournament Sign-Up")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -496,20 +498,20 @@ struct GenderOptionButton: View {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.bold)
-                    .foregroundColor(isSelected ? .white : .white.opacity(0.8))
+                    .foregroundColor(isSelected ? .orange : AppTheme.textPrimary)
                 Text(subtitle)
                     .font(.system(size: 9))
-                    .foregroundColor(isSelected ? .orange : .secondary)
+                    .foregroundColor(isSelected ? .orange : AppTheme.textSecondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .padding(.horizontal, 4)
-            .background(isSelected ? Color.orange.opacity(0.25) : Color(red: 0.12, green: 0.14, blue: 0.19))
+            .background(isSelected ? Color.orange.opacity(0.15) : AppTheme.cardBackground)
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(isSelected ? Color.orange : AppTheme.cardBorder, lineWidth: isSelected ? 1.5 : 1)
             )
         }
         .buttonStyle(.plain)
@@ -531,7 +533,7 @@ struct SkillOptionButton: View {
                     Text(title)
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(isSelected ? .white : .white.opacity(0.85))
+                        .foregroundColor(isSelected ? .orange : AppTheme.textPrimary)
                     Spacer()
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
@@ -547,11 +549,11 @@ struct SkillOptionButton: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(isSelected ? Color.orange.opacity(0.25) : Color(red: 0.12, green: 0.14, blue: 0.19))
+            .background(isSelected ? Color.orange.opacity(0.15) : AppTheme.cardBackground)
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(isSelected ? Color.orange : Color.white.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(isSelected ? Color.orange : AppTheme.cardBorder, lineWidth: isSelected ? 1.5 : 1)
             )
         }
         .buttonStyle(.plain)
@@ -579,10 +581,10 @@ struct PartnerSlotCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(player.displayName)
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.textPrimary)
                         Text("\(player.gender.capitalized) • Rating: \(player.rating.rawValue)")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondary)
                     }
                     Spacer()
                     Button("Change") {
@@ -596,13 +598,17 @@ struct PartnerSlotCard: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.textSecondary)
                     }
                     .buttonStyle(.plain)
                 }
                 .padding(12)
-                .background(Color(red: 0.12, green: 0.14, blue: 0.19))
+                .background(AppTheme.cardBackground)
                 .cornerRadius(14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(AppTheme.cardBorder, lineWidth: 1)
+                )
             } else {
                 VStack(spacing: 10) {
                     // Option A: Type in player's name directly
@@ -612,7 +618,7 @@ struct PartnerSlotCard: View {
                             .font(.system(size: 13))
                         TextField("Type player's full name...", text: $manualName)
                             .font(.subheadline)
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.textPrimary)
                             .submitLabel(.done)
                             .onSubmit {
                                 setManualPlayer()
@@ -631,14 +637,14 @@ struct PartnerSlotCard: View {
                         }
                     }
                     .padding(10)
-                    .background(Color(red: 0.14, green: 0.16, blue: 0.22))
+                    .background(AppTheme.inputBackground)
                     .cornerRadius(10)
                     
                     // Divider
                     HStack {
-                        Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
-                        Text("OR").font(.system(size: 9, weight: .bold)).foregroundColor(.secondary)
-                        Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+                        Rectangle().fill(AppTheme.borderSubtle).frame(height: 1)
+                        Text("OR").font(.system(size: 9, weight: .bold)).foregroundColor(AppTheme.textSecondary)
+                        Rectangle().fill(AppTheme.borderSubtle).frame(height: 1)
                     }
                     
                     // Option B: Select from Beach Directory
@@ -661,8 +667,12 @@ struct PartnerSlotCard: View {
                     }
                 }
                 .padding(12)
-                .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+                .background(AppTheme.cardBackground)
                 .cornerRadius(14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(AppTheme.cardBorder, lineWidth: 1)
+                )
             }
         }
     }
