@@ -16,6 +16,7 @@ public struct TournamentDetailView: View {
         case editPools
         case teamInvite(TournamentTeam)
         case addPlayerToTeam(TournamentTeam)
+        case teamChat(TournamentTeam)
         
         public var id: String {
             switch self {
@@ -29,6 +30,7 @@ public struct TournamentDetailView: View {
             case .editPools: return "editPools"
             case .teamInvite(let team): return "teamInvite-\(team.id.uuidString)"
             case .addPlayerToTeam(let team): return "addPlayerToTeam-\(team.id.uuidString)"
+            case .teamChat(let team): return "teamChat-\(team.id.uuidString)"
             }
         }
     }
@@ -244,6 +246,8 @@ public struct TournamentDetailView: View {
                         TeamQRCodeSheet(tournament: t, team: team)
                     case .addPlayerToTeam(let team):
                         AddPlayerToTeamSheet(tournament: t, team: team, dataManager: dataManager)
+                    case .teamChat(let team):
+                        TeamChatSheet(dataManager: dataManager, tournament: t, team: team)
                     }
                 }
                 .sheet(item: $selectedTeamForRoster) { team in
@@ -1431,6 +1435,9 @@ public struct TournamentDetailView: View {
                                 onInvite: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
                                     activeSheet = .teamInvite(team)
                                 } : nil,
+                                onChat: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
+                                    activeSheet = .teamChat(team)
+                                } : nil,
                                 onEdit: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
                                     activeSheet = .editTeam(team)
                                 } : nil,
@@ -1533,6 +1540,7 @@ struct TournamentTeamRowView: View {
     let players: [Player]
     var onAddPlayer: (() -> Void)? = nil
     var onInvite: (() -> Void)? = nil
+    var onChat: (() -> Void)? = nil
     var onEdit: (() -> Void)? = nil
     var onRemove: (() -> Void)? = nil
     
@@ -1673,6 +1681,28 @@ struct TournamentTeamRowView: View {
                                 .font(.system(size: 11, weight: .bold))
                         }
                         .foregroundColor(.cyan)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.cyan.opacity(0.12))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+                
+                if let onChat = onChat {
+                    Button(action: onChat) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                .font(.system(size: 11, weight: .bold))
+                            if !team.messages.isEmpty {
+                                Text("\(team.messages.count)")
+                                    .font(.system(size: 11, weight: .bold))
+                            } else {
+                                Text("Chat")
+                                    .font(.system(size: 11, weight: .bold))
+                            }
+                        }
+                        .foregroundColor(Color.cyan)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
                         .background(Color.cyan.opacity(0.12))
@@ -3207,6 +3237,7 @@ struct TeamRosterSheet: View {
     @ObservedObject var dataManager: DataManager
     
     @State private var showAddPlayerSheet: Bool = false
+    @State private var showChatSheet: Bool = false
     @State private var playerToRemove: Player? = nil
     @State private var showRemovePlayerAlert: Bool = false
     
@@ -3338,6 +3369,20 @@ struct TeamRosterSheet: View {
                 }
                 
                 Section {
+                    Button {
+                        showChatSheet = true
+                    } label: {
+                        HStack {
+                            Label("Team Chat (\(liveTeam.messages.count))", systemImage: "bubble.left.and.bubble.right.fill")
+                                .foregroundColor(.orange)
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
                     let shareURLString = "https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=\(tournament.id.uuidString)&teamId=\(liveTeam.id.uuidString)"
                     if let url = URL(string: shareURLString) {
                         ShareLink(
@@ -3367,6 +3412,9 @@ struct TeamRosterSheet: View {
             }
             .sheet(isPresented: $showAddPlayerSheet) {
                 AddPlayerToTeamSheet(tournament: tournament, team: liveTeam, dataManager: dataManager)
+            }
+            .sheet(isPresented: $showChatSheet) {
+                TeamChatSheet(dataManager: dataManager, tournament: tournament, team: liveTeam)
             }
             .alert("Remove Teammate?", isPresented: $showRemovePlayerAlert) {
                 Button("Cancel", role: .cancel) {}
@@ -3580,5 +3628,230 @@ struct AddPlayerToTeamSheet: View {
                 Text(alertMessage)
             }
         }
+    }
+}
+
+// MARK: - Team Chat Sheet
+public struct TeamChatSheet: View {
+    @ObservedObject var dataManager: DataManager
+    let tournament: Tournament
+    let team: TournamentTeam
+    @Environment(\.dismiss) private var dismiss
+    @State private var chatInputText: String = ""
+    
+    private var liveTournament: Tournament {
+        dataManager.tournaments.first(where: { $0.id == tournament.id }) ?? tournament
+    }
+    
+    private var liveTeam: TournamentTeam {
+        liveTournament.teams.first(where: { $0.id == team.id }) ?? team
+    }
+    
+    private var isUserInTeam: Bool {
+        guard let user = dataManager.currentUser else { return false }
+        return liveTeam.containsPlayer(user.id) || liveTournament.isHostOrCoHost(user.id) || user.isRoot
+    }
+    
+    public init(dataManager: DataManager, tournament: Tournament, team: TournamentTeam) {
+        self.dataManager = dataManager
+        self.tournament = tournament
+        self.team = team
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Team Header Bar
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(liveTeam.teamName)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            Text("🏆 \(liveTournament.title)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            Text("•")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            Text(liveTeam.division.displayName)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color(UIColor.secondarySystemBackground))
+                
+                Divider()
+                
+                if !isUserInTeam {
+                    VStack(spacing: 12) {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 44))
+                            .foregroundColor(.secondary.opacity(0.7))
+                            .padding(.top, 40)
+                        Text("Team Chat Restricted")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(.primary)
+                        Text("Only confirmed players on '\(liveTeam.teamName)' and the tournament hosts can access this chat.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    // Quick Status / ETA Chips
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            quickChip(title: "🏃‍♂️ omw", text: "omw")
+                            quickChip(title: "⏳ 5 min late", text: "5 min late")
+                            quickChip(title: "⏰ 10 min late", text: "10 min late")
+                            quickChip(title: "🏐 At the court", text: "At the court")
+                            quickChip(title: "🔥 Let's get this W!", text: "Let's get this W!")
+                            quickChip(title: "👋 Warm up now", text: "Warm up now")
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                    }
+                    .background(Color(UIColor.systemBackground))
+                    
+                    Divider()
+                    
+                    // Messages Scroll List
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                if liveTeam.messages.isEmpty {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "bubble.left.and.bubble.right")
+                                            .font(.system(size: 36))
+                                            .foregroundColor(.secondary.opacity(0.6))
+                                            .padding(.top, 40)
+                                        Text("No team messages yet")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                        Text("Send a message or tap a quick chip to coordinate with your teammates for \(liveTournament.title).")
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 32)
+                                    }
+                                } else {
+                                    ForEach(liveTeam.messages) { msg in
+                                        let isMe = msg.senderId == dataManager.currentUser?.id
+                                        HStack(alignment: .bottom, spacing: 8) {
+                                            if isMe { Spacer(minLength: 40) }
+                                            
+                                            if !isMe {
+                                                let sender = dataManager.player(for: msg.senderId)
+                                                PlayerAvatarView(player: sender, dimension: 28, showBadge: false)
+                                            }
+                                            
+                                            VStack(alignment: isMe ? .trailing : .leading, spacing: 2) {
+                                                if !isMe {
+                                                    Text(msg.senderName)
+                                                        .font(.system(size: 11, weight: .bold))
+                                                        .foregroundColor(.secondary)
+                                                        .padding(.horizontal, 4)
+                                                }
+                                                
+                                                Text(msg.text)
+                                                    .font(.system(size: 14))
+                                                    .padding(.horizontal, 14)
+                                                    .padding(.vertical, 9)
+                                                    .background(isMe ? Color.orange : Color(UIColor.secondarySystemBackground))
+                                                    .foregroundColor(isMe ? .white : Color(.label))
+                                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                                
+                                                Text(msg.formattedTime)
+                                                    .font(.system(size: 9))
+                                                    .foregroundColor(.secondary)
+                                                    .padding(.horizontal, 4)
+                                            }
+                                            .id(msg.id)
+                                            
+                                            if !isMe { Spacer(minLength: 40) }
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(16)
+                        }
+                        .onChange(of: liveTeam.messages.count) { _, _ in
+                            if let lastMsg = liveTeam.messages.last {
+                                withAnimation(.easeOut(duration: 0.25)) {
+                                    proxy.scrollTo(lastMsg.id, anchor: .bottom)
+                                }
+                            }
+                        }
+                        .onAppear {
+                            if let lastMsg = liveTeam.messages.last {
+                                proxy.scrollTo(lastMsg.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // Input Bar
+                    HStack(spacing: 10) {
+                        TextField("Message your team...", text: $chatInputText)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 14))
+                            .submitLabel(.send)
+                            .onSubmit {
+                                sendMessage()
+                            }
+                        
+                        Button {
+                            sendMessage()
+                        } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundColor(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .orange)
+                        }
+                        .disabled(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color(UIColor.systemBackground))
+                }
+            }
+            .navigationTitle("Team Chat")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+    
+    private func quickChip(title: String, text: String) -> some View {
+        Button {
+            dataManager.sendTournamentTeamMessage(tournamentId: liveTournament.id, teamId: liveTeam.id, text: text)
+        } label: {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.orange)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.orange.opacity(0.12))
+                .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func sendMessage() {
+        let text = chatInputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        dataManager.sendTournamentTeamMessage(tournamentId: liveTournament.id, teamId: liveTeam.id, text: text)
+        chatInputText = ""
     }
 }

@@ -7635,6 +7635,173 @@ window.postChatMessage = (gameId, text) => {
   }
 };
 
+// ==========================================
+// TOURNAMENT TEAM CHAT HANDLERS
+// ==========================================
+window.activeTeamChatTournamentId = null;
+window.activeTeamChatTeamId = null;
+
+window.openTeamChatModal = (tournamentId, teamId) => {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === String(tournamentId).trim().toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === String(tournamentId).trim().toLowerCase())
+  );
+  if (!t) return;
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) ||
+                 (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId)) ||
+                 isRootUser(state.currentUser);
+  const isMember = currentUserId && (
+    isSamePlayer(team.player1Id, currentUserId) ||
+    isSamePlayer(team.player2Id, currentUserId) ||
+    isSamePlayer(team.player3Id, currentUserId) ||
+    isSamePlayer(team.player4Id, currentUserId) ||
+    isSamePlayer(team.player5Id, currentUserId)
+  );
+
+  if (!isMember && !isHost) {
+    showToast("Team Chat is only available to players on this team & tournament hosts.");
+    return;
+  }
+
+  window.activeTeamChatTournamentId = t.id;
+  window.activeTeamChatTeamId = team.id;
+
+  const titleEl = document.getElementById("team-chat-modal-title");
+  const subEl = document.getElementById("team-chat-subtitle");
+  if (titleEl) titleEl.innerHTML = `💬 ${team.teamName}`;
+  if (subEl) subEl.textContent = `🏆 ${t.title || 'Tournament'} • ${team.division || 'Team Chat'}`;
+
+  window.renderTeamChatMessages();
+  document.getElementById("team-chat-modal")?.classList.add("active");
+  const input = document.getElementById("team-chat-input");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+};
+
+window.closeTeamChatModal = () => {
+  window.activeTeamChatTournamentId = null;
+  window.activeTeamChatTeamId = null;
+  document.getElementById("team-chat-modal")?.classList.remove("active");
+};
+
+window.renderTeamChatMessages = () => {
+  const container = document.getElementById("team-chat-messages-container");
+  if (!container || !window.activeTeamChatTournamentId || !window.activeTeamChatTeamId) return;
+
+  const t = (state.tournaments || []).find(item => 
+    isSamePlayer(item.id, window.activeTeamChatTournamentId) || isSamePlayer(item.rawId, window.activeTeamChatTournamentId)
+  );
+  if (!t) return;
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, window.activeTeamChatTeamId));
+  if (!team) return;
+
+  const messages = team.messages || [];
+  if (messages.length === 0) {
+    container.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:12px; margin:auto;">No team messages yet.<br>Tap a quick response above or type a message below to coordinate!</div>`;
+    return;
+  }
+
+  container.innerHTML = messages.map(m => {
+    const isMe = state.currentUser && isSamePlayer(m.senderId, state.currentUser.id);
+    const timeStr = new Date(m.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    return `
+      <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; margin-bottom:6px;">
+        ${!isMe ? `<span style="font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:2px; margin-left:4px;">${m.senderName}</span>` : ''}
+        <div style="max-width:80%; padding:9px 13px; border-radius:14px; font-size:13.5px; font-weight:500; word-break:break-word; line-height:1.4; ${isMe ? 'background:#ea580c; color:#ffffff; box-shadow:0 1px 4px rgba(234,88,12,0.3);' : 'background:#ffffff; color:#0f172a; border:1px solid rgba(0,0,0,0.12); box-shadow:0 1px 3px rgba(0,0,0,0.05);'}">
+          ${m.text}
+        </div>
+        <span style="font-size:10px; color:var(--text-muted); margin-top:2px; margin-right:${isMe ? '4px' : '0'}; margin-left:${!isMe ? '4px' : '0'};">${timeStr}</span>
+      </div>
+    `;
+  }).join("");
+
+  container.scrollTop = container.scrollHeight;
+};
+
+window.sendQuickTeamChatMessage = (text) => {
+  if (!window.activeTeamChatTournamentId || !window.activeTeamChatTeamId) return;
+  window.postTeamChatMessage(window.activeTeamChatTournamentId, window.activeTeamChatTeamId, text);
+};
+
+window.handleSendTeamChatMessage = (e) => {
+  e.preventDefault();
+  if (!window.activeTeamChatTournamentId || !window.activeTeamChatTeamId) return;
+  const input = document.getElementById("team-chat-input");
+  const text = input ? input.value.trim() : "";
+  if (!text) return;
+  if (input) input.value = "";
+  window.postTeamChatMessage(window.activeTeamChatTournamentId, window.activeTeamChatTeamId, text);
+};
+
+window.postTeamChatMessage = (tournamentId, teamId, text) => {
+  const t = (state.tournaments || []).find(item => 
+    isSamePlayer(item.id, tournamentId) || isSamePlayer(item.rawId, tournamentId)
+  );
+  if (!t || !state.currentUser) return;
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) return;
+
+  if (!team.messages) {
+    team.messages = [];
+  }
+
+  const senderName = state.currentUser.nickname || state.currentUser.name;
+  const newMsg = {
+    id: "team_msg_" + Date.now(),
+    senderId: state.currentUser.id,
+    senderName: senderName,
+    text: text,
+    date: new Date().toISOString(),
+    origin: "web"
+  };
+
+  team.messages.push(newMsg);
+  state.saveLocal();
+  if (window.saveTournamentToFirestore) {
+    window.saveTournamentToFirestore(t);
+  }
+  window.renderTeamChatMessages();
+  if (window.renderTournamentDetail) {
+    window.renderTournamentDetail();
+  }
+  showToast(`Sent: "${text}"`);
+
+  // Dispatch APNs push notifications to teammates
+  try {
+    const currentUid = state.currentUser.id;
+    const currentToken = state.currentUser.deviceToken;
+    const teammateIds = [team.player1Id, team.player2Id, team.player3Id, team.player4Id, team.player5Id]
+      .filter(id => id && !isSamePlayer(id, currentUid));
+    const uniqueIds = Array.from(new Set(teammateIds));
+    const rawTokens = uniqueIds
+      .map(id => state.getPlayer(id)?.deviceToken)
+      .filter(t => t && typeof t === "string" && t.trim().length > 0 && t !== currentToken);
+    const recipientTokens = Array.from(new Set(rawTokens));
+
+    if (recipientTokens.length > 0) {
+      fetch("/api/send-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tokens: recipientTokens,
+          title: "🏐 Tournament Team Alert",
+          body: `${senderName} (${team.teamName}): "${text}"`,
+          gameId: t.id,
+          messageId: newMsg.id
+        })
+      }).catch(err => console.log("Team push note:", err));
+    }
+  } catch (e) {
+    console.warn("Team APNs push notice:", e);
+  }
+};
+
 // Rate Match Players (Post-Match 1-5 Stars)
 window.openRateMatchModal = (gameId) => {
   const game = state.games.find(g => g.id === gameId);
@@ -9727,6 +9894,9 @@ export async function syncDeviceData() {
       if (document.getElementById("tournament-detail-modal")?.classList.contains("active") && window.activeTournamentId) {
         window.renderTournamentDetail();
       }
+      if (window.activeTeamChatTournamentId && window.activeTeamChatTeamId) {
+        window.renderTeamChatMessages();
+      }
     }
   } catch (err) {
     console.warn("Device sync notice:", err);
@@ -10199,8 +10369,12 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
     isSamePlayer(tm.player5Id, state.currentUser.id)
   );
   if (isHost || isMyTeam) {
+    const msgCount = (tm.messages || []).length;
     html += `
-      <div style="margin-top: 14px; border-top: 1px solid var(--border, #e2e8f0); padding-top: 12px;">
+      <div style="margin-top: 14px; border-top: 1px solid var(--border, #e2e8f0); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+        <button type="button" class="btn" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; background: #0284c7; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="window.openTeamChatModal('${t.id}', '${tm.id}')">
+          💬 Team Chat ${msgCount > 0 ? `(${msgCount})` : ''}
+        </button>
         <button type="button" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.shareTeamInviteLink('${t.id}', '${tm.id}')">
           🔗 Share Team Invite Link
         </button>
@@ -11043,6 +11217,9 @@ window.renderTournamentDetail = function() {
                         </button>
                       ` : ''}
                       ${canInvite ? `
+                        <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.openTeamChatModal('${t.id}', '${team.id}')" title="Team Chat">
+                          💬 ${(team.messages || []).length > 0 ? (team.messages || []).length : 'Chat'}
+                        </button>
                         <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite Teammates via Link">
                           🔗 Invite
                         </button>
@@ -14210,6 +14387,9 @@ function initApp() {
       }
       if (document.getElementById("tournament-detail-modal")?.classList.contains("active") && window.activeTournamentId) {
         window.renderTournamentDetail();
+      }
+      if (window.activeTeamChatTournamentId && window.activeTeamChatTeamId) {
+        window.renderTeamChatMessages();
       }
     }
   });

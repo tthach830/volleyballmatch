@@ -1145,13 +1145,15 @@ nav#bottom-nav {
 
 #tournament-signup-modal,
 #tournament-team-modal,
-#modal-add-player-to-team {
+#modal-add-player-to-team,
+#team-chat-modal {
   z-index: 2000 !important;
 }
 
 #tournament-signup-modal.active,
 #tournament-team-modal.active,
-#modal-add-player-to-team.active {
+#modal-add-player-to-team.active,
+#team-chat-modal.active {
   display: flex !important;
 }
 

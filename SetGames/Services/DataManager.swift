@@ -1599,6 +1599,65 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    public func sendTournamentTeamMessage(tournamentId: UUID, teamId: UUID, text: String) -> (success: Bool, message: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return (false, "Message cannot be empty.")
+        }
+        guard let user = currentUser,
+              let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }),
+              let tmIdx = tournaments[tIdx].teams.firstIndex(where: { $0.id == teamId }) else {
+            return (false, "Team or tournament not found.")
+        }
+        
+        let team = tournaments[tIdx].teams[tmIdx]
+        let isMember = team.containsPlayer(user.id) || user.isRoot || tournaments[tIdx].isHostOrCoHost(user.id)
+        guard isMember else {
+            return (false, "You must be on this team to participate in the chat.")
+        }
+        
+        let senderName = user.displayName
+        let newMsg = GameChatMessage(
+            senderId: user.id,
+            senderName: senderName,
+            text: trimmed,
+            date: Date(),
+            origin: "ios"
+        )
+        
+        tournaments[tIdx].teams[tmIdx].messages.append(newMsg)
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        // Push notifications to teammates
+        let recipientIds = team.allPlayerIds.filter { $0 != user.id }
+        let teamName = team.teamName
+        for recipientId in recipientIds {
+            if let p = players.first(where: { $0.id == recipientId }), let token = p.deviceToken, !token.isEmpty, token != user.deviceToken {
+                NotificationService.shared.sendDirectRemotePush(
+                    to: token,
+                    title: "💬 \(senderName) (\(teamName))",
+                    body: trimmed,
+                    gameId: tournamentId
+                )
+            } else {
+                FirestoreService.shared.fetchDeviceToken(for: recipientId) { token in
+                    if let token = token, !token.isEmpty, token != user.deviceToken {
+                        NotificationService.shared.sendDirectRemotePush(
+                            to: token,
+                            title: "💬 \(senderName) (\(teamName))",
+                            body: trimmed,
+                            gameId: tournamentId
+                        )
+                    }
+                }
+            }
+        }
+        
+        return (true, "Message sent!")
+    }
+    
+    @discardableResult
     public func createMatch(
         title: String,
         targetRating: RatingTier,

@@ -941,6 +941,43 @@
       </div>
     </div>
 
+    <!-- Tournament Team Chat Modal -->
+    <div id="team-chat-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTeamChatModal()">
+      <div class="modal-card" style="max-width: 460px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="team-chat-modal-title" style="display:flex; align-items:center; gap:6px;">💬 Team Chat</h2>
+            <div id="team-chat-subtitle" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Tournament Team</div>
+          </div>
+          <button type="button" class="modal-close" onclick="window.closeTeamChatModal()">&times;</button>
+        </div>
+        
+        <!-- Quick Status Chips -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+            Quick Response Chips
+          </div>
+          <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTeamChatMessage('omw')">🏃‍♂️ omw</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTeamChatMessage('5 min late')">⏳ 5 min late</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTeamChatMessage('At the court')">🏐 At the court</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTeamChatMessage('Let\'s get this W!')">🔥 Let's get this W!</button>
+          </div>
+        </div>
+
+        <!-- Chat Feed -->
+        <div id="team-chat-messages-container" style="flex: 1; min-height: 200px; max-height: 320px; overflow-y: auto; background: #f8fafc; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+          <!-- Injected via JavaScript -->
+        </div>
+
+        <!-- Message Input -->
+        <form id="team-chat-form" onsubmit="window.handleSendTeamChatMessage(event)" style="display: flex; gap: 8px;">
+          <input type="text" id="team-chat-input" class="form-input" style="flex: 1; color: #0f172a; background: #ffffff;" placeholder="Message your teammates..." required>
+          <button type="submit" class="btn btn-primary" style="padding: 0 16px; background: #ea580c; border: none; font-weight: 800;">Send</button>
+        </form>
+      </div>
+    </div>
+
     <!-- Edit Profile Modal (matches iOS EditProfileSheet.swift) -->
     <div id="edit-profile-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeEditProfileModal()">
       <div class="modal-card" style="max-width: 460px;">
@@ -1727,6 +1764,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=17.2"></script>
+  <script type="module" src="app.js?v=17.3"></script>
 </body>
 </html>

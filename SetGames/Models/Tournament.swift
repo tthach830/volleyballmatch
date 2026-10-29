@@ -173,6 +173,7 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
     public var division: TournamentDivisionCategory
     public var isConfirmed: Bool
     public var registeredAt: Date
+    public var messages: [GameChatMessage]
     
     public init(
         id: UUID = UUID(),
@@ -187,7 +188,8 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         poolSeed: Int? = nil,
         division: TournamentDivisionCategory,
         isConfirmed: Bool = true,
-        registeredAt: Date = Date()
+        registeredAt: Date = Date(),
+        messages: [GameChatMessage] = []
     ) {
         self.id = id
         self.teamName = teamName
@@ -202,10 +204,11 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         self.division = division
         self.isConfirmed = isConfirmed
         self.registeredAt = registeredAt
+        self.messages = messages
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, teamName, player1Id, player2Id, player3Id, player4Id, player5Id, seed, poolName, poolSeed, division, isConfirmed, registeredAt
+        case id, teamName, player1Id, player2Id, player3Id, player4Id, player5Id, seed, poolName, poolSeed, division, isConfirmed, registeredAt, messages
     }
     
     public init(from decoder: Decoder) throws {
@@ -256,6 +259,7 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         division = try container.decode(TournamentDivisionCategory.self, forKey: .division)
         isConfirmed = try container.decodeIfPresent(Bool.self, forKey: .isConfirmed) ?? true
         registeredAt = try container.decodeIfPresent(Date.self, forKey: .registeredAt) ?? Date()
+        messages = (try? container.decode([GameChatMessage].self, forKey: .messages)) ?? []
     }
     
     public var allPlayerIds: [UUID] {
