@@ -6144,6 +6144,96 @@ window.handlePhoneLogin = (e) => {
   }
 };
 
+window.openForgotPasswordModal = (prefillPhone) => {
+  const modal = document.getElementById("forgot-password-modal");
+  if (!modal) return;
+  const loginPhone = document.getElementById("login-phone")?.value || "";
+  const phoneInput = document.getElementById("forgot-phone");
+  const phone = prefillPhone || loginPhone || "4087869405";
+  if (phoneInput) phoneInput.value = phone;
+  const errEl = document.getElementById("forgot-error");
+  const succEl = document.getElementById("forgot-success");
+  if (errEl) errEl.style.display = "none";
+  if (succEl) succEl.style.display = "none";
+  modal.classList.add("active");
+};
+
+window.closeForgotPasswordModal = () => {
+  const modal = document.getElementById("forgot-password-modal");
+  if (modal) modal.classList.remove("active");
+};
+
+window.sendPasswordResetSMSFromWeb = () => {
+  const phoneInput = document.getElementById("forgot-phone")?.value || "";
+  const cleaned = normalizePhoneDigits(phoneInput) || "4087869405";
+  const resetURL = `https://runwildlovestronglivefree.org/volleyballmatch/?resetPhone=${cleaned}`;
+  const text = `Reset your SetGames password here: ${resetURL}`;
+  const smsHref = `sms:${cleaned}?&body=${encodeURIComponent(text)}`;
+  window.location.href = smsHref;
+  showToast("Opening SMS to send password reset link...");
+};
+
+window.handleDirectPasswordReset = (e) => {
+  if (e) e.preventDefault();
+  const phoneRaw = (document.getElementById("forgot-phone")?.value || "").trim();
+  const newPw = (document.getElementById("forgot-new-password")?.value || "").trim();
+  const confirmPw = (document.getElementById("forgot-confirm-password")?.value || "").trim();
+  const errEl = document.getElementById("forgot-error");
+  const succEl = document.getElementById("forgot-success");
+
+  if (!phoneRaw) {
+    if (errEl) { errEl.textContent = "Please enter your phone number."; errEl.style.display = "block"; }
+    return;
+  }
+  if (!newPw) {
+    if (errEl) { errEl.textContent = "Please enter a new password."; errEl.style.display = "block"; }
+    return;
+  }
+  if (newPw.length < 4) {
+    if (errEl) { errEl.textContent = "Password must be at least 4 characters."; errEl.style.display = "block"; }
+    return;
+  }
+  if (newPw !== confirmPw) {
+    if (errEl) { errEl.textContent = "Passwords do not match."; errEl.style.display = "block"; }
+    return;
+  }
+
+  const cleanedPhone = normalizePhoneDigits(phoneRaw);
+  const player = (state.players || []).find(p => {
+    const pClean = normalizePhoneDigits(p.phoneNumber);
+    return (pClean && cleanedPhone && (pClean === cleanedPhone || pClean.endsWith(cleanedPhone) || cleanedPhone.endsWith(pClean))) || p.phoneNumber === phoneRaw;
+  });
+
+  if (!player) {
+    if (errEl) { errEl.textContent = "No registered player found with this phone number."; errEl.style.display = "block"; }
+    return;
+  }
+
+  player.password = newPw;
+  savePlayerToFirestore(player);
+  state.currentUser = player;
+  try {
+    localStorage.setItem("setgames_auth_session", "true");
+  } catch (err) {}
+  state.saveLocal();
+  setUserAnalyticsIdentity(player);
+
+  if (errEl) errEl.style.display = "none";
+  if (succEl) {
+    succEl.textContent = `Password updated successfully! Welcome back, ${player.nickname || player.name}!`;
+    succEl.style.display = "block";
+  }
+
+  setTimeout(() => {
+    window.closeForgotPasswordModal();
+    window.closeAuthModal();
+    renderHeader();
+    renderProfile();
+    renderMatches();
+    showToast(`Password updated! Welcome back, ${player.nickname || player.name}!`);
+  }, 800);
+};
+
 window.handlePhoneSignUp = (e) => {
   if (e) e.preventDefault();
   const phone = document.getElementById("signup-phone")?.value.trim() || "";
@@ -7361,6 +7451,13 @@ export function handleIncomingGameRoute() {
   const targetGameId = params.get("gameId") || params.get("id") || params.get("join");
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  const resetPhoneParam = params.get("resetPhone") || params.get("resetphone") || params.get("forgotPhone") || params.get("reset");
+  if (resetPhoneParam) {
+    setTimeout(() => {
+      window.openForgotPasswordModal(resetPhoneParam);
+    }, 400);
+  }
 
   if (targetTournamentId) {
     if (isIOS) {

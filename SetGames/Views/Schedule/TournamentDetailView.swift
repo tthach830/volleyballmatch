@@ -66,6 +66,10 @@ public struct TournamentDetailView: View {
         })
         let defaultDiv = initialTourn?.allowedDivisions.first ?? .coedNovice2v2
         _selectedDivision = State(initialValue: defaultDiv)
+        
+        // If tournament has no pool matches generated yet (registration/formation phase), default to Rosters
+        let hasMatches = initialTourn?.matches(for: defaultDiv).isEmpty == false
+        _selectedSubTab = State(initialValue: hasMatches ? .pools : .roster)
     }
     
     private var tournament: Tournament? {
@@ -1368,7 +1372,7 @@ public struct TournamentDetailView: View {
                         .font(.system(size: 11, weight: .black))
                         .foregroundColor(.orange)
                     Spacer()
-                    if isHostOrAdmin {
+                    if isHostOrAdmin || dataManager.currentUser == nil {
                         HStack(spacing: 8) {
                             Button {
                                 dataManager.addDemoTeams(tournamentId: t.id, division: division, count: 4)
@@ -1423,25 +1427,30 @@ public struct TournamentDetailView: View {
                         ForEach(Array(divisionTeams.enumerated()), id: \.element.id) { index, team in
                             let isCaptain = dataManager.currentUser.map { $0.id == team.player1Id } ?? false
                             let isQuads = team.division.isQuads || t.teamFormat == .quads4v4
-                            let canAddPlayer = isHostOrAdmin || (isCaptain && isQuads)
+                            let hasOpenSpot = team.player2Id == nil || (isQuads && (team.player3Id == nil || team.player4Id == nil))
+                            let canAddPlayer = isHostOrAdmin || (isCaptain && isQuads) || (dataManager.currentUser == nil) || hasOpenSpot
+                            let rowSeed = team.seed ?? (index + 1)
                             
                             TournamentTeamRowView(
                                 team: team,
-                                seedNumber: team.seed ?? (index + 1),
+                                seedNumber: rowSeed,
                                 players: dataManager.players,
+                                onSelect: {
+                                    selectedTeamForRoster = team
+                                },
                                 onAddPlayer: canAddPlayer ? {
                                     activeSheet = .addPlayerToTeam(team)
                                 } : nil,
-                                onInvite: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
+                                onInvite: {
                                     activeSheet = .teamInvite(team)
-                                } : nil,
-                                onChat: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
+                                },
+                                onChat: {
                                     activeSheet = .teamChat(team)
-                                } : nil,
-                                onEdit: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
+                                },
+                                onEdit: {
                                     activeSheet = .editTeam(team)
-                                } : nil,
-                                onRemove: isHostOrAdmin ? {
+                                },
+                                onRemove: (isHostOrAdmin || dataManager.currentUser == nil) ? {
                                     teamToRemove = team
                                     showRemoveTeamAlert = true
                                 } : nil
@@ -1538,6 +1547,7 @@ struct TournamentTeamRowView: View {
     let team: TournamentTeam
     let seedNumber: Int
     let players: [Player]
+    var onSelect: (() -> Void)? = nil
     var onAddPlayer: (() -> Void)? = nil
     var onInvite: (() -> Void)? = nil
     var onChat: (() -> Void)? = nil
@@ -1552,105 +1562,114 @@ struct TournamentTeamRowView: View {
         let p5 = team.player5Id.flatMap { id in players.first(where: { $0.id == id }) }
         
         HStack(spacing: 12) {
-            Text("#\(seedNumber)")
-                .font(.system(size: 13, weight: .black))
-                .foregroundColor(.orange)
-                .frame(width: 30)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(team.teamName)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    if let pool = team.poolName {
-                        Text(pool)
-                            .font(.system(size: 10, weight: .black))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.cyan.opacity(0.2)))
-                            .foregroundColor(.cyan)
-                    }
-                }
-                
-                // Row 1: Player 1 & Player 2
-                HStack(spacing: 8) {
-                    playerLabel(player: p1, fallback: "Player 1")
+            // Tappable card body to open full Team Roster Sheet
+            Button {
+                onSelect?()
+            } label: {
+                HStack(spacing: 12) {
+                    Text("#\(seedNumber)")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundColor(.orange)
+                        .frame(width: 26)
                     
-                    Text("&")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    
-                    if let p2 = p2 {
-                        playerLabel(player: p2, fallback: "Player 2")
-                    } else if let onAddPlayer = onAddPlayer {
-                        Button(action: onAddPlayer) {
-                            Text("+ Looking for Partner")
-                                .font(.caption2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.orange)
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        Text("Looking for Partner")
-                            .font(.caption2)
-                            .italic()
-                            .foregroundColor(.orange.opacity(0.85))
-                    }
-                }
-                
-                // Row 2: Player 3 & Player 4 (4v4 only)
-                if team.player3Id != nil || team.player4Id != nil || team.division.isQuads {
-                    HStack(spacing: 8) {
-                        if let p3 = p3 {
-                            playerLabel(player: p3, fallback: "Player 3")
-                        } else if let onAddPlayer = onAddPlayer {
-                            Button(action: onAddPlayer) {
-                                Text("+ Open Spot")
-                                    .font(.caption2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.orange)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(team.teamName)
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                            if let pool = team.poolName {
+                                Text(pool)
+                                    .font(.system(size: 10, weight: .black))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.cyan.opacity(0.2)))
+                                    .foregroundColor(.cyan)
                             }
-                            .buttonStyle(.plain)
-                        } else {
-                            Text("+ Open Spot")
-                                .font(.caption2)
-                                .italic()
-                                .foregroundColor(.orange.opacity(0.85))
                         }
                         
-                        Text("&")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        
-                        if let p4 = p4 {
-                            playerLabel(player: p4, fallback: "Player 4")
-                        } else if let onAddPlayer = onAddPlayer {
-                            Button(action: onAddPlayer) {
-                                Text("+ Open Spot")
-                                    .font(.caption2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.orange)
-                            }
-                            .buttonStyle(.plain)
-                        } else {
-                            Text("+ Open Spot")
+                        // Row 1: Player 1 & Player 2
+                        HStack(spacing: 8) {
+                            playerLabel(player: p1, fallback: "Player 1")
+                            
+                            Text("&")
                                 .font(.caption2)
-                                .italic()
-                                .foregroundColor(.orange.opacity(0.85))
+                                .foregroundColor(.secondary)
+                            
+                            if let p2 = p2 {
+                                playerLabel(player: p2, fallback: "Player 2")
+                            } else if let onAddPlayer = onAddPlayer {
+                                Button(action: onAddPlayer) {
+                                    Text("+ Looking for Partner")
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.orange)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                Text("Looking for Partner")
+                                    .font(.caption2)
+                                    .italic()
+                                    .foregroundColor(.orange.opacity(0.85))
+                            }
                         }
-                    }
-                }
-                
-                // Row 3: Player 5 (Sub / Alternate for Quads if present)
-                if let p5 = p5 {
-                    HStack(spacing: 6) {
-                        playerLabel(player: p5, fallback: "Player 5")
-                        Text("(Sub)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.secondary)
+                        
+                        // Row 2: Player 3 & Player 4 (4v4 only)
+                        if team.player3Id != nil || team.player4Id != nil || team.division.isQuads {
+                            HStack(spacing: 8) {
+                                if let p3 = p3 {
+                                    playerLabel(player: p3, fallback: "Player 3")
+                                } else if let onAddPlayer = onAddPlayer {
+                                    Button(action: onAddPlayer) {
+                                        Text("+ Open Spot")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.orange)
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
+                                    Text("+ Open Spot")
+                                        .font(.caption2)
+                                        .italic()
+                                        .foregroundColor(.orange.opacity(0.85))
+                                }
+                                
+                                Text("&")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                
+                                if let p4 = p4 {
+                                    playerLabel(player: p4, fallback: "Player 4")
+                                } else if let onAddPlayer = onAddPlayer {
+                                    Button(action: onAddPlayer) {
+                                        Text("+ Open Spot")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.orange)
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
+                                    Text("+ Open Spot")
+                                        .font(.caption2)
+                                        .italic()
+                                        .foregroundColor(.orange.opacity(0.85))
+                                }
+                            }
+                        }
+                        
+                        // Row 3: Player 5 (Sub / Alternate for Quads if present)
+                        if let p5 = p5 {
+                            HStack(spacing: 6) {
+                                playerLabel(player: p5, fallback: "Player 5")
+                                Text("(Sub)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
             }
+            .buttonStyle(.plain)
             
             Spacer()
             
@@ -3238,6 +3257,7 @@ struct TeamRosterSheet: View {
     
     @State private var showAddPlayerSheet: Bool = false
     @State private var showChatSheet: Bool = false
+    @State private var showEditSheet: Bool = false
     @State private var playerToRemove: Player? = nil
     @State private var showRemovePlayerAlert: Bool = false
     
@@ -3260,7 +3280,8 @@ struct TeamRosterSheet: View {
     }
     
     var canAddPlayer: Bool {
-        isHostOrAdmin || (isCaptain && isQuads)
+        let hasOpenSpot = liveTeam.player2Id == nil || (isQuads && (liveTeam.player3Id == nil || liveTeam.player4Id == nil))
+        return isHostOrAdmin || (isCaptain && isQuads) || dataManager.currentUser == nil || hasOpenSpot
     }
     
     var body: some View {
@@ -3370,11 +3391,25 @@ struct TeamRosterSheet: View {
                 
                 Section {
                     Button {
+                        showEditSheet = true
+                    } label: {
+                        HStack {
+                            Label("Edit Team & Players", systemImage: "pencil")
+                                .foregroundColor(.orange)
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Button {
                         showChatSheet = true
                     } label: {
                         HStack {
                             Label("Team Chat (\(liveTeam.messages.count))", systemImage: "bubble.left.and.bubble.right.fill")
-                                .foregroundColor(.orange)
+                                .foregroundColor(.cyan)
                                 .fontWeight(.semibold)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -3392,7 +3427,7 @@ struct TeamRosterSheet: View {
                         ) {
                             HStack {
                                 Label("Invite Teammates to Join", systemImage: "link")
-                                    .foregroundColor(.cyan)
+                                    .foregroundColor(.green)
                                     .fontWeight(.semibold)
                                 Spacer()
                                 Image(systemName: "square.and.arrow.up")
@@ -3406,9 +3441,24 @@ struct TeamRosterSheet: View {
             .navigationTitle("Team Roster")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        showEditSheet = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil")
+                            Text("Edit")
+                        }
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.orange)
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showEditSheet) {
+                ManualTeamEditSheet(dataManager: dataManager, tournament: tournament, preselectedDivision: liveTeam.division, teamToEdit: liveTeam)
             }
             .sheet(isPresented: $showAddPlayerSheet) {
                 AddPlayerToTeamSheet(tournament: tournament, team: liveTeam, dataManager: dataManager)
@@ -3689,22 +3739,80 @@ public struct TeamChatSheet: View {
                 Divider()
                 
                 if !isUserInTeam {
-                    VStack(spacing: 12) {
-                        Image(systemName: "lock.shield.fill")
-                            .font(.system(size: 44))
-                            .foregroundColor(.secondary.opacity(0.7))
-                            .padding(.top, 40)
-                        Text("Team Chat Restricted")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(.primary)
-                        Text("Only confirmed players on '\(liveTeam.teamName)' and the tournament hosts can access this chat.")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                        Spacer()
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.orange)
+                                .padding(.top, 24)
+                            
+                            Text("Select Teammate Profile")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.primary)
+                            
+                            Text("Tap your name below to chat with your team on '\(liveTeam.teamName)':")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
+                            
+                            let teamPlayerIds = [liveTeam.player1Id, liveTeam.player2Id, liveTeam.player3Id, liveTeam.player4Id, liveTeam.player5Id].compactMap { $0 }
+                            let teamPlayers = teamPlayerIds.map { dataManager.player(for: $0) }
+                            
+                            VStack(spacing: 8) {
+                                ForEach(teamPlayers) { p in
+                                    Button {
+                                        dataManager.currentUser = p
+                                    } label: {
+                                        HStack(spacing: 12) {
+                                            PlayerAvatarView(player: p, dimension: 34, showBadge: false)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(p.displayName)
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundColor(.primary)
+                                                Text("\(p.rating.rawValue) • \(p.homeBeach)")
+                                                    .font(.system(size: 11))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            Spacer()
+                                            Text("Chat as \(p.firstName)")
+                                                .font(.system(size: 12, weight: .bold))
+                                                .foregroundColor(.orange)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 6)
+                                                .background(Color.orange.opacity(0.15))
+                                                .cornerRadius(8)
+                                        }
+                                        .padding(10)
+                                        .background(Color(UIColor.secondarySystemBackground))
+                                        .cornerRadius(12)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            
+                            if let host = dataManager.players.first(where: { $0.id == liveTournament.hostPlayerId }) {
+                                Button {
+                                    dataManager.currentUser = host
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "crown.fill").foregroundColor(.yellow)
+                                        Text("Chat as Organizer (\(host.displayName))")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 14)
+                                    .background(Color(UIColor.secondarySystemBackground).opacity(0.8))
+                                    .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 4)
+                            }
+                        }
+                        .padding(.bottom, 20)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     // Quick Status / ETA Chips
                     ScrollView(.horizontal, showsIndicators: false) {

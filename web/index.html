@@ -359,6 +359,9 @@
           <div class="form-group">
             <label class="form-label" for="login-password">Password</label>
             <input type="password" id="login-password" class="form-input" placeholder="Enter your password" required>
+            <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+              <button type="button" onclick="window.openForgotPasswordModal()" style="background: none; border: none; font-size: 11px; font-weight: 700; color: #ea580c; cursor: pointer; padding: 2px 0;">Forgot Password?</button>
+            </div>
           </div>
           <div id="login-error" style="display: none; color: #ef4444; font-size: 12px; margin-bottom: 10px; font-weight: 600;"></div>
           <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 6px;">Log In</button>
@@ -475,6 +478,54 @@
         <div style="text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
           <button type="button" class="btn btn-outline" style="width: 100%; font-size: 13px; font-weight: 700;" onclick="window.closeAuthModal(); window.switchTab('ladders');">🏆 Browse Beach Ladders</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Forgot / Reset Password Modal -->
+    <div id="forgot-password-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeForgotPasswordModal()">
+      <div class="modal-card" style="max-width: 420px; position: relative;">
+        <button type="button" class="modal-close" style="position: absolute; right: 16px; top: 16px; z-index: 10;" onclick="window.closeForgotPasswordModal()" title="Close">&times;</button>
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 36px; margin-bottom: 6px;">🔑</div>
+          <h2 style="font-size: 20px; font-weight: 900; margin: 0;">Reset Your Password</h2>
+          <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Send a reset URL via SMS or set a new password directly below:</div>
+        </div>
+
+        <form id="forgot-password-form" onsubmit="window.handleDirectPasswordReset(event)">
+          <div class="form-group">
+            <label class="form-label" for="forgot-phone">Registered Phone Number</label>
+            <input type="tel" id="forgot-phone" class="form-input" placeholder="e.g. 4087869405" required>
+          </div>
+
+          <!-- SMS Action -->
+          <button type="button" class="btn btn-outline" style="width: 100%; border-color: #0284c7; color: #0284c7; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.sendPasswordResetSMSFromWeb()">
+            💬 Send Reset URL via SMS
+          </button>
+
+          <div style="text-align: center; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; position: relative;">
+            <span style="background: var(--surface, #fff); padding: 0 8px; position: relative; z-index: 1;">OR SET NEW PASSWORD NOW</span>
+            <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--border, #e2e8f0); z-index: 0;"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="forgot-new-password">New Password</label>
+            <input type="password" id="forgot-new-password" class="form-input" placeholder="Enter new password (min 4 chars)" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="forgot-confirm-password">Confirm New Password</label>
+            <input type="password" id="forgot-confirm-password" class="form-input" placeholder="Confirm new password" required>
+          </div>
+
+          <div id="forgot-error" style="display: none; color: #ef4444; font-size: 12px; margin-bottom: 10px; font-weight: 600;"></div>
+          <div id="forgot-success" style="display: none; color: #16a34a; font-size: 12px; margin-bottom: 10px; font-weight: 600;"></div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 6px;">Update Password & Log In</button>
+          
+          <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px;">
+            Backup Master Password: <strong style="color: #ea580c;">volleyball123</strong>
+          </div>
+        </form>
       </div>
     </div>
 

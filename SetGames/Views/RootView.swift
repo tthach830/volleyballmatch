@@ -8,6 +8,8 @@ public struct RootView: View {
     @State private var deepLinkedTournament: Tournament? = nil
     @State private var pendingDeepLinkURL: URL? = nil
     @State private var pendingJoinTeamInfo: (tournamentId: UUID, teamId: UUID)? = nil
+    @State private var showResetPasswordSheet: Bool = false
+    @State private var resetPasswordPhone: String = "4087869405"
     
     public init() {}
     
@@ -126,6 +128,9 @@ public struct RootView: View {
                 TournamentDetailView(dataManager: dataManager, tournamentId: tournament.id)
             }
         }
+        .sheet(isPresented: $showResetPasswordSheet) {
+            ForgotPasswordSheet(dataManager: dataManager, initialPhone: resetPasswordPhone)
+        }
         .onOpenURL { url in
             handleIncomingURL(url)
         }
@@ -135,10 +140,22 @@ public struct RootView: View {
         // Supported formats:
         // setgames://game?id=<uuid>
         // setgames://tournament?id=<uuid>&teamId=<uuid>
+        // setgames://resetPassword?phone=<phone>
         // https://volleyballmatch-13d66.web.app/?gameId=<uuid>
         // https://volleyballmatch-13d66.web.app/?tournamentId=<uuid>&teamId=<uuid>
-        // https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=<uuid>&teamId=<uuid>
+        // https://runwildlovestronglivefree.org/volleyballmatch/?resetPhone=<phone>
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return }
+        
+        let resetPhoneParam = components.queryItems?.first(where: {
+            let name = $0.name.lowercased()
+            return name == "resetphone" || name == "forgotphone" || name == "reset" || (url.host?.lowercased() == "resetpassword" && name == "phone")
+        })?.value
+        
+        if let phone = resetPhoneParam?.trimmingCharacters(in: .whitespacesAndNewlines), !phone.isEmpty {
+            resetPasswordPhone = phone
+            showResetPasswordSheet = true
+            return
+        }
         
         let tournamentIdParam = components.queryItems?.first(where: {
             let name = $0.name.lowercased()

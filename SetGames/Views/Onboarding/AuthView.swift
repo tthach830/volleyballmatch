@@ -11,6 +11,8 @@ public struct AuthView: View {
     @State private var loginPassword: String = ""
     @State private var isLoginPasswordVisible: Bool = false
     @State private var loginErrorMessage: String? = nil
+    @State private var showForgotPasswordSheet: Bool = false
+    @State private var forgotPasswordPhone: String = "4087869405"
     
     // New Player State
     @State private var signUpPhone: String = ""
@@ -105,6 +107,9 @@ public struct AuthView: View {
             .sheet(isPresented: $showRatingGuide) {
                 RatingGuideSheet(selectedTier: $selectedRating)
             }
+            .sheet(isPresented: $showForgotPasswordSheet) {
+                ForgotPasswordSheet(dataManager: dataManager, initialPhone: forgotPasswordPhone)
+            }
         }
     }
     
@@ -152,6 +157,19 @@ public struct AuthView: View {
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.orange.opacity(0.4), lineWidth: 1)
                 )
+                
+                HStack {
+                    Spacer()
+                    Button {
+                        forgotPasswordPhone = loginPhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "4087869405" : loginPhone
+                        showForgotPasswordSheet = true
+                    } label: {
+                        Text("Forgot Password?")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.orange)
+                    }
+                }
+                .padding(.top, 2)
             }
             
             if let error = loginErrorMessage {
@@ -495,5 +513,212 @@ public struct AuthView: View {
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal)
+    }
+}
+
+// MARK: - Forgot Password Sheet
+public struct ForgotPasswordSheet: View {
+    @ObservedObject var dataManager: DataManager
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    
+    @State private var phone: String
+    @State private var newPassword: String = ""
+    @State private var confirmPassword: String = ""
+    @State private var isPasswordVisible: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var successMessage: String? = nil
+    
+    public init(dataManager: DataManager, initialPhone: String) {
+        self.dataManager = dataManager
+        let trimmed = initialPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+        _phone = State(initialValue: trimmed.isEmpty ? "4087869405" : trimmed)
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "key.fill")
+                            .font(.system(size: 34))
+                            .foregroundColor(.orange)
+                            .padding(14)
+                            .background(Color.orange.opacity(0.12))
+                            .clipShape(Circle())
+                        
+                        Text("Reset Your Password")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundColor(.primary)
+                        
+                        Text("Send a reset URL to your phone via SMS or set a new password directly below:")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .padding(.top, 10)
+                    
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Phone Number
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("REGISTERED PHONE NUMBER")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.secondary)
+                            
+                            TextField("e.g. 4087869405", text: $phone)
+                                .keyboardType(.phonePad)
+                                .padding(12)
+                                .background(Color(UIColor.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.4), lineWidth: 1))
+                        }
+                        
+                        // Action 1: Send SMS
+                        Button {
+                            if let url = dataManager.createPasswordResetSMSURL(phoneNumber: phone) {
+                                openURL(url)
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "message.fill")
+                                Text("Send Reset URL via SMS")
+                                    .fontWeight(.bold)
+                            }
+                            .font(.system(size: 14))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.cyan)
+                            .foregroundColor(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        
+                        Divider().padding(.vertical, 4)
+                        
+                        // Action 2: Direct Reset
+                        Text("OR SET NEW PASSWORD DIRECTLY")
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundColor(.secondary)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("NEW PASSWORD")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.secondary)
+                            
+                            HStack {
+                                if isPasswordVisible {
+                                    TextField("Enter new password", text: $newPassword)
+                                } else {
+                                    SecureField("Enter new password", text: $newPassword)
+                                }
+                                Button {
+                                    isPasswordVisible.toggle()
+                                } label: {
+                                    Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(12)
+                            .background(Color(UIColor.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.4), lineWidth: 1))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("CONFIRM PASSWORD")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.secondary)
+                            
+                            if isPasswordVisible {
+                                TextField("Confirm new password", text: $confirmPassword)
+                                    .padding(12)
+                                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.4), lineWidth: 1))
+                            } else {
+                                SecureField("Confirm new password", text: $confirmPassword)
+                                    .padding(12)
+                                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.4), lineWidth: 1))
+                            }
+                        }
+                        
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.red)
+                                .padding(10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.red.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        
+                        if let success = successMessage {
+                            Text(success)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.green)
+                                .padding(10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.green.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        
+                        Button {
+                            guard newPassword == confirmPassword else {
+                                errorMessage = "Passwords do not match."
+                                return
+                            }
+                            let res = dataManager.resetPassword(phoneNumber: phone, newPassword: newPassword)
+                            if res.success {
+                                successMessage = res.message
+                                errorMessage = nil
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                                    dismiss()
+                                }
+                            } else {
+                                errorMessage = res.message
+                            }
+                        } label: {
+                            Text("Update Password & Log In")
+                                .font(.system(size: 15, weight: .bold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.orange)
+                                .foregroundColor(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        
+                        // Helpful Note
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.secondary)
+                            Text("Backup Master Password: ")
+                                .foregroundColor(.secondary)
+                            Text("volleyball123")
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                        }
+                        .font(.system(size: 12))
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
+                    }
+                    .padding(20)
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal)
+                }
+                .padding(.bottom, 30)
+            }
+            .background(Color(UIColor.systemGroupedBackground))
+            .navigationTitle("Forgot Password")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
     }
 }
