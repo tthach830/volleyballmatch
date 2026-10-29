@@ -1129,6 +1129,44 @@ nav#bottom-nav {
   display: flex !important;
 }
 
+/* Modal Stacking Hierarchy so Auth and Child Modals always render on top */
+#auth-modal {
+  z-index: 3000 !important;
+}
+
+#auth-modal.active {
+  display: flex !important;
+}
+
+#auth-modal .modal-card {
+  z-index: 3001 !important;
+  max-width: 440px;
+}
+
+#tournament-signup-modal,
+#tournament-team-modal,
+#modal-add-player-to-team {
+  z-index: 2000 !important;
+}
+
+#tournament-signup-modal.active,
+#tournament-team-modal.active,
+#modal-add-player-to-team.active {
+  display: flex !important;
+}
+
+#team-roster-modal {
+  z-index: 1500 !important;
+}
+
+#team-roster-modal.active {
+  display: flex !important;
+}
+
+#toast {
+  z-index: 5000 !important;
+}
+
 .modal-card {
   width: 100%;
   max-width: 500px;

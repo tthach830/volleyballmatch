@@ -23,7 +23,7 @@
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "ydxtebfzci");
   </script>
-  <link rel="stylesheet" href="style.css?v=10.1">
+  <link rel="stylesheet" href="style.css?v=10.2">
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     // Early resilient switchTab fallback until app.js module finishes loading
@@ -335,7 +335,7 @@
     </main>
 
     <!-- Auth Modal (Phone Number Login & Sign Up - No Verification) -->
-    <div id="auth-modal" class="modal-backdrop">
+    <div id="auth-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeAuthModal()">
       <div class="modal-card" style="max-width: 420px; position: relative;">
         <button type="button" class="modal-close" style="position: absolute; right: 16px; top: 16px; z-index: 10;" onclick="window.closeAuthModal()" title="Close">&times;</button>
         <div style="text-align: center; margin-bottom: 16px;">
@@ -1727,6 +1727,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=17.0"></script>
+  <script type="module" src="app.js?v=17.1"></script>
 </body>
 </html>

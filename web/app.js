@@ -5975,7 +5975,17 @@ window.selectedSignupAvatarEmoji = "slug";
 
 window.showAuthModal = () => {
   const modal = document.getElementById("auth-modal");
-  if (modal) modal.classList.add("active");
+  if (modal) {
+    modal.style.zIndex = "3000";
+    modal.classList.add("active");
+    setTimeout(() => {
+      const activeForm = document.getElementById("signup-form")?.style.display === "block" 
+        ? document.getElementById("signup-form") 
+        : document.getElementById("login-form");
+      const firstInput = activeForm ? activeForm.querySelector("input:not([type=hidden])") : null;
+      if (firstInput) firstInput.focus();
+    }, 120);
+  }
 };
 window.openAuthModal = window.showAuthModal;
 
@@ -12971,9 +12981,9 @@ window.removeTournamentFreeAgent = function(tournamentId, playerId) {
 window.openTournamentSignUpModal = function(tournamentId) {
   if (!state.currentUser) {
     window.pendingTournamentSignUpId = tournamentId;
-    showToast("Please sign up or log in first to register!");
-    window.showAuthModal();
     window.switchAuthMode("signup");
+    window.showAuthModal();
+    showToast("Please sign up or log in first to register!");
     return;
   }
   window.signUpTournamentId = tournamentId;
