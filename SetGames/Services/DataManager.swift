@@ -2643,6 +2643,15 @@ public class DataManager: ObservableObject {
         guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
         guard let tmIdx = tournaments[tIdx].teams.firstIndex(where: { $0.id == teamId }) else { return }
         
+        let t = tournaments[tIdx]
+        let currentTeam = t.teams[tmIdx]
+        let isHostOrAdmin = (currentUser?.isRoot == true) || t.isHostOrCoHost(currentUser?.id)
+        let isCaptain = currentUser.map { $0.id == currentTeam.player1Id } ?? false
+        guard isHostOrAdmin || isCaptain else {
+            postNotification(title: "Permission Denied", message: "Only the team captain, tournament host, or admin can edit this team.", type: .tournament)
+            return
+        }
+        
         let trimmed = teamName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             tournaments[tIdx].teams[tmIdx].teamName = trimmed
@@ -2682,7 +2691,14 @@ public class DataManager: ObservableObject {
             return (false, "Team not found in this tournament.")
         }
         
-        var team = tournaments[tIdx].teams[tmIdx]
+        let t = tournaments[tIdx]
+        var team = t.teams[tmIdx]
+        let isHostOrAdmin = (currentUser?.isRoot == true) || t.isHostOrCoHost(currentUser?.id)
+        let isCaptain = currentUser.map { $0.id == team.player1Id } ?? false
+        guard isHostOrAdmin || isCaptain else {
+            return (false, "Only the team captain, tournament host, or admin can add teammates to this team.")
+        }
+        
         if team.containsPlayer(playerId) {
             return (false, "Player is already on \(team.teamName).")
         }
@@ -2742,7 +2758,14 @@ public class DataManager: ObservableObject {
             return (false, "Team not found.")
         }
         
-        var team = tournaments[tIdx].teams[tmIdx]
+        let t = tournaments[tIdx]
+        var team = t.teams[tmIdx]
+        let isHostOrAdmin = (currentUser?.isRoot == true) || t.isHostOrCoHost(currentUser?.id)
+        let isCaptain = currentUser.map { $0.id == team.player1Id } ?? false
+        guard isHostOrAdmin || isCaptain else {
+            return (false, "Only the team captain, tournament host, or admin can remove teammates from this team.")
+        }
+        
         if team.player1Id == playerId {
             return (false, "Cannot remove the team captain from the roster.")
         }

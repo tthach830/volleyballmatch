@@ -1426,9 +1426,7 @@ public struct TournamentDetailView: View {
                     VStack(spacing: 8) {
                         ForEach(Array(divisionTeams.enumerated()), id: \.element.id) { index, team in
                             let isCaptain = dataManager.currentUser.map { $0.id == team.player1Id } ?? false
-                            let isQuads = team.division.isQuads || t.teamFormat == .quads4v4
-                            let hasOpenSpot = team.player2Id == nil || (isQuads && (team.player3Id == nil || team.player4Id == nil))
-                            let canAddPlayer = isHostOrAdmin || (isCaptain && isQuads) || (dataManager.currentUser == nil) || hasOpenSpot
+                            let canManageTeam = isHostOrAdmin || isCaptain
                             let rowSeed = team.seed ?? (index + 1)
                             
                             TournamentTeamRowView(
@@ -1438,19 +1436,19 @@ public struct TournamentDetailView: View {
                                 onSelect: {
                                     selectedTeamForRoster = team
                                 },
-                                onAddPlayer: canAddPlayer ? {
+                                onAddPlayer: canManageTeam ? {
                                     activeSheet = .addPlayerToTeam(team)
                                 } : nil,
-                                onInvite: {
+                                onInvite: canManageTeam ? {
                                     activeSheet = .teamInvite(team)
-                                },
+                                } : nil,
                                 onChat: {
                                     activeSheet = .teamChat(team)
                                 },
-                                onEdit: {
+                                onEdit: canManageTeam ? {
                                     activeSheet = .editTeam(team)
-                                },
-                                onRemove: (isHostOrAdmin || dataManager.currentUser == nil) ? {
+                                } : nil,
+                                onRemove: isHostOrAdmin ? {
                                     teamToRemove = team
                                     showRemoveTeamAlert = true
                                 } : nil
@@ -3279,9 +3277,8 @@ struct TeamRosterSheet: View {
         liveTeam.division.isQuads || tournament.teamFormat == .quads4v4
     }
     
-    var canAddPlayer: Bool {
-        let hasOpenSpot = liveTeam.player2Id == nil || (isQuads && (liveTeam.player3Id == nil || liveTeam.player4Id == nil))
-        return isHostOrAdmin || (isCaptain && isQuads) || dataManager.currentUser == nil || hasOpenSpot
+    var canManageTeam: Bool {
+        isHostOrAdmin || isCaptain
     }
     
     var body: some View {
@@ -3340,7 +3337,7 @@ struct TeamRosterSheet: View {
                                 
                                 Spacer()
                                 
-                                if canAddPlayer && slot.slotNum > 1 {
+                                if canManageTeam && slot.slotNum > 1 {
                                     Button {
                                         playerToRemove = player
                                         showRemovePlayerAlert = true
@@ -3353,7 +3350,7 @@ struct TeamRosterSheet: View {
                                 }
                             }
                             .padding(.vertical, 2)
-                        } else if canAddPlayer {
+                        } else if canManageTeam {
                             Button {
                                 showAddPlayerSheet = true
                             } label: {
@@ -3368,13 +3365,23 @@ struct TeamRosterSheet: View {
                                 }
                             }
                             .padding(.vertical, 2)
+                        } else {
+                            HStack(spacing: 8) {
+                                Image(systemName: "circle.dashed")
+                                    .foregroundColor(.secondary)
+                                Text("Open \(slot.role)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                            .padding(.vertical, 2)
                         }
                     }
                 } header: {
                     HStack {
                         Text("ROSTER & PLAYERS")
                         Spacer()
-                        if canAddPlayer {
+                        if canManageTeam {
                             Button {
                                 showAddPlayerSheet = true
                             } label: {
@@ -3390,17 +3397,19 @@ struct TeamRosterSheet: View {
                 }
                 
                 Section {
-                    Button {
-                        showEditSheet = true
-                    } label: {
-                        HStack {
-                            Label("Edit Team & Players", systemImage: "pencil")
-                                .foregroundColor(.orange)
-                                .fontWeight(.semibold)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    if canManageTeam {
+                        Button {
+                            showEditSheet = true
+                        } label: {
+                            HStack {
+                                Label("Edit Team & Players", systemImage: "pencil")
+                                    .foregroundColor(.orange)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                     
@@ -3418,21 +3427,23 @@ struct TeamRosterSheet: View {
                         }
                     }
                     
-                    let shareURLString = "https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=\(tournament.id.uuidString)&teamId=\(liveTeam.id.uuidString)"
-                    if let url = URL(string: shareURLString) {
-                        ShareLink(
-                            item: url,
-                            subject: Text("Join \(liveTeam.teamName)"),
-                            message: Text("Join my team '\(liveTeam.teamName)' for \(tournament.title)!\n\(shareURLString)")
-                        ) {
-                            HStack {
-                                Label("Invite Teammates to Join", systemImage: "link")
-                                    .foregroundColor(.green)
-                                    .fontWeight(.semibold)
-                                Spacer()
-                                Image(systemName: "square.and.arrow.up")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                    if canManageTeam {
+                        let shareURLString = "https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=\(tournament.id.uuidString)&teamId=\(liveTeam.id.uuidString)"
+                        if let url = URL(string: shareURLString) {
+                            ShareLink(
+                                item: url,
+                                subject: Text("Join \(liveTeam.teamName)"),
+                                message: Text("Join my team '\(liveTeam.teamName)' for \(tournament.title)!\n\(shareURLString)")
+                            ) {
+                                HStack {
+                                    Label("Invite Teammates to Join", systemImage: "link")
+                                        .foregroundColor(.green)
+                                        .fontWeight(.semibold)
+                                    Spacer()
+                                    Image(systemName: "square.and.arrow.up")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
@@ -3441,16 +3452,18 @@ struct TeamRosterSheet: View {
             .navigationTitle("Team Roster")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        showEditSheet = true
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "pencil")
-                            Text("Edit")
+                if canManageTeam {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            showEditSheet = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "pencil")
+                                Text("Edit")
+                            }
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.orange)
                         }
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.orange)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {

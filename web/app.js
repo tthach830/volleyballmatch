@@ -10390,7 +10390,8 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
   const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
   const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
   const isCaptain = isSamePlayer(tm.player1Id, currentUserId);
-  const canAddPlayer = isHost || isCaptain;
+  const canManageTeam = isHost || isCaptain;
+  const canAddPlayer = canManageTeam;
 
   const rawSlots = [
     { id: tm.player1Id, role: "Captain", directName: tm.p1Name, slotNum: 1 },
@@ -10446,11 +10447,17 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
           ` : ''}
         </div>
       `;
-    } else if (canAddPlayer) {
+    } else if (canManageTeam) {
       html += `
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(234,88,12,0.05); border: 1px dashed rgba(234,88,12,0.35); border-radius: 10px; cursor: pointer;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${tm.id}')">
           <span style="font-size: 12px; font-weight: 700; color: #ea580c;">➕ Open ${slot.role} • Click to Add Teammate</span>
           <button type="button" class="btn btn-outline" style="padding: 3px 10px; font-size: 11px; font-weight: 800; border-radius: 6px; color: #ea580c; border-color: #ea580c; cursor: pointer;">+ Add Teammate</button>
+        </div>
+      `;
+    } else {
+      html += `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg-alt, #f8fafc); border: 1px dashed var(--border, #cbd5e1); border-radius: 10px;">
+          <span style="font-size: 12px; font-weight: 600; color: var(--text-muted, #94a3b8); font-style: italic;">Open ${slot.role}</span>
         </div>
       `;
     }
@@ -10472,9 +10479,11 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
         <button type="button" class="btn" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; background: #0284c7; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="window.openTeamChatModal('${t.id}', '${tm.id}')">
           💬 Team Chat ${msgCount > 0 ? `(${msgCount})` : ''}
         </button>
-        <button type="button" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.shareTeamInviteLink('${t.id}', '${tm.id}')">
-          🔗 Share Team Invite Link
-        </button>
+        ${canManageTeam ? `
+          <button type="button" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.shareTeamInviteLink('${t.id}', '${tm.id}')">
+            🔗 Share Team Invite Link
+          </button>
+        ` : ''}
       </div>
     `;
   }
@@ -10726,6 +10735,7 @@ window.addPlayerToTournamentTeamWeb = function(tournamentId, teamId, playerIdOrG
 };
 
 window.removePlayerFromTournamentTeamWeb = function(tournamentId, teamId, playerId) {
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
   const t = (state.tournaments || []).find(item => 
     (item.id && String(item.id).trim().toLowerCase() === targetId.toLowerCase()) ||
     (item.rawId && String(item.rawId).trim().toLowerCase() === targetId.toLowerCase())
@@ -10733,6 +10743,16 @@ window.removePlayerFromTournamentTeamWeb = function(tournamentId, teamId, player
   if (!t) return;
   const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
   if (!team) return;
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  const isCaptain = isSamePlayer(team.player1Id, currentUserId);
+  if (!isHost && !isCaptain) {
+    showToast("Only the tournament host or team captain can remove teammates.");
+    return;
+  }
 
   if (isSamePlayer(team.player1Id, playerId)) {
     showToast("Cannot remove the team captain from the roster.");
@@ -11279,11 +11299,17 @@ window.renderTournamentDetail = function() {
                   isSamePlayer(team.player5Id, state.currentUser.id)
                 );
                 const canManageTeam = isHost || isCaptain;
-                const canInvite = isHost || isMyTeam;
+                const canChat = isHost || isMyTeam;
 
-                const openPartnerHTML = `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Looking for partner (Add Teammate)</button>`;
-                const openSpot3HTML = `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot (Add Teammate)</button>`;
-                const openSpot4HTML = `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot (Add Teammate)</button>`;
+                const openPartnerHTML = canManageTeam
+                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Looking for partner (Add Teammate)</button>`
+                  : `<span style="font-size:11px;font-style:italic;color:var(--text-muted, #94a3b8);">Looking for partner</span>`;
+                const openSpot3HTML = canManageTeam
+                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot (Add Teammate)</button>`
+                  : `<span style="font-size:11px;font-style:italic;color:var(--text-muted, #94a3b8);">Open Spot</span>`;
+                const openSpot4HTML = canManageTeam
+                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot (Add Teammate)</button>`
+                  : `<span style="font-size:11px;font-style:italic;color:var(--text-muted, #94a3b8);">Open Spot</span>`;
 
                 const playerLine1 = `${p1Name} & ${p2 ? p2Name : openPartnerHTML}`;
                 const playerLine2 = is4v4 ? `${p3 ? p3Name : openSpot3HTML} & ${p4 ? p4Name : openSpot4HTML}` : '';
@@ -11313,10 +11339,12 @@ window.renderTournamentDetail = function() {
                           ➕ Add Teammate
                         </button>
                       ` : ''}
-                      ${canInvite ? `
+                      ${canChat ? `
                         <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.openTeamChatModal('${t.id}', '${team.id}')" title="Team Chat">
                           💬 ${(team.messages || []).length > 0 ? (team.messages || []).length : 'Chat'}
                         </button>
+                      ` : ''}
+                      ${canManageTeam ? `
                         <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite Teammates via Link">
                           🔗 Invite
                         </button>
@@ -12961,15 +12989,9 @@ window.openEditTeamModal = function(tournamentId, teamId) {
   const isRoot = isRootUser(state.currentUser);
   const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
   const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
-  const isMember = currentUserId && (
-    isSamePlayer(team.player1Id, currentUserId) ||
-    isSamePlayer(team.player2Id, currentUserId) ||
-    isSamePlayer(team.player3Id, currentUserId) ||
-    isSamePlayer(team.player4Id, currentUserId) ||
-    isSamePlayer(team.player5Id, currentUserId)
-  );
-  if (!isHost && !isMember) {
-    showToast("Only the tournament host, co-host, or team members can edit this team.");
+  const isCaptain = isSamePlayer(team.player1Id, currentUserId);
+  if (!isHost && !isCaptain) {
+    showToast("Only the tournament host, co-host, or team captain can edit this team.");
     return;
   }
 
