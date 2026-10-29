@@ -15,6 +15,7 @@ public struct TournamentDetailView: View {
         case editTeam(TournamentTeam)
         case editPools
         case teamInvite(TournamentTeam)
+        case addPlayerToTeam(TournamentTeam)
         
         public var id: String {
             switch self {
@@ -27,6 +28,7 @@ public struct TournamentDetailView: View {
             case .editTeam(let team): return "editTeam-\(team.id.uuidString)"
             case .editPools: return "editPools"
             case .teamInvite(let team): return "teamInvite-\(team.id.uuidString)"
+            case .addPlayerToTeam(let team): return "addPlayerToTeam-\(team.id.uuidString)"
             }
         }
     }
@@ -240,6 +242,8 @@ public struct TournamentDetailView: View {
                         EditPoolPlaySheet(tournament: t, division: activeDivision, dataManager: dataManager)
                     case .teamInvite(let team):
                         TeamQRCodeSheet(tournament: t, team: team)
+                    case .addPlayerToTeam(let team):
+                        AddPlayerToTeamSheet(tournament: t, team: team, dataManager: dataManager)
                     }
                 }
                 .sheet(item: $selectedTeamForRoster) { team in
@@ -1413,10 +1417,17 @@ public struct TournamentDetailView: View {
                 } else {
                     VStack(spacing: 8) {
                         ForEach(Array(divisionTeams.enumerated()), id: \.element.id) { index, team in
+                            let isCaptain = dataManager.currentUser.map { $0.id == team.player1Id } ?? false
+                            let isQuads = team.division.isQuads || t.teamFormat == .quads4v4
+                            let canAddPlayer = isHostOrAdmin || (isCaptain && isQuads)
+                            
                             TournamentTeamRowView(
                                 team: team,
                                 seedNumber: team.seed ?? (index + 1),
                                 players: dataManager.players,
+                                onAddPlayer: canAddPlayer ? {
+                                    activeSheet = .addPlayerToTeam(team)
+                                } : nil,
                                 onInvite: (isHostOrAdmin || (dataManager.currentUser.map { team.containsPlayer($0.id) } ?? false)) ? {
                                     activeSheet = .teamInvite(team)
                                 } : nil,
@@ -1520,6 +1531,7 @@ struct TournamentTeamRowView: View {
     let team: TournamentTeam
     let seedNumber: Int
     let players: [Player]
+    var onAddPlayer: (() -> Void)? = nil
     var onInvite: (() -> Void)? = nil
     var onEdit: (() -> Void)? = nil
     var onRemove: (() -> Void)? = nil
@@ -1529,6 +1541,7 @@ struct TournamentTeamRowView: View {
         let p2 = team.player2Id.flatMap { id in players.first(where: { $0.id == id }) }
         let p3 = team.player3Id.flatMap { id in players.first(where: { $0.id == id }) }
         let p4 = team.player4Id.flatMap { id in players.first(where: { $0.id == id }) }
+        let p5 = team.player5Id.flatMap { id in players.first(where: { $0.id == id }) }
         
         HStack(spacing: 12) {
             Text("#\(seedNumber)")
@@ -1561,6 +1574,14 @@ struct TournamentTeamRowView: View {
                     
                     if let p2 = p2 {
                         playerLabel(player: p2, fallback: "Player 2")
+                    } else if let onAddPlayer = onAddPlayer {
+                        Button(action: onAddPlayer) {
+                            Text("+ Looking for Partner")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                        }
+                        .buttonStyle(.plain)
                     } else {
                         Text("Looking for Partner")
                             .font(.caption2)
@@ -1574,6 +1595,14 @@ struct TournamentTeamRowView: View {
                     HStack(spacing: 8) {
                         if let p3 = p3 {
                             playerLabel(player: p3, fallback: "Player 3")
+                        } else if let onAddPlayer = onAddPlayer {
+                            Button(action: onAddPlayer) {
+                                Text("+ Open Spot")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.orange)
+                            }
+                            .buttonStyle(.plain)
                         } else {
                             Text("+ Open Spot")
                                 .font(.caption2)
@@ -1587,6 +1616,14 @@ struct TournamentTeamRowView: View {
                         
                         if let p4 = p4 {
                             playerLabel(player: p4, fallback: "Player 4")
+                        } else if let onAddPlayer = onAddPlayer {
+                            Button(action: onAddPlayer) {
+                                Text("+ Open Spot")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.orange)
+                            }
+                            .buttonStyle(.plain)
                         } else {
                             Text("+ Open Spot")
                                 .font(.caption2)
@@ -1595,11 +1632,38 @@ struct TournamentTeamRowView: View {
                         }
                     }
                 }
+                
+                // Row 3: Player 5 (Sub / Alternate for Quads if present)
+                if let p5 = p5 {
+                    HStack(spacing: 6) {
+                        playerLabel(player: p5, fallback: "Player 5")
+                        Text("(Sub)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             
             Spacer()
             
             HStack(spacing: 8) {
+                if let onAddPlayer = onAddPlayer {
+                    Button(action: onAddPlayer) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.badge.plus")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("Add")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.orange.opacity(0.12))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+                
                 if let onInvite = onInvite {
                     Button(action: onInvite) {
                         HStack(spacing: 4) {
@@ -2730,6 +2794,11 @@ struct ManualTeamEditSheet: View {
     @State private var player4Id: UUID?
     @State private var p4GuestName: String = ""
     
+    // Player 5 (4v4 Sub)
+    @State private var p5SlotType: SlotType = .none
+    @State private var player5Id: UUID?
+    @State private var p5GuestName: String = ""
+    
     init(dataManager: DataManager, tournament: Tournament, preselectedDivision: TournamentDivisionCategory, teamToEdit: TournamentTeam?) {
         self.dataManager = dataManager
         self.tournament = tournament
@@ -2746,10 +2815,12 @@ struct ManualTeamEditSheet: View {
         _player2Id = State(initialValue: teamToEdit?.player2Id)
         _player3Id = State(initialValue: teamToEdit?.player3Id)
         _player4Id = State(initialValue: teamToEdit?.player4Id)
+        _player5Id = State(initialValue: teamToEdit?.player5Id)
         
         _p2SlotType = State(initialValue: (teamToEdit?.player2Id != nil) ? .registered : .none)
         _p3SlotType = State(initialValue: (teamToEdit?.player3Id != nil) ? .registered : .none)
         _p4SlotType = State(initialValue: (teamToEdit?.player4Id != nil) ? .registered : .none)
+        _p5SlotType = State(initialValue: (teamToEdit?.player5Id != nil) ? .registered : .none)
     }
     
     private var is4v4: Bool {
@@ -2854,6 +2925,28 @@ struct ManualTeamEditSheet: View {
                             TextField("Enter player 4 full name", text: $p4GuestName)
                         }
                     }
+                    
+                    Section("Player 5 (Optional Substitute)") {
+                        Picker("Slot Type", selection: $p5SlotType) {
+                            Text("Registered").tag(SlotType.registered)
+                            Text("Guest").tag(SlotType.guest)
+                            Text("Open / None").tag(SlotType.none)
+                        }
+                        .pickerStyle(.segmented)
+                        
+                        if p5SlotType == .registered {
+                            Picker("Select Substitute", selection: Binding(
+                                get: { player5Id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")! },
+                                set: { player5Id = ($0.uuidString == "00000000-0000-0000-0000-000000000000") ? nil : $0 }
+                            )) {
+                                ForEach(dataManager.players.filter { $0.id != player1Id && $0.id != player2Id && $0.id != player3Id && $0.id != player4Id }) { p in
+                                    Text(p.name).tag(p.id)
+                                }
+                            }
+                        } else if p5SlotType == .guest {
+                            TextField("Enter substitute full name", text: $p5GuestName)
+                        }
+                    }
                 }
             }
             .navigationTitle(teamToEdit == nil ? "Add Team Manually" : "Edit Team & Players")
@@ -2893,6 +2986,13 @@ struct ManualTeamEditSheet: View {
                             finalP4Id = nil
                         }
                         
+                        var finalP5Id = player5Id
+                        if p5SlotType == .guest && !p5GuestName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            finalP5Id = dataManager.getOrCreateGuestPlayer(name: p5GuestName, rating: defaultTier).id
+                        } else if p5SlotType == .none {
+                            finalP5Id = nil
+                        }
+                        
                         if let existing = teamToEdit {
                             dataManager.updateTournamentTeam(
                                 tournamentId: tournament.id,
@@ -2902,6 +3002,7 @@ struct ManualTeamEditSheet: View {
                                 player2Id: finalP2Id,
                                 player3Id: finalP3Id,
                                 player4Id: finalP4Id,
+                                player5Id: finalP5Id,
                                 division: selectedDivision,
                                 poolName: pool
                             )
@@ -2914,6 +3015,7 @@ struct ManualTeamEditSheet: View {
                                 player2Id: finalP2Id,
                                 player3Id: finalP3Id,
                                 player4Id: finalP4Id,
+                                player5Id: finalP5Id,
                                 poolName: pool
                             )
                         }
@@ -3104,41 +3206,72 @@ struct TeamRosterSheet: View {
     let tournament: Tournament
     @ObservedObject var dataManager: DataManager
     
+    @State private var showAddPlayerSheet: Bool = false
+    @State private var playerToRemove: Player? = nil
+    @State private var showRemovePlayerAlert: Bool = false
+    
+    var liveTeam: TournamentTeam {
+        dataManager.tournaments.first(where: { $0.id == tournament.id })?.teams.first(where: { $0.id == team.id }) ?? team
+    }
+    
+    var isHostOrAdmin: Bool {
+        guard let current = dataManager.currentUser else { return false }
+        return current.isRoot || tournament.isHostOrCoHost(current.id)
+    }
+    
+    var isCaptain: Bool {
+        guard let current = dataManager.currentUser else { return false }
+        return liveTeam.player1Id == current.id
+    }
+    
+    var isQuads: Bool {
+        liveTeam.division.isQuads || tournament.teamFormat == .quads4v4
+    }
+    
+    var canAddPlayer: Bool {
+        isHostOrAdmin || (isCaptain && isQuads)
+    }
+    
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(team.teamName)
+                        Text(liveTeam.teamName)
                             .font(.title2)
                             .fontWeight(.black)
                             .foregroundColor(.white)
                         HStack(spacing: 8) {
-                            Text(team.division.displayName)
+                            Text(liveTeam.division.displayName)
                                 .font(.caption).fontWeight(.semibold)
                                 .padding(.horizontal, 8).padding(.vertical, 3)
                                 .background(Capsule().fill(Color.orange.opacity(0.2))).foregroundColor(.orange)
-                            if let pool = team.poolName {
+                            if let pool = liveTeam.poolName {
                                 Text(pool)
                                     .font(.caption).fontWeight(.semibold)
                                     .padding(.horizontal, 8).padding(.vertical, 3)
                                     .background(Capsule().fill(Color.cyan.opacity(0.2))).foregroundColor(.cyan)
                             }
-                            if let seed = team.seed ?? team.poolSeed {
+                            if let seed = liveTeam.seed ?? liveTeam.poolSeed {
                                 Text("Seed #\(seed)").font(.caption).foregroundColor(.secondary)
                             }
                         }
                     }
                     .padding(.vertical, 4)
                 }
-                Section("Roster & Players") {
-                    let playerSlots: [(id: UUID?, role: String)] = [
-                        (team.player1Id, "Captain"),
-                        (team.player2Id, "Partner"),
-                        (team.player3Id, "Player 3"),
-                        (team.player4Id, "Player 4")
+                
+                Section {
+                    let playerSlots: [(id: UUID?, role: String, slotNum: Int)] = [
+                        (liveTeam.player1Id, "Captain", 1),
+                        (liveTeam.player2Id, "Partner", 2),
+                        (liveTeam.player3Id, "Player 3", 3),
+                        (liveTeam.player4Id, "Player 4", 4),
+                        (liveTeam.player5Id, "Player 5 (Sub)", 5)
                     ]
-                    ForEach(playerSlots.filter { $0.id != nil }, id: \.role) { slot in
+                    
+                    let slotsToShow = isQuads ? playerSlots : Array(playerSlots.prefix(2))
+                    
+                    ForEach(slotsToShow, id: \.role) { slot in
                         if let pid = slot.id {
                             let player = dataManager.player(for: pid)
                             HStack(spacing: 12) {
@@ -3152,23 +3285,69 @@ struct TeamRosterSheet: View {
                                     }
                                     Text("\(player.rating.rawValue) • Elo \(player.eloRating) • \(player.homeBeach)").font(.caption2).foregroundColor(.secondary)
                                 }
+                                
+                                Spacer()
+                                
+                                if canAddPlayer && slot.slotNum > 1 {
+                                    Button {
+                                        playerToRemove = player
+                                        showRemovePlayerAlert = true
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .foregroundColor(.red.opacity(0.8))
+                                            .font(.system(size: 16))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
                             .padding(.vertical, 2)
+                        } else if canAddPlayer {
+                            Button {
+                                showAddPlayerSheet = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("Open \(slot.role) • Tap to Add Player")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.orange)
+                                    Spacer()
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("ROSTER & PLAYERS")
+                        Spacer()
+                        if canAddPlayer {
+                            Button {
+                                showAddPlayerSheet = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "person.badge.plus")
+                                    Text("Add Player")
+                                }
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.orange)
+                            }
                         }
                     }
                 }
                 
                 Section {
-                    let shareURLString = "https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=\(tournament.id.uuidString)&teamId=\(team.id.uuidString)"
+                    let shareURLString = "https://runwildlovestronglivefree.org/volleyballmatch/?tournamentId=\(tournament.id.uuidString)&teamId=\(liveTeam.id.uuidString)"
                     if let url = URL(string: shareURLString) {
                         ShareLink(
                             item: url,
-                            subject: Text("Join \(team.teamName)"),
-                            message: Text("Join my team '\(team.teamName)' for \(tournament.title)!\n\(shareURLString)")
+                            subject: Text("Join \(liveTeam.teamName)"),
+                            message: Text("Join my team '\(liveTeam.teamName)' for \(tournament.title)!\n\(shareURLString)")
                         ) {
                             HStack {
-                                Label("Invite Teammates to Join", systemImage: "person.badge.plus")
-                                    .foregroundColor(.orange)
+                                Label("Invite Teammates to Join", systemImage: "link")
+                                    .foregroundColor(.cyan)
                                     .fontWeight(.semibold)
                                 Spacer()
                                 Image(systemName: "square.and.arrow.up")
@@ -3185,6 +3364,220 @@ struct TeamRosterSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showAddPlayerSheet) {
+                AddPlayerToTeamSheet(tournament: tournament, team: liveTeam, dataManager: dataManager)
+            }
+            .alert("Remove Teammate?", isPresented: $showRemovePlayerAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Remove", role: .destructive) {
+                    if let p = playerToRemove {
+                        dataManager.removePlayerFromTournamentTeam(
+                            tournamentId: tournament.id,
+                            teamId: liveTeam.id,
+                            playerId: p.id
+                        )
+                    }
+                }
+            } message: {
+                if let p = playerToRemove {
+                    Text("Are you sure you want to remove \(p.displayName) from \(liveTeam.teamName)?")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Add Player To Team Sheet (Quads / Captain)
+struct AddPlayerToTeamSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let tournament: Tournament
+    let team: TournamentTeam
+    @ObservedObject var dataManager: DataManager
+    
+    @State private var searchText: String = ""
+    @State private var guestName: String = ""
+    @State private var guestRating: RatingTier = .intermediate
+    @State private var alertMessage: String = ""
+    @State private var showAlert: Bool = false
+    
+    var liveTeam: TournamentTeam {
+        dataManager.tournaments.first(where: { $0.id == tournament.id })?.teams.first(where: { $0.id == team.id }) ?? team
+    }
+    
+    var freeAgentsInDivision: [TournamentFreeAgent] {
+        tournament.freeAgents(for: liveTeam.division)
+    }
+    
+    var availablePlayers: [Player] {
+        let currentTournamentTeamPlayerIds = Set(tournament.teams.flatMap { $0.allPlayerIds })
+        let filtered = dataManager.players.filter { player in
+            !currentTournamentTeamPlayerIds.contains(player.id) &&
+            !liveTeam.containsPlayer(player.id)
+        }
+        if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return filtered
+        } else {
+            return filtered.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.nickname.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Add Player to \(liveTeam.teamName)")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        Text("\(liveTeam.division.displayName) • \(liveTeam.allPlayerIds.count) player\(liveTeam.allPlayerIds.count == 1 ? "" : "s") on roster")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.vertical, 2)
+                }
+                
+                // Section 1: Free Agents in this division
+                if !freeAgentsInDivision.isEmpty {
+                    Section("Available Free Agents in \(liveTeam.division.displayName)") {
+                        ForEach(freeAgentsInDivision) { fa in
+                            let player = dataManager.player(for: fa.playerId)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(player.displayName)
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                    HStack(spacing: 6) {
+                                        Text(player.rating.rawValue)
+                                            .font(.caption2)
+                                            .foregroundColor(.cyan)
+                                        if !fa.notes.isEmpty {
+                                            Text("• \"\(fa.notes)\"")
+                                                .font(.caption2)
+                                                .italic()
+                                                .foregroundColor(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                }
+                                Spacer()
+                                Button {
+                                    let res = dataManager.addPlayerToTournamentTeam(tournamentId: tournament.id, teamId: liveTeam.id, playerId: player.id)
+                                    if res.success {
+                                        dismiss()
+                                    } else {
+                                        alertMessage = res.message
+                                        showAlert = true
+                                    }
+                                } label: {
+                                    Text("Add")
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Capsule().fill(Color.orange))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+                
+                // Section 2: Search Registered Players
+                Section("Search Registered Players") {
+                    if availablePlayers.isEmpty {
+                        Text("No matching registered players found.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(availablePlayers) { player in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(player.displayName)
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                    Text("\(player.rating.rawValue) • Elo \(player.eloRating) • \(player.homeBeach)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button {
+                                    let res = dataManager.addPlayerToTournamentTeam(tournamentId: tournament.id, teamId: liveTeam.id, playerId: player.id)
+                                    if res.success {
+                                        dismiss()
+                                    } else {
+                                        alertMessage = res.message
+                                        showAlert = true
+                                    }
+                                } label: {
+                                    Text("Add")
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Capsule().fill(Color.cyan))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+                
+                // Section 3: Add Guest Player
+                Section("Add Guest / Unregistered Player") {
+                    TextField("Enter player's full name", text: $guestName)
+                    Picker("Estimated Rating", selection: $guestRating) {
+                        ForEach(RatingTier.allCases, id: \.self) { tier in
+                            Text(tier.rawValue).tag(tier)
+                        }
+                    }
+                    Button {
+                        let trimmed = guestName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else {
+                            alertMessage = "Please enter the player's name."
+                            showAlert = true
+                            return
+                        }
+                        let guest = dataManager.getOrCreateGuestPlayer(name: trimmed, rating: guestRating)
+                        let res = dataManager.addPlayerToTournamentTeam(tournamentId: tournament.id, teamId: liveTeam.id, playerId: guest.id)
+                        if res.success {
+                            dismiss()
+                        } else {
+                            alertMessage = res.message
+                            showAlert = true
+                        }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Label("Add Guest to Team", systemImage: "person.crop.circle.badge.plus")
+                                .fontWeight(.bold)
+                            Spacer()
+                        }
+                    }
+                    .foregroundColor(.orange)
+                }
+            }
+            .searchable(text: $searchText, prompt: "Search player by name...")
+            .navigationTitle("Add Teammate")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .alert("Add Player", isPresented: $showAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(alertMessage)
             }
         }
     }

@@ -1393,6 +1393,21 @@
       </div>
     </div>
 
+    <!-- Add Player to Tournament Team Modal (Captain / Host) -->
+    <div id="modal-add-player-to-team" class="modal-backdrop" onclick="if(event.target === this) window.closeAddPlayerToTeamModal()">
+      <div class="modal-card" style="max-width: 460px; max-height: 88vh; display: flex; flex-direction: column; padding: 20px;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border, #334155); padding-bottom: 10px; margin-bottom: 12px;">
+          <h2 class="modal-title" id="add-player-to-team-title" style="font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+            <span>➕</span> Add Teammate
+          </h2>
+          <button type="button" class="modal-close" onclick="window.closeAddPlayerToTeamModal()">&times;</button>
+        </div>
+        <div id="add-player-to-team-body" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
     <!-- Add Player to Game Modal (Host / Admin manual player addition) -->
     <div id="modal-add-player-to-game" class="modal-backdrop" onclick="if(event.target === this) window.closeAddPlayerModal()">
       <div class="modal-card" style="max-width: 440px; max-height: 85vh; display: flex; flex-direction: column; padding: 18px;">

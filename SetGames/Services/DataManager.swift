@@ -2399,13 +2399,18 @@ public class DataManager: ObservableObject {
         player2Id: UUID?,
         player3Id: UUID? = nil,
         player4Id: UUID? = nil,
+        player5Id: UUID? = nil,
         division: TournamentDivisionCategory
     ) {
         guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
         // Remove any prior team or free-agent registration for player1
         tournaments[idx].teams.removeAll { $0.containsPlayer(player1Id) }
         tournaments[idx].freeAgents.removeAll { $0.playerId == player1Id }
-        // Remove prior registrations for player3 and player4 if provided
+        // Remove prior registrations for teammates if provided
+        if let p2 = player2Id {
+            tournaments[idx].teams.removeAll { $0.containsPlayer(p2) }
+            tournaments[idx].freeAgents.removeAll { $0.playerId == p2 }
+        }
         if let p3 = player3Id {
             tournaments[idx].teams.removeAll { $0.containsPlayer(p3) }
             tournaments[idx].freeAgents.removeAll { $0.playerId == p3 }
@@ -2413,6 +2418,10 @@ public class DataManager: ObservableObject {
         if let p4 = player4Id {
             tournaments[idx].teams.removeAll { $0.containsPlayer(p4) }
             tournaments[idx].freeAgents.removeAll { $0.playerId == p4 }
+        }
+        if let p5 = player5Id {
+            tournaments[idx].teams.removeAll { $0.containsPlayer(p5) }
+            tournaments[idx].freeAgents.removeAll { $0.playerId == p5 }
         }
         
         let newTeam = TournamentTeam(
@@ -2422,6 +2431,7 @@ public class DataManager: ObservableObject {
             player2Id: player2Id,
             player3Id: player3Id,
             player4Id: player4Id,
+            player5Id: player5Id,
             seed: tournaments[idx].teams(for: division).count + 1,
             division: division
         )
@@ -2485,6 +2495,7 @@ public class DataManager: ObservableObject {
         player2Id: UUID?,
         player3Id: UUID? = nil,
         player4Id: UUID? = nil,
+        player5Id: UUID? = nil,
         poolName: String? = nil
     ) {
         guard let idx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
@@ -2499,6 +2510,7 @@ public class DataManager: ObservableObject {
             player2Id: player2Id,
             player3Id: player3Id,
             player4Id: player4Id,
+            player5Id: player5Id,
             seed: currentCount + 1,
             poolName: (poolName?.isEmpty ?? true) ? nil : poolName,
             division: division
@@ -2522,6 +2534,7 @@ public class DataManager: ObservableObject {
         player2Id: UUID?,
         player3Id: UUID? = nil,
         player4Id: UUID? = nil,
+        player5Id: UUID? = nil,
         division: TournamentDivisionCategory? = nil,
         poolName: String? = nil
     ) {
@@ -2536,6 +2549,7 @@ public class DataManager: ObservableObject {
         tournaments[tIdx].teams[tmIdx].player2Id = player2Id
         tournaments[tIdx].teams[tmIdx].player3Id = player3Id
         tournaments[tIdx].teams[tmIdx].player4Id = player4Id
+        tournaments[tIdx].teams[tmIdx].player5Id = player5Id
         if let div = division {
             tournaments[tIdx].teams[tmIdx].division = div
         }
@@ -2551,6 +2565,105 @@ public class DataManager: ObservableObject {
             message: "\(tournaments[tIdx].teams[tmIdx].teamName) has been updated!",
             type: .tournament
         )
+    }
+    
+    @discardableResult
+    public func addPlayerToTournamentTeam(
+        tournamentId: UUID,
+        teamId: UUID,
+        playerId: UUID
+    ) -> (success: Bool, message: String) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId || ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(tournamentId.uuidString) == .orderedSame) }) else {
+            return (false, "Tournament not found.")
+        }
+        guard let tmIdx = tournaments[tIdx].teams.firstIndex(where: { $0.id == teamId }) else {
+            return (false, "Team not found in this tournament.")
+        }
+        
+        var team = tournaments[tIdx].teams[tmIdx]
+        if team.containsPlayer(playerId) {
+            return (false, "Player is already on \(team.teamName).")
+        }
+        
+        let isQuads = team.division.isQuads || tournaments[tIdx].teamFormat == .quads4v4
+        var assignedSlot = ""
+        if team.player2Id == nil {
+            team.player2Id = playerId
+            assignedSlot = "Partner"
+        } else if isQuads && team.player3Id == nil {
+            team.player3Id = playerId
+            assignedSlot = "Player 3"
+        } else if isQuads && team.player4Id == nil {
+            team.player4Id = playerId
+            assignedSlot = "Player 4"
+        } else if isQuads && team.player5Id == nil {
+            team.player5Id = playerId
+            assignedSlot = "Player 5 (Sub)"
+        } else {
+            return (false, "\(team.teamName) is already full!")
+        }
+        
+        // Remove player from other teams or free agent list in this tournament
+        for i in 0..<tournaments[tIdx].teams.count {
+            if tournaments[tIdx].teams[i].id != team.id {
+                if tournaments[tIdx].teams[i].player2Id == playerId { tournaments[tIdx].teams[i].player2Id = nil }
+                if tournaments[tIdx].teams[i].player3Id == playerId { tournaments[tIdx].teams[i].player3Id = nil }
+                if tournaments[tIdx].teams[i].player4Id == playerId { tournaments[tIdx].teams[i].player4Id = nil }
+                if tournaments[tIdx].teams[i].player5Id == playerId { tournaments[tIdx].teams[i].player5Id = nil }
+            }
+        }
+        tournaments[tIdx].freeAgents.removeAll { $0.playerId == playerId }
+        
+        tournaments[tIdx].teams[tmIdx] = team
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        let player = self.player(for: playerId)
+        postNotification(
+            title: "Player Added! 🏐",
+            message: "\(player.displayName) added to \(team.teamName) as \(assignedSlot)!",
+            type: .tournament
+        )
+        return (true, "Added \(player.displayName) to \(team.teamName) as \(assignedSlot)!")
+    }
+    
+    @discardableResult
+    public func removePlayerFromTournamentTeam(
+        tournamentId: UUID,
+        teamId: UUID,
+        playerId: UUID
+    ) -> (success: Bool, message: String) {
+        guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId || ($0.rawId != nil && $0.rawId?.caseInsensitiveCompare(tournamentId.uuidString) == .orderedSame) }) else {
+            return (false, "Tournament not found.")
+        }
+        guard let tmIdx = tournaments[tIdx].teams.firstIndex(where: { $0.id == teamId }) else {
+            return (false, "Team not found.")
+        }
+        
+        var team = tournaments[tIdx].teams[tmIdx]
+        if team.player1Id == playerId {
+            return (false, "Cannot remove the team captain from the roster.")
+        }
+        
+        if team.player2Id == playerId { team.player2Id = nil }
+        else if team.player3Id == playerId { team.player3Id = nil }
+        else if team.player4Id == playerId { team.player4Id = nil }
+        else if team.player5Id == playerId { team.player5Id = nil }
+        else {
+            return (false, "Player is not on this team.")
+        }
+        
+        tournaments[tIdx].teams[tmIdx] = team
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        let player = self.player(for: playerId)
+        postNotification(
+            title: "Roster Updated 🏐",
+            message: "\(player.displayName) removed from \(team.teamName).",
+            type: .tournament
+        )
+        return (true, "Removed \(player.displayName) from \(team.teamName).")
     }
     
     public func addDemoTeams(
@@ -2737,7 +2850,7 @@ public class DataManager: ObservableObject {
             return (true, "You are already a member of \(team.teamName).")
         }
         
-        let isQuads = team.division.isQuads
+        let isQuads = team.division.isQuads || tournaments[tIdx].teamFormat == .quads4v4
         var assignedSlot = ""
         if team.player2Id == nil {
             team.player2Id = playerId
@@ -2748,6 +2861,9 @@ public class DataManager: ObservableObject {
         } else if isQuads && team.player4Id == nil {
             team.player4Id = playerId
             assignedSlot = "Player 4"
+        } else if isQuads && team.player5Id == nil {
+            team.player5Id = playerId
+            assignedSlot = "Player 5 (Sub)"
         } else {
             return (false, "\(team.teamName) is already full!")
         }
@@ -2758,6 +2874,7 @@ public class DataManager: ObservableObject {
                 if tournaments[tIdx].teams[i].player2Id == playerId { tournaments[tIdx].teams[i].player2Id = nil }
                 if tournaments[tIdx].teams[i].player3Id == playerId { tournaments[tIdx].teams[i].player3Id = nil }
                 if tournaments[tIdx].teams[i].player4Id == playerId { tournaments[tIdx].teams[i].player4Id = nil }
+                if tournaments[tIdx].teams[i].player5Id == playerId { tournaments[tIdx].teams[i].player5Id = nil }
             }
         }
         tournaments[tIdx].freeAgents.removeAll { $0.playerId == playerId }

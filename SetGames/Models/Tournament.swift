@@ -166,6 +166,7 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
     public var player2Id: UUID?
     public var player3Id: UUID?
     public var player4Id: UUID?
+    public var player5Id: UUID?
     public var seed: Int?
     public var poolName: String?
     public var poolSeed: Int?
@@ -180,6 +181,7 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         player2Id: UUID? = nil,
         player3Id: UUID? = nil,
         player4Id: UUID? = nil,
+        player5Id: UUID? = nil,
         seed: Int? = nil,
         poolName: String? = nil,
         poolSeed: Int? = nil,
@@ -193,6 +195,7 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         self.player2Id = player2Id
         self.player3Id = player3Id
         self.player4Id = player4Id
+        self.player5Id = player5Id
         self.seed = seed
         self.poolName = poolName
         self.poolSeed = poolSeed
@@ -202,7 +205,7 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, teamName, player1Id, player2Id, player3Id, player4Id, seed, poolName, poolSeed, division, isConfirmed, registeredAt
+        case id, teamName, player1Id, player2Id, player3Id, player4Id, player5Id, seed, poolName, poolSeed, division, isConfirmed, registeredAt
     }
     
     public init(from decoder: Decoder) throws {
@@ -241,6 +244,12 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
             player4Id = try? container.decode(UUID.self, forKey: .player4Id)
         }
         
+        if let p5Raw = try? container.decode(String.self, forKey: .player5Id) {
+            player5Id = UUID(uuidString: p5Raw) ?? SetGame.parseUUID(from: p5Raw)
+        } else {
+            player5Id = try? container.decode(UUID.self, forKey: .player5Id)
+        }
+        
         seed = try container.decodeIfPresent(Int.self, forKey: .seed)
         poolName = try container.decodeIfPresent(String.self, forKey: .poolName)
         poolSeed = try container.decodeIfPresent(Int.self, forKey: .poolSeed)
@@ -254,6 +263,7 @@ public struct TournamentTeam: Identifiable, Codable, Hashable {
         if let p2 = player2Id { list.append(p2) }
         if let p3 = player3Id { list.append(p3) }
         if let p4 = player4Id { list.append(p4) }
+        if let p5 = player5Id { list.append(p5) }
         return list
     }
     

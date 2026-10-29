@@ -4375,7 +4375,8 @@ export function renderTournamentCardHtml(t, currentUserId, index = 0) {
         isSamePlayer(tm.player1Id, currentUserId) ||
         isSamePlayer(tm.player2Id, currentUserId) ||
         isSamePlayer(tm.player3Id, currentUserId) ||
-        isSamePlayer(tm.player4Id, currentUserId)
+        isSamePlayer(tm.player4Id, currentUserId) ||
+        isSamePlayer(tm.player5Id, currentUserId)
       ) ||
       (t.freeAgents || []).some(fa => isSamePlayer(fa.playerId, currentUserId))
     );
@@ -4500,7 +4501,8 @@ function renderMatches() {
       isSamePlayer(tm.player1Id, currentUserId) ||
       isSamePlayer(tm.player2Id, currentUserId) ||
       isSamePlayer(tm.player3Id, currentUserId) ||
-      isSamePlayer(tm.player4Id, currentUserId)
+      isSamePlayer(tm.player4Id, currentUserId) ||
+      isSamePlayer(tm.player5Id, currentUserId)
     ) || (t.freeAgents || []).some(fa => isSamePlayer(fa.playerId, currentUserId));
     const isHost = t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId);
     const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
@@ -9768,7 +9770,7 @@ window.renderTournamentsList = function() {
   const list = (state.tournaments || []).filter(t => {
     if (window.currentTournamentFilter === "my") {
       if (!currentUserId) return false;
-      const isReg = (t.teams || []).some(tm => tm.player1Id === currentUserId || tm.player2Id === currentUserId || tm.player3Id === currentUserId || tm.player4Id === currentUserId) ||
+      const isReg = (t.teams || []).some(tm => tm.player1Id === currentUserId || tm.player2Id === currentUserId || tm.player3Id === currentUserId || tm.player4Id === currentUserId || tm.player5Id === currentUserId) ||
                     (t.freeAgents || []).some(fa => fa.playerId === currentUserId);
       const isHost = t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId);
       const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
@@ -10067,12 +10069,21 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
 
   if (titleEl) titleEl.innerText = `👥 ${tm.teamName}`;
 
-  const slots = [
-    { id: tm.player1Id, role: "Captain", directName: tm.p1Name },
-    { id: tm.player2Id, role: "Partner", directName: tm.p2Name },
-    { id: tm.player3Id, role: "Player 3", directName: tm.p3Name },
-    { id: tm.player4Id, role: "Player 4", directName: tm.p4Name }
-  ].filter(s => s.id || s.directName);
+  const is4v4 = (getEffectiveTournamentFormat(t) === '4v4') || (tm.division || '').includes('4v4');
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isRoot;
+  const isCaptain = isSamePlayer(tm.player1Id, currentUserId);
+  const canAddPlayer = isHost || (isCaptain && is4v4);
+
+  const rawSlots = [
+    { id: tm.player1Id, role: "Captain", directName: tm.p1Name, slotNum: 1 },
+    { id: tm.player2Id, role: "Partner", directName: tm.p2Name, slotNum: 2 },
+    { id: tm.player3Id, role: "Player 3", directName: tm.p3Name, slotNum: 3 },
+    { id: tm.player4Id, role: "Player 4", directName: tm.p4Name, slotNum: 4 },
+    { id: tm.player5Id, role: "Player 5 (Sub)", directName: tm.p5Name, slotNum: 5 }
+  ];
+  const slots = is4v4 ? rawSlots : rawSlots.slice(0, 2);
 
   let html = `
     <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 12px;">
@@ -10084,40 +10095,59 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
       </div>
     </div>
 
-    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase; margin-top: 4px;">Roster & Players</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+      <div style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Roster & Players</div>
+      ${canAddPlayer ? `
+        <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px; font-weight: 800; border-radius: 6px; background: #ea580c; color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${tm.id}')">
+          ➕ Add Player
+        </button>
+      ` : ''}
+    </div>
     <div style="display: flex; flex-direction: column; gap: 8px;">
   `;
 
   slots.forEach(slot => {
-    const p = slot.id ? (state.players || []).find(pl => isSamePlayer(pl.id, slot.id)) : null;
-    const displayName = p ? getPlayerDisplayName(p) : (slot.directName ? window.formatFirstLastInit(slot.directName) : 'Player');
-    const avatar = p?.avatarEmoji || '🏐';
-    const rating = p?.rating || 'Player';
-    const elo = p?.eloRating || 1500;
-    const beach = p?.homeBeach || 'Local';
+    if (slot.id || slot.directName) {
+      const p = slot.id ? (state.players || []).find(pl => isSamePlayer(pl.id, slot.id)) : null;
+      const displayName = p ? getPlayerDisplayName(p) : (slot.directName ? window.formatFirstLastInit(slot.directName) : 'Player');
+      const rating = p?.rating || 'Player';
+      const elo = p?.eloRating || 1500;
+      const beach = p?.homeBeach || 'Local';
 
-    html += `
-      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 10px;">
-        <div style="flex: 1; min-width: 0;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-weight: 800; font-size: 13px; color: var(--text-main, #0f172a);">${displayName}</span>
-            <span style="font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; background: ${slot.role === 'Captain' ? '#ea580c' : 'rgba(100,116,139,0.2)'}; color: ${slot.role === 'Captain' ? '#ffffff' : 'inherit'};">${slot.role}</span>
+      html += `
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 10px;">
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-weight: 800; font-size: 13px; color: var(--text-main, #0f172a);">${displayName}</span>
+              <span style="font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; background: ${slot.role === 'Captain' ? '#ea580c' : 'rgba(100,116,139,0.2)'}; color: ${slot.role === 'Captain' ? '#ffffff' : 'inherit'};">${slot.role}</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted, #64748b);">${rating} • Elo ${elo} • ${beach}</div>
           </div>
-          <div style="font-size: 11px; color: var(--text-muted, #64748b);">${rating} • Elo ${elo} • ${beach}</div>
+          ${canAddPlayer && slot.slotNum > 1 ? `
+            <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.3); padding: 2px 8px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="event.stopPropagation(); window.removePlayerFromTournamentTeamWeb('${t.id}', '${tm.id}', '${slot.id}')" title="Remove Teammate">
+              ✕
+            </button>
+          ` : ''}
         </div>
-      </div>
-    `;
+      `;
+    } else if (canAddPlayer) {
+      html += `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(234,88,12,0.05); border: 1px dashed rgba(234,88,12,0.35); border-radius: 10px; cursor: pointer;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${tm.id}')">
+          <span style="font-size: 12px; font-weight: 700; color: #ea580c;">➕ Open ${slot.role} • Click to Add Player</span>
+          <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; font-weight: 800; border-radius: 6px; color: #ea580c; border-color: #ea580c; cursor: pointer;">+ Add</button>
+        </div>
+      `;
+    }
   });
 
   html += `</div>`;
 
-  const isRoot = isRootUser(state.currentUser);
-  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, state.currentUser?.id)) || isRoot;
   const isMyTeam = state.currentUser && (
     isSamePlayer(tm.player1Id, state.currentUser.id) ||
     isSamePlayer(tm.player2Id, state.currentUser.id) ||
     isSamePlayer(tm.player3Id, state.currentUser.id) ||
-    isSamePlayer(tm.player4Id, state.currentUser.id)
+    isSamePlayer(tm.player4Id, state.currentUser.id) ||
+    isSamePlayer(tm.player5Id, state.currentUser.id)
   );
   if (isHost || isMyTeam) {
     html += `
@@ -10135,6 +10165,261 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
 
 window.closeTeamRosterModal = function() {
   document.getElementById("team-roster-modal")?.classList.remove("active");
+};
+
+window.openAddPlayerToTeamModal = function(tournamentId, teamId) {
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === targetId.toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === targetId.toLowerCase())
+  );
+  if (!t) return showToast("Tournament not found.");
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) return showToast("Team not found.");
+
+  const modal = document.getElementById("modal-add-player-to-team");
+  const title = document.getElementById("add-player-to-team-title");
+  const body = document.getElementById("add-player-to-team-body");
+  if (!modal || !body) return;
+
+  if (title) title.innerHTML = `<span>➕</span> Add Player to ${team.teamName}`;
+
+  const currentDiv = team.division || "";
+  const freeAgents = (t.freeAgents || []).filter(fa => fa.division === currentDiv);
+
+  const teamPlayerIds = new Set([team.player1Id, team.player2Id, team.player3Id, team.player4Id, team.player5Id].filter(Boolean));
+  const tournAllPlayerIds = new Set((t.teams || []).flatMap(tm => [tm.player1Id, tm.player2Id, tm.player3Id, tm.player4Id, tm.player5Id].filter(Boolean)));
+
+  const availableRegistered = (state.players || []).filter(p => !tournAllPlayerIds.has(p.id) && !teamPlayerIds.has(p.id));
+
+  let html = `
+    <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 10px 12px;">
+      <div style="font-size: 13px; font-weight: 800; color: var(--text-main, #0f172a);">${team.teamName}</div>
+      <div style="font-size: 11px; color: #ea580c; font-weight: 700; margin-top: 2px;">${team.division || 'Volleyball'} • ${teamPlayerIds.size} player(s) on roster</div>
+    </div>
+  `;
+
+  // Free Agents Section
+  if (freeAgents.length > 0) {
+    html += `
+      <div>
+        <div style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase; margin-bottom: 6px;">
+          Available Free Agents in ${currentDiv} (${freeAgents.length})
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;">
+    `;
+    freeAgents.forEach(fa => {
+      const pl = (state.players || []).find(p => isSamePlayer(p.id, fa.playerId));
+      const pName = pl ? getPlayerDisplayName(pl) : "Free Agent";
+      const rating = pl?.rating || "Player";
+      const notes = fa.notes ? ` • "${fa.notes}"` : "";
+
+      html += `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">${pName}</div>
+            <div style="font-size: 11px; color: var(--text-muted, #64748b);">${rating}${notes}</div>
+          </div>
+          <button type="button" class="btn btn-primary" style="padding: 4px 12px; font-size: 11px; font-weight: 800; border-radius: 6px; background: #ea580c; border: none; cursor: pointer;" onclick="window.addPlayerToTournamentTeamWeb('${t.id}', '${team.id}', '${fa.playerId}', false)">
+            + Add
+          </button>
+        </div>
+      `;
+    });
+    html += `</div></div>`;
+  }
+
+  // Registered Players Search Section
+  html += `
+    <div>
+      <div style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase; margin-bottom: 6px;">
+        Registered Players (${availableRegistered.length} available)
+      </div>
+      <input type="text" id="add-team-player-search" class="form-input" placeholder="Search player name..." style="width: 100%; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; border-radius: 8px;" oninput="window.filterTeamPlayerSearchList('${t.id}', '${team.id}')">
+      <div id="add-team-player-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;">
+  `;
+
+  if (availableRegistered.length === 0) {
+    html += `<div style="font-size: 11px; color: var(--text-muted, #94a3b8); padding: 8px; text-align: center;">No available registered players.</div>`;
+  } else {
+    availableRegistered.forEach(pl => {
+      const pName = getPlayerDisplayName(pl);
+      html += `
+        <div class="team-avail-player-row" data-name="${(pl.name + ' ' + (pl.nickname || '')).toLowerCase()}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 8px;">
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a);">${pName}</div>
+            <div style="font-size: 11px; color: var(--text-muted, #64748b);">${pl.rating || 'Player'} • Elo ${pl.eloRating || 1500} • ${pl.homeBeach || 'Local'}</div>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding: 4px 12px; font-size: 11px; font-weight: 800; border-radius: 6px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.addPlayerToTournamentTeamWeb('${t.id}', '${team.id}', '${pl.id}', false)">
+            + Add
+          </button>
+        </div>
+      `;
+    });
+  }
+  html += `</div></div>`;
+
+  // Guest Player Section
+  html += `
+    <div style="border-top: 1px solid var(--border, #e2e8f0); padding-top: 12px;">
+      <div style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase; margin-bottom: 6px;">
+        Add Guest / Unregistered Player
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="add-team-guest-name" placeholder="Guest player's full name" class="form-input" style="flex: 2; padding: 8px 10px; font-size: 12px; border-radius: 8px;">
+        <select id="add-team-guest-rating" class="form-input" style="flex: 1; padding: 8px; font-size: 12px; border-radius: 8px;">
+          <option value="Novice">Novice</option>
+          <option value="Intermediate" selected>Intermediate</option>
+          <option value="Advanced">Advanced</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-primary" style="width: 100%; margin-top: 8px; padding: 8px; font-size: 12px; font-weight: 800; border-radius: 8px; background: #ea580c; border: none; cursor: pointer;" onclick="window.submitAddGuestToTeam('${t.id}', '${team.id}')">
+        ➕ Add Guest to Team
+      </button>
+    </div>
+  `;
+
+  body.innerHTML = html;
+  modal.classList.add("active");
+};
+
+window.closeAddPlayerToTeamModal = function() {
+  document.getElementById("modal-add-player-to-team")?.classList.remove("active");
+};
+
+window.filterTeamPlayerSearchList = function(tournamentId, teamId) {
+  const query = (document.getElementById("add-team-player-search")?.value || "").toLowerCase().trim();
+  const rows = document.querySelectorAll("#add-team-player-list .team-avail-player-row");
+  rows.forEach(row => {
+    const name = row.getAttribute("data-name") || "";
+    row.style.display = (!query || name.includes(query)) ? "flex" : "none";
+  });
+};
+
+window.submitAddGuestToTeam = function(tournamentId, teamId) {
+  const gName = (document.getElementById("add-team-guest-name")?.value || "").trim();
+  const gRating = document.getElementById("add-team-guest-rating")?.value || "Intermediate";
+  if (!gName) {
+    showToast("Please enter the guest player's name.");
+    return;
+  }
+  window.addPlayerToTournamentTeamWeb(tournamentId, teamId, gName, true, gRating);
+};
+
+window.addPlayerToTournamentTeamWeb = function(tournamentId, teamId, playerIdOrGuestName, isGuest, guestRating) {
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === targetId.toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === targetId.toLowerCase())
+  );
+  if (!t) return showToast("Tournament not found.");
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) return showToast("Team not found.");
+
+  const currentUserId = state.currentUser ? state.currentUser.id : null;
+  const isRoot = isRootUser(state.currentUser);
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isRoot;
+  const isCaptain = isSamePlayer(team.player1Id, currentUserId);
+  if (!isHost && !isCaptain) {
+    return showToast("Only the Team Captain or Tournament Host can add players.");
+  }
+
+  let playerId = playerIdOrGuestName;
+  if (isGuest) {
+    const gp = window.getOrCreateGuestPlayer(playerIdOrGuestName, guestRating || "Intermediate");
+    if (!gp) return showToast("Failed to create guest player.");
+    playerId = gp.id;
+  }
+
+  if (!playerId) return showToast("Please select a player to add.");
+
+  // Check if already on team
+  if (isSamePlayer(team.player1Id, playerId) ||
+      isSamePlayer(team.player2Id, playerId) ||
+      isSamePlayer(team.player3Id, playerId) ||
+      isSamePlayer(team.player4Id, playerId) ||
+      isSamePlayer(team.player5Id, playerId)) {
+    return showToast("Player is already on this team!");
+  }
+
+  const is4v4 = (getEffectiveTournamentFormat(t) === '4v4') || (team.division || '').includes('4v4');
+
+  let assignedRole = "";
+  if (!team.player2Id) {
+    team.player2Id = playerId;
+    assignedRole = "Partner";
+  } else if (is4v4 && !team.player3Id) {
+    team.player3Id = playerId;
+    assignedRole = "Player 3";
+  } else if (is4v4 && !team.player4Id) {
+    team.player4Id = playerId;
+    assignedRole = "Player 4";
+  } else if (is4v4 && !team.player5Id) {
+    team.player5Id = playerId;
+    assignedRole = "Player 5 (Sub)";
+  } else {
+    return showToast(`${team.teamName} roster is already full!`);
+  }
+
+  // Remove from other teams or free agents in this tournament
+  t.teams = (t.teams || []).map(tm => {
+    if (tm.id === team.id) return tm;
+    if (isSamePlayer(tm.player2Id, playerId)) tm.player2Id = null;
+    if (isSamePlayer(tm.player3Id, playerId)) tm.player3Id = null;
+    if (isSamePlayer(tm.player4Id, playerId)) tm.player4Id = null;
+    if (isSamePlayer(tm.player5Id, playerId)) tm.player5Id = null;
+    return tm;
+  });
+  t.freeAgents = (t.freeAgents || []).filter(fa => !isSamePlayer(fa.playerId, playerId));
+
+  saveTournaments();
+  if (window.saveTournamentToFirestore) {
+    window.saveTournamentToFirestore(t);
+  }
+
+  const pObj = (state.players || []).find(pl => isSamePlayer(pl.id, playerId));
+  const pName = pObj ? getPlayerDisplayName(pObj) : "Player";
+  showToast(`🏐 Added ${pName} as ${assignedRole}!`);
+
+  window.closeAddPlayerToTeamModal();
+  if (document.getElementById("team-roster-modal")?.classList.contains("active")) {
+    window.showTeamRosterModal(t.id, team.id);
+  }
+  if (window.renderTournamentDetail) {
+    window.renderTournamentDetail();
+  }
+};
+
+window.removePlayerFromTournamentTeamWeb = function(tournamentId, teamId, playerId) {
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === targetId.toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === targetId.toLowerCase())
+  );
+  if (!t) return;
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) return;
+
+  if (isSamePlayer(team.player1Id, playerId)) {
+    showToast("Cannot remove the team captain from the roster.");
+    return;
+  }
+
+  if (isSamePlayer(team.player2Id, playerId)) team.player2Id = null;
+  else if (isSamePlayer(team.player3Id, playerId)) team.player3Id = null;
+  else if (isSamePlayer(team.player4Id, playerId)) team.player4Id = null;
+  else if (isSamePlayer(team.player5Id, playerId)) team.player5Id = null;
+
+  saveTournaments();
+  if (window.saveTournamentToFirestore) {
+    window.saveTournamentToFirestore(t);
+  }
+  showToast("Roster updated.");
+  if (document.getElementById("team-roster-modal")?.classList.contains("active")) {
+    window.showTeamRosterModal(t.id, team.id);
+  }
+  if (window.renderTournamentDetail) {
+    window.renderTournamentDetail();
+  }
 };
 
 window.renderTournamentDetail = function() {
@@ -10571,23 +10856,37 @@ window.renderTournamentDetail = function() {
                 const p2 = team.player2Id ? state.players.find(p => isSamePlayer(p.id, team.player2Id)) : null;
                 const p3 = team.player3Id ? state.players.find(p => isSamePlayer(p.id, team.player3Id)) : null;
                 const p4 = team.player4Id ? state.players.find(p => isSamePlayer(p.id, team.player4Id)) : null;
-                const is4v4 = (getEffectiveTournamentFormat(t) === '4v4');
+                const p5 = team.player5Id ? state.players.find(p => isSamePlayer(p.id, team.player5Id)) : null;
+                const is4v4 = (getEffectiveTournamentFormat(t) === '4v4') || (team.division || '').includes('4v4') || (t.teamFormat === '4v4');
                 const p1Name = p1 ? getPlayerDisplayName(p1) : (team.p1Name ? window.formatFirstLastInit(team.p1Name) : 'Player 1');
                 const p2Name = p2 ? getPlayerDisplayName(p2) : (team.p2Name ? window.formatFirstLastInit(team.p2Name) : null);
                 const p3Name = p3 ? getPlayerDisplayName(p3) : (team.p3Name ? window.formatFirstLastInit(team.p3Name) : null);
                 const p4Name = p4 ? getPlayerDisplayName(p4) : (team.p4Name ? window.formatFirstLastInit(team.p4Name) : null);
+                const p5Name = p5 ? getPlayerDisplayName(p5) : (team.p5Name ? window.formatFirstLastInit(team.p5Name) : null);
+                const isCaptain = state.currentUser && isSamePlayer(team.player1Id, state.currentUser.id);
                 const isMyTeam = state.currentUser && (
                   isSamePlayer(team.player1Id, state.currentUser.id) ||
                   isSamePlayer(team.player2Id, state.currentUser.id) ||
                   isSamePlayer(team.player3Id, state.currentUser.id) ||
-                  isSamePlayer(team.player4Id, state.currentUser.id)
+                  isSamePlayer(team.player4Id, state.currentUser.id) ||
+                  isSamePlayer(team.player5Id, state.currentUser.id)
                 );
+                const canManageTeam = isHost || isCaptain;
                 const canInvite = isHost || isMyTeam;
-                const openPartnerHTML = `<i style="color: #ea580c;">Looking for partner</i>`;
-                const openSpot3HTML = `<i style="color: #ea580c;">+ Open Spot</i>`;
-                const openSpot4HTML = `<i style="color: #ea580c;">+ Open Spot</i>`;
+
+                const openPartnerHTML = canManageTeam
+                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Looking for partner</button>`
+                  : `<i style="color: #ea580c;">Looking for partner</i>`;
+                const openSpot3HTML = canManageTeam
+                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot</button>`
+                  : `<i style="color: #ea580c;">+ Open Spot</i>`;
+                const openSpot4HTML = canManageTeam
+                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot</button>`
+                  : `<i style="color: #ea580c;">+ Open Spot</i>`;
+
                 const playerLine1 = `${p1Name} & ${p2 ? p2Name : openPartnerHTML}`;
                 const playerLine2 = is4v4 ? `${p3 ? p3Name : openSpot3HTML} & ${p4 ? p4Name : openSpot4HTML}` : '';
+                const subLine = (is4v4 && p5Name) ? `<div style="font-size: 10px; color: #0284c7; font-weight: 700; margin-top: 2px;">Sub: ${p5Name}</div>` : '';
 
                 return `
                   <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 10px 14px;">
@@ -10595,7 +10894,7 @@ window.renderTournamentDetail = function() {
                       <span style="font-size: 12px; font-weight: 900; color: #ea580c; width: 24px;">#${team.seed || (idx + 1)}</span>
                       <div>
                         <div style="display: flex; align-items: center; gap: 6px;">
-                          <span style="font-size: 14px; font-weight: 700; color: var(--text-main, #0f172a);">${team.teamName}</span>
+                          <span style="font-size: 14px; font-weight: 700; color: var(--text-main, #0f172a); cursor: pointer;" onclick="window.showTeamRosterModal('${t.id}', '${team.id}')" title="View Team Roster">${team.teamName}</span>
                           ${team.poolName ? `<span style="font-size: 10px; font-weight: 800; color: #0284c7; background: rgba(2,132,199,0.1); padding: 1px 6px; border-radius: 8px;">${team.poolName}</span>` : ''}
                         </div>
                         <div style="font-size: 11px; color: var(--text-muted, #64748b);">
@@ -10604,9 +10903,15 @@ window.renderTournamentDetail = function() {
                         ${is4v4 ? `<div style="font-size: 11px; color: var(--text-muted, #64748b); margin-top: 2px;">
                           ${playerLine2}
                         </div>` : ''}
+                        ${subLine}
                       </div>
                     </div>
                     <div style="display: flex; gap: 6px; align-items: center;">
+                      ${canManageTeam ? `
+                        <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: #16a34a; border-color: rgba(22,163,74,0.3); cursor: pointer;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" title="Add Player to Team">
+                          ➕ Add
+                        </button>
+                      ` : ''}
                       ${canInvite ? `
                         <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.shareTeamInviteLink('${t.id}', '${team.id}')" title="Invite Teammates via Link">
                           🔗 Invite
@@ -10695,7 +11000,7 @@ window.renderTournamentDetail = function() {
   if (footerContainer) {
     const currentUserId = state.currentUser?.id;
     const isRegistered = currentUserId && (
-      (t.teams || []).some(tm => tm.player1Id === currentUserId || tm.player2Id === currentUserId || tm.player3Id === currentUserId || tm.player4Id === currentUserId) ||
+      (t.teams || []).some(tm => tm.player1Id === currentUserId || tm.player2Id === currentUserId || tm.player3Id === currentUserId || tm.player4Id === currentUserId || tm.player5Id === currentUserId) ||
       (t.freeAgents || []).some(fa => fa.playerId === currentUserId)
     );
 
@@ -11271,7 +11576,7 @@ window.generatePoolPlay = function(tournamentId, division) {
 
   // Calculate average team Elo for seeding
   const seededTeams = divTeams.map(tm => {
-    const pIds = [tm.player1Id, tm.player2Id, tm.player3Id, tm.player4Id].filter(Boolean);
+    const pIds = [tm.player1Id, tm.player2Id, tm.player3Id, tm.player4Id, tm.player5Id].filter(Boolean);
     let sumElo = 0, count = 0;
     pIds.forEach(pid => {
       const p = (state.players || []).find(pl => isSamePlayer(pl.id, pid));
@@ -11980,8 +12285,14 @@ window.leaveTournament = function(tournamentId) {
   if (!t) return;
 
   const uid = state.currentUser.id;
-  t.teams = (t.teams || []).filter(tm => tm.player1Id !== uid && tm.player2Id !== uid && tm.player3Id !== uid && tm.player4Id !== uid);
-  t.freeAgents = (t.freeAgents || []).filter(fa => fa.playerId !== uid);
+  t.teams = (t.teams || []).filter(tm => !isSamePlayer(tm.player1Id, uid));
+  t.teams.forEach(tm => {
+    if (isSamePlayer(tm.player2Id, uid)) tm.player2Id = null;
+    if (isSamePlayer(tm.player3Id, uid)) tm.player3Id = null;
+    if (isSamePlayer(tm.player4Id, uid)) tm.player4Id = null;
+    if (isSamePlayer(tm.player5Id, uid)) tm.player5Id = null;
+  });
+  t.freeAgents = (t.freeAgents || []).filter(fa => !isSamePlayer(fa.playerId, uid));
 
   state.saveLocal();
   saveTournamentToFirestore(t);
@@ -12225,7 +12536,8 @@ window.openEditTeamModal = function(tournamentId, teamId) {
     isSamePlayer(team.player1Id, currentUserId) ||
     isSamePlayer(team.player2Id, currentUserId) ||
     isSamePlayer(team.player3Id, currentUserId) ||
-    isSamePlayer(team.player4Id, currentUserId)
+    isSamePlayer(team.player4Id, currentUserId) ||
+    isSamePlayer(team.player5Id, currentUserId)
   );
   if (!isHost && !isMember) {
     showToast("Only the tournament host, co-host, or team members can edit this team.");
@@ -12322,6 +12634,7 @@ window.updateManualTeamPlayerSlots = function(existingTeam) {
 
   const p3Selected = existingTeam ? existingTeam.player3Id : null;
   const p4Selected = existingTeam ? existingTeam.player4Id : null;
+  const p5Selected = existingTeam ? existingTeam.player5Id : null;
 
   extraContainer.innerHTML = `
     <div>
@@ -12343,6 +12656,16 @@ window.updateManualTeamPlayerSlots = function(existingTeam) {
       </select>
       <input type="text" id="manual-team-p4-guest" placeholder="Enter player 4 full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
     </div>
+
+    <div>
+      <label style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Player 5 (Optional Substitute)</label>
+      <select id="manual-team-p5" class="form-input" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onchange="document.getElementById('manual-team-p5-guest').style.display = (this.value === '__guest__' ? 'block' : 'none');">
+        <option value="">(None / No sub)</option>
+        <option value="__guest__">➕ Enter Unregistered / Guest Player...</option>
+        ${allPlayers.map(p => `<option value="${p.id}" ${isSamePlayer(p.id, p5Selected) ? 'selected' : ''}>${getPlayerDisplayName(p)} (${p.rating || 'Novice'})</option>`).join('')}
+      </select>
+      <input type="text" id="manual-team-p5-guest" placeholder="Enter player 5 full name (Guest)" class="form-input" style="width: 100%; padding: 8px 10px; border-radius: 8px; margin-top: 6px; display: none;">
+    </div>
   `;
 };
 
@@ -12362,6 +12685,7 @@ window.submitManualTournamentTeam = function(e) {
   let p2 = document.getElementById("manual-team-p2")?.value || null;
   let p3 = document.getElementById("manual-team-p3")?.value || null;
   let p4 = document.getElementById("manual-team-p4")?.value || null;
+  let p5 = document.getElementById("manual-team-p5")?.value || null;
 
   const isNovice = (division || "").toLowerCase().includes("novice");
   const defaultTier = isNovice ? "Novice" : "Intermediate";
@@ -12407,6 +12731,16 @@ window.submitManualTournamentTeam = function(e) {
     }
   }
 
+  if (p5 === "__guest__") {
+    const gName = document.getElementById("manual-team-p5-guest")?.value.trim();
+    if (gName) {
+      const gp = window.getOrCreateGuestPlayer(gName, defaultTier);
+      p5 = gp ? gp.id : null;
+    } else {
+      p5 = null;
+    }
+  }
+
   if (!p1) {
     showToast("Please select Player 1 (Captain)!");
     return;
@@ -12427,6 +12761,7 @@ window.submitManualTournamentTeam = function(e) {
       t.teams[teamIdx].player2Id = p2;
       t.teams[teamIdx].player3Id = p3;
       t.teams[teamIdx].player4Id = p4;
+      t.teams[teamIdx].player5Id = p5;
       showToast(`✅ Updated team ${finalTeamName}!`);
     }
   } else {
@@ -12441,6 +12776,7 @@ window.submitManualTournamentTeam = function(e) {
       player2Id: p2,
       player3Id: p3,
       player4Id: p4,
+      player5Id: p5,
       seed: divTeams.length + 1,
       isConfirmed: true
     };
@@ -12768,7 +13104,7 @@ window.submitTournamentTeamRegistration = function(e) {
     }
   }
 
-  t.teams = (t.teams || []).filter(tm => tm.player1Id !== state.currentUser.id && tm.player2Id !== state.currentUser.id && tm.player3Id !== state.currentUser.id && tm.player4Id !== state.currentUser.id);
+  t.teams = (t.teams || []).filter(tm => tm.player1Id !== state.currentUser.id && tm.player2Id !== state.currentUser.id && tm.player3Id !== state.currentUser.id && tm.player4Id !== state.currentUser.id && tm.player5Id !== state.currentUser.id);
   t.freeAgents = (t.freeAgents || []).filter(fa => fa.playerId !== state.currentUser.id);
 
   const newTeam = {
@@ -12866,7 +13202,8 @@ window.joinTournamentTeam = function(tournamentId, teamId) {
   if (isSamePlayer(team.player1Id, userId) ||
       isSamePlayer(team.player2Id, userId) ||
       isSamePlayer(team.player3Id, userId) ||
-      isSamePlayer(team.player4Id, userId)) {
+      isSamePlayer(team.player4Id, userId) ||
+      isSamePlayer(team.player5Id, userId)) {
     showToast(`You are already a member of ${team.teamName}!`);
     return;
   }
@@ -12884,6 +13221,9 @@ window.joinTournamentTeam = function(tournamentId, teamId) {
   } else if (is4v4 && !team.player4Id) {
     team.player4Id = userId;
     assignedSlot = "Player 4";
+  } else if (is4v4 && !team.player5Id) {
+    team.player5Id = userId;
+    assignedSlot = "Player 5 (Substitute)";
   } else {
     alert(`Sorry, ${team.teamName} is already full! (All player slots are filled)`);
     return;
@@ -12895,6 +13235,7 @@ window.joinTournamentTeam = function(tournamentId, teamId) {
     if (isSamePlayer(tm.player2Id, userId)) tm.player2Id = null;
     if (isSamePlayer(tm.player3Id, userId)) tm.player3Id = null;
     if (isSamePlayer(tm.player4Id, userId)) tm.player4Id = null;
+    if (isSamePlayer(tm.player5Id, userId)) tm.player5Id = null;
     return tm;
   });
   t.freeAgents = (t.freeAgents || []).filter(fa => !isSamePlayer(fa.playerId, userId));
@@ -12936,7 +13277,7 @@ window.submitTournamentFreeAgentRegistration = function(e) {
     }
   }
 
-  t.teams = (t.teams || []).filter(tm => tm.player1Id !== state.currentUser.id && tm.player2Id !== state.currentUser.id && tm.player3Id !== state.currentUser.id && tm.player4Id !== state.currentUser.id);
+  t.teams = (t.teams || []).filter(tm => tm.player1Id !== state.currentUser.id && tm.player2Id !== state.currentUser.id && tm.player3Id !== state.currentUser.id && tm.player4Id !== state.currentUser.id && tm.player5Id !== state.currentUser.id);
   t.freeAgents = (t.freeAgents || []).filter(fa => fa.playerId !== state.currentUser.id);
 
   t.freeAgents.push({
