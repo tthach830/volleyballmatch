@@ -9820,6 +9820,28 @@ window.renderTournamentsList = function() {
 
 window.openTournamentDetail = function(tournamentId) {
   window.activeTournamentId = tournamentId;
+  const targetId = tournamentId ? String(tournamentId).trim() : "";
+  const t = (state.tournaments || []).find(item => 
+    (item.id && String(item.id).trim().toLowerCase() === targetId.toLowerCase()) ||
+    (item.rawId && String(item.rawId).trim().toLowerCase() === targetId.toLowerCase())
+  );
+  if (t) {
+    const allowed = t.allowedDivisions && t.allowedDivisions.length > 0 ? t.allowedDivisions : DIVISION_CONFIG.map(c => c.name);
+    if (!window.activeTournamentDivision || !allowed.includes(window.activeTournamentDivision)) {
+      window.activeTournamentDivision = allowed[0];
+    }
+    const currentDiv = window.activeTournamentDivision;
+    const hasMatches = (t.matches || []).some(m => m.division === currentDiv);
+    // If no pool matches have been generated yet (registration/formation phase), show rosters by default!
+    if (!hasMatches) {
+      window.activeTournamentSubTab = "roster";
+    }
+    ["pools", "bracket", "roster", "info"].forEach(subTab => {
+      const btn = document.getElementById("td-tab-" + subTab);
+      if (btn) btn.classList.toggle("active", subTab === window.activeTournamentSubTab);
+    });
+  }
+
   const modal = document.getElementById("tournament-detail-modal");
   if (!modal) return;
   modal.classList.add("active");
@@ -10072,9 +10094,10 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
   const is4v4 = (getEffectiveTournamentFormat(t) === '4v4') || (tm.division || '').includes('4v4');
   const currentUserId = state.currentUser ? state.currentUser.id : null;
   const isRoot = isRootUser(state.currentUser);
-  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isRoot;
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
   const isCaptain = isSamePlayer(tm.player1Id, currentUserId);
-  const canAddPlayer = isHost || (isCaptain && is4v4);
+  const canAddPlayer = isHost || isCaptain;
 
   const rawSlots = [
     { id: tm.player1Id, role: "Captain", directName: tm.p1Name, slotNum: 1 },
@@ -10098,8 +10121,8 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
       <div style="font-size: 11px; font-weight: 800; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Roster & Players</div>
       ${canAddPlayer ? `
-        <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px; font-weight: 800; border-radius: 6px; background: #ea580c; color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${tm.id}')">
-          ➕ Add Player
+        <button type="button" class="btn" style="padding: 6px 12px; font-size: 11px; font-weight: 800; border-radius: 8px; background: #ea580c; color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${tm.id}')">
+          ➕ Add Teammate
         </button>
       ` : ''}
     </div>
@@ -10133,8 +10156,8 @@ window.showTeamRosterModal = function(tournamentId, teamId) {
     } else if (canAddPlayer) {
       html += `
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(234,88,12,0.05); border: 1px dashed rgba(234,88,12,0.35); border-radius: 10px; cursor: pointer;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${tm.id}')">
-          <span style="font-size: 12px; font-weight: 700; color: #ea580c;">➕ Open ${slot.role} • Click to Add Player</span>
-          <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; font-weight: 800; border-radius: 6px; color: #ea580c; border-color: #ea580c; cursor: pointer;">+ Add</button>
+          <span style="font-size: 12px; font-weight: 700; color: #ea580c;">➕ Open ${slot.role} • Click to Add Teammate</span>
+          <button type="button" class="btn btn-outline" style="padding: 3px 10px; font-size: 11px; font-weight: 800; border-radius: 6px; color: #ea580c; border-color: #ea580c; cursor: pointer;">+ Add Teammate</button>
         </div>
       `;
     }
@@ -10177,12 +10200,27 @@ window.openAddPlayerToTeamModal = function(tournamentId, teamId) {
   const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
   if (!team) return showToast("Team not found.");
 
+  if (!state.currentUser) {
+    showToast("Please sign up or log in first to manage team roster.");
+    window.showAuthModal();
+    return;
+  }
+  const currentUserId = state.currentUser.id;
+  const isRoot = isRootUser(state.currentUser);
+  const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+  const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+  const isCaptain = isSamePlayer(team.player1Id, currentUserId);
+  if (!isHost && !isCaptain) {
+    showToast("Only the team captain or tournament host can add teammates.");
+    return;
+  }
+
   const modal = document.getElementById("modal-add-player-to-team");
   const title = document.getElementById("add-player-to-team-title");
   const body = document.getElementById("add-player-to-team-body");
   if (!modal || !body) return;
 
-  if (title) title.innerHTML = `<span>➕</span> Add Player to ${team.teamName}`;
+  if (title) title.innerHTML = `<span>➕</span> Add Teammate to ${team.teamName}`;
 
   const currentDiv = team.division || "";
   const freeAgents = (t.freeAgents || []).filter(fa => fa.division === currentDiv);
@@ -10507,6 +10545,78 @@ window.renderTournamentDetail = function() {
         </button>
       `;
     }).join('');
+  }
+
+  // Render My Team Banner (Visible to captains and teammates across all subtabs)
+  const bannerContainer = document.getElementById("tournament-my-team-banner");
+  if (bannerContainer) {
+    const currentUserId = state.currentUser?.id;
+    const isRoot = isRootUser(state.currentUser);
+    const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
+    const isHost = (t.hostPlayerId && isSamePlayer(t.hostPlayerId, currentUserId)) || isCoHost || isRoot;
+
+    const myTeam = currentUserId ? (t.teams || []).find(tm =>
+      isSamePlayer(tm.player1Id, currentUserId) ||
+      isSamePlayer(tm.player2Id, currentUserId) ||
+      isSamePlayer(tm.player3Id, currentUserId) ||
+      isSamePlayer(tm.player4Id, currentUserId) ||
+      isSamePlayer(tm.player5Id, currentUserId)
+    ) : null;
+
+    if (!myTeam) {
+      bannerContainer.innerHTML = '';
+      bannerContainer.style.display = 'none';
+    } else {
+      bannerContainer.style.display = 'block';
+      const isCaptain = isSamePlayer(myTeam.player1Id, currentUserId);
+      const is4v4 = (myTeam.division || '').includes('4v4') || (getEffectiveTournamentFormat(t) === '4v4');
+      const p1 = (state.players || []).find(p => isSamePlayer(p.id, myTeam.player1Id));
+      const p2 = myTeam.player2Id ? (state.players || []).find(p => isSamePlayer(p.id, myTeam.player2Id)) : null;
+      const p3 = myTeam.player3Id ? (state.players || []).find(p => isSamePlayer(p.id, myTeam.player3Id)) : null;
+      const p4 = myTeam.player4Id ? (state.players || []).find(p => isSamePlayer(p.id, myTeam.player4Id)) : null;
+      const p5 = myTeam.player5Id ? (state.players || []).find(p => isSamePlayer(p.id, myTeam.player5Id)) : null;
+
+      const p1Name = p1 ? getPlayerDisplayName(p1) : (myTeam.p1Name ? window.formatFirstLastInit(myTeam.p1Name) : 'Captain');
+      const p2Name = p2 ? getPlayerDisplayName(p2) : (myTeam.p2Name ? window.formatFirstLastInit(myTeam.p2Name) : null);
+      const p3Name = p3 ? getPlayerDisplayName(p3) : (myTeam.p3Name ? window.formatFirstLastInit(myTeam.p3Name) : null);
+      const p4Name = p4 ? getPlayerDisplayName(p4) : (myTeam.p4Name ? window.formatFirstLastInit(myTeam.p4Name) : null);
+      const p5Name = p5 ? getPlayerDisplayName(p5) : (myTeam.p5Name ? window.formatFirstLastInit(myTeam.p5Name) : null);
+
+      bannerContainer.innerHTML = `
+        <div style="background: linear-gradient(135deg, rgba(234,88,12,0.12), rgba(249,115,22,0.06)); border: 1.5px solid rgba(234,88,12,0.4); border-radius: 12px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(234,88,12,0.08);">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 15px;">🏐</span>
+                <span style="font-size: 11px; font-weight: 800; color: #ea580c; text-transform: uppercase; letter-spacing: 0.05em;">Your Team:</span>
+                <span style="font-size: 14px; font-weight: 800; color: var(--text-main, #0f172a);">${myTeam.teamName}</span>
+                <span style="font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: ${isCaptain ? '#ea580c' : 'rgba(2,132,199,0.15)'}; color: ${isCaptain ? '#ffffff' : '#0284c7'};">
+                  ${isCaptain ? '👑 Captain' : 'Teammate'}
+                </span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted, #64748b); margin-top: 4px;">
+                ${p1Name} & ${p2Name || '<span style="color:#ea580c; font-style:italic;">Open Partner</span>'}
+                ${is4v4 ? ` • ${p3Name || '<span style="color:#ea580c; font-style:italic;">Open 3</span>'} & ${p4Name || '<span style="color:#ea580c; font-style:italic;">Open 4</span>'}` : ''}
+                ${(is4v4 && p5Name) ? ` • <span style="color:#0284c7; font-weight:700;">Sub: ${p5Name}</span>` : ''}
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              ${(isCaptain || isHost) ? `
+                <button type="button" class="btn btn-primary" style="background: #ea580c; border: none; padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; color: white;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${myTeam.id}')">
+                  ➕ Add Teammate
+                </button>
+              ` : ''}
+              <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; font-weight: 700; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.shareTeamInviteLink('${t.id}', '${myTeam.id}')" title="Invite Teammates via Link">
+                🔗 Invite
+              </button>
+              <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; font-weight: 700; border-radius: 8px; cursor: pointer;" onclick="window.showTeamRosterModal('${t.id}', '${myTeam.id}')" title="View Team Roster">
+                👥 Roster
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
   }
 
   // Render SubTab Body
@@ -10874,15 +10984,9 @@ window.renderTournamentDetail = function() {
                 const canManageTeam = isHost || isCaptain;
                 const canInvite = isHost || isMyTeam;
 
-                const openPartnerHTML = canManageTeam
-                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Looking for partner</button>`
-                  : `<i style="color: #ea580c;">Looking for partner</i>`;
-                const openSpot3HTML = canManageTeam
-                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot</button>`
-                  : `<i style="color: #ea580c;">+ Open Spot</i>`;
-                const openSpot4HTML = canManageTeam
-                  ? `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot</button>`
-                  : `<i style="color: #ea580c;">+ Open Spot</i>`;
+                const openPartnerHTML = `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Looking for partner (Add Teammate)</button>`;
+                const openSpot3HTML = `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot (Add Teammate)</button>`;
+                const openSpot4HTML = `<button type="button" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" style="background:none;border:none;padding:0;font-size:11px;font-style:italic;color:#ea580c;cursor:pointer;text-decoration:underline;">+ Open Spot (Add Teammate)</button>`;
 
                 const playerLine1 = `${p1Name} & ${p2 ? p2Name : openPartnerHTML}`;
                 const playerLine2 = is4v4 ? `${p3 ? p3Name : openSpot3HTML} & ${p4 ? p4Name : openSpot4HTML}` : '';
@@ -10908,8 +11012,8 @@ window.renderTournamentDetail = function() {
                     </div>
                     <div style="display: flex; gap: 6px; align-items: center;">
                       ${canManageTeam ? `
-                        <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: #16a34a; border-color: rgba(22,163,74,0.3); cursor: pointer;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" title="Add Player to Team">
-                          ➕ Add
+                        <button type="button" class="btn btn-primary" style="background: #ea580c; border: none; padding: 5px 10px; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; color: white; cursor: pointer;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${team.id}')" title="Add Teammate to Team">
+                          ➕ Add Teammate
                         </button>
                       ` : ''}
                       ${canInvite ? `
@@ -11005,14 +11109,39 @@ window.renderTournamentDetail = function() {
     );
 
     if (isRegistered) {
+      const myCaptainTeam = (t.teams || []).find(tm => currentUserId && isSamePlayer(tm.player1Id, currentUserId));
+      const myTeam = myCaptainTeam || (t.teams || []).find(tm => currentUserId && (
+        isSamePlayer(tm.player2Id, currentUserId) ||
+        isSamePlayer(tm.player3Id, currentUserId) ||
+        isSamePlayer(tm.player4Id, currentUserId) ||
+        isSamePlayer(tm.player5Id, currentUserId)
+      ));
+
       footerContainer.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="font-size: 12px; font-weight: 700; color: #16a34a;">
-            ✅ You are signed up for this tournament
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div>
+            <div style="font-size: 13px; font-weight: 800; color: #16a34a; display: flex; align-items: center; gap: 4px;">
+              <span>✅</span> ${myCaptainTeam ? `Captain: <b>${myCaptainTeam.teamName}</b>` : (myTeam ? `Team: <b>${myTeam.teamName}</b>` : 'Signed up as Free Agent')}
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted, #64748b);">
+              ${myTeam ? (myTeam.division || currentDiv) : currentDiv}
+            </div>
           </div>
-          <button type="button" class="btn btn-outline" style="color: #dc2626; border-color: #fca5a5; padding: 6px 14px; font-size: 12px;" onclick="window.leaveTournament('${t.id}')">
-            Leave Tournament
-          </button>
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            ${myCaptainTeam ? `
+              <button type="button" class="btn btn-primary" style="background: #ea580c; border: none; padding: 7px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; color: white; display: inline-flex; align-items: center; gap: 4px;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${myCaptainTeam.id}')">
+                ➕ Add Teammate
+              </button>
+            ` : ''}
+            ${myTeam ? `
+              <button type="button" class="btn btn-outline" style="padding: 7px 12px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="window.showTeamRosterModal('${t.id}', '${myTeam.id}')">
+                👥 Roster
+              </button>
+            ` : ''}
+            <button type="button" class="btn btn-outline" style="color: #dc2626; border-color: #fca5a5; padding: 7px 12px; font-size: 12px; border-radius: 8px;" onclick="window.leaveTournament('${t.id}')">
+              Leave
+            </button>
+          </div>
         </div>
       `;
     } else {
@@ -12983,6 +13112,11 @@ window.renderTournamentSignUpBody = function() {
               <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Teammate 4</label>
               ${partnerOption(partners, 'tourn-partner4-select')}
             </div>
+
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b);">Teammate 5 (Optional Substitute)</label>
+              ${partnerOption(partners, 'tourn-partner5-select')}
+            </div>
           ` : ''}
 
           <div style="font-size: 11px; color: var(--text-muted, #64748b); line-height: 1.4;">
@@ -13059,6 +13193,7 @@ window.submitTournamentTeamRegistration = function(e) {
   const partnerId = resolveTeammateId("tourn-partner-select");
   const partner3Id = resolveTeammateId("tourn-partner3-select");
   const partner4Id = resolveTeammateId("tourn-partner4-select");
+  const partner5Id = resolveTeammateId("tourn-partner5-select");
   const currentDiv = window.activeTournamentDivision || "2v2 Coed Novice";
   const isNovice = currentDiv.toLowerCase().includes("novice");
 
@@ -13072,7 +13207,7 @@ window.submitTournamentTeamRegistration = function(e) {
   }
 
   // Anti-sandbagging check for partners
-  const partnerIds = [partnerId, partner3Id, partner4Id].filter(Boolean);
+  const partnerIds = [partnerId, partner3Id, partner4Id, partner5Id].filter(Boolean);
   if (isNovice) {
     for (const pid of partnerIds) {
       const p = state.players.find(pl => pl.id === pid);
@@ -13114,6 +13249,7 @@ window.submitTournamentTeamRegistration = function(e) {
     player2Id: partnerId,
     player3Id: partner3Id || null,
     player4Id: partner4Id || null,
+    player5Id: partner5Id || null,
     seed: (t.teams.filter(tm => tm.division === currentDiv).length) + 1,
     division: currentDiv
   };
