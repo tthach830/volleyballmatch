@@ -92,6 +92,10 @@ public struct TournamentDetailView: View {
                     ScrollView {
                         VStack(spacing: 16) {
                             headerCard(t: t)
+                            
+                            // SCHEDULE ESTIMATE BANNER
+                            scheduleEstimateCard(t: t, division: activeDivision)
+                            
                             divisionSelector(t: t, activeDivision: activeDivision)
                             
                             // SUB-TAB PICKER (Pools, Bracket, Rosters, Info)
@@ -102,11 +106,6 @@ public struct TournamentDetailView: View {
                             }
                             .pickerStyle(.segmented)
                             .padding(.horizontal)
-                            
-                            // SCHEDULE ESTIMATE BANNER
-                            if selectedSubTab == .pools || selectedSubTab == .bracket {
-                                scheduleEstimateCard(t: t, division: activeDivision)
-                            }
                             
                             // TAB CONTENT
                             switch selectedSubTab {

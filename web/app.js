@@ -10922,10 +10922,10 @@ window.renderTournamentDetail = function() {
                 <button type="button" class="btn btn-primary" style="background: #ea580c; border: none; padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; color: white;" onclick="window.openAddPlayerToTeamModal('${t.id}', '${myTeam.id}')">
                   ➕ Add Teammate
                 </button>
+                <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; font-weight: 700; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.shareTeamInviteLink('${t.id}', '${myTeam.id}')" title="Invite Teammates via Link">
+                  🔗 Invite
+                </button>
               ` : ''}
-              <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; font-weight: 700; border-radius: 8px; color: #0284c7; border-color: rgba(2,132,199,0.3); cursor: pointer;" onclick="window.shareTeamInviteLink('${t.id}', '${myTeam.id}')" title="Invite Teammates via Link">
-                🔗 Invite
-              </button>
               <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 11px; font-weight: 700; border-radius: 8px; cursor: pointer;" onclick="window.showTeamRosterModal('${t.id}', '${myTeam.id}')" title="View Team Roster">
                 👥 Roster
               </button>
@@ -11007,6 +11007,11 @@ window.renderTournamentDetail = function() {
       </div>
     `;
   };
+
+  const scheduleEstContainer = document.getElementById("tournament-schedule-estimate");
+  if (scheduleEstContainer) {
+    scheduleEstContainer.innerHTML = renderScheduleEstimateCardHTML();
+  }
 
   if (window.activeTournamentSubTab === "pools") {
     const isPoolA = p => /pool\s*a/i.test(String(p || ''));
@@ -11140,7 +11145,6 @@ window.renderTournamentDetail = function() {
 
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 14px;">
-        ${renderScheduleEstimateCardHTML()}
         ${!hasPools ? (isHost ? `
           <div style="text-align: center; padding: 24px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
             <div style="font-size: 32px; margin-bottom: 6px;">🏊</div>
@@ -11207,7 +11211,6 @@ window.renderTournamentDetail = function() {
 
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 12px;">
-        ${renderScheduleEstimateCardHTML()}
         ${bracketMatches.length === 0 ? `
           <div style="text-align: center; padding: 32px 16px; background: var(--bg-alt, #f8fafc); border-radius: 14px; border: 1px solid var(--border, #e2e8f0);">
             <div style="font-size: 36px; margin-bottom: 6px;">🏆</div>
