@@ -3368,11 +3368,18 @@ class AppState {
     this.collapsedPools = {};
     this.isDemoModeEnabled = localStorage.getItem("setgames_demo_mode") === "true";
     
-    // Active user session: saved user, or default to Peter T (Root Admin), or first player
-    this.currentUser = this.players.find(p => p.id === savedUserId) ||
-                       this.players.find(p => isRootUser(p)) ||
-                       this.players.find(p => p.id === "47519EF2-207D-4C20-B9A6-BFEDA40FE581") ||
-                       this.players[0] || null;
+    // Active user session: ONLY restore if explicitly logged in with an active auth session
+    const hasAuthSession = localStorage.getItem("setgames_auth_session") === "true";
+    if (savedUserId && hasAuthSession) {
+      this.currentUser = this.players.find(p => p.id === savedUserId) || null;
+    } else {
+      this.currentUser = null;
+      try {
+        localStorage.removeItem("setgames_current_user_id");
+        localStorage.removeItem("setgames_auth_session");
+      } catch (e) {}
+    }
+
     if (isRootUser(this.currentUser)) {
       this.isDemoModeEnabled = true;
     } else {
@@ -6093,6 +6100,9 @@ window.handlePhoneLogin = (e) => {
     }
 
     state.currentUser = player;
+    try {
+      localStorage.setItem("setgames_auth_session", "true");
+    } catch (e) {}
     state.saveLocal();
     setUserAnalyticsIdentity(player);
     trackEvent("login", { method: "phone", tier: player.rating || "Unrated" });
@@ -6206,6 +6216,7 @@ window.handlePhoneSignUp = (e) => {
   state.isDemoModeEnabled = false;
   try {
     localStorage.removeItem("setgames_demo_mode");
+    localStorage.setItem("setgames_auth_session", "true");
   } catch (e) {}
   state.saveLocal();
   savePlayerToFirestore(newPlayer);
@@ -6250,6 +6261,7 @@ window.handleLogout = () => {
   try {
     localStorage.removeItem("setgames_demo_mode");
     localStorage.removeItem("setgames_current_user_id");
+    localStorage.removeItem("setgames_auth_session");
   } catch (e) {}
   state.saveLocal();
   renderHeader();
@@ -6318,6 +6330,7 @@ window.handleDeleteProfile = () => {
   try {
     localStorage.removeItem("setgames_demo_mode");
     localStorage.removeItem("setgames_current_user_id");
+    localStorage.removeItem("setgames_auth_session");
   } catch (e) {}
   state.saveLocal();
 
@@ -7838,6 +7851,9 @@ window.handleSwitchUser = () => {
   const player = state.players.find(p => p.id === select.value);
   if (player) {
     state.currentUser = player;
+    try {
+      localStorage.setItem("setgames_auth_session", "true");
+    } catch (e) {}
     state.saveLocal();
     renderHeader();
     renderProfile();
