@@ -1701,6 +1701,68 @@ public class DataManager: ObservableObject {
     }
     
     @discardableResult
+    public func sendTournamentMessage(tournamentId: UUID, text: String) -> (success: Bool, message: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return (false, "Message cannot be empty.")
+        }
+        guard let user = currentUser,
+              let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else {
+            return (false, "Please log in to post in tournament chat.")
+        }
+        
+        let senderName = user.displayName
+        let newMsg = GameChatMessage(
+            senderId: user.id,
+            senderName: senderName,
+            text: trimmed,
+            date: Date(),
+            origin: "ios"
+        )
+        
+        tournaments[tIdx].messages.append(newMsg)
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        let t = tournaments[tIdx]
+        var participantIds = Set<UUID>()
+        if let hId = t.hostPlayerId { participantIds.insert(hId) }
+        t.coHostPlayerIds.forEach { participantIds.insert($0) }
+        for tm in t.teams {
+            tm.allPlayerIds.forEach { participantIds.insert($0) }
+        }
+        for fa in t.freeAgents {
+            participantIds.insert(fa.playerId)
+        }
+        participantIds.remove(user.id)
+        
+        let tournTitle = t.title
+        for recipientId in participantIds {
+            if let p = players.first(where: { $0.id == recipientId }), let token = p.deviceToken, !token.isEmpty, token != user.deviceToken {
+                NotificationService.shared.sendDirectRemotePush(
+                    to: token,
+                    title: "💬 \(senderName) (\(tournTitle))",
+                    body: trimmed,
+                    gameId: tournamentId
+                )
+            } else {
+                FirestoreService.shared.fetchDeviceToken(for: recipientId) { token in
+                    if let token = token, !token.isEmpty, token != user.deviceToken {
+                        NotificationService.shared.sendDirectRemotePush(
+                            to: token,
+                            title: "💬 \(senderName) (\(tournTitle))",
+                            body: trimmed,
+                            gameId: tournamentId
+                        )
+                    }
+                }
+            }
+        }
+        
+        return (true, "Message sent!")
+    }
+    
+    @discardableResult
     public func createMatch(
         title: String,
         targetRating: RatingTier,

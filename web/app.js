@@ -7899,6 +7899,181 @@ window.postTeamChatMessage = (tournamentId, teamId, text) => {
   }
 };
 
+// ==========================================
+// TOURNAMENT-WIDE CHAT HANDLERS
+// ==========================================
+window.activeTournamentChatId = null;
+
+window.openTournamentChatModal = (tournamentId) => {
+  const t = (state.tournaments || []).find(item => 
+    isSamePlayer(item.id, tournamentId) || isSamePlayer(item.rawId, tournamentId)
+  );
+  if (!t) return;
+
+  window.activeTournamentChatId = t.id;
+
+  const titleEl = document.getElementById("tournament-chat-modal-title");
+  const subEl = document.getElementById("tournament-chat-subtitle");
+  if (titleEl) titleEl.innerHTML = `💬 ${t.title || 'Tournament'} Chat`;
+  if (subEl) subEl.textContent = `🏐 ${t.location || 'Beach'} • ${(t.teams || []).length} Teams`;
+
+  window.renderTournamentChatMessages();
+  document.getElementById("tournament-chat-modal")?.classList.add("active");
+  const input = document.getElementById("tournament-chat-input");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+};
+
+window.closeTournamentChatModal = () => {
+  window.activeTournamentChatId = null;
+  document.getElementById("tournament-chat-modal")?.classList.remove("active");
+};
+
+window.renderTournamentChatMessages = () => {
+  const targetId = window.activeTournamentChatId || window.activeTournamentId;
+  if (!targetId) return;
+
+  const t = (state.tournaments || []).find(item => 
+    isSamePlayer(item.id, targetId) || isSamePlayer(item.rawId, targetId)
+  );
+  if (!t) return;
+
+  const messages = t.messages || [];
+  const buildMessagesHTML = () => {
+    if (messages.length === 0) {
+      return `<div style="text-align:center; color:var(--text-muted); font-size:12px; margin:auto; padding: 24px 12px;">No tournament messages yet.<br>Post announcements, court updates, or questions for everyone in <b>${t.title}</b>!</div>`;
+    }
+    return messages.map(m => {
+      const isMe = state.currentUser && isSamePlayer(m.senderId, state.currentUser.id);
+      const isHostMsg = (t.hostPlayerId && isSamePlayer(m.senderId, t.hostPlayerId)) ||
+                        (t.coHostPlayerIds || []).some(id => isSamePlayer(id, m.senderId));
+      const timeStr = new Date(m.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      return `
+        <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; margin-bottom:6px;">
+          ${!isMe ? `
+            <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px; margin-left:4px;">
+              <span style="font-size:11px; font-weight:700; color:var(--text-muted);">${m.senderName}</span>
+              ${isHostMsg ? `<span style="font-size:9px; font-weight:800; padding:1px 5px; border-radius:6px; background:rgba(234,88,12,0.15); color:#ea580c;">👑 HOST</span>` : ''}
+            </div>
+          ` : ''}
+          <div style="max-width:80%; padding:9px 13px; border-radius:14px; font-size:13.5px; font-weight:500; word-break:break-word; line-height:1.4; ${isMe ? 'background:#ea580c; color:#ffffff; box-shadow:0 1px 4px rgba(234,88,12,0.3);' : 'background:#ffffff; color:#0f172a; border:1px solid rgba(0,0,0,0.12); box-shadow:0 1px 3px rgba(0,0,0,0.05);'}">
+            ${m.text}
+          </div>
+          <span style="font-size:10px; color:var(--text-muted); margin-top:2px; margin-right:${isMe ? '4px' : '0'}; margin-left:${!isMe ? '4px' : '0'};">${timeStr}</span>
+        </div>
+      `;
+    }).join("");
+  };
+
+  const modalContainer = document.getElementById("tournament-chat-messages-container");
+  if (modalContainer) {
+    modalContainer.innerHTML = buildMessagesHTML();
+    modalContainer.scrollTop = modalContainer.scrollHeight;
+  }
+
+  const inlineContainer = document.getElementById("tournament-inline-chat-messages");
+  if (inlineContainer) {
+    inlineContainer.innerHTML = buildMessagesHTML();
+    inlineContainer.scrollTop = inlineContainer.scrollHeight;
+  }
+};
+
+window.sendQuickTournamentChatMessage = (text, tournamentIdOverride) => {
+  const tid = tournamentIdOverride || window.activeTournamentChatId || window.activeTournamentId;
+  if (!tid) return;
+  window.postTournamentChatMessage(tid, text);
+};
+
+window.handleSendTournamentChatMessage = (e, tournamentIdOverride) => {
+  if (e) e.preventDefault();
+  const tid = tournamentIdOverride || window.activeTournamentChatId || window.activeTournamentId;
+  if (!tid) return;
+  const inputId = tournamentIdOverride ? "tournament-inline-chat-input" : "tournament-chat-input";
+  const input = document.getElementById(inputId) || document.getElementById("tournament-chat-input");
+  const text = input ? input.value.trim() : "";
+  if (!text) return;
+  if (input) input.value = "";
+  window.postTournamentChatMessage(tid, text);
+};
+
+window.postTournamentChatMessage = (tournamentId, text) => {
+  const t = (state.tournaments || []).find(item => 
+    isSamePlayer(item.id, tournamentId) || isSamePlayer(item.rawId, tournamentId)
+  );
+  if (!t) return;
+  if (!state.currentUser) {
+    showToast("Please sign up or log in first to post in Tournament Chat.");
+    window.showAuthModal();
+    return;
+  }
+
+  if (!t.messages) {
+    t.messages = [];
+  }
+
+  const senderName = state.currentUser.nickname || state.currentUser.name;
+  const newMsg = {
+    id: "tourn_msg_" + Date.now(),
+    senderId: state.currentUser.id,
+    senderName: senderName,
+    text: text,
+    date: new Date().toISOString(),
+    origin: "web"
+  };
+
+  t.messages.push(newMsg);
+  state.saveLocal();
+  if (window.saveTournamentToFirestore) {
+    window.saveTournamentToFirestore(t);
+  }
+  window.renderTournamentChatMessages();
+  if (window.renderTournamentDetail && window.activeTournamentSubTab !== "chat") {
+    window.renderTournamentDetail();
+  }
+  showToast(`Sent: "${text}"`);
+
+  // Dispatch APNs push notifications to tournament participants
+  try {
+    const currentUid = state.currentUser.id;
+    const currentToken = state.currentUser.deviceToken;
+    const participantIds = new Set();
+    if (t.hostPlayerId) participantIds.add(t.hostPlayerId);
+    (t.coHostPlayerIds || []).forEach(id => { if (id) participantIds.add(id); });
+    (t.teams || []).forEach(tm => {
+      [tm.player1Id, tm.player2Id, tm.player3Id, tm.player4Id, tm.player5Id].forEach(id => {
+        if (id) participantIds.add(id);
+      });
+    });
+    (t.freeAgents || []).forEach(fa => {
+      if (fa.playerId) participantIds.add(fa.playerId);
+    });
+
+    const recipientIds = Array.from(participantIds).filter(id => !isSamePlayer(id, currentUid));
+    const rawTokens = recipientIds
+      .map(id => state.getPlayer(id)?.deviceToken)
+      .filter(tok => tok && typeof tok === "string" && tok.trim().length > 0 && tok !== currentToken);
+    const recipientTokens = Array.from(new Set(rawTokens));
+
+    if (recipientTokens.length > 0) {
+      fetch("/api/send-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tokens: recipientTokens,
+          title: `💬 ${t.title || "Tournament"}`,
+          body: `${senderName}: "${text}"`,
+          gameId: t.id,
+          messageId: newMsg.id
+        })
+      }).catch(err => console.log("Tournament push note:", err));
+    }
+  } catch (e) {
+    console.warn("Tournament APNs push notice:", e);
+  }
+};
+
 // Rate Match Players (Post-Match 1-5 Stars)
 window.openRateMatchModal = (gameId) => {
   const game = state.games.find(g => g.id === gameId);
@@ -10314,7 +10489,7 @@ window.setTournamentPlayoffAdvanceMode = function(tournamentId, mode) {
 
 window.setTournamentSubTab = function(tabName) {
   window.activeTournamentSubTab = tabName;
-  ["pools", "bracket", "roster", "info"].forEach(t => {
+  ["pools", "bracket", "roster", "chat", "info"].forEach(t => {
     const btn = document.getElementById("td-tab-" + t);
     if (btn) btn.classList.toggle("active", t === tabName);
   });
@@ -10824,6 +10999,9 @@ window.renderTournamentDetail = function() {
         </div>
 
         <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;">
+          <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; font-weight: 700; color: #0284c7; border-color: rgba(2,132,199,0.4);" onclick="window.openTournamentChatModal('${t.id}')" title="Tournament Lobby Chat">
+            💬 ${(t.messages || []).length > 0 ? `Chat (${(t.messages || []).length})` : 'Chat'}
+          </button>
           <button type="button" class="btn btn-outline" style="padding: 5px 10px; font-size: 11px; font-weight: 700; color: #ea580c; border-color: #fdba74;" onclick="window.openTournamentQRCodeModal('${t.id}')" title="Tournament QR Code & Share Link">
             📱 QR Code
           </button>
@@ -10845,6 +11023,13 @@ window.renderTournamentDetail = function() {
         </div>
       </div>
     `;
+  }
+
+  // Update Chat Sub-tab label with message count
+  const chatTabBtn = document.getElementById("td-tab-chat");
+  if (chatTabBtn) {
+    const tMsgCount = (t.messages || []).length;
+    chatTabBtn.innerHTML = tMsgCount > 0 ? `💬 Chat (${tMsgCount})` : `💬 Chat`;
   }
 
   // Render Division Pills
@@ -11407,6 +11592,36 @@ window.renderTournamentDetail = function() {
         </div>
       </div>
     `;
+  } else if (window.activeTournamentSubTab === "chat") {
+    bodyContainer.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 10px; background: var(--surface, #ffffff); border: 1px solid var(--border, #e2e8f0); border-radius: 14px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 13px; font-weight: 800; color: var(--text-main, #0f172a);">💬 ${t.title} Lobby Chat</div>
+            <div style="font-size: 11px; color: var(--text-muted, #64748b);">Public tournament board for hosts, captains, and players</div>
+          </div>
+          <span style="font-size: 11px; font-weight: 700; color: #ea580c; background: rgba(234,88,12,0.1); padding: 2px 8px; border-radius: 999px;">
+            ${(t.messages || []).length} messages
+          </span>
+        </div>
+
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
+          <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTournamentChatMessage('At the courts! 🏐', '${t.id}')">🏐 At the courts!</button>
+          <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTournamentChatMessage('omw 🏃‍♂️', '${t.id}')">🏃‍♂️ omw</button>
+          <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTournamentChatMessage('Which court is up next?', '${t.id}')">📍 Which court?</button>
+          <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTournamentChatMessage('Good games everyone! 🔥', '${t.id}')">🔥 Good games!</button>
+        </div>
+
+        <div id="tournament-inline-chat-messages" style="min-height: 220px; max-height: 340px; overflow-y: auto; background: var(--bg-alt, #f8fafc); border: 1px solid var(--border, rgba(0,0,0,0.08)); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+        </div>
+
+        <form onsubmit="window.handleSendTournamentChatMessage(event, '${t.id}'); return false;" style="display: flex; gap: 8px;">
+          <input type="text" id="tournament-inline-chat-input" class="form-input" style="flex: 1; padding: 10px 12px; border-radius: 10px;" placeholder="Message everyone in this tournament..." required>
+          <button type="submit" class="btn btn-primary" style="padding: 0 18px; background: #ea580c; border: none; font-weight: 800; border-radius: 10px;">Send</button>
+        </form>
+      </div>
+    `;
+    window.renderTournamentChatMessages();
   } else {
     bodyContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 14px; font-size: 13px; color: var(--text-main, #334155);">
@@ -14512,6 +14727,9 @@ function initApp() {
       }
       if (window.activeTeamChatTournamentId && window.activeTeamChatTeamId) {
         window.renderTeamChatMessages();
+      }
+      if (window.activeTournamentChatId) {
+        window.renderTournamentChatMessages();
       }
     }
   });

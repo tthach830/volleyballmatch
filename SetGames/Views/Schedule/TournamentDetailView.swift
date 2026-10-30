@@ -17,6 +17,7 @@ public struct TournamentDetailView: View {
         case teamInvite(TournamentTeam)
         case addPlayerToTeam(TournamentTeam)
         case teamChat(TournamentTeam)
+        case tournamentChat
         
         public var id: String {
             switch self {
@@ -31,6 +32,7 @@ public struct TournamentDetailView: View {
             case .teamInvite(let team): return "teamInvite-\(team.id.uuidString)"
             case .addPlayerToTeam(let team): return "addPlayerToTeam-\(team.id.uuidString)"
             case .teamChat(let team): return "teamChat-\(team.id.uuidString)"
+            case .tournamentChat: return "tournamentChat"
             }
         }
     }
@@ -48,11 +50,13 @@ public struct TournamentDetailView: View {
     @State private var showRemovePoolsAlert: Bool = false
     @State private var showClearRostersAlert: Bool = false
     @State private var selectedTeamForRoster: TournamentTeam? = nil
+    @State private var inlineTournamentChatText: String = ""
     
     public enum SubTab: String, CaseIterable {
         case pools = "🏊 Pools"
         case bracket = "🏆 Bracket"
         case roster = "👥 Rosters"
+        case chat = "💬 Chat"
         case info = "📋 Info"
     }
     
@@ -115,6 +119,8 @@ public struct TournamentDetailView: View {
                                 bracketView(t: t, division: activeDivision)
                             case .roster:
                                 rosterView(t: t, division: activeDivision)
+                            case .chat:
+                                tournamentChatView(t: t)
                             case .info:
                                 infoView(t: t)
                             }
@@ -188,6 +194,20 @@ public struct TournamentDetailView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         HStack(spacing: 12) {
                             Button {
+                                activeSheet = .tournamentChat
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                                        .font(.system(size: 15, weight: .bold))
+                                    if !t.messages.isEmpty {
+                                        Text("\(t.messages.count)")
+                                            .font(.system(size: 11, weight: .black))
+                                    }
+                                }
+                                .foregroundColor(.cyan)
+                            }
+                            
+                            Button {
                                 activeSheet = .qrCode
                             } label: {
                                 Image(systemName: "qrcode")
@@ -251,6 +271,8 @@ public struct TournamentDetailView: View {
                         AddPlayerToTeamSheet(tournament: t, team: team, dataManager: dataManager)
                     case .teamChat(let team):
                         TeamChatSheet(dataManager: dataManager, tournament: t, team: team)
+                    case .tournamentChat:
+                        TournamentChatSheet(dataManager: dataManager, tournament: t)
                     }
                 }
                 .sheet(item: $selectedTeamForRoster) { team in
@@ -1498,6 +1520,183 @@ public struct TournamentDetailView: View {
         } message: {
             Text("Are you sure you want to remove all \(divisionTeams.count) teams and matches from \(division.displayName)?")
         }
+    }
+    
+    // MARK: - Tournament Chat Sub-View
+    @ViewBuilder
+    private func tournamentChatView(t: Tournament) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("💬 TOURNAMENT LOBBY CHAT")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(.orange)
+                    Text("Public message board for hosts, captains & players")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Text("\(t.messages.count) msgs")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.orange.opacity(0.15)))
+            }
+            
+            // Quick Chips
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    tournQuickChip(t: t, title: "🏐 At the courts!", text: "At the courts! 🏐")
+                    tournQuickChip(t: t, title: "🏃‍♂️ omw", text: "omw 🏃‍♂️")
+                    tournQuickChip(t: t, title: "📍 Which court?", text: "Which court is up next?")
+                    tournQuickChip(t: t, title: "🔥 Good games!", text: "Good games everyone! 🔥")
+                }
+                .padding(.vertical, 2)
+            }
+            
+            // Messages Feed
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        if t.messages.isEmpty {
+                            VStack(spacing: 6) {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(.secondary.opacity(0.6))
+                                    .padding(.top, 24)
+                                Text("No tournament messages yet")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                Text("Post announcements, court updates, or questions for everyone in \(t.title).")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 16)
+                                    .padding(.bottom, 24)
+                            }
+                            .frame(maxWidth: .infinity)
+                        } else {
+                            ForEach(t.messages) { msg in
+                                let isMe = msg.senderId == dataManager.currentUser?.id
+                                let isHostMsg = t.isHostOrCoHost(msg.senderId)
+                                HStack(alignment: .bottom, spacing: 8) {
+                                    if isMe { Spacer(minLength: 36) }
+                                    
+                                    if !isMe {
+                                        let sender = dataManager.player(for: msg.senderId)
+                                        PlayerAvatarView(player: sender, dimension: 26, showBadge: false)
+                                    }
+                                    
+                                    VStack(alignment: isMe ? .trailing : .leading, spacing: 2) {
+                                        if !isMe {
+                                            HStack(spacing: 4) {
+                                                Text(msg.senderName)
+                                                    .font(.system(size: 11, weight: .bold))
+                                                    .foregroundColor(.secondary)
+                                                if isHostMsg {
+                                                    Text("👑 HOST")
+                                                        .font(.system(size: 9, weight: .heavy))
+                                                        .foregroundColor(.orange)
+                                                        .padding(.horizontal, 5)
+                                                        .padding(.vertical, 1)
+                                                        .background(Color.orange.opacity(0.18))
+                                                        .cornerRadius(4)
+                                                }
+                                            }
+                                            .padding(.horizontal, 4)
+                                        }
+                                        
+                                        Text(msg.text)
+                                            .font(.system(size: 13.5))
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(isMe ? Color.orange : Color.white.opacity(0.08))
+                                            .foregroundColor(.white)
+                                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                                        
+                                        Text(msg.formattedTime)
+                                            .font(.system(size: 9))
+                                            .foregroundColor(.secondary)
+                                            .padding(.horizontal, 4)
+                                    }
+                                    .id(msg.id)
+                                    
+                                    if !isMe { Spacer(minLength: 36) }
+                                }
+                            }
+                        }
+                    }
+                    .padding(10)
+                }
+                .frame(minHeight: 220, maxHeight: 340)
+                .background(Color.black.opacity(0.25))
+                .cornerRadius(12)
+                .onChange(of: t.messages.count) { _, _ in
+                    if let last = t.messages.last {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
+                }
+                .onAppear {
+                    if let last = t.messages.last {
+                        proxy.scrollTo(last.id, anchor: .bottom)
+                    }
+                }
+            }
+            
+            // Input Row
+            HStack(spacing: 8) {
+                TextField("Message everyone in this tournament...", text: $inlineTournamentChatText)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(Color.white.opacity(0.08))
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .font(.system(size: 13.5))
+                    .submitLabel(.send)
+                    .onSubmit {
+                        sendInlineTournamentMessage(t: t)
+                    }
+                
+                Button {
+                    sendInlineTournamentMessage(t: t)
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(inlineTournamentChatText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .orange)
+                }
+                .disabled(inlineTournamentChatText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(14)
+        .background(Color(red: 0.11, green: 0.13, blue: 0.18))
+        .cornerRadius(14)
+        .padding(.horizontal)
+    }
+    
+    private func tournQuickChip(t: Tournament, title: String, text: String) -> some View {
+        Button {
+            dataManager.sendTournamentMessage(tournamentId: t.id, text: text)
+        } label: {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.orange)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.orange.opacity(0.15))
+                .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func sendInlineTournamentMessage(t: Tournament) {
+        let trimmed = inlineTournamentChatText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        dataManager.sendTournamentMessage(tournamentId: t.id, text: trimmed)
+        inlineTournamentChatText = ""
     }
     
     // MARK: - Info & Rules Sub-View
@@ -3972,6 +4171,211 @@ public struct TeamChatSheet: View {
         let text = chatInputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         dataManager.sendTournamentTeamMessage(tournamentId: liveTournament.id, teamId: liveTeam.id, text: text)
+        chatInputText = ""
+    }
+}
+
+// MARK: - Tournament-Wide Chat Sheet
+public struct TournamentChatSheet: View {
+    @ObservedObject var dataManager: DataManager
+    let tournament: Tournament
+    @Environment(\.dismiss) private var dismiss
+    @State private var chatInputText: String = ""
+    
+    private var liveTournament: Tournament {
+        dataManager.tournaments.first(where: { $0.id == tournament.id }) ?? tournament
+    }
+    
+    public init(dataManager: DataManager, tournament: Tournament) {
+        self.dataManager = dataManager
+        self.tournament = tournament
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Tournament Header Bar
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(liveTournament.title)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            Text("📍 \(liveTournament.location)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            Text("•")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            Text("\(liveTournament.teams.count) Teams")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color(UIColor.secondarySystemBackground))
+                
+                Divider()
+                
+                // Quick Status Chips
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        quickChip(title: "🏐 At the courts!", text: "At the courts! 🏐")
+                        quickChip(title: "🏃‍♂️ omw", text: "omw 🏃‍♂️")
+                        quickChip(title: "📍 Which court?", text: "Which court is up next?")
+                        quickChip(title: "🔥 Good games!", text: "Good games everyone! 🔥")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+                .background(Color(UIColor.systemBackground))
+                
+                Divider()
+                
+                // Messages Scroll List
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            if liveTournament.messages.isEmpty {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "bubble.left.and.bubble.right")
+                                        .font(.system(size: 36))
+                                        .foregroundColor(.secondary.opacity(0.6))
+                                        .padding(.top, 40)
+                                    Text("No tournament messages yet")
+                                        .font(.system(size: 16, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                    Text("Post announcements, court updates, or questions for everyone in \(liveTournament.title).")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 32)
+                                }
+                            } else {
+                                ForEach(liveTournament.messages) { msg in
+                                    let isMe = msg.senderId == dataManager.currentUser?.id
+                                    let isHostMsg = liveTournament.isHostOrCoHost(msg.senderId)
+                                    HStack(alignment: .bottom, spacing: 8) {
+                                        if isMe { Spacer(minLength: 40) }
+                                        
+                                        if !isMe {
+                                            let sender = dataManager.player(for: msg.senderId)
+                                            PlayerAvatarView(player: sender, dimension: 28, showBadge: false)
+                                        }
+                                        
+                                        VStack(alignment: isMe ? .trailing : .leading, spacing: 2) {
+                                            if !isMe {
+                                                HStack(spacing: 4) {
+                                                    Text(msg.senderName)
+                                                        .font(.system(size: 11, weight: .bold))
+                                                        .foregroundColor(.secondary)
+                                                    if isHostMsg {
+                                                        Text("👑 HOST")
+                                                            .font(.system(size: 9, weight: .heavy))
+                                                            .foregroundColor(.orange)
+                                                            .padding(.horizontal, 5)
+                                                            .padding(.vertical, 1)
+                                                            .background(Color.orange.opacity(0.15))
+                                                            .cornerRadius(4)
+                                                    }
+                                                }
+                                                .padding(.horizontal, 4)
+                                            }
+                                            
+                                            Text(msg.text)
+                                                .font(.system(size: 14))
+                                                .padding(.horizontal, 14)
+                                                .padding(.vertical, 9)
+                                                .background(isMe ? Color.orange : Color(UIColor.secondarySystemBackground))
+                                                .foregroundColor(isMe ? .white : Color(.label))
+                                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                            
+                                            Text(msg.formattedTime)
+                                                .font(.system(size: 9))
+                                                .foregroundColor(.secondary)
+                                                .padding(.horizontal, 4)
+                                        }
+                                        .id(msg.id)
+                                        
+                                        if !isMe { Spacer(minLength: 40) }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(16)
+                    }
+                    .onChange(of: liveTournament.messages.count) { _, _ in
+                        if let lastMsg = liveTournament.messages.last {
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                proxy.scrollTo(lastMsg.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        if let lastMsg = liveTournament.messages.last {
+                            proxy.scrollTo(lastMsg.id, anchor: .bottom)
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                // Input Bar
+                HStack(spacing: 10) {
+                    TextField("Message everyone in this tournament...", text: $chatInputText)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 14))
+                        .submitLabel(.send)
+                        .onSubmit {
+                            sendMessage()
+                        }
+                    
+                    Button {
+                        sendMessage()
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .orange)
+                    }
+                    .disabled(chatInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color(UIColor.systemBackground))
+            }
+            .navigationTitle("Tournament Chat")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+    
+    private func quickChip(title: String, text: String) -> some View {
+        Button {
+            dataManager.sendTournamentMessage(tournamentId: liveTournament.id, text: text)
+        } label: {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.orange)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.orange.opacity(0.12))
+                .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func sendMessage() {
+        let text = chatInputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        dataManager.sendTournamentMessage(tournamentId: liveTournament.id, text: text)
         chatInputText = ""
     }
 }

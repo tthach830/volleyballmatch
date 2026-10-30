@@ -1029,6 +1029,43 @@
       </div>
     </div>
 
+    <!-- Tournament-Wide Chat Modal -->
+    <div id="tournament-chat-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeTournamentChatModal()">
+      <div class="modal-card" style="max-width: 480px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="tournament-chat-modal-title" style="display:flex; align-items:center; gap:6px;">💬 Tournament Chat</h2>
+            <div id="tournament-chat-subtitle" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Tournament Lobby</div>
+          </div>
+          <button type="button" class="modal-close" onclick="window.closeTournamentChatModal()">&times;</button>
+        </div>
+
+        <!-- Quick Status Chips -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+            Quick Response Chips
+          </div>
+          <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTournamentChatMessage('At the courts! 🏐')">🏐 At the courts!</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTournamentChatMessage('omw 🏃‍♂️')">🏃‍♂️ omw</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTournamentChatMessage('Which court is up next?')">📍 Which court?</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.08); color: #ea580c; border-color: rgba(234, 88, 12, 0.3);" onclick="window.sendQuickTournamentChatMessage('Good games everyone! 🔥')">🔥 Good games!</button>
+          </div>
+        </div>
+
+        <!-- Chat Feed -->
+        <div id="tournament-chat-messages-container" style="flex: 1; min-height: 220px; max-height: 360px; overflow-y: auto; background: #f8fafc; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+          <!-- Injected via JavaScript -->
+        </div>
+
+        <!-- Message Input -->
+        <form id="tournament-chat-form" onsubmit="window.handleSendTournamentChatMessage(event)" style="display: flex; gap: 8px;">
+          <input type="text" id="tournament-chat-input" class="form-input" style="flex: 1; color: #0f172a; background: #ffffff;" placeholder="Message everyone in this tournament..." required>
+          <button type="submit" class="btn btn-primary" style="padding: 0 16px; background: #ea580c; border: none; font-weight: 800;">Send</button>
+        </form>
+      </div>
+    </div>
+
     <!-- Edit Profile Modal (matches iOS EditProfileSheet.swift) -->
     <div id="edit-profile-modal" class="modal-backdrop" onclick="if(event.target === this) window.closeEditProfileModal()">
       <div class="modal-card" style="max-width: 460px;">
@@ -1258,11 +1295,12 @@
         <!-- My Team Captain / Teammate Quick Management Banner -->
         <div id="tournament-my-team-banner" style="margin-bottom: 12px; display: none;"></div>
 
-        <!-- Detail Sub-Tabs: Pools | Bracket | Rosters | Info -->
+        <!-- Detail Sub-Tabs: Pools | Bracket | Rosters | Chat | Info -->
         <div class="ios-segmented-control" style="margin-bottom: 14px; display: flex; gap: 4px;">
           <button type="button" class="ios-segment-btn active" id="td-tab-pools" onclick="window.setTournamentSubTab('pools')">🏊 Pools</button>
           <button type="button" class="ios-segment-btn" id="td-tab-bracket" onclick="window.setTournamentSubTab('bracket')">🏆 Bracket</button>
           <button type="button" class="ios-segment-btn" id="td-tab-roster" onclick="window.setTournamentSubTab('roster')">👥 Rosters</button>
+          <button type="button" class="ios-segment-btn" id="td-tab-chat" onclick="window.setTournamentSubTab('chat')">💬 Chat</button>
           <button type="button" class="ios-segment-btn" id="td-tab-info" onclick="window.setTournamentSubTab('info')">📋 Info</button>
         </div>
 

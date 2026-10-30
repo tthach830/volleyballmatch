@@ -558,6 +558,7 @@ public struct Tournament: Identifiable, Codable, Hashable {
     public var createdAt: Date
     public var teamFormat: TournamentTeamFormat
     public var playoffAdvanceMode: PlayoffAdvanceMode
+    public var messages: [GameChatMessage]
     
     public init(
         id: UUID = UUID(),
@@ -577,7 +578,8 @@ public struct Tournament: Identifiable, Codable, Hashable {
         notes: String = "Standard beach rules. Rally score to 21, switch sides every 7 points.",
         createdAt: Date = Date(),
         teamFormat: TournamentTeamFormat = .doubles2v2,
-        playoffAdvanceMode: PlayoffAdvanceMode = .allTeams
+        playoffAdvanceMode: PlayoffAdvanceMode = .allTeams,
+        messages: [GameChatMessage] = []
     ) {
         self.id = id
         self.rawId = rawId ?? id.uuidString
@@ -597,10 +599,11 @@ public struct Tournament: Identifiable, Codable, Hashable {
         self.createdAt = createdAt
         self.teamFormat = teamFormat
         self.playoffAdvanceMode = playoffAdvanceMode
+        self.messages = messages
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, rawId, title, hostPlayerId, coHostPlayerIds, date, location, courts, allowedDivisions, maxTeamsPerDivision, teams, freeAgents, matches, status, notes, createdAt, teamFormat, playoffAdvanceMode
+        case id, rawId, title, hostPlayerId, coHostPlayerIds, date, location, courts, allowedDivisions, maxTeamsPerDivision, teams, freeAgents, matches, status, notes, createdAt, teamFormat, playoffAdvanceMode, messages
     }
     
     public init(from decoder: Decoder) throws {
@@ -673,6 +676,7 @@ public struct Tournament: Identifiable, Codable, Hashable {
         }
         
         playoffAdvanceMode = (try? container.decode(PlayoffAdvanceMode.self, forKey: .playoffAdvanceMode)) ?? .allTeams
+        messages = (try? container.decode([GameChatMessage].self, forKey: .messages)) ?? []
     }
     
     public var effectiveTeamFormat: TournamentTeamFormat {
