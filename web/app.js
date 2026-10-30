@@ -4471,6 +4471,10 @@ export function renderTournamentCardHtml(t, currentUserId, index = 0) {
               <span style="font-size: 13px;">📱</span>
               <span style="font-size: 8px; font-weight: 800; line-height: 1;">QR</span>
             </button>
+            <button type="button" class="card-btn-white" style="width: 38px; height: 38px; border-radius: 8px; flex-shrink: 0; position: relative;" onclick="event.stopPropagation(); window.openTournamentChatModal('${t.id}')" title="Tournament Lobby Chat">
+              <span style="font-size: 13px;">💬</span>
+              <span style="font-size: 8px; font-weight: 800; line-height: 1;">Chat${(t.messages || []).length > 0 ? ` (${(t.messages || []).length})` : ''}</span>
+            </button>
             <span style="color: rgba(255, 255, 255, 0.6); font-weight: 500;">
               👥 ${totalTeams} Team${totalTeams !== 1 ? 's' : ''} Registered${totalFreeAgents > 0 ? ` • ${totalFreeAgents} Free Agent${totalFreeAgents !== 1 ? 's' : ''}` : ''}
             </span>
@@ -11716,6 +11720,46 @@ window.renderTournamentDetail = function() {
         </div>
       </div>
     `;
+  }
+
+  // Render Always-Visible Tournament Chatbox below sub-tab content (when not already on the dedicated 'chat' sub-tab)
+  const persistentChatContainer = document.getElementById("tournament-persistent-chatbox");
+  if (persistentChatContainer) {
+    if (window.activeTournamentSubTab === "chat") {
+      persistentChatContainer.innerHTML = "";
+      persistentChatContainer.style.display = "none";
+    } else {
+      persistentChatContainer.style.display = "block";
+      persistentChatContainer.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 10px; background: var(--surface, #1a1e2c); border: 1px solid var(--border, rgba(255,255,255,0.12)); border-radius: 14px; padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 13px; font-weight: 800; color: var(--text-main, #ffffff);">💬 ${t.title} Lobby Chatbox</div>
+              <div style="font-size: 11px; color: var(--text-muted, #94a3b8);">Coordinate courts, check-in & announcements with everyone in this tournament</div>
+            </div>
+            <span style="font-size: 11px; font-weight: 700; color: #ea580c; background: rgba(234,88,12,0.15); padding: 2px 8px; border-radius: 999px;">
+              ${(t.messages || []).length} messages
+            </span>
+          </div>
+
+          <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.12); color: #fb923c; border-color: rgba(234, 88, 12, 0.35);" onclick="window.sendQuickTournamentChatMessage('At the courts! 🏐', '${t.id}')">🏐 At the courts!</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.12); color: #fb923c; border-color: rgba(234, 88, 12, 0.35);" onclick="window.sendQuickTournamentChatMessage('omw 🏃‍♂️', '${t.id}')">🏃‍♂️ omw</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.12); color: #fb923c; border-color: rgba(234, 88, 12, 0.35);" onclick="window.sendQuickTournamentChatMessage('Which court is up next?', '${t.id}')">📍 Which court?</button>
+            <button type="button" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(234, 88, 12, 0.12); color: #fb923c; border-color: rgba(234, 88, 12, 0.35);" onclick="window.sendQuickTournamentChatMessage('Good games everyone! 🔥', '${t.id}')">🔥 Good games!</button>
+          </div>
+
+          <div id="tournament-inline-chat-messages" style="min-height: 140px; max-height: 240px; overflow-y: auto; background: var(--bg-alt, #1e2434); border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+          </div>
+
+          <form onsubmit="window.handleSendTournamentChatMessage(event, '${t.id}'); return false;" style="display: flex; gap: 8px;">
+            <input type="text" id="tournament-inline-chat-input" class="form-input" style="flex: 1; padding: 10px 12px; border-radius: 10px;" placeholder="Message everyone in this tournament..." required>
+            <button type="submit" class="btn btn-primary" style="padding: 0 18px; background: #ea580c; border: none; font-weight: 800; border-radius: 10px;">Send</button>
+          </form>
+        </div>
+      `;
+      window.renderTournamentChatMessages();
+    }
   }
 
   // Render Footer Buttons (Register / Leave)

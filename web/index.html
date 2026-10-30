@@ -23,7 +23,7 @@
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "ydxtebfzci");
   </script>
-  <link rel="stylesheet" href="style.css?v=10.2">
+  <link rel="stylesheet" href="style.css?v=10.3">
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     // Early resilient switchTab fallback until app.js module finishes loading
@@ -1311,6 +1311,9 @@
           <!-- Injected via JS -->
         </div>
 
+        <!-- Always-visible Tournament Chatbox (shown below active sub-tab content) -->
+        <div id="tournament-persistent-chatbox" style="margin-top: 14px;"></div>
+
         <div id="tournament-detail-footer" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border, rgba(255,255,255,0.12));">
           <!-- Sign Up / Leave buttons injected via JS -->
         </div>
@@ -1859,6 +1862,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=17.3"></script>
+  <script type="module" src="app.js?v=18.0"></script>
 </body>
 </html>
