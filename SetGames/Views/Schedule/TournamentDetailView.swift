@@ -3,6 +3,7 @@ import SwiftUI
 public struct TournamentDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var dataManager: DataManager
+    @ObservedObject private var weatherService = WeatherService.shared
     let tournamentId: UUID
     
     public enum TournamentDetailSheet: Identifiable {
@@ -96,6 +97,9 @@ public struct TournamentDetailView: View {
                     ScrollView {
                         VStack(spacing: 16) {
                             headerCard(t: t)
+                            
+                            // TOURNAMENT DAY WEATHER FORECAST BANNER
+                            tournamentWeatherCard(t: t)
                             
                             // SCHEDULE ESTIMATE BANNER
                             scheduleEstimateCard(t: t, division: activeDivision)
@@ -282,6 +286,7 @@ public struct TournamentDetailView: View {
                     if let first = t.allowedDivisions.first, !t.allowedDivisions.contains(selectedDivision) {
                         selectedDivision = first
                     }
+                    weatherService.loadForecast(for: t.location, on: t.date)
                 }
                 .onChange(of: t.allowedDivisions) { newDivs in
                     if let first = newDivs.first, !newDivs.contains(selectedDivision) {
@@ -428,6 +433,163 @@ public struct TournamentDetailView: View {
         )
         .cornerRadius(20)
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private func tournamentWeatherCard(t: Tournament) -> some View {
+        let forecast = weatherService.cachedForecast(for: t.location, on: t.date)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "cloud.sun.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.cyan)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("TOURNAMENT DAY FORECAST")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(.cyan)
+                        Text(t.location)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                
+                Spacer()
+                
+                if let w = forecast {
+                    HStack(spacing: 4) {
+                        Text(w.conditionEmoji)
+                        Text("\(w.tempF)°F • \(w.conditionText)")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.cyan)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.cyan.opacity(0.15)))
+                } else {
+                    HStack(spacing: 5) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .tint(.cyan)
+                        Text("Loading forecast...")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            
+            if let w = forecast {
+                HStack(spacing: 8) {
+                    // Temperature
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("TEMP")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            Text(w.conditionEmoji)
+                                .font(.system(size: 14))
+                            Text("\(w.tempF)°F")
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundColor(.white)
+                        }
+                        Text(w.conditionText)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(10)
+                    
+                    // UV Index
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("UV INDEX")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 3) {
+                            Text("☀️")
+                                .font(.system(size: 13))
+                            Text("\(Int(w.uvIndex.rounded()))")
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundColor(w.uvColor)
+                            Text("(\(w.uvCategory))")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(w.uvColor)
+                                .lineLimit(1)
+                        }
+                        Text(w.uvCategory == "Low" ? "Low UV risk" : "Sunscreen advised")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(10)
+                    
+                    // Wind
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("WIND")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 3) {
+                            Text("💨")
+                                .font(.system(size: 13))
+                            Text("\(w.windMph) mph")
+                                .font(.system(size: 14, weight: .black))
+                                .foregroundColor(.cyan)
+                        }
+                        Text(w.windCategory)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.cyan.opacity(0.9))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(10)
+                }
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .top, spacing: 5) {
+                        Image(systemName: "wind")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.cyan)
+                            .padding(.top, 2)
+                        Text(w.windAdvice)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    HStack(alignment: .top, spacing: 5) {
+                        Image(systemName: "sun.max.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.orange)
+                            .padding(.top, 2)
+                        Text(w.uvSunscreenAdvice)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(12)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.11, green: 0.15, blue: 0.22), Color(red: 0.09, green: 0.11, blue: 0.16)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.cyan.opacity(0.25), lineWidth: 1)
+        )
         .padding(.horizontal)
     }
 

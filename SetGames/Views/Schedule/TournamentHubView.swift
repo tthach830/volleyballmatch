@@ -217,6 +217,7 @@ public struct TournamentHubView: View {
 public struct TournamentCardView: View {
     public let tournament: Tournament
     @ObservedObject public var dataManager: DataManager
+    @ObservedObject private var weatherService = WeatherService.shared
     
     public init(tournament: Tournament, dataManager: DataManager) {
         self.tournament = tournament
@@ -317,8 +318,8 @@ public struct TournamentCardView: View {
                 }
             }
             
-            // Date & Location
-            VStack(alignment: .leading, spacing: 3) {
+            // Date, Location & Weather Forecast
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Image(systemName: "calendar")
                         .font(.caption2)
@@ -326,6 +327,28 @@ public struct TournamentCardView: View {
                     Text(tournament.formattedDate)
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.9))
+                    
+                    Spacer()
+                    
+                    if let w = weatherService.cachedForecast(for: tournament.location, on: tournament.date) {
+                        HStack(spacing: 4) {
+                            Text(w.conditionEmoji)
+                            Text("\(w.tempF)°F")
+                            Text("•")
+                                .foregroundColor(.white.opacity(0.4))
+                            Text("UV \(Int(w.uvIndex.rounded()))")
+                                .foregroundColor(w.uvColor)
+                            Text("•")
+                                .foregroundColor(.white.opacity(0.4))
+                            Text("💨 \(w.windMph) mph")
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.white.opacity(0.08)))
+                        .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8))
+                    }
                 }
                 
                 HStack(spacing: 6) {
@@ -361,5 +384,8 @@ public struct TournamentCardView: View {
         )
         .cornerRadius(18)
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.08), lineWidth: 1))
+        .onAppear {
+            weatherService.loadForecast(for: tournament.location, on: tournament.date)
+        }
     }
 }

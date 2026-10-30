@@ -4444,15 +4444,23 @@ export function renderTournamentCardHtml(t, currentUserId, index = 0) {
           }).join('')}
         </div>
 
-        <!-- Date & Location -->
-        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-bottom: 12px;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="color: #fb923c;">📅</span>
-            <span style="color: #ffffff; font-weight: 600;">${dateFormatted}</span>
+        <!-- Date, Location & Weather Forecast -->
+        <div style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: #fb923c;">📅</span>
+              <span style="color: #ffffff; font-weight: 600;">${dateFormatted}</span>
+            </div>
+            <div id="weather-line-tourn-${t.id}">
+              ${renderWeatherLine({ id: `tourn-${t.id}`, courtLocation: t.location || 'Main Beach', scheduledDate: t.date })}
+            </div>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <span style="color: #38bdf8;">📍</span>
             <span>${t.location || 'Main Beach'} • ${courtStr}</span>
+          </div>
+          <div id="weather-details-tourn-${t.id}" class="weather-details-card" style="display: none; margin-top: 6px;" onclick="event.stopPropagation();">
+            ${renderWeatherDetailsCard({ id: `tourn-${t.id}`, courtLocation: t.location || 'Main Beach', scheduledDate: t.date })}
           </div>
         </div>
 
@@ -11192,6 +11200,71 @@ window.renderTournamentDetail = function() {
       </div>
     `;
   };
+
+  const weatherContainer = document.getElementById("tournament-weather-forecast");
+  if (weatherContainer) {
+    const buildTournamentWeatherCardHTML = (w, isLiveLoaded = true) => {
+      const tournDate = parseGameDate(t.date);
+      const dateStr = tournDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      const uvIdx = Math.round(w.uvIndex ?? 0);
+      const windDir = w.windDirection || "NW";
+      return `
+        <div style="background: linear-gradient(135deg, rgba(14,165,233,0.10), rgba(249,115,22,0.06)); border: 1px solid var(--border, #e2e8f0); border-radius: 14px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 17px;">${w.conditionEmoji || '🌤️'}</span>
+              <div>
+                <div style="font-size: 10px; font-weight: 800; color: #0284c7; text-transform: uppercase; letter-spacing: 0.05em;">Tournament Day Weather Forecast</div>
+                <div style="font-size: 13px; font-weight: 800; color: var(--text-main, #0f172a);">${t.location || 'Main Beach'} • ${dateStr}</div>
+              </div>
+            </div>
+            <div style="display: inline-flex; align-items: center; gap: 5px; background: rgba(14,165,233,0.12); color: #0284c7; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 800;">
+              <span>${w.conditionEmoji || '☀️'} ${w.tempF}°F</span>
+              <span>•</span>
+              <span>${w.conditionText}</span>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px;">
+            <div style="background: var(--bg-alt, #f8fafc); border-radius: 10px; padding: 8px 10px; border: 1px solid var(--border, #f1f5f9);">
+              <div style="font-size: 10px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase;">Temp</div>
+              <div style="font-size: 15px; font-weight: 900; color: var(--text-main, #0f172a); margin-top: 2px;">${w.conditionEmoji || '☀️'} ${w.tempF}°F</div>
+              <div style="font-size: 10px; color: var(--text-muted, #64748b); margin-top: 1px;">${w.conditionText}</div>
+            </div>
+            <div style="background: var(--bg-alt, #f8fafc); border-radius: 10px; padding: 8px 10px; border: 1px solid var(--border, #f1f5f9);">
+              <div style="font-size: 10px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase;">UV Index</div>
+              <div style="font-size: 15px; font-weight: 900; color: ${w.uvColor || '#f59e0b'}; margin-top: 2px;">☀️ ${uvIdx} <span style="font-size: 10px; font-weight: 800;">(${w.uvCategory})</span></div>
+              <div style="font-size: 10px; color: var(--text-muted, #64748b); margin-top: 1px;">${w.uvCategory === 'Low' ? 'Low UV risk' : 'Sunscreen advised'}</div>
+            </div>
+            <div style="background: var(--bg-alt, #f8fafc); border-radius: 10px; padding: 8px 10px; border: 1px solid var(--border, #f1f5f9);">
+              <div style="font-size: 10px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase;">Wind</div>
+              <div style="font-size: 15px; font-weight: 900; color: #0284c7; margin-top: 2px;">💨 ${w.windMph} mph <span style="font-size: 10px; font-weight: 700;">${windDir}</span></div>
+              <div style="font-size: 10px; color: var(--text-muted, #64748b); margin-top: 1px;">${w.windCategory}</div>
+            </div>
+          </div>
+
+          <div style="font-size: 11px; color: var(--text-muted, #64748b); display: flex; flex-direction: column; gap: 3px; padding-top: 6px; border-top: 1px solid var(--border, rgba(0,0,0,0.06));">
+            <div>💨 <strong style="color: var(--text-main, #0f172a);">Playability:</strong> ${w.windAdvice}</div>
+            <div>🧴 <strong style="color: var(--text-main, #0f172a);">Sun Protection:</strong> ${w.uvAdvice}</div>
+          </div>
+        </div>
+      `;
+    };
+
+    const cachedW = weatherService.getCached(t.location || 'Main Beach', t.date);
+    if (cachedW) {
+      weatherContainer.innerHTML = buildTournamentWeatherCardHTML(cachedW, true);
+    } else {
+      const fallbackW = weatherService.getFallback(t.location || 'Main Beach', t.date);
+      weatherContainer.innerHTML = buildTournamentWeatherCardHTML(fallbackW, false);
+      weatherService.getForecast(t.location || 'Main Beach', t.date).then(liveW => {
+        const el = document.getElementById("tournament-weather-forecast");
+        if (el && liveW && String(window.activeTournamentId || '').trim() === String(t.id).trim()) {
+          el.innerHTML = buildTournamentWeatherCardHTML(liveW, true);
+        }
+      }).catch(() => {});
+    }
+  }
 
   const scheduleEstContainer = document.getElementById("tournament-schedule-estimate");
   if (scheduleEstContainer) {
