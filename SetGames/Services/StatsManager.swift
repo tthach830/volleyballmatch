@@ -61,10 +61,25 @@ public class StatsManager {
         }
     }
 
+    /// Filters tournaments by timeframe (e.g. last 30 days for month, 365 days for year, or all)
+    public func filterTournamentsByTimeframe(_ tournaments: [Tournament], timeframe: LadderTimeframe) -> [Tournament] {
+        switch timeframe {
+        case .allTime:
+            return tournaments
+        case .month:
+            let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date().addingTimeInterval(-30 * 86400)
+            return tournaments.filter { $0.date >= cutoff }
+        case .year:
+            let cutoff = Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date().addingTimeInterval(-365 * 86400)
+            return tournaments.filter { $0.date >= cutoff }
+        }
+    }
+
     /// Generates top competitive ladder ranked by Elo rating, then Win Rate and Wins
     public func topPlayersLadder(
         from players: [Player],
         games: [SetGame] = [],
+        tournaments: [Tournament] = [],
         filterTier: RatingTier? = nil,
         timeframe: LadderTimeframe = .allTime
     ) -> [Player] {
@@ -74,7 +89,7 @@ public class StatsManager {
             filtered = filtered.filter { $0.rating == tier }
         }
         
-        if timeframe == .allTime || games.isEmpty {
+        if timeframe == .allTime || (games.isEmpty && tournaments.isEmpty) {
             return filtered.sorted { p1, p2 in
                 if p1.eloRating != p2.eloRating {
                     return p1.eloRating > p2.eloRating
@@ -87,6 +102,7 @@ public class StatsManager {
         }
         
         let filteredGames = filterGamesByTimeframe(games, timeframe: timeframe)
+        let filteredTournaments = filterTournamentsByTimeframe(tournaments, timeframe: timeframe)
         
         var periodStats: [UUID: (wins: Int, losses: Int, elo: Int, matchesCount: Int)] = [:]
         for p in filtered {
@@ -123,6 +139,37 @@ public class StatsManager {
             }
         }
         
+        for t in filteredTournaments {
+            let teamsById = Dictionary(uniqueKeysWithValues: t.teams.map { ($0.id, $0) })
+            for m in t.matches {
+                guard let s1 = m.team1Score, let s2 = m.team2Score, (m.isCompleted || s1 > 0 || s2 > 0),
+                      let t1Id = m.team1Id, let t2Id = m.team2Id,
+                      let winnerId = m.winningTeamId ?? (s1 > s2 ? t1Id : (s2 > s1 ? t2Id : nil)),
+                      let team1 = teamsById[t1Id], let team2 = teamsById[t2Id] else { continue }
+                
+                let isTeam1Winner = (winnerId == t1Id)
+                let t1 = team1.allPlayerIds
+                let t2 = team2.allPlayerIds
+                
+                for pid in t1 {
+                    if var st = periodStats[pid] {
+                        if isTeam1Winner { st.wins += 1; st.elo += 24 }
+                        else { st.losses += 1; st.elo = max(800, st.elo - 20) }
+                        st.matchesCount += 1
+                        periodStats[pid] = st
+                    }
+                }
+                for pid in t2 {
+                    if var st = periodStats[pid] {
+                        if !isTeam1Winner { st.wins += 1; st.elo += 24 }
+                        else { st.losses += 1; st.elo = max(800, st.elo - 20) }
+                        st.matchesCount += 1
+                        periodStats[pid] = st
+                    }
+                }
+            }
+        }
+        
         var periodPlayers: [Player] = []
         for p in filtered {
             var clone = p
@@ -151,7 +198,12 @@ public class StatsManager {
     }
     
     /// Recalculates and merges unique partner and opponent IDs dynamically from all scheduled and past matches
-    public func recalculateConnections(players: [Player], games: [SetGame], reset: Bool = false) -> [Player] {
+    public func recalculateConnections(
+        players: [Player],
+        games: [SetGame],
+        tournaments: [Tournament] = [],
+        reset: Bool = false
+    ) -> [Player] {
         var updated = players
         for i in 0..<updated.count {
             let pid = updated[i].id
@@ -176,6 +228,27 @@ public class StatsManager {
                     }
                 }
             }
+            
+            for t in tournaments {
+                let teamsById = Dictionary(uniqueKeysWithValues: t.teams.map { ($0.id, $0) })
+                for m in t.matches {
+                    let hasScores = (m.team1Score != nil && m.team2Score != nil && (m.team1Score! > 0 || m.team2Score! > 0))
+                    guard m.isCompleted || hasScores,
+                          let t1Id = m.team1Id, let t2Id = m.team2Id,
+                          let team1 = teamsById[t1Id], let team2 = teamsById[t2Id] else { continue }
+                    
+                    let t1 = Set(team1.allPlayerIds)
+                    let t2 = Set(team2.allPlayerIds)
+                    if t1.contains(pid) {
+                        for p in t1 where p != pid { partners.insert(p) }
+                        for o in t2 { opponents.insert(o) }
+                    } else if t2.contains(pid) {
+                        for p in t2 where p != pid { partners.insert(p) }
+                        for o in t1 { opponents.insert(o) }
+                    }
+                }
+            }
+            
             updated[i].uniquePartnerIds = Array(partners)
             updated[i].uniqueOpponentIds = Array(opponents)
         }
@@ -183,10 +256,16 @@ public class StatsManager {
     }
     
     /// Generates "The Popular Kids" ladder ranked by unique players played with
-    public func popularKidsLadder(from players: [Player], games: [SetGame] = [], timeframe: LadderTimeframe = .allTime) -> [Player] {
+    public func popularKidsLadder(
+        from players: [Player],
+        games: [SetGame] = [],
+        tournaments: [Tournament] = [],
+        timeframe: LadderTimeframe = .allTime
+    ) -> [Player] {
         let isTimeframeFiltered = timeframe != .allTime
         let filteredGames = isTimeframeFiltered ? filterGamesByTimeframe(games, timeframe: timeframe) : games
-        let connectedPlayers = recalculateConnections(players: players, games: filteredGames, reset: isTimeframeFiltered)
+        let filteredTournaments = isTimeframeFiltered ? filterTournamentsByTimeframe(tournaments, timeframe: timeframe) : tournaments
+        let connectedPlayers = recalculateConnections(players: players, games: filteredGames, tournaments: filteredTournaments, reset: isTimeframeFiltered)
         let deduped = deduplicatePlayers(connectedPlayers)
         let visiblePlayers = deduped.filter { !$0.isStatsHidden }
         return visiblePlayers.sorted { p1, p2 in
@@ -359,6 +438,121 @@ public class StatsManager {
             guard isTeam1 || isTeam2 else { continue }
             
             let prevWon = (isTeam1 && previousWinningTeam == 1) || (isTeam2 && previousWinningTeam == 2)
+            let myScore = isTeam1 ? s1 : s2
+            let oppScore = isTeam1 ? s2 : s1
+            
+            if prevWon {
+                players[i].wins = max(0, players[i].wins - 1)
+                players[i].eloRating = max(800, players[i].eloRating - 24)
+            } else {
+                players[i].losses = max(0, players[i].losses - 1)
+                players[i].eloRating += 20
+            }
+            players[i].pointsScored = max(0, players[i].pointsScored - myScore)
+            players[i].pointsAllowed = max(0, players[i].pointsAllowed - oppScore)
+            if !players[i].recentForm.isEmpty {
+                players[i].recentForm.removeLast()
+            }
+        }
+    }
+    
+    /// Updates player career stats when an individual tournament match is scored
+    public func applyTournamentMatchResult(
+        match: inout TournamentMatch,
+        team1PlayerIds: [UUID],
+        team2PlayerIds: [UUID],
+        winningTeamId: UUID,
+        players: inout [Player]
+    ) {
+        guard let s1 = match.team1Score, let s2 = match.team2Score, match.isCompleted else { return }
+        
+        // If stats were already applied with the same winner, do not duplicate
+        if match.appliedStatsWinnerTeamId == winningTeamId {
+            return
+        }
+        
+        // If stats were previously applied with a DIFFERENT winner, revert previous stats first
+        if let prevWinner = match.appliedStatsWinnerTeamId, prevWinner != winningTeamId {
+            revertTournamentMatchResult(
+                match: match,
+                previousWinningTeamId: prevWinner,
+                team1PlayerIds: team1PlayerIds,
+                team2PlayerIds: team2PlayerIds,
+                players: &players
+            )
+        }
+        
+        let team1Ids = Set(team1PlayerIds)
+        let team2Ids = Set(team2PlayerIds)
+        let isTeam1Winner = (match.team1Id == winningTeamId)
+        
+        for i in 0..<players.count {
+            let pid = players[i].id
+            let isTeam1 = team1Ids.contains(pid)
+            let isTeam2 = team2Ids.contains(pid)
+            guard isTeam1 || isTeam2 else { continue }
+            
+            let won = (isTeam1 && isTeam1Winner) || (isTeam2 && !isTeam1Winner)
+            let myScore = isTeam1 ? s1 : s2
+            let oppScore = isTeam1 ? s2 : s1
+            
+            if won {
+                players[i].wins += 1
+                players[i].streak = max(1, players[i].streak + 1)
+                players[i].eloRating += 24
+                players[i].recentForm.append(true)
+            } else {
+                players[i].losses += 1
+                players[i].streak = min(-1, players[i].streak - 1)
+                players[i].eloRating = max(800, players[i].eloRating - 20)
+                players[i].recentForm.append(false)
+            }
+            
+            if players[i].recentForm.count > 5 {
+                players[i].recentForm.removeFirst()
+            }
+            
+            players[i].pointsScored += myScore
+            players[i].pointsAllowed += oppScore
+            players[i].consecutiveBackouts = 0 // Clear flaker backout streak
+            
+            let myTeam = isTeam1 ? team1Ids : team2Ids
+            let oppTeam = isTeam1 ? team2Ids : team1Ids
+            for partnerId in myTeam where partnerId != pid {
+                if !players[i].uniquePartnerIds.contains(partnerId) {
+                    players[i].uniquePartnerIds.append(partnerId)
+                }
+            }
+            for oppId in oppTeam {
+                if !players[i].uniqueOpponentIds.contains(oppId) {
+                    players[i].uniqueOpponentIds.append(oppId)
+                }
+            }
+        }
+        
+        match.appliedStatsWinnerTeamId = winningTeamId
+    }
+    
+    /// Reverts previously applied tournament match stats if a match score is corrected
+    public func revertTournamentMatchResult(
+        match: TournamentMatch,
+        previousWinningTeamId: UUID,
+        team1PlayerIds: [UUID],
+        team2PlayerIds: [UUID],
+        players: inout [Player]
+    ) {
+        guard let s1 = match.team1Score, let s2 = match.team2Score else { return }
+        let team1Ids = Set(team1PlayerIds)
+        let team2Ids = Set(team2PlayerIds)
+        let wasTeam1Winner = (match.team1Id == previousWinningTeamId)
+        
+        for i in 0..<players.count {
+            let pid = players[i].id
+            let isTeam1 = team1Ids.contains(pid)
+            let isTeam2 = team2Ids.contains(pid)
+            guard isTeam1 || isTeam2 else { continue }
+            
+            let prevWon = (isTeam1 && wasTeam1Winner) || (isTeam2 && !wasTeam1Winner)
             let myScore = isTeam1 ? s1 : s2
             let oppScore = isTeam1 ? s2 : s1
             

@@ -39,6 +39,7 @@ public struct PopularKidsLadderView: View {
             let popularKids = StatsManager.shared.popularKidsLadder(
                 from: dataManager.players,
                 games: dataManager.games,
+                tournaments: dataManager.tournaments,
                 timeframe: timeframe
             )
             

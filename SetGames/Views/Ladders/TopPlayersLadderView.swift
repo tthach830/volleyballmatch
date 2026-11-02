@@ -52,6 +52,7 @@ public struct TopPlayersLadderView: View {
             let rankedPlayers = StatsManager.shared.topPlayersLadder(
                 from: dataManager.players,
                 games: dataManager.games,
+                tournaments: dataManager.tournaments,
                 filterTier: selectedTierFilter,
                 timeframe: timeframe
             )

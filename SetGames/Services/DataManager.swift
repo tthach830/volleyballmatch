@@ -1965,9 +1965,10 @@ public class DataManager: ObservableObject {
                 let validRemotes = remoteTournaments.filter { r in
                     !self.isTournamentDeleted(id: r.id.uuidString, rawId: r.rawId, title: r.title)
                 }
-                let combined = self.deduplicateTournaments(validRemotes).filter {
+                var combined = self.deduplicateTournaments(validRemotes).filter {
                     !self.isTournamentDeleted(id: $0.id.uuidString, rawId: $0.rawId, title: $0.title)
                 }
+                self.autoCompletePastTournaments(&combined)
                 self.tournaments = combined
                 self.saveToDisk()
             }
@@ -3147,10 +3148,40 @@ public class DataManager: ObservableObject {
         guard let tIdx = tournaments.firstIndex(where: { $0.id == tournamentId }) else { return }
         guard let mIdx = tournaments[tIdx].matches.firstIndex(where: { $0.id == matchId }) else { return }
         
+        let determinedWinner = winningTeamId ?? (team1Score > team2Score ? tournaments[tIdx].matches[mIdx].team1Id : tournaments[tIdx].matches[mIdx].team2Id)
+        
         tournaments[tIdx].matches[mIdx].team1Score = team1Score
         tournaments[tIdx].matches[mIdx].team2Score = team2Score
-        tournaments[tIdx].matches[mIdx].winningTeamId = winningTeamId
+        tournaments[tIdx].matches[mIdx].winningTeamId = determinedWinner
         tournaments[tIdx].matches[mIdx].isCompleted = true
+        
+        if let winId = determinedWinner,
+           let t1Id = tournaments[tIdx].matches[mIdx].team1Id,
+           let t2Id = tournaments[tIdx].matches[mIdx].team2Id {
+            let team1 = tournaments[tIdx].teams.first(where: { $0.id == t1Id })
+            let team2 = tournaments[tIdx].teams.first(where: { $0.id == t2Id })
+            let team1PlayerIds = team1?.allPlayerIds ?? []
+            let team2PlayerIds = team2?.allPlayerIds ?? []
+            
+            StatsManager.shared.applyTournamentMatchResult(
+                match: &tournaments[tIdx].matches[mIdx],
+                team1PlayerIds: team1PlayerIds,
+                team2PlayerIds: team2PlayerIds,
+                winningTeamId: winId,
+                players: &players
+            )
+            
+            if let user = currentUser, let updatedUser = players.first(where: { $0.id == user.id }) {
+                currentUser = updatedUser
+            }
+            
+            let affectedIds = Set(team1PlayerIds + team2PlayerIds)
+            for pid in affectedIds {
+                if let p = players.first(where: { $0.id == pid }) {
+                    FirestoreService.shared.savePlayer(p)
+                }
+            }
+        }
         
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[tIdx])
@@ -3704,11 +3735,44 @@ public class DataManager: ObservableObject {
         
         let team1 = tournaments[tIdx].teams.first(where: { $0.id == t1Id })
         let team2 = tournaments[tIdx].teams.first(where: { $0.id == t2Id })
+        let team1PlayerIds = team1?.allPlayerIds ?? []
+        let team2PlayerIds = team2?.allPlayerIds ?? []
+        
+        // Award career stats (wins/losses/Elo/points) to participating players
+        StatsManager.shared.applyTournamentMatchResult(
+            match: &tournaments[tIdx].matches[mIdx],
+            team1PlayerIds: team1PlayerIds,
+            team2PlayerIds: team2PlayerIds,
+            winningTeamId: winningTeamId,
+            players: &players
+        )
+        
+        // Refresh currentUser
+        if let user = currentUser, let updatedUser = players.first(where: { $0.id == user.id }) {
+            currentUser = updatedUser
+        }
+        
         let winnerName = (winningTeamId == t1Id ? team1?.teamName : team2?.teamName) ?? "Winner"
         let loserName = (winningTeamId == t1Id ? team2?.teamName : team1?.teamName) ?? "Opponent"
         
+        // Auto-complete tournament if championship finals or all matches are finished
+        let finals = tournaments[tIdx].matches.filter { $0.stage == "final" }
+        let allFinalsCompleted = !finals.isEmpty && finals.allSatisfy { $0.isCompleted }
+        let allMatchesCompleted = !tournaments[tIdx].matches.isEmpty && tournaments[tIdx].matches.allSatisfy { $0.isCompleted }
+        if allFinalsCompleted || allMatchesCompleted {
+            tournaments[tIdx].status = "completed"
+        }
+        
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[tIdx])
+        
+        // Save affected players to Firestore
+        let affectedIds = Set(team1PlayerIds + team2PlayerIds)
+        for pid in affectedIds {
+            if let p = players.first(where: { $0.id == pid }) {
+                FirestoreService.shared.savePlayer(p)
+            }
+        }
         
         postNotification(
             title: "🏐 Match Score Reported",
@@ -3761,6 +3825,33 @@ public class DataManager: ObservableObject {
         saveToDisk()
         FirestoreService.shared.saveTournament(tournaments[idx])
         return (true, "Tournament updated successfully.")
+    }
+    
+    public func updateTournamentStatus(tournamentId: UUID, status: String) {
+        guard let idx = tournaments.firstIndex(where: { 
+            $0.id == tournamentId || 
+            ($0.rawId != nil && ($0.rawId?.caseInsensitiveCompare(tournamentId.uuidString) == .orderedSame))
+        }) else { return }
+        tournaments[idx].status = status
+        saveToDisk()
+        FirestoreService.shared.saveTournament(tournaments[idx])
+    }
+    
+    public func autoCompletePastTournaments(_ list: inout [Tournament]) {
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+        for i in 0..<list.count {
+            let startOfTournDay = calendar.startOfDay(for: list[i].date)
+            let isPast = startOfTournDay < startOfToday || list[i].date.addingTimeInterval(12 * 3600) < Date()
+            let finals = list[i].matches.filter { $0.stage == "final" }
+            let allFinalsCompleted = !finals.isEmpty && finals.allSatisfy { $0.isCompleted }
+            let allMatchesCompleted = !list[i].matches.isEmpty && list[i].matches.allSatisfy { $0.isCompleted }
+            
+            if (isPast || allFinalsCompleted || allMatchesCompleted) && list[i].status != "completed" {
+                list[i].status = "completed"
+                FirestoreService.shared.saveTournament(list[i])
+            }
+        }
     }
     
     @discardableResult
@@ -3917,12 +4008,14 @@ public class DataManager: ObservableObject {
             let filtered = loadedTournaments.filter {
                 !self.isTournamentDeleted(id: $0.id.uuidString, rawId: $0.rawId, title: $0.title)
             }
-            let deduped = deduplicateTournaments(filtered)
+            var deduped = deduplicateTournaments(filtered)
+            self.autoCompletePastTournaments(&deduped)
             self.tournaments = deduped
         } else {
-            let defaults = seedDefaultTournaments().filter {
+            var defaults = seedDefaultTournaments().filter {
                 !self.isTournamentDeleted(id: $0.id.uuidString, rawId: $0.rawId, title: $0.title)
             }
+            self.autoCompletePastTournaments(&defaults)
             self.tournaments = defaults
         }
         

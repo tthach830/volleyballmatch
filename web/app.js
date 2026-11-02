@@ -1522,6 +1522,33 @@ export function isUpcomingGame(game) {
   return s === "scheduled" || s === "in progress" || s === "inprogress" || s === "open" || s === "upcoming";
 }
 
+export function getTournamentEffectiveStatus(t) {
+  if (!t) return "registration_open";
+  if (t.status === "completed") return "completed";
+
+  const d = parseGameDate(t.date || t.scheduledDate);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfTournDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+  // If tournament was on a prior day (or scheduled date + 12h elapsed), it is completed
+  if (startOfTournDay < startOfToday || (d.getTime() + 12 * 3600 * 1000) < now.getTime()) {
+    return "completed";
+  }
+
+  const matches = t.matches || [];
+  const finals = matches.filter(m => m.stage === "final");
+  if (finals.length > 0 && finals.every(m => m.status === "completed" || m.isCompleted)) {
+    return "completed";
+  }
+  if (matches.length > 0 && matches.every(m => m.status === "completed" || m.isCompleted)) {
+    return "completed";
+  }
+
+  return t.status || "registration_open";
+}
+window.getTournamentEffectiveStatus = getTournamentEffectiveStatus;
+
 export function parseGameDate(rawDate) {
   if (!rawDate) return new Date();
   if (typeof rawDate === "string") {
@@ -1651,6 +1678,38 @@ export function getPlayerConnections(player, timeframe = "allTime") {
 
         const t1 = Array.isArray(m.team1PlayerIds) ? m.team1PlayerIds : [];
         const t2 = Array.isArray(m.team2PlayerIds) ? m.team2PlayerIds : [];
+
+        const isT1 = t1.some(id => isMe(id));
+        const isT2 = t2.some(id => isMe(id));
+
+        if (isT1) {
+          t1.forEach(id => { if (!isMe(id)) partners.add(String(id)); });
+          t2.forEach(id => { if (!isMe(id)) opponents.add(String(id)); });
+        } else if (isT2) {
+          t2.forEach(id => { if (!isMe(id)) partners.add(String(id)); });
+          t1.forEach(id => { if (!isMe(id)) opponents.add(String(id)); });
+        }
+      }
+    }
+  }
+
+  // 3. Scan completed matches in state.tournaments
+  if (Array.isArray(state.tournaments)) {
+    for (const t of state.tournaments) {
+      if (isTimeframeFiltered) {
+        const tTime = parseGameDate(t.date || t.scheduledDate).getTime();
+        if (tTime < cutoffTime) continue;
+      }
+      const teams = t.teams || [];
+      for (const m of (t.matches || [])) {
+        const hasScores = (m.team1Score != null && m.team2Score != null && (Number(m.team1Score) > 0 || Number(m.team2Score) > 0));
+        const isMatchCompleted = Boolean(m.isCompleted || hasScores);
+        if (!isMatchCompleted || !m.team1Id || !m.team2Id) continue;
+
+        const team1 = teams.find(tm => isSamePlayer(tm.id, m.team1Id));
+        const team2 = teams.find(tm => isSamePlayer(tm.id, m.team2Id));
+        const t1 = team1 ? [team1.player1Id, team1.player2Id, team1.player3Id, team1.player4Id, team1.player5Id].filter(Boolean) : [];
+        const t2 = team2 ? [team2.player1Id, team2.player2Id, team2.player3Id, team2.player4Id, team2.player5Id].filter(Boolean) : [];
 
         const isT1 = t1.some(id => isMe(id));
         const isT2 = t2.some(id => isMe(id));
@@ -3363,7 +3422,7 @@ class AppState {
     ];
     this.pickupQueue = [];
     this.selectedLadderTier = "All";
-    this.selectedLadderTimeframe = "month";
+    this.selectedLadderTimeframe = "allTime";
     this.collapsedMatches = {};
     this.collapsedPools = {};
     this.isDemoModeEnabled = localStorage.getItem("setgames_demo_mode") === "true";
@@ -4565,7 +4624,7 @@ function renderMatches() {
     }).map(g => ({ type: "game", item: g, date: parseGameDate(g.scheduledDate) }));
 
     const pastTournaments = (state.tournaments || []).filter(t => {
-      const s = String(t.status || "").trim().toLowerCase();
+      const s = String(getTournamentEffectiveStatus(t)).trim().toLowerCase();
       const d = parseGameDate(t.date);
       return s === "completed" || d <= twoHoursAgo;
     }).map(t => ({ type: "tournament", item: t, date: parseGameDate(t.date) }));
@@ -4582,7 +4641,7 @@ function renderMatches() {
       }).map(g => ({ type: "game", item: g, date: parseGameDate(g.scheduledDate) }));
 
       const myTournaments = (state.tournaments || []).filter(t => {
-        const s = String(t.status || "").trim().toLowerCase();
+        const s = String(getTournamentEffectiveStatus(t)).trim().toLowerCase();
         if (s === "completed") return false;
         const d = parseGameDate(t.date);
         if (d <= twoHoursAgo) return false;
@@ -4602,7 +4661,7 @@ function renderMatches() {
     }).map(g => ({ type: "game", item: g, date: parseGameDate(g.scheduledDate) }));
 
     const upcomingTournaments = (currentMatchFilter === "openSpots") ? [] : (state.tournaments || []).filter(t => {
-      const s = String(t.status || "").trim().toLowerCase();
+      const s = String(getTournamentEffectiveStatus(t)).trim().toLowerCase();
       if (s === "completed") return false;
       const d = parseGameDate(t.date);
       return d > twoHoursAgo;
@@ -5162,7 +5221,7 @@ function renderLadder() {
     filtered = filtered.filter(p => p.rating === tier);
   }
 
-  const tf = state.selectedLadderTimeframe || "month";
+  const tf = state.selectedLadderTimeframe || "allTime";
   const isTimeframeFiltered = tf === "month" || tf === "year";
   const cutoffDays = tf === "month" ? 30 : 365;
   const cutoffTime = Date.now() - cutoffDays * 24 * 60 * 60 * 1000;
@@ -5170,6 +5229,10 @@ function renderLadder() {
   const timeframeGames = isTimeframeFiltered 
     ? (state.games || []).filter(g => parseGameDate(g.scheduledDate).getTime() >= cutoffTime)
     : (state.games || []);
+
+  const timeframeTournaments = isTimeframeFiltered
+    ? (state.tournaments || []).filter(t => parseGameDate(t.date || t.scheduledDate).getTime() >= cutoffTime)
+    : (state.tournaments || []);
 
   let playerList = filtered.map(p => {
     if (!isTimeframeFiltered) {
@@ -5199,6 +5262,37 @@ function renderLadder() {
         } else if (inT2) {
           matchesCount++;
           if (winner === 2) { pWins++; pElo += 24; }
+          else { pLosses++; pElo = Math.max(800, pElo - 20); }
+        }
+      }
+    }
+
+    for (const t of timeframeTournaments) {
+      const teams = t.teams || [];
+      for (const m of (t.matches || [])) {
+        if (m.team1Score == null || m.team2Score == null) continue;
+        const s1 = Number(m.team1Score);
+        const s2 = Number(m.team2Score);
+        if (s1 === 0 && s2 === 0 && !m.isCompleted) continue;
+        const winnerId = m.winningTeamId || (s1 > s2 ? m.team1Id : (s2 > s1 ? m.team2Id : null));
+        if (!winnerId || !m.team1Id || !m.team2Id) continue;
+
+        const team1 = teams.find(tm => isSamePlayer(tm.id, m.team1Id));
+        const team2 = teams.find(tm => isSamePlayer(tm.id, m.team2Id));
+        const t1Ids = team1 ? [team1.player1Id, team1.player2Id, team1.player3Id, team1.player4Id, team1.player5Id].filter(Boolean) : [];
+        const t2Ids = team2 ? [team2.player1Id, team2.player2Id, team2.player3Id, team2.player4Id, team2.player5Id].filter(Boolean) : [];
+
+        const inT1 = t1Ids.some(id => isSamePlayer(id, p.id));
+        const inT2 = t2Ids.some(id => isSamePlayer(id, p.id));
+        const isTeam1Winner = isSamePlayer(winnerId, m.team1Id);
+
+        if (inT1) {
+          matchesCount++;
+          if (isTeam1Winner) { pWins++; pElo += 24; }
+          else { pLosses++; pElo = Math.max(800, pElo - 20); }
+        } else if (inT2) {
+          matchesCount++;
+          if (!isTeam1Winner) { pWins++; pElo += 24; }
           else { pLosses++; pElo = Math.max(800, pElo - 20); }
         }
       }
@@ -5263,7 +5357,7 @@ function renderPopularKids() {
   const container = document.getElementById("popular-list");
   if (!container) return;
 
-  const tf = state.selectedLadderTimeframe || "month";
+  const tf = state.selectedLadderTimeframe || "allTime";
   const deduped = deduplicatePlayers(state.players);
   const visiblePlayers = deduped.filter(p => !p.isStatsHidden);
   const sorted = [...visiblePlayers].sort((a, b) => {
@@ -5312,10 +5406,30 @@ function renderPopularKids() {
   }).join("");
 }
 
-window.toggleLadderTimeframe = function(type) {
+export function syncLadderTimeframeUI() {
   const monthBox = document.getElementById("ladder-filter-month");
   const yearBox = document.getElementById("ladder-filter-year");
   const subtitleEl = document.getElementById("ladder-timeframe-subtitle");
+
+  const tf = state.selectedLadderTimeframe || "allTime";
+  if (monthBox) monthBox.checked = (tf === "month");
+  if (yearBox) yearBox.checked = (tf === "year");
+
+  if (subtitleEl) {
+    if (tf === "month") {
+      subtitleEl.textContent = "Last 30 days rankings and social catalysts on the sand";
+    } else if (tf === "year") {
+      subtitleEl.textContent = "Past year rankings and social catalysts on the sand";
+    } else {
+      subtitleEl.textContent = "All-time rankings and social catalysts on the sand";
+    }
+  }
+}
+window.syncLadderTimeframeUI = syncLadderTimeframeUI;
+
+window.toggleLadderTimeframe = function(type) {
+  const monthBox = document.getElementById("ladder-filter-month");
+  const yearBox = document.getElementById("ladder-filter-year");
 
   if (type === "month") {
     if (monthBox && monthBox.checked) {
@@ -5333,16 +5447,7 @@ window.toggleLadderTimeframe = function(type) {
     }
   }
 
-  if (subtitleEl) {
-    if (state.selectedLadderTimeframe === "month") {
-      subtitleEl.textContent = "Last 30 days rankings and social catalysts on the sand";
-    } else if (state.selectedLadderTimeframe === "year") {
-      subtitleEl.textContent = "Past year rankings and social catalysts on the sand";
-    } else {
-      subtitleEl.textContent = "All-time rankings and social catalysts on the sand";
-    }
-  }
-
+  syncLadderTimeframeUI();
   renderLadder();
   renderPopularKids();
 };
@@ -5948,6 +6053,7 @@ export function switchTab(tabId) {
   try {
     if (normalizedId === "matches") renderMatches();
     if (normalizedId === "ladders") {
+      syncLadderTimeframeUI();
       renderLadder();
       renderPopularKids();
     }
@@ -10256,10 +10362,11 @@ window.renderTournamentsList = function() {
       const isCoHost = (t.coHostPlayerIds || []).some(id => isSamePlayer(id, currentUserId));
       return isReg || isHost || isCoHost;
     }
+    const effStatus = getTournamentEffectiveStatus(t);
     if (window.currentTournamentFilter === "past") {
-      return t.status === "completed";
+      return effStatus === "completed";
     }
-    return t.status !== "completed";
+    return effStatus !== "completed";
   });
 
   list.sort((a, b) => {
@@ -12870,6 +12977,134 @@ window.generatePlayoffBracket = function(tournamentId, division, advanceMode) {
   window.renderTournamentDetail();
 };
 
+function getTournamentMatchTeamPlayerIds(t, teamId) {
+  if (!t || !teamId) return [];
+  const team = (t.teams || []).find(tm => isSamePlayer(tm.id, teamId));
+  if (!team) return [];
+  return [team.player1Id, team.player2Id, team.player3Id, team.player4Id, team.player5Id].filter(Boolean);
+}
+
+function revertTournamentMatchStatsWeb(t, match, prevWinningTeamId) {
+  if (!match || match.team1Score == null || match.team2Score == null || !prevWinningTeamId) return;
+  const s1 = Number(match.team1Score);
+  const s2 = Number(match.team2Score);
+  const team1Ids = getTournamentMatchTeamPlayerIds(t, match.team1Id);
+  const team2Ids = getTournamentMatchTeamPlayerIds(t, match.team2Id);
+  const wasTeam1Winner = isSamePlayer(match.team1Id, prevWinningTeamId);
+
+  const prevWinners = wasTeam1Winner ? team1Ids : team2Ids;
+  const prevLosers = wasTeam1Winner ? team2Ids : team1Ids;
+  const winPts = wasTeam1Winner ? s1 : s2;
+  const losePts = wasTeam1Winner ? s2 : s1;
+
+  prevWinners.forEach(pid => {
+    const p = state.players.find(x => isSamePlayer(x.id, pid));
+    if (p) {
+      p.wins = Math.max(0, (p.wins || 0) - 1);
+      p.eloRating = Math.max(800, (p.eloRating || 1500) - 24);
+      p.pointsScored = Math.max(0, (p.pointsScored || 0) - winPts);
+      p.pointsAllowed = Math.max(0, (p.pointsAllowed || 0) - losePts);
+      if (p.recentForm && p.recentForm.length > 0) p.recentForm.pop();
+      savePlayerToFirestore(p);
+    }
+  });
+
+  prevLosers.forEach(pid => {
+    const p = state.players.find(x => isSamePlayer(x.id, pid));
+    if (p) {
+      p.losses = Math.max(0, (p.losses || 0) - 1);
+      p.eloRating = (p.eloRating || 1500) + 20;
+      p.pointsScored = Math.max(0, (p.pointsScored || 0) - losePts);
+      p.pointsAllowed = Math.max(0, (p.pointsAllowed || 0) - winPts);
+      if (p.recentForm && p.recentForm.length > 0) p.recentForm.pop();
+      savePlayerToFirestore(p);
+    }
+  });
+}
+
+function applyTournamentMatchStatsWeb(t, match, winningTeamId, s1, s2) {
+  if (!match || !winningTeamId || s1 == null || s2 == null) return;
+  const winIdStr = String(winningTeamId).trim();
+  const appliedStr = match.appliedStatsWinnerTeamId ? String(match.appliedStatsWinnerTeamId).trim() : null;
+
+  if (appliedStr && appliedStr === winIdStr) return;
+
+  if (appliedStr && appliedStr !== winIdStr) {
+    revertTournamentMatchStatsWeb(t, match, appliedStr);
+  }
+
+  const team1Ids = getTournamentMatchTeamPlayerIds(t, match.team1Id);
+  const team2Ids = getTournamentMatchTeamPlayerIds(t, match.team2Id);
+  const isTeam1Winner = isSamePlayer(match.team1Id, winIdStr);
+
+  const winners = isTeam1Winner ? team1Ids : team2Ids;
+  const losers = isTeam1Winner ? team2Ids : team1Ids;
+  const winnerScore = isTeam1Winner ? s1 : s2;
+  const loserScore = isTeam1Winner ? s2 : s1;
+
+  winners.forEach(pid => {
+    const p = state.players.find(x => isSamePlayer(x.id, pid));
+    if (p) {
+      p.wins = (p.wins || 0) + 1;
+      p.streak = (p.streak && p.streak > 0) ? p.streak + 1 : 1;
+      p.eloRating = (p.eloRating || 1500) + 24;
+      p.pointsScored = (p.pointsScored || 0) + winnerScore;
+      p.pointsAllowed = (p.pointsAllowed || 0) + loserScore;
+      p.recentForm = p.recentForm || [];
+      p.recentForm.push(true);
+      if (p.recentForm.length > 5) p.recentForm.shift();
+      p.consecutiveBackouts = 0;
+      savePlayerToFirestore(p);
+    }
+  });
+
+  losers.forEach(pid => {
+    const p = state.players.find(x => isSamePlayer(x.id, pid));
+    if (p) {
+      p.losses = (p.losses || 0) + 1;
+      p.streak = (p.streak && p.streak < 0) ? p.streak - 1 : -1;
+      p.eloRating = Math.max(800, (p.eloRating || 1500) - 20);
+      p.pointsScored = (p.pointsScored || 0) + loserScore;
+      p.pointsAllowed = (p.pointsAllowed || 0) + winnerScore;
+      p.recentForm = p.recentForm || [];
+      p.recentForm.push(false);
+      if (p.recentForm.length > 5) p.recentForm.shift();
+      p.consecutiveBackouts = 0;
+      savePlayerToFirestore(p);
+    }
+  });
+
+  // Track teammates & opponents for Popular Kids ladder
+  [...team1Ids, ...team2Ids].forEach(pid => {
+    const p = state.players.find(x => isSamePlayer(x.id, pid));
+    if (!p) return;
+    p.uniquePartnerIds = p.uniquePartnerIds || [];
+    p.uniqueOpponentIds = p.uniqueOpponentIds || [];
+    const isT1 = team1Ids.some(id => isSamePlayer(id, pid));
+    const myTeam = isT1 ? team1Ids : team2Ids;
+    const oppTeam = isT1 ? team2Ids : team1Ids;
+
+    myTeam.forEach(partnerId => {
+      if (!isSamePlayer(partnerId, pid) && !p.uniquePartnerIds.some(id => isSamePlayer(id, partnerId))) {
+        p.uniquePartnerIds.push(partnerId);
+      }
+    });
+    oppTeam.forEach(oppId => {
+      if (!p.uniqueOpponentIds.some(id => isSamePlayer(id, oppId))) {
+        p.uniqueOpponentIds.push(oppId);
+      }
+    });
+    savePlayerToFirestore(p);
+  });
+
+  match.appliedStatsWinnerTeamId = winningTeamId;
+
+  if (state.currentUser && (winners.some(id => isSamePlayer(id, state.currentUser.id)) || losers.some(id => isSamePlayer(id, state.currentUser.id)))) {
+    const updated = state.players.find(x => isSamePlayer(x.id, state.currentUser.id));
+    if (updated) state.currentUser = updated;
+  }
+}
+
 window.submitTournamentMatchScore = function(tournamentId, matchId, team1Score, team2Score) {
   const t = (state.tournaments || []).find(item => 
     (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
@@ -12919,12 +13154,18 @@ window.submitTournamentMatchScore = function(tournamentId, matchId, team1Score, 
     }
   }
 
+  // Award career stats (wins/losses/Elo/points/connections) to registered players
+  applyTournamentMatchStatsWeb(t, match, winningTeamId, s1, s2);
+
   state.saveLocal();
   saveTournamentToFirestore(t);
   pushTournamentsToDevice();
   window.closeTournamentScoreModal();
-  showToast("✅ Match score submitted! Bracket updated.");
+  showToast("✅ Match score submitted! Bracket & player records updated.");
   window.renderTournamentDetail();
+  if (typeof renderLadder === "function") renderLadder();
+  if (typeof renderPopularKids === "function") renderPopularKids();
+  if (typeof renderHeader === "function") renderHeader();
 };
 
 window.openTournamentScoreModal = function(tournamentId, matchId) {
@@ -14684,6 +14925,7 @@ function initApp() {
   setupBottomNav();
 
   // 2. Safely render each component so an issue in one cannot block others
+  try { syncLadderTimeframeUI(); } catch (e) {}
   try { renderHeader(); } catch (e) { console.error("renderHeader error:", e); }
   try { renderLadder(); } catch (e) { console.error("renderLadder error:", e); }
   try { renderPopularKids(); } catch (e) { console.error("renderPopularKids error:", e); }
@@ -14834,6 +15076,13 @@ function initApp() {
         !existingTournTitles.has((t.title || "").toLowerCase().trim())
       );
       state.tournaments = deduplicateTournaments([...filtered, ...missingInitial]).filter(t => !state.isTournamentDeleted(t));
+      // Auto-complete past tournaments in Firestore if their date was in the past
+      state.tournaments.forEach(t => {
+        if (getTournamentEffectiveStatus(t) === "completed" && t.status !== "completed") {
+          t.status = "completed";
+          saveTournamentToFirestore(t);
+        }
+      });
       state.saveLocal();
       renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {

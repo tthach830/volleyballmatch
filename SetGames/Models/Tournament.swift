@@ -373,6 +373,7 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
     public var bracketRound: Int?
     public var nextMatchId: UUID?
     public var nextMatchSlot: Int? // 1 or 2
+    public var appliedStatsWinnerTeamId: UUID?
     
     public var status: String {
         if isCompleted { return "completed" }
@@ -396,7 +397,8 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
         stage: String = "pool",
         bracketRound: Int? = nil,
         nextMatchId: UUID? = nil,
-        nextMatchSlot: Int? = nil
+        nextMatchSlot: Int? = nil,
+        appliedStatsWinnerTeamId: UUID? = nil
     ) {
         self.id = id
         self.roundNumber = roundNumber
@@ -414,10 +416,11 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
         self.bracketRound = bracketRound
         self.nextMatchId = nextMatchId
         self.nextMatchSlot = nextMatchSlot
+        self.appliedStatsWinnerTeamId = appliedStatsWinnerTeamId
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, roundNumber, matchNumber, division, courtNumber, team1Id, team2Id, team1Score, team2Score, winningTeamId, isCompleted, poolName, stage, bracketRound, nextMatchId, nextMatchSlot
+        case id, roundNumber, matchNumber, division, courtNumber, team1Id, team2Id, team1Score, team2Score, winningTeamId, isCompleted, poolName, stage, bracketRound, nextMatchId, nextMatchSlot, appliedStatsWinnerTeamId
     }
     
     public init(from decoder: Decoder) throws {
@@ -468,6 +471,12 @@ public struct TournamentMatch: Identifiable, Codable, Hashable {
         }
         
         nextMatchSlot = try? container.decode(Int.self, forKey: .nextMatchSlot)
+        
+        if let appliedRaw = try? container.decode(String.self, forKey: .appliedStatsWinnerTeamId) {
+            appliedStatsWinnerTeamId = UUID(uuidString: appliedRaw) ?? SetGame.parseUUID(from: appliedRaw)
+        } else {
+            appliedStatsWinnerTeamId = try? container.decode(UUID.self, forKey: .appliedStatsWinnerTeamId)
+        }
     }
 }
 
@@ -743,16 +752,42 @@ public struct Tournament: Identifiable, Codable, Hashable {
         return "\(count)/\(maxTeamsPerDivision) Teams"
     }
     
+    public var effectiveStatus: String {
+        if status == "completed" {
+            return "completed"
+        }
+        
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+        let startOfTournDay = calendar.startOfDay(for: date)
+        
+        // If tournament was on a prior day or scheduled time + 12h has elapsed, it is completed
+        if startOfTournDay < startOfToday || date.addingTimeInterval(12 * 3600) < Date() {
+            return "completed"
+        }
+        
+        // If playoff finals are completed or all matches are completed
+        let finals = matches.filter { $0.stage == "final" }
+        if !finals.isEmpty && finals.allSatisfy({ $0.isCompleted }) {
+            return "completed"
+        }
+        if !matches.isEmpty && matches.allSatisfy({ $0.isCompleted }) {
+            return "completed"
+        }
+        
+        return status
+    }
+    
     public var isRegistrationOpen: Bool {
-        status == "registration_open"
+        effectiveStatus == "registration_open"
     }
     
     public var isInProgress: Bool {
-        status == "in_progress"
+        effectiveStatus == "in_progress"
     }
     
     public var isCompleted: Bool {
-        status == "completed"
+        effectiveStatus == "completed"
     }
     
     public func poolNames(for division: TournamentDivisionCategory) -> [String] {

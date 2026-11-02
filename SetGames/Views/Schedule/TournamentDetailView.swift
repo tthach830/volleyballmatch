@@ -229,6 +229,20 @@ public struct TournamentDetailView: View {
                                         Label("Edit Tournament", systemImage: "pencil")
                                     }
                                     
+                                    if t.effectiveStatus == "completed" {
+                                        Button {
+                                            dataManager.updateTournamentStatus(tournamentId: t.id, status: "in_progress")
+                                        } label: {
+                                            Label("Reopen Tournament", systemImage: "arrow.counterclockwise")
+                                        }
+                                    } else {
+                                        Button {
+                                            dataManager.updateTournamentStatus(tournamentId: t.id, status: "completed")
+                                        } label: {
+                                            Label("Mark as Completed", systemImage: "checkmark.seal.fill")
+                                        }
+                                    }
+                                    
                                     if isPrimaryHostOrAdmin {
                                         Button {
                                             activeSheet = .manageCoHosts
@@ -360,12 +374,14 @@ public struct TournamentDetailView: View {
                 
                 Spacer()
                 
-                Text(t.status.uppercased().replacingOccurrences(of: "_", with: " "))
+                let effStatus = t.effectiveStatus
+                let badgeColor: Color = effStatus == "completed" ? .green : (effStatus == "in_progress" ? .orange : .cyan)
+                Text(effStatus.uppercased().replacingOccurrences(of: "_", with: " "))
                     .font(.system(size: 10, weight: .black))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.green.opacity(0.2)))
-                    .foregroundColor(.green)
+                    .background(Capsule().fill(badgeColor.opacity(0.2)))
+                    .foregroundColor(badgeColor)
             }
             
             Text("\(t.effectiveTeamFormat.icon) \(t.effectiveTeamFormat.displayName)")

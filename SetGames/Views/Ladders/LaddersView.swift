@@ -3,7 +3,7 @@ import SwiftUI
 public struct LaddersView: View {
     @ObservedObject var dataManager: DataManager
     @State private var selectedTab: LadderTab = .popularKids
-    @State private var selectedTimeframe: StatsManager.LadderTimeframe = .month
+    @State private var selectedTimeframe: StatsManager.LadderTimeframe = .allTime
     @State private var showAuthSheet: Bool = false
     
     public enum LadderTab: String, CaseIterable {
