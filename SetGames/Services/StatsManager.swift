@@ -464,7 +464,7 @@ public class StatsManager {
         winningTeamId: UUID,
         players: inout [Player]
     ) {
-        guard let s1 = match.team1Score, let s2 = match.team2Score, match.isCompleted else { return }
+        guard let s1 = match.team1Score, let s2 = match.team2Score, (match.isCompleted || s1 > 0 || s2 > 0) else { return }
         
         // If stats were already applied with the same winner, do not duplicate
         if match.appliedStatsWinnerTeamId == winningTeamId {

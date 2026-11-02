@@ -10277,6 +10277,7 @@ export async function syncDeviceData() {
 
     if (dirty) {
       state.saveLocal();
+      reconcileTournamentStatsWeb();
       renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {
         window.renderTournamentsList();
@@ -13105,6 +13106,36 @@ function applyTournamentMatchStatsWeb(t, match, winningTeamId, s1, s2) {
   }
 }
 
+export function reconcileTournamentStatsWeb() {
+  if (!Array.isArray(state.tournaments) || !Array.isArray(state.players) || state.players.length === 0) return;
+  let didModify = false;
+  state.tournaments.forEach(t => {
+    (t.matches || []).forEach(m => {
+      if (m.team1Score == null || m.team2Score == null || !m.team1Id || !m.team2Id) return;
+      const s1 = parseInt(m.team1Score, 10);
+      const s2 = parseInt(m.team2Score, 10);
+      if (isNaN(s1) || isNaN(s2) || (s1 === 0 && s2 === 0 && !m.isCompleted)) return;
+      const winnerId = m.winningTeamId || (s1 > s2 ? m.team1Id : (s2 > s1 ? m.team2Id : null));
+      if (!winnerId) return;
+      
+      const winIdStr = String(winnerId).trim();
+      const appliedStr = m.appliedStatsWinnerTeamId ? String(m.appliedStatsWinnerTeamId).trim() : null;
+      if (appliedStr !== winIdStr) {
+        applyTournamentMatchStatsWeb(t, m, winnerId, s1, s2);
+        didModify = true;
+      }
+    });
+    if (didModify) {
+      saveTournamentToFirestore(t);
+    }
+  });
+  if (didModify) {
+    state.saveLocal();
+    if (typeof renderLadder === "function") renderLadder();
+  }
+}
+window.reconcileTournamentStatsWeb = reconcileTournamentStatsWeb;
+
 window.submitTournamentMatchScore = function(tournamentId, matchId, team1Score, team2Score) {
   const t = (state.tournaments || []).find(item => 
     (item.id && String(item.id).trim() === String(tournamentId).trim()) ||
@@ -14997,6 +15028,7 @@ function initApp() {
         }
       }
       state.saveLocal();
+      reconcileTournamentStatsWeb();
       renderHeader();
       renderLadder();
       renderPopularKids();
@@ -15084,6 +15116,7 @@ function initApp() {
         }
       });
       state.saveLocal();
+      reconcileTournamentStatsWeb();
       renderMatches();
       if (document.getElementById("tournaments-modal")?.classList.contains("active")) {
         window.renderTournamentsList();

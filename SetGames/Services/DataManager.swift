@@ -1899,6 +1899,7 @@ public class DataManager: ObservableObject {
                 if let current = self.currentUser, let updated = remotePlayers.first(where: { $0.id == current.id }) {
                     self.currentUser = updated
                 }
+                self.reconcileTournamentStatsWithPlayers()
                 self.saveToDisk()
             },
             onGamesUpdate: { [weak self] remoteGames in
@@ -1970,6 +1971,7 @@ public class DataManager: ObservableObject {
                 }
                 self.autoCompletePastTournaments(&combined)
                 self.tournaments = combined
+                self.reconcileTournamentStatsWithPlayers()
                 self.saveToDisk()
             }
         )
@@ -3854,6 +3856,61 @@ public class DataManager: ObservableObject {
         }
     }
     
+    public func reconcileTournamentStatsWithPlayers() {
+        var didModifyTournaments = false
+        var modifiedPlayerIds = Set<UUID>()
+        
+        for tIdx in 0..<tournaments.count {
+            let t = tournaments[tIdx]
+            let teamsById = Dictionary(uniqueKeysWithValues: t.teams.map { ($0.id, $0) })
+            
+            for mIdx in 0..<tournaments[tIdx].matches.count {
+                var m = tournaments[tIdx].matches[mIdx]
+                guard let s1 = m.team1Score, let s2 = m.team2Score,
+                      let t1Id = m.team1Id, let t2Id = m.team2Id,
+                      (m.isCompleted || s1 > 0 || s2 > 0) else { continue }
+                
+                guard let winnerId = m.winningTeamId ?? (s1 > s2 ? t1Id : (s2 > s1 ? t2Id : nil)),
+                      let team1 = teamsById[t1Id], let team2 = teamsById[t2Id] else { continue }
+                
+                // If stats were not yet applied for this match winner
+                if m.appliedStatsWinnerTeamId != winnerId {
+                    StatsManager.shared.applyTournamentMatchResult(
+                        match: &m,
+                        team1PlayerIds: team1.allPlayerIds,
+                        team2PlayerIds: team2.allPlayerIds,
+                        winningTeamId: winnerId,
+                        players: &players
+                    )
+                    tournaments[tIdx].matches[mIdx] = m
+                    didModifyTournaments = true
+                    for pid in team1.allPlayerIds + team2.allPlayerIds {
+                        modifiedPlayerIds.insert(pid)
+                    }
+                }
+            }
+        }
+        
+        if didModifyTournaments {
+            saveToDisk()
+            for t in tournaments {
+                FirestoreService.shared.saveTournament(t)
+            }
+        }
+        
+        if !modifiedPlayerIds.isEmpty {
+            saveToDisk()
+            for pid in modifiedPlayerIds {
+                if let p = players.first(where: { $0.id == pid }) {
+                    FirestoreService.shared.savePlayer(p)
+                    if currentUser?.id == pid {
+                        currentUser = p
+                    }
+                }
+            }
+        }
+    }
+    
     @discardableResult
     public func addCoHost(tournamentId: UUID, playerId: UUID) -> (success: Bool, message: String) {
         guard let user = currentUser,
@@ -4018,6 +4075,7 @@ public class DataManager: ObservableObject {
             self.autoCompletePastTournaments(&defaults)
             self.tournaments = defaults
         }
+        self.reconcileTournamentStatsWithPlayers()
         
         if let sData = try? Data(contentsOf: slotsFileURL),
            let loadedSlots = try? decoder.decode([AvailabilitySlot].self, from: sData) {
