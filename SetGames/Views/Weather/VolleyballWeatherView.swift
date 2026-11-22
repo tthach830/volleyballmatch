@@ -4,7 +4,7 @@ public struct VolleyballWeatherView: View {
     @ObservedObject var dataManager: DataManager
     @StateObject private var weatherService = WeatherService.shared
     
-    @State private var selectedCourt: String = "Main Beach"
+    @AppStorage("vb_quick_widget_beach") private var selectedCourt: String = "Harbor Beach"
     @State private var weeklyDays: [DailyVolleyballWeather] = []
     @State private var selectedDayIndex: Int = 0
     @State private var selectedHourIndex: Int? = nil

@@ -60,6 +60,18 @@ public struct ConfirmedGamesView: View {
     @State private var playerToRemove: (gameId: UUID, player: Player)? = nil
     @State private var showRemovePlayerAlert: Bool = false
     @State private var showUserSwitcher: Bool = false
+    @AppStorage("vb_quick_widget_beach") private var quickWidgetBeach: String = "Harbor Beach"
+    
+    private let quickWeatherBeaches = [
+        "Harbor Beach",
+        "Main Beach",
+        "Dream Inn",
+        "Capitola Beach",
+        "Seabright Beach",
+        "Manhattan Beach",
+        "Hermosa Beach",
+        "Huntington Beach"
+    ]
     
     public enum GameFilter: String, CaseIterable {
         case all = "🗺️ All Upcoming"
@@ -69,6 +81,169 @@ public struct ConfirmedGamesView: View {
     
     public init(dataManager: DataManager) {
         self.dataManager = dataManager
+    }
+    
+    @ViewBuilder
+    private var quickVolleyballWeatherWidget: some View {
+        let now = Date()
+        let forecast = weatherService.cachedForecast(for: quickWidgetBeach, on: now)
+        let windMph = forecast?.windMph ?? 7
+        let tempF = forecast?.tempF ?? 68
+        let isTough = windMph > 15 || tempF < 54
+        let isBreezy = !isTough && (windMph > 10 || tempF < 60)
+        let verdictText = isTough ? "🔴 Windy / Tough" : (isBreezy ? "🟡 Playable Breeze" : "🟢 Optimal Play")
+        let verdictColor: Color = isTough ? .red : (isBreezy ? .yellow : .green)
+        
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text(forecast?.conditionEmoji ?? "☀️")
+                    .font(.system(size: 20))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("🏐 BEACH VOLLEYBALL WEATHER WIDGET")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.cyan)
+                    
+                    HStack(spacing: 6) {
+                        Menu {
+                            ForEach(quickWeatherBeaches, id: \.self) { beach in
+                                Button {
+                                    quickWidgetBeach = beach
+                                    weatherService.loadForecast(for: beach, on: Date())
+                                } label: {
+                                    HStack {
+                                        Text(beach)
+                                        if beach == quickWidgetBeach {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("📍 \(quickWidgetBeach)")
+                                    .font(.system(size: 12, weight: .heavy))
+                                    .foregroundColor(.white)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.cyan)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.white.opacity(0.08))
+                            .cornerRadius(8)
+                        }
+                        
+                        Text(verdictText)
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(verdictColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(verdictColor.opacity(0.18)))
+                    }
+                }
+                
+                Spacer()
+                
+                Button {
+                    NotificationCenter.default.post(name: Notification.Name("SwitchToVolleyballWeatherTab"), object: nil)
+                } label: {
+                    Text("7-Day →")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundColor(.cyan)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Color.cyan.opacity(0.16)))
+                        .overlay(Capsule().stroke(Color.cyan.opacity(0.35), lineWidth: 1))
+                }
+            }
+            
+            if let w = forecast {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("TEMP & SKY")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.secondary)
+                        Text("\(w.conditionEmoji) \(w.tempF)°F")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(.white)
+                        Text(w.conditionText)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(10)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("WIND")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.secondary)
+                        Text("💨 \(w.windMph) mph")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(.cyan)
+                        Text(w.windCategory)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(10)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("UV INDEX")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.secondary)
+                        Text("☀️ UV \(Int(w.uvIndex.rounded()))")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(w.uvColor)
+                        Text(w.uvCategory)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(10)
+                }
+                
+                Text("💨 \(w.windAdvice)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.78))
+                    .lineLimit(1)
+            } else {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .scaleEffect(0.75)
+                        .tint(.cyan)
+                    Text("Checking live conditions at \(quickWidgetBeach)...")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.09, green: 0.16, blue: 0.24), Color(red: 0.08, green: 0.10, blue: 0.15)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+        )
+        .padding(.horizontal)
+        .onAppear {
+            weatherService.loadForecast(for: quickWidgetBeach, on: Date())
+        }
     }
     
     public var body: some View {
@@ -112,10 +287,35 @@ public struct ConfirmedGamesView: View {
                                 .foregroundColor(.white)
                                 .clipShape(Capsule())
                             }
+                            
+                            Button {
+                                NotificationCenter.default.post(name: Notification.Name("SwitchToVolleyballWeatherTab"), object: nil)
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text("☀️")
+                                        .font(.system(size: 13))
+                                    Text("Weather")
+                                        .font(.system(size: 13, weight: .bold))
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color(red: 0.01, green: 0.52, blue: 0.78), Color.cyan],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                            }
                         }
                         .padding(.horizontal)
                     }
                     .padding(.top, 4)
+
+                    // In-App Quick Volleyball Weather Widget Card
+                    quickVolleyballWeatherWidget
 
                     // Custom Dark Capsule Filter Bar
                     HStack(spacing: 0) {

@@ -134,9 +134,21 @@ public struct RootView: View {
         .onOpenURL { url in
             handleIncomingURL(url)
         }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("SwitchToVolleyballWeatherTab"))) { _ in
+            selectedTab = 2
+        }
     }
     
     private func handleIncomingURL(_ url: URL) {
+        if url.host?.lowercased() == "weather" || url.path.lowercased().contains("weather") {
+            if let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+               let beach = components.queryItems?.first(where: { $0.name.lowercased() == "beach" })?.value,
+               !beach.isEmpty {
+                UserDefaults.standard.set(beach, forKey: "vb_quick_widget_beach")
+            }
+            selectedTab = 2
+            return
+        }
         // Supported formats:
         // setgames://game?id=<uuid>
         // setgames://tournament?id=<uuid>&teamId=<uuid>

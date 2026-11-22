@@ -4551,7 +4551,130 @@ export function renderTournamentCardHtml(t, currentUserId, index = 0) {
 }
 window.renderTournamentCardHtml = renderTournamentCardHtml;
 
+window.selectedQuickWeatherBeach = localStorage.getItem("setgames_quick_weather_beach") || "";
+
+window.onQuickWeatherBeachChange = function(newBeach) {
+  window.selectedQuickWeatherBeach = newBeach;
+  try {
+    localStorage.setItem("setgames_quick_weather_beach", newBeach);
+  } catch (e) {}
+  const vbSelect = document.getElementById("vb-beach-select");
+  if (vbSelect) {
+    vbSelect.value = newBeach;
+  }
+  window.renderGamesTabWeatherWidget();
+};
+
+window.openVolleyballTabForBeach = function(beach) {
+  if (beach) {
+    const vbSelect = document.getElementById("vb-beach-select");
+    if (vbSelect) {
+      vbSelect.value = beach;
+    }
+    if (typeof window.onVolleyballBeachChange === "function") {
+      window.onVolleyballBeachChange();
+    }
+  }
+  window.switchTab("volleyball");
+};
+
+window.renderGamesTabWeatherWidget = function(forcedWeather = null) {
+  const widgetEl = document.getElementById("games-tab-weather-widget");
+  if (!widgetEl) return;
+
+  const beaches = [
+    "Harbor Beach",
+    "Main Beach",
+    "Dream Inn",
+    "Capitola Beach",
+    "Seabright Beach",
+    "Manhattan Beach",
+    "Hermosa Beach",
+    "Huntington Beach"
+  ];
+  const defaultBeach = window.selectedQuickWeatherBeach || state.currentUser?.homeBeach || "Harbor Beach";
+  const activeBeach = beaches.includes(defaultBeach) ? defaultBeach : "Harbor Beach";
+  const nowIso = new Date().toISOString();
+
+  const w = forcedWeather || weatherService.getCached(activeBeach, nowIso) || weatherService.getFallback(activeBeach, nowIso);
+  if (!forcedWeather && !weatherService.getCached(activeBeach, nowIso)) {
+    weatherService.getForecast(activeBeach, nowIso).then(liveW => {
+      if (liveW) {
+        window.renderGamesTabWeatherWidget(liveW);
+      }
+    }).catch(() => {});
+  }
+
+  const windMph = Number(w.windMph ?? 7);
+  const tempF = Number(w.tempF ?? 68);
+  const uvIdx = Math.round(Number(w.uvIndex ?? 4));
+  const windDir = w.windDirection || "NW";
+
+  let verdictText = "🟢 Optimal Play";
+  let verdictBg = "rgba(34, 197, 94, 0.18)";
+  let verdictColor = "#4ade80";
+  let verdictBorder = "rgba(34, 197, 94, 0.35)";
+  if (windMph > 15 || tempF < 54) {
+    verdictText = "🔴 Windy / Tough";
+    verdictBg = "rgba(239, 68, 68, 0.18)";
+    verdictColor = "#f87171";
+    verdictBorder = "rgba(239, 68, 68, 0.35)";
+  } else if (windMph > 10 || tempF < 60) {
+    verdictText = "🟡 Playable Breeze";
+    verdictBg = "rgba(234, 179, 8, 0.18)";
+    verdictColor = "#facc15";
+    verdictBorder = "rgba(234, 179, 8, 0.35)";
+  }
+
+  widgetEl.innerHTML = `
+    <div style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(20, 23, 34, 0.95)); border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 16px; padding: 12px 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 18px;">${w.conditionEmoji || "☀️"}</span>
+          <div>
+            <div style="font-size: 10px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.05em;">🏐 Beach Volleyball Weather Widget</div>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+              <select aria-label="Select beach for weather widget" onchange="window.onQuickWeatherBeachChange(this.value)" style="background: rgba(255, 255, 255, 0.08); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px; padding: 3px 8px; font-size: 12px; font-weight: 800; cursor: pointer;">
+                ${beaches.map(b => `<option value="${b}" ${b === activeBeach ? "selected" : ""} style="background: #141722; color: #ffffff;">📍 ${b}</option>`).join("")}
+              </select>
+              <span style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: ${verdictBg}; color: ${verdictColor}; border: 1px solid ${verdictBorder};">
+                ${verdictText}
+              </span>
+            </div>
+          </div>
+        </div>
+        <button type="button" onclick="window.openVolleyballTabForBeach('${activeBeach}')" style="background: rgba(56, 189, 248, 0.16); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 999px; padding: 5px 11px; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap;">
+          7-Day Forecast →
+        </button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px;">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 7px 10px;">
+          <div style="font-size: 9px; font-weight: 800; color: rgba(255, 255, 255, 0.55); text-transform: uppercase;">Temp & Sky</div>
+          <div style="font-size: 15px; font-weight: 900; color: #ffffff; margin-top: 1px;">${w.conditionEmoji || "☀️"} ${tempF}°F</div>
+          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${w.conditionText || "Sunny"}</div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 7px 10px;">
+          <div style="font-size: 9px; font-weight: 800; color: rgba(255, 255, 255, 0.55); text-transform: uppercase;">Wind</div>
+          <div style="font-size: 15px; font-weight: 900; color: #38bdf8; margin-top: 1px;">💨 ${windMph} mph <span style="font-size: 10px; font-weight: 700;">${windDir}</span></div>
+          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${w.windCategory || "Light Breeze"}</div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 7px 10px;">
+          <div style="font-size: 9px; font-weight: 800; color: rgba(255, 255, 255, 0.55); text-transform: uppercase;">UV Index</div>
+          <div style="font-size: 15px; font-weight: 900; color: ${w.uvColor || "#fbbf24"}; margin-top: 1px;">☀️ UV ${uvIdx}</div>
+          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${w.uvCategory || "Moderate"}</div>
+        </div>
+      </div>
+
+      <div style="font-size: 11px; color: rgba(255, 255, 255, 0.75); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span>💨 <b style="color: #ffffff;">Conditions:</b> ${w.windAdvice || "Clean setting & passing conditions on the sand."}</span>
+      </div>
+    </div>
+  `;
+};
+
 function renderMatches() {
+  window.renderGamesTabWeatherWidget();
   const container = document.getElementById("matches-list");
   if (!container) return;
 

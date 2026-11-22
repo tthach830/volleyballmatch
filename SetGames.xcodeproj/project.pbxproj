@@ -61,7 +61,35 @@
 		A001000528B47E2001AB0005 /* TournamentHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000528B47E2001AB0005 /* TournamentHubView.swift */; };
 		A001000628B47E2001AB0006 /* VolleyballWeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */; };
 		A001000728B47E2001AB0007 /* SmartForecastsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000728B47E2001AB0007 /* SmartForecastsSheet.swift */; };
+		W001000128B47E2001AB0001 /* VolleyballWeatherWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = W001000228B47E2001AB0002 /* VolleyballWeatherWidget.swift */; };
+		W001000328B47E2001AB0003 /* SetGamesWeatherWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = W001000428B47E2001AB0004 /* SetGamesWeatherWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		W001000528B47E2001AB0005 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = W001000628B47E2001AB0006 /* WidgetKit.framework */; };
+		W001000728B47E2001AB0007 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = W001000828B47E2001AB0008 /* SwiftUI.framework */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		W001000928B47E2001AB0009 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2D7EDB265F3BFCBD79F541A3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = W001001028B47E2001AB0010;
+			remoteInfo = SetGamesWeatherWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		W001001128B47E2001AB0011 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				W001000328B47E2001AB0003 /* SetGamesWeatherWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		077D6C471062B828911B8862 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -117,9 +145,23 @@
 		B001000528B47E2001AB0005 /* TournamentHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournamentHubView.swift; sourceTree = "<group>"; };
 		B001000628B47E2001AB0006 /* VolleyballWeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolleyballWeatherView.swift; sourceTree = "<group>"; };
 		B001000728B47E2001AB0007 /* SmartForecastsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartForecastsSheet.swift; sourceTree = "<group>"; };
+		W001000228B47E2001AB0002 /* VolleyballWeatherWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolleyballWeatherWidget.swift; sourceTree = "<group>"; };
+		W001001228B47E2001AB0012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		W001000428B47E2001AB0004 /* SetGamesWeatherWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SetGamesWeatherWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		W001000628B47E2001AB0006 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		W001000828B47E2001AB0008 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		W001001328B47E2001AB0013 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				W001000528B47E2001AB0005 /* WidgetKit.framework in Frameworks */,
+				W001000728B47E2001AB0007 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C92DD416700C675A2583C93A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -153,8 +195,18 @@
 			isa = PBXGroup;
 			children = (
 				066D8F5F3A66E7CAABA59900 /* SetGames */,
+				W001001428B47E2001AB0014 /* SetGamesWeatherWidget */,
 				1BABC9FE70385367B81EC546 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		W001001428B47E2001AB0014 /* SetGamesWeatherWidget */ = {
+			isa = PBXGroup;
+			children = (
+				W001000228B47E2001AB0002 /* VolleyballWeatherWidget.swift */,
+				W001001228B47E2001AB0012 /* Info.plist */,
+			);
+			path = SetGamesWeatherWidget;
 			sourceTree = "<group>";
 		};
 		066D8F5F3A66E7CAABA59900 /* SetGames */ = {
@@ -175,6 +227,7 @@
 			isa = PBXGroup;
 			children = (
 				17F053F07C6CC02BD9BDDF3E /* SetGames.app */,
+				W001000428B47E2001AB0004 /* SetGamesWeatherWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -314,10 +367,12 @@
 				9CD1113D1A0440D90EF379BC /* Sources */,
 				C92DD416700C675A2583C93A /* Frameworks */,
 				5D678E4AC7BCF177A1D9373C /* Resources */,
+				W001001128B47E2001AB0011 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				W001001528B47E2001AB0015 /* PBXTargetDependency */,
 			);
 			name = SetGames;
 			packageProductDependencies = (
@@ -327,6 +382,22 @@
 			productName = SetGames;
 			productReference = 17F053F07C6CC02BD9BDDF3E /* SetGames.app */;
 			productType = "com.apple.product-type.application";
+		};
+		W001001028B47E2001AB0010 /* SetGamesWeatherWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = W001001628B47E2001AB0016 /* Build configuration list for PBXNativeTarget "SetGamesWeatherWidget" */;
+			buildPhases = (
+				W001001728B47E2001AB0017 /* Sources */,
+				W001001328B47E2001AB0013 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SetGamesWeatherWidget;
+			productName = SetGamesWeatherWidget;
+			productReference = W001000428B47E2001AB0004 /* SetGamesWeatherWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -345,6 +416,10 @@
 								enabled = 1;
 							};
 						};
+					};
+					W001001028B47E2001AB0010 = {
+						CreatedOnToolsVersion = 16.0;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -365,6 +440,7 @@
 			projectRoot = "";
 			targets = (
 				AA4BA7EBC58642525BC5C322 /* SetGames */,
+				W001001028B47E2001AB0010 /* SetGamesWeatherWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -438,7 +514,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W001001728B47E2001AB0017 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				W001000128B47E2001AB0001 /* VolleyballWeatherWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		W001001528B47E2001AB0015 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = W001001028B47E2001AB0010 /* SetGamesWeatherWidget */;
+			targetProxy = W001000928B47E2001AB0009 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		5F6732A15130ADFD4A20D414 /* Debug */ = {
@@ -535,6 +627,56 @@
 			};
 			name = Release;
 		};
+		W001001828B47E2001AB0018 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z4WJ2G9N79;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SetGamesWeatherWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Volleyball Weather";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peterthach.SetGames.WeatherWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		W001001928B47E2001AB0019 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z4WJ2G9N79;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SetGamesWeatherWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Volleyball Weather";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peterthach.SetGames.WeatherWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -552,6 +694,15 @@
 			buildConfigurations = (
 				B29A462C53F177E42554E366 /* Debug */,
 				E4DE6061913151686BECED63 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		W001001628B47E2001AB0016 /* Build configuration list for PBXNativeTarget "SetGamesWeatherWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				W001001828B47E2001AB0018 /* Debug */,
+				W001001928B47E2001AB0019 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
