@@ -4674,7 +4674,6 @@ window.renderGamesTabWeatherWidget = function(forcedWeather = null) {
 };
 
 function renderMatches() {
-  window.renderGamesTabWeatherWidget();
   const container = document.getElementById("matches-list");
   if (!container) return;
 

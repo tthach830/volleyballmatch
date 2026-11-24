@@ -314,9 +314,6 @@ public struct ConfirmedGamesView: View {
                     }
                     .padding(.top, 4)
 
-                    // In-App Quick Volleyball Weather Widget Card
-                    quickVolleyballWeatherWidget
-
                     // Custom Dark Capsule Filter Bar
                     HStack(spacing: 0) {
                         ForEach(Array(GameFilter.allCases.enumerated()), id: \.offset) { index, filter in

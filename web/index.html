@@ -79,14 +79,11 @@
 
     <!-- TAB 1: SET GAMES (Matches iOS ConfirmedGamesView.swift) -->
     <main id="tab-matches" class="tab-content active">
-      <div style="display: flex; gap: 8px; margin: 8px 16px 10px; flex-wrap: wrap;">
+      <div style="display: flex; gap: 8px; margin: 8px 16px 12px; flex-wrap: wrap;">
         <button type="button" class="btn-ios-teal" onclick="window.openCreateMatchModal()" title="Host a new game"><span style="font-size:16px; font-weight:900; line-height:1;">+</span> New Game</button>
         <button type="button" class="btn-ios-teal" id="btn-tournaments" onclick="window.openTournamentsModal()" title="Beach Tournaments" style="background: #ea580c;"><span style="font-size:14px;">🏆</span> Tournaments</button>
         <button type="button" class="btn-ios-teal" id="btn-quick-weather" onclick="window.switchTab('volleyball')" title="Check 7-Day Volleyball Weather Forecast" style="background: linear-gradient(135deg, #0284c7, #0ea5e9);"><span style="font-size:14px;">☀️</span> Weather</button>
       </div>
-
-      <!-- In-App Quick Volleyball Weather Widget on Games Tab -->
-      <div id="games-tab-weather-widget" style="margin: 0 16px 12px;"></div>
 
       <!-- Dark Segmented Capsule: 🗺️ All Upcoming | 🤝 My Games | 📜 Past Games -->
       <div class="segmented-control-dark" id="match-filter-segmented">
@@ -1874,6 +1871,6 @@
     </nav>
   </div>
 
-  <script type="module" src="app.js?v=18.3"></script>
+  <script type="module" src="app.js?v=18.4"></script>
 </body>
 </html>
