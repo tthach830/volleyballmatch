@@ -65,7 +65,7 @@ public struct VolleyballWeatherView: View {
                 .padding(.bottom, 90)
             }
             .background(Color(red: 0.08, green: 0.09, blue: 0.13).ignoresSafeArea())
-            .navigationTitle("Volleyball?")
+            .navigationTitle("Weather")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -123,7 +123,7 @@ public struct VolleyballWeatherView: View {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
-                        Text("Volleyball?")
+                        Text("Weather")
                             .font(.system(size: 26, weight: .black, design: .rounded))
                             .foregroundColor(.white)
                         

@@ -287,28 +287,6 @@ public struct ConfirmedGamesView: View {
                                 .foregroundColor(.white)
                                 .clipShape(Capsule())
                             }
-                            
-                            Button {
-                                NotificationCenter.default.post(name: Notification.Name("SwitchToVolleyballWeatherTab"), object: nil)
-                            } label: {
-                                HStack(spacing: 5) {
-                                    Text("☀️")
-                                        .font(.system(size: 13))
-                                    Text("Weather")
-                                        .font(.system(size: 13, weight: .bold))
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(
-                                    LinearGradient(
-                                        colors: [Color(red: 0.01, green: 0.52, blue: 0.78), Color.cyan],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .foregroundColor(.white)
-                                .clipShape(Capsule())
-                            }
                         }
                         .padding(.horizontal)
                     }

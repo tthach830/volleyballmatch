@@ -82,7 +82,6 @@
       <div style="display: flex; gap: 8px; margin: 8px 16px 12px; flex-wrap: wrap;">
         <button type="button" class="btn-ios-teal" onclick="window.openCreateMatchModal()" title="Host a new game"><span style="font-size:16px; font-weight:900; line-height:1;">+</span> New Game</button>
         <button type="button" class="btn-ios-teal" id="btn-tournaments" onclick="window.openTournamentsModal()" title="Beach Tournaments" style="background: #ea580c;"><span style="font-size:14px;">🏆</span> Tournaments</button>
-        <button type="button" class="btn-ios-teal" id="btn-quick-weather" onclick="window.switchTab('volleyball')" title="Check 7-Day Volleyball Weather Forecast" style="background: linear-gradient(135deg, #0284c7, #0ea5e9);"><span style="font-size:14px;">☀️</span> Weather</button>
       </div>
 
       <!-- Dark Segmented Capsule: 🗺️ All Upcoming | 🤝 My Games | 📜 Past Games -->
@@ -150,13 +149,13 @@
       </div>
     </main>
 
-    <!-- TAB 3: VOLLEYBALL? (Weekly Weather Forecast & Suitability Chart) -->
+    <!-- TAB 3: WEATHER (Weekly Weather Forecast & Suitability Chart) -->
     <main id="tab-volleyball" class="tab-content">
       <div class="ios-view-header">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; flex-wrap: wrap; gap: 8px;">
           <div>
             <div style="display: flex; align-items: center; gap: 8px;">
-              <h1 class="ios-large-title" style="margin-bottom: 0;">Volleyball?</h1>
+              <h1 class="ios-large-title" style="margin-bottom: 0;">Weather</h1>
               <span id="vb-overall-pill" class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 999px;">☀️ Forecast</span>
             </div>
             <div class="ios-subtitle">Weekly weather & beach playing conditions</div>
@@ -1862,7 +1861,7 @@
       </button>
       <button type="button" class="nav-item" id="nav-volleyball" data-tab="volleyball" onclick="window.switchTab('volleyball')">
         <span class="nav-icon">☀️</span>
-        <span class="nav-label">Volleyball?</span>
+        <span class="nav-label">Weather</span>
       </button>
       <button type="button" class="nav-item" id="nav-profile" data-tab="profile" onclick="window.switchTab('profile')">
         <span class="nav-icon">👤</span>

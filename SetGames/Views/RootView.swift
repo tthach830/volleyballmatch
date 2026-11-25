@@ -41,10 +41,10 @@ public struct RootView: View {
                     }
                     .tag(1)
                 
-                // Tab 2: Volleyball? (Weekly Weather Forecast & Suitability)
+                // Tab 2: Weather (Weekly Weather Forecast & Suitability)
                 VolleyballWeatherView(dataManager: dataManager)
                     .tabItem {
-                        Label("Volleyball?", systemImage: "sun.max.fill")
+                        Label("Weather", systemImage: "sun.max.fill")
                     }
                     .tag(2)
                 
